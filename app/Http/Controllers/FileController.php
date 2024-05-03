@@ -14,7 +14,7 @@ class FileController extends Controller
         $this->fileService = $fileService;
     }
 
-    public function upload(Request $request)
+    public function store(Request $request)
     {
         $request->validate([
             'files.*' => 'required|file|mimes:jpeg,png,jpg,gif,svg,pdf|max:2048',
@@ -27,7 +27,5 @@ class FileController extends Controller
                 $this->fileService->processUpload($file);
             }
         }
-
-        return back()->with('success', 'Files uploaded successfully.');
     }
 }

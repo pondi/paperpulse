@@ -25,10 +25,11 @@
         "helgesverre/receipt-scanner": "dev-main"
     },
     "require-dev": {
+        "algolia/algoliasearch-client-php": "^3.4",
         "barryvdh/laravel-debugbar": "^3.12",
         "fakerphp/faker": "^1.23",
         "laravel/pint": "^1.13",
-        "laravel/sail": "^1.26",
+        "laravel/sail": "^1.29",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.0",
         "pestphp/pest": "^2.0",

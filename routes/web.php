@@ -31,4 +31,8 @@ Route::get('/file/upload', function () {
 
 Route::post('/file/store', [FileController::class, 'store'])->middleware(['auth', 'verified'])->name('file.store');
 
+Route::get('/receipt/vendors', function () {
+    return Inertia::render('Receipt/Vendors');
+})->middleware(['auth', 'verified'])->name('receipt.vendors');
+
 require __DIR__.'/auth.php';

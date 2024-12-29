@@ -16,6 +16,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Termwind\Components\Raw;
+use Illuminate\Support\Facades\DB;
 
 class ProcessReceipt implements ShouldQueue
 {
@@ -106,34 +107,47 @@ class ProcessReceipt implements ShouldQueue
 
     private function createReceipt(array $parsedReceipt) : array
     {
-        $receipt = new Receipt;
-        $receipt->file_id = $this->fileID;
-        $receipt->receipt_data = json_encode($parsedReceipt);
-        $receipt->receipt_date = $parsedReceipt['date'] ?? null;
-        $receipt->tax_amount = $parsedReceipt['taxAmount'] ?? null;
-        $receipt->total_amount = $parsedReceipt['totalAmount'] ?? null;
-        $receipt->currency = $parsedReceipt['currency'] ?? null;
-        $receipt->receipt_category = $parsedReceipt['category'] ?? null;
-        $receipt->receipt_description = $parsedReceipt['description'] ?? null;
-        $receipt->save();
+        DB::beginTransaction();
+        try {
+            $receipt = new Receipt;
+            $receipt->file_id = $this->fileID;
+            $receipt->receipt_data = json_encode($parsedReceipt);
+            $receipt->receipt_date = $parsedReceipt['date'] ?? null;
+            $receipt->tax_amount = $parsedReceipt['taxAmount'] ?? null;
+            $receipt->total_amount = $parsedReceipt['totalAmount'] ?? null;
+            $receipt->currency = $parsedReceipt['currency'] ?? null;
+            $receipt->receipt_category = $parsedReceipt['category'] ?? null;
+            $receipt->receipt_description = $parsedReceipt['description'] ?? null;
+            $receipt->save();
 
-        foreach ($parsedReceipt['lineItems'] as $item) {
-            $lineItem = new LineItem;
-            $lineItem->receipt_id = $receipt->id;
-            $lineItem->text = $item['text'];
-            $lineItem->sku = $item['sku'];
-            $lineItem->qty = $item['qty'];
-            $lineItem->price = $item['price'];
-            $lineItem->save();
+            foreach ($parsedReceipt['lineItems'] as $item) {
+                $lineItem = new LineItem;
+                $lineItem->receipt_id = $receipt->id;
+                $lineItem->text = $item['text'];
+                $lineItem->sku = $item['sku'];
+                $lineItem->qty = $item['qty'];
+                $lineItem->price = $item['price'];
+                $lineItem->save();
+            }
+
+            DB::commit();
+
+            // Make the receipt searchable after all relations are saved
+            $receipt->load(['merchant', 'lineItems']);
+            $receipt->searchable();
+
+            Log::info('Creating receipt - ReceiptID:' . $this->fileID . ' - Receipt created:', $receipt->toArray());
+
+            return [
+                'receiptID' => $receipt->id,
+                'merchantName' => $parsedReceipt['merchant']['name'],
+                'merchantAddress' => $parsedReceipt['merchant']['address'],
+                'merchantVatID' => $parsedReceipt['merchant']['vatId'],
+            ];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error creating receipt: ' . $e->getMessage());
+            throw $e;
         }
-
-        Log::info('Creating receipt - ReceiptID:' . $this->fileID . ' - Receipt created:', $receipt->toArray());
-
-        return [
-            'receiptID' => $receipt->id,
-            'merchantName' => $parsedReceipt['merchant']['name'],
-            'merchantAddress' => $parsedReceipt['merchant']['address'],
-            'merchantVatID' => $parsedReceipt['merchant']['vatId'],
-        ];
     }
 }

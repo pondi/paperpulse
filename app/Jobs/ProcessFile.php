@@ -3,7 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\File;
-use App\Services\FileService;
+use App\Services\ConversionService;
+use App\Services\DocumentService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -12,52 +13,47 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-
 class ProcessFile implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * Create a new job instance.
-     */
     protected $jobID;
 
-    public $timeout = 3600;
-
-    /**
-     * The number of times the job may be attempted.
-     *
-     * @var int
-     */
-    public $tries = 5;
-
-    /**
-     * The number of seconds to wait before retrying the job.
-     *
-     * @var int
-     */
-    public $backoff = 10;
-
-    public function __construct($jobID)
+    public function __construct(string $jobID)
     {
         $this->jobID = $jobID;
     }
 
-    /**
-     * Execute the job.
-     */
-    public function handle(): void
+    public function handle(ConversionService $conversionService, DocumentService $documentService)
     {
-        $fileMetaData = Cache::get("job.{$this->jobID}.fileMetaData");
-        $fileGUID = $fileMetaData['fileGUID'];
-        $filePath = $fileMetaData['filePath'];
+        try {
+            $fileMetaData = Cache::get("job.{$this->jobID}.fileMetaData");
+            
+            if (!$fileMetaData) {
+                Log::error('ProcessFile - No file metadata found in cache', [
+                    'jobID' => $this->jobID
+                ]);
+                return;
+            }
 
-        // Proces the path given by $filePath
-        $fileService = new FileService();
-        $imageData = $fileService->convertPdfToImage($filePath, $fileGUID);
-        File::where('guid', $fileGUID)->update(['fileImage' => base64_encode($imageData)]);
+            if ($fileMetaData['fileExtension'] === 'pdf') {
+                $conversionService->pdfToImage(
+                    $fileMetaData['filePath'],
+                    $fileMetaData['fileGUID'],
+                    $documentService
+                );
+            }
 
-        Log::info('ProcessFile Job Completed for fileGUID: ' . $fileGUID);
-
+            Log::info('ProcessFile - Complete', [
+                'jobID' => $this->jobID,
+                'fileMetaData' => $fileMetaData
+            ]);
+        } catch (\Exception $e) {
+            Log::error('ProcessFile - Error: ' . $e->getMessage(), [
+                'jobID' => $this->jobID,
+                'exception' => $e
+            ]);
+            throw $e;
+        }
     }
 }

@@ -101,31 +101,51 @@ class MatchMerchant implements ShouldQueue
 
         Log::info('MatchMerchant Job - ReceiptID:' . $this->receiptID . ' - OpenAI response: ', $response->toArray());
 
-        return json_decode(stripslashes($response['choices'][0]['text']), true) ?? null;
-    }
+        $text = trim($response['choices'][0]['text']);
+        
+        // If response is empty or just whitespace, return null
+        if (empty($text)) {
+            return null;
+        }
 
+        // Try to decode JSON response
+        $decoded = json_decode(stripslashes($text), true);
+        
+        // If JSON decode failed or result is empty, return null
+        if ($decoded === null || empty($decoded)) {
+            return null;
+        }
+
+        return $decoded;
+    }
 
     private function updateReceipt($merchantId)
     {
         $receipt = Receipt::find($this->receiptID);
-        $receipt->merchant_id = $merchantId;
-        $receipt->save();
-
-        Log::info('MatchMerchant Job - ReceiptID:' . $this->receiptID . ' - Receipt updated:', $receipt->toArray());
+        if ($receipt) {
+            $receipt->merchant_id = $merchantId;
+            $receipt->save();
+            Log::info('MatchMerchant Job - ReceiptID:' . $this->receiptID . ' - Receipt updated:', $receipt->toArray());
+        } else {
+            Log::error('MatchMerchant Job - Receipt not found with ID:' . $this->receiptID);
+        }
     }
 
     private function updateMerchant($merchantId)
     {
         $merchant = Merchant::find($merchantId);
-        if ($this->merchantAddress) {
-            $merchant->address = $this->merchantAddress;
+        if ($merchant) {
+            if ($this->merchantAddress) {
+                $merchant->address = $this->merchantAddress;
+            }
+            if ($this->merchantVatNumber) {
+                $merchant->vat_number = $this->merchantVatNumber;
+            }
+            $merchant->save();
+            Log::info('MatchMerchant Job - ReceiptID:' . $this->receiptID . ' - Merchant updated:', $merchant->toArray());
+        } else {
+            Log::error('MatchMerchant Job - Merchant not found with ID:' . $merchantId);
         }
-        if ($this->merchantVatNumber) {
-            $merchant->vat_number = $this->merchantVatNumber;
-        }
-        $merchant->save();
-
-        Log::info('MatchMerchant Job - ReceiptID:' . $this->receiptID . ' - Merchant updated:', $merchant->toArray());
     }
 
     private function createMerchant()

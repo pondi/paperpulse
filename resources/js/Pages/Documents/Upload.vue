@@ -206,6 +206,7 @@ function formatFileSize(bytes) {
 
 function submit() {
     form.post('/documents/store', {
+        preserveScroll: true,
         onSuccess: () => {
             // Clean up any existing previews
             selectedFiles.value.forEach(file => {
@@ -215,10 +216,6 @@ function submit() {
             });
             selectedFiles.value = [];
             fileUpload.value.reset();
-            uploadSuccess.value = true;
-            setTimeout(() => {
-                uploadSuccess.value = false;
-            }, 5000);
         },
         onProgress: (event) => {
             form.progress = {

@@ -16,7 +16,6 @@ return new class extends Migration
             $table->string('name');
             $table->string('address')->nullable();
             $table->string('vat_number')->nullable();
-            $table->binary('logo')->nullable();
             $table->string('email')->nullable();
             $table->string('phone')->nullable();
             $table->string('website')->nullable();

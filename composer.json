@@ -12,6 +12,8 @@
       ],
     "require": {
         "php": "^8.2",
+        "helgesverre/receipt-scanner": "dev-main",
+        "http-interop/http-factory-guzzle": "^1.2",
         "inertiajs/inertia-laravel": "^1.0",
         "laravel/breeze": "^2.0",
         "laravel/framework": "^11.0",
@@ -19,10 +21,10 @@
         "laravel/sanctum": "^4.0",
         "laravel/scout": "^10.8",
         "laravel/tinker": "^2.9",
+        "meilisearch/meilisearch-php": "^1.12",
         "opcodesio/log-viewer": "^3.6",
-        "tightenco/ziggy": "^2.0",
-        "spatie/pdf-to-image": "^1.2",
-        "helgesverre/receipt-scanner": "dev-main"
+        "spatie/pdf-to-image": "^3.1",
+        "tightenco/ziggy": "^2.0"
     },
     "require-dev": {
         "algolia/algoliasearch-client-php": "^3.4",

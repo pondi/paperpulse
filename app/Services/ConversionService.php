@@ -21,10 +21,9 @@ class ConversionService
                 ->size(400)
                 ->save($outputPath);
 
-            Log::info('ConversionService - PDF converted to image', [
-                'storedFilePath' => $storedFilePath,
-                'guid' => $fileGUID,
-                'outputPath' => $outputPath
+            Log::debug("(ConversionService) [pdfToImage] - PDF converted to image", [
+                'file_path' => $storedFilePath,
+                'file_guid' => $fileGUID
             ]);
 
             // Store image in permanent storage
@@ -36,17 +35,13 @@ class ConversionService
                 'jpg'
             );
 
-            Log::info('ConversionService - Image stored', [
-                'guid' => $fileGUID,
-                'storage_driver' => config('filesystems.disks.documents.driver')
-            ]);
+            Log::debug("(ConversionService) [pdfToImage] - Image stored (file: {$fileGUID})");
 
             return true;
         } catch (\Exception $e) {
-            Log::error('Error converting PDF to image: ' . $e->getMessage(), [
-                'guid' => $fileGUID,
-                'path' => $storedFilePath,
-                'exception' => $e
+            Log::error("(ConversionService) [pdfToImage] - Error converting PDF to image (file: {$fileGUID})", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             throw $e;
         }

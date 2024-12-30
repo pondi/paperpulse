@@ -48,7 +48,11 @@ class ReceiptService
             return true;
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error when deleting receipt: ' . $e->getMessage());
+            Log::error('[ReceiptService] Receipt deletion failed', [
+                'error' => $e->getMessage(),
+                'receipt_id' => $receipt->id,
+                'trace' => $e->getTraceAsString()
+            ]);
             return false;
         }
     }

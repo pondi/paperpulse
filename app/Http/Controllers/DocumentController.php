@@ -60,8 +60,7 @@ class DocumentController extends Controller
         $content = $this->documentService->getDocument($guid, $type, $extension);
         
         if (!$content) {
-            Log::error("Failed to serve document", [
-                'guid' => $guid,
+            Log::error("(DocumentController) [serve] - Document not found (guid: {$guid})", [
                 'type' => $type,
                 'extension' => $extension,
                 'user_id' => $request->user()->id
@@ -102,8 +101,7 @@ class DocumentController extends Controller
         $url = $this->documentService->getSecureUrl($guid, $type, $extension);
 
         if (!$url) {
-            Log::error("Failed to generate secure URL", [
-                'guid' => $guid,
+            Log::error("(DocumentController) [getSecureUrl] - Secure URL generation failed (guid: {$guid})", [
                 'type' => $type,
                 'extension' => $extension,
                 'user_id' => $request->user()->id

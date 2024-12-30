@@ -27,7 +27,7 @@ class ProcessReceipt implements ShouldQueue
     protected $fileGUID;
     protected $filePath;
     protected $fileExtension;
-
+    protected $jobName;
 
     public $timeout = 3600;
 
@@ -59,12 +59,15 @@ class ProcessReceipt implements ShouldQueue
 
         $parsedReceipt = $this->parseReceipt($fileContent);
 
-        Log::info('ProcessReceipt Job before updateReceipt - FileID: ' . $this->fileID . ' fileGUID:' . $this->fileGUID . ' - Receipt parsed:', $parsedReceipt);
+        Log::debug("(ProcessReceipt) [{$this->jobName}] - Receipt parsed (file: {$this->fileGUID})", [
+            'file_id' => $this->fileID,
+            'parsed_data' => $parsedReceipt
+        ]);
 
         $receiptMetaData = $this->createReceipt($parsedReceipt);
         Cache::put("job.{$this->jobID}.receiptMetaData", $receiptMetaData, now()->addMinutes(5));
 
-        Log::info('ProcessReceipt Job - fileGUID:' . $this->fileGUID . ' - Receipt processed successfully');
+        Log::info("(ProcessReceipt) [{$this->jobName}] - Receipt processing completed (file: {$this->fileGUID})");
     }
 
     private function fetchDataFromCache()
@@ -74,15 +77,21 @@ class ProcessReceipt implements ShouldQueue
         $this->fileGUID = $fileMetaData['fileGUID'];
         $this->filePath = $fileMetaData['filePath'];
         $this->fileExtension = $fileMetaData['fileExtension'];
+        $this->jobName = $fileMetaData['jobName'];
 
-        Log::info('ProcessReceipt Job - fileGUID:' . $this->fileGUID . ' - filePath: ' . $this->filePath . ' - jobID: ' . $this->jobID);
+        Log::debug("(ProcessReceipt) [{$this->jobName}] - Starting file processing (file: {$this->fileGUID})", [
+            'file_path' => $this->filePath,
+            'job_id' => $this->jobID
+        ]);
     }
 
     private function readFileContent()
     {
         $filePath = 'uploads/' . $this->fileGUID . '.' . $this->fileExtension;
         if (!Storage::disk('local')->exists($filePath)) {
-            Log::error('File does not exist: ' . $filePath);
+            Log::error("(ProcessReceipt) [{$this->jobName}] - File not found (file: {$this->fileGUID})", [
+                'file_path' => $filePath
+            ]);
             return null;
         }
 
@@ -136,7 +145,7 @@ class ProcessReceipt implements ShouldQueue
             $receipt->load(['merchant', 'lineItems']);
             $receipt->searchable();
 
-            Log::info('Creating receipt - ReceiptID:' . $this->fileID . ' - Receipt created:', $receipt->toArray());
+            Log::info("(ProcessReceipt) [{$this->jobName}] - Receipt created (file: {$this->fileGUID})");
 
             return [
                 'receiptID' => $receipt->id,
@@ -146,7 +155,10 @@ class ProcessReceipt implements ShouldQueue
             ];
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error creating receipt: ' . $e->getMessage());
+            Log::error("(ProcessReceipt) [{$this->jobName}] - Receipt creation failed (file: {$this->fileGUID})", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             throw $e;
         }
     }

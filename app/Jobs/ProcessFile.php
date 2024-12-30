@@ -30,8 +30,8 @@ class ProcessFile implements ShouldQueue
             $fileMetaData = Cache::get("job.{$this->jobID}.fileMetaData");
             
             if (!$fileMetaData) {
-                Log::error('ProcessFile - No file metadata found in cache', [
-                    'jobID' => $this->jobID
+                Log::error("(ProcessFile) [{$fileMetaData['jobName']}] - File metadata not found (job: {$this->jobID})", [
+                    'error' => 'No file metadata found in cache'
                 ]);
                 return;
             }
@@ -44,14 +44,11 @@ class ProcessFile implements ShouldQueue
                 );
             }
 
-            Log::info('ProcessFile - Complete', [
-                'jobID' => $this->jobID,
-                'fileMetaData' => $fileMetaData
-            ]);
+            Log::info("(ProcessFile) [{$fileMetaData['jobName']}] - Processing completed (file: {$fileMetaData['fileGUID']})");
         } catch (\Exception $e) {
-            Log::error('ProcessFile - Error: ' . $e->getMessage(), [
-                'jobID' => $this->jobID,
-                'exception' => $e
+            Log::error("(ProcessFile) [{$fileMetaData['jobName']}] - Processing failed (job: {$this->jobID})", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             throw $e;
         }

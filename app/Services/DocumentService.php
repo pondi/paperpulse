@@ -32,24 +32,23 @@ class DocumentService
     {
         $jobID = (string) Str::uuid();
         $fileGUID = (string) Str::uuid();
+        $jobName = $this->generateJobName();
 
         // Store the original file in permanent storage
         $fileContent = file_get_contents($incomingFile->getRealPath());
         $this->storeDocument(
             $fileContent,
             $fileGUID,
+            $jobName,
             'receipts',
             $incomingFile->getClientOriginalExtension()
         );
 
-        $fileMetaData = $this->createFileModel($incomingFile, $fileGUID);
+        $fileMetaData = $this->createFileModel($incomingFile, $fileGUID, $jobName);
+        $fileMetaData['jobName'] = $jobName;
         Cache::put("job.{$jobID}.fileMetaData", $fileMetaData, now()->addMinutes(5));
 
-        Log::info('DocumentService - processUpload Complete', [
-            'jobID' => $jobID,
-            'fileGUID' => $fileGUID,
-            'fileMetaData' => $fileMetaData
-        ]);
+        Log::info("(DocumentService) [{$jobName}] - Upload processing started (file: {$incomingFile->getClientOriginalName()})");
 
         Bus::chain([
             new ProcessFile($jobID),
@@ -58,41 +57,40 @@ class DocumentService
             new DeleteWorkingFiles($jobID),
         ])->dispatch();
 
+        Log::debug("(DocumentService) [{$jobName}] Upload processing details", [
+            'file_name' => $incomingFile->getClientOriginalName(),
+            'size' => $incomingFile->getSize(),
+            'mime_type' => $incomingFile->getMimeType()
+        ]);
+
         return true;
     }
 
     /**
      * Store a document in the storage system
      */
-    public function storeDocument(string $content, string $guid, string $type = 'receipts', string $extension = 'pdf'): bool
+    public function storeDocument(string $content, string $guid, string $jobName, string $type = 'receipts', string $extension = 'pdf'): bool
     {
         try {
             $path = $this->getPath($guid, $type, $extension);
             $success = $this->disk->put($path, $content);
             
             if (!$success) {
-                Log::error("Failed to store document", [
-                    'guid' => $guid,
-                    'type' => $type,
-                    'extension' => $extension,
-                    'disk' => config('filesystems.default')
+                Log::error('[DocumentService] Document storage failed', [
+                    'error' => "Failed to store document",
+                    'file_name' => $incomingFile->getClientOriginalName(),
+                    'trace' => $e->getTraceAsString()
                 ]);
                 return false;
             }
 
-            Log::info("Document stored successfully", [
-                'guid' => $guid,
-                'path' => $path,
-                'type' => $type,
-                'disk' => config('filesystems.disks.documents.driver')
-            ]);
+            Log::info("(DocumentService) [{$jobName}] - Document stored (guid: {$guid})");
 
             return true;
         } catch (\Exception $e) {
-            Log::error("Error storing document: " . $e->getMessage(), [
-                'guid' => $guid,
-                'type' => $type,
-                'extension' => $extension
+            Log::error('[DocumentService] Document storage error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return false;
         }
@@ -101,26 +99,22 @@ class DocumentService
     /**
      * Get a document's content directly
      */
-    public function getDocument(string $guid, string $type = 'receipts', string $extension = 'pdf')
+    public function getDocument(string $guid, string $jobName, string $type = 'receipts', string $extension = 'pdf')
     {
         try {
             $path = $this->getPath($guid, $type, $extension);
             
             if (!$this->disk->exists($path)) {
-                Log::error("Document not found", [
-                    'guid' => $guid,
-                    'path' => $path,
-                    'disk' => config('filesystems.disks.documents.driver')
-                ]);
+                Log::error("(DocumentService) [{$jobName}] - Document not found for retrieval (guid: {$guid})");
                 return null;
             }
 
             return $this->disk->get($path);
         } catch (\Exception $e) {
-            Log::error("Error retrieving document: " . $e->getMessage(), [
-                'guid' => $guid,
-                'type' => $type,
-                'extension' => $extension
+            Log::error('[DocumentService] Document retrieval error', [
+                'error' => $e->getMessage(),
+                'document_id' => $guid,
+                'trace' => $e->getTraceAsString()
             ]);
             return null;
         }
@@ -129,24 +123,20 @@ class DocumentService
     /**
      * Get a secure URL for accessing the document
      */
-    public function getSecureUrl(string $guid, string $type = 'receipts', string $extension = 'pdf', int $expirationMinutes = 5): ?string
+    public function getSecureUrl(string $guid, string $jobName, string $type = 'receipts', string $extension = 'pdf', int $expirationMinutes = 5): ?string
     {
         try {
             $path = $this->getPath($guid, $type, $extension);
             
             if (!$this->disk->exists($path)) {
-                Log::error("Document not found for URL generation", [
-                    'guid' => $guid,
-                    'path' => $path
-                ]);
+                Log::error("(DocumentService) [{$jobName}] - Document not found for URL generation (guid: {$guid})");
                 return null;
             }
 
             if ($this->isS3) {
-                Log::info("Generating S3 temporary URL", [
-                    'guid' => $guid,
-                    'path' => $path,
-                    'expiration' => $expirationMinutes
+                Log::debug('[DocumentService] Generating S3 temporary URL', [
+                    'document_id' => $guid,
+                    'expires_at' => $expirationMinutes
                 ]);
                 return $this->disk->temporaryUrl(
                     $path,
@@ -154,10 +144,9 @@ class DocumentService
                 );
             }
 
-            Log::info("Generating local signed URL", [
-                'guid' => $guid,
-                'path' => $path,
-                'expiration' => $expirationMinutes
+            Log::debug('[DocumentService] Generating local signed URL', [
+                'document_id' => $guid,
+                'expires_at' => $expirationMinutes
             ]);
             
             return URL::temporarySignedRoute(
@@ -166,11 +155,10 @@ class DocumentService
                 ['guid' => $guid, 'type' => $type, 'extension' => $extension]
             );
         } catch (\Exception $e) {
-            Log::error("Error generating secure URL: " . $e->getMessage(), [
-                'guid' => $guid,
-                'type' => $type,
-                'extension' => $extension,
-                'driver' => config('filesystems.disks.documents.driver')
+            Log::error('[DocumentService] Secure URL generation error', [
+                'error' => $e->getMessage(),
+                'document_id' => $guid,
+                'trace' => $e->getTraceAsString()
             ]);
             return null;
         }
@@ -179,39 +167,33 @@ class DocumentService
     /**
      * Delete a document from storage
      */
-    public function deleteDocument(string $guid, string $type = 'receipts', string $extension = 'pdf'): bool
+    public function deleteDocument(string $guid, string $jobName, string $type = 'receipts', string $extension = 'pdf'): bool
     {
         try {
             $path = $this->getPath($guid, $type, $extension);
             
             if (!$this->disk->exists($path)) {
-                Log::warning("Document not found for deletion", [
-                    'guid' => $guid,
-                    'path' => $path
-                ]);
+                Log::warning("(DocumentService) [{$jobName}] - Document not found for deletion (guid: {$guid})");
                 return true; // Consider it a success if file doesn't exist
             }
 
             $success = $this->disk->delete($path);
             
             if ($success) {
-                Log::info("Document deleted successfully", [
-                    'guid' => $guid,
-                    'path' => $path
-                ]);
+                Log::info("(DocumentService) [{$jobName}] - Document deleted (guid: {$guid})");
             } else {
-                Log::error("Failed to delete document", [
-                    'guid' => $guid,
-                    'path' => $path
+                Log::error('[DocumentService] Document deletion failed', [
+                    'error' => "Failed to delete document",
+                    'document_id' => $guid
                 ]);
             }
 
             return $success;
         } catch (\Exception $e) {
-            Log::error("Error deleting document: " . $e->getMessage(), [
-                'guid' => $guid,
-                'type' => $type,
-                'extension' => $extension
+            Log::error('[DocumentService] Document deletion error', [
+                'error' => $e->getMessage(),
+                'document_id' => $guid,
+                'trace' => $e->getTraceAsString()
             ]);
             return false;
         }
@@ -241,13 +223,17 @@ class DocumentService
         try {
             $fileName = $fileGUID . '.' . $incomingFile->getClientOriginalExtension();
             $storedFile = $incomingFile->storeAs('uploads', $fileName, 'local');
-            Log::info('DocumentService - storeWorkingFile Complete', [
-                'fileName' => $fileName,
-                'path' => $storedFile
+            Log::debug('[DocumentService] Working file stored', [
+                'file_path' => $storedFile,
+                'file_guid' => $fileGUID
             ]);
             return Storage::disk('local')->path($storedFile);
         } catch (\Exception $e) {
-            Log::error('Error storing working file: ' . $e->getMessage());
+            Log::error('[DocumentService] Working file storage error', [
+                'error' => $e->getMessage(),
+                'file_guid' => $fileGUID,
+                'trace' => $e->getTraceAsString()
+            ]);
             throw $e;
         }
     }
@@ -255,7 +241,7 @@ class DocumentService
     /**
      * Create a file model in the database
      */
-    private function createFileModel($incomingFile, $fileGUID): array
+    private function createFileModel($incomingFile, $fileGUID, $jobName): array
     {
         $filePath = $this->storeWorkingFile($incomingFile, $fileGUID);
         $fileExtension = $incomingFile->getClientOriginalExtension();
@@ -272,7 +258,7 @@ class DocumentService
         $fileModel->uploaded_at = now();
         $fileModel->save();
 
-        Log::info('DocumentService created file in DB', $fileModel->toArray());
+        Log::debug("(DocumentService) [{$jobName}] - File record details", $fileModel->toArray());
 
         return [
             'fileID' => $fileModel->id,
@@ -280,5 +266,16 @@ class DocumentService
             'filePath' => $filePath,
             'fileExtension' => $fileExtension,
         ];
+    }
+
+    private function generateJobName(): string
+    {
+        $adjectives = ['purple', 'blue', 'green', 'yellow', 'red', 'awesome', 'shiny', 'glorious', 'mighty', 'cosmic'];
+        $nouns = ['vortex', 'planet', 'star', 'pulsar', 'quasar', 'blackhole', 'wormhole', 'asteroid', 'comet', 'galaxy'];
+
+        $adjective = $adjectives[array_rand($adjectives)];
+        $noun = $nouns[array_rand($nouns)];
+
+        return "{$adjective}-{$noun}-" . substr(md5(microtime()),rand(0,26),5);
     }
 } 

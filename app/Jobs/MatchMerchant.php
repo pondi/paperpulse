@@ -23,6 +23,7 @@ class MatchMerchant implements ShouldQueue
     protected $merchantName;
     protected $merchantAddress;
     protected $merchantVatNumber;
+    protected $jobName;
 
     public $timeout = 3600;
 
@@ -81,6 +82,7 @@ class MatchMerchant implements ShouldQueue
         $this->merchantName = $receiptMetaData['merchantName'];
         $this->merchantAddress = $receiptMetaData['merchantAddress'];
         $this->merchantVatNumber = $receiptMetaData['merchantVatID'];
+        $this->jobName = $fileMetaData['jobName'];
     }
 
     private function fetchAllMerchants()
@@ -99,7 +101,9 @@ class MatchMerchant implements ShouldQueue
             'max_tokens' => 500,
         ]);
 
-        Log::info('MatchMerchant Job - ReceiptID:' . $this->receiptID . ' - OpenAI response: ', $response->toArray());
+        Log::debug("(MatchMerchant) [{$this->jobName}] - OpenAI response received (receipt: {$this->receiptID})", [
+            'response' => $response->toArray()
+        ]);
 
         $text = trim($response['choices'][0]['text']);
         
@@ -125,9 +129,9 @@ class MatchMerchant implements ShouldQueue
         if ($receipt) {
             $receipt->merchant_id = $merchantId;
             $receipt->save();
-            Log::info('MatchMerchant Job - ReceiptID:' . $this->receiptID . ' - Receipt updated:', $receipt->toArray());
+            Log::info("(MatchMerchant) [{$this->jobName}] - Receipt updated (receipt: {$this->receiptID})");
         } else {
-            Log::error('MatchMerchant Job - Receipt not found with ID:' . $this->receiptID);
+            Log::error("(MatchMerchant) [{$this->jobName}] - Receipt not found (receipt: {$this->receiptID})");
         }
     }
 
@@ -142,9 +146,9 @@ class MatchMerchant implements ShouldQueue
                 $merchant->vat_number = $this->merchantVatNumber;
             }
             $merchant->save();
-            Log::info('MatchMerchant Job - ReceiptID:' . $this->receiptID . ' - Merchant updated:', $merchant->toArray());
+            Log::info("(MatchMerchant) [{$this->jobName}] - Merchant updated (receipt: {$this->receiptID})");
         } else {
-            Log::error('MatchMerchant Job - Merchant not found with ID:' . $merchantId);
+            Log::error("(MatchMerchant) [{$this->jobName}] - Merchant not found (receipt: {$this->receiptID}, merchant: {$merchantId})");
         }
     }
 
@@ -154,6 +158,6 @@ class MatchMerchant implements ShouldQueue
 
         $this->updateReceipt($newMerchant->id);
 
-        Log::info('MatchMerchant Job - ReceiptID:' . $this->receiptID . ' - New merchant created:', ['name' => $this->merchantName, 'address' => $this->merchantAddress, 'vat_number' => $this->merchantVatNumber]);
+        Log::info("(MatchMerchant) [{$this->jobName}] - New merchant created (receipt: {$this->receiptID})");
     }
 }

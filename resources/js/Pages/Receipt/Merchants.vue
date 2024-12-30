@@ -1,9 +1,9 @@
 <template>
-    <Head :title="__('merchants')" />
+    <Head title="Merchants" />
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('merchants') }}</h2>
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Merchants</h2>
         </template>
 
         <div class="py-12">
@@ -29,28 +29,38 @@
                                     >
                                         {{ merchant.name }}
                                     </div>
-                                    <div 
-                                        v-else 
-                                        class="sr-only"
-                                    >
+                                    <div v-else class="sr-only">
                                         {{ merchant.name }}
                                     </div>
                                 </div>
                                 <Menu as="div" class="relative flex-none">
                                     <MenuButton class="-m-2.5 block p-2.5 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
-                                        <span class="sr-only">{{ __('open_options') }}</span>
+                                        <span class="sr-only">Open options</span>
                                         <EllipsisHorizontalIcon class="h-5 w-5" aria-hidden="true" />
                                     </MenuButton>
-                                    <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
+                                    <transition 
+                                        enter-active-class="transition ease-out duration-100" 
+                                        enter-from-class="transform opacity-0 scale-95" 
+                                        enter-to-class="transform opacity-100 scale-100" 
+                                        leave-active-class="transition ease-in duration-75" 
+                                        leave-from-class="transform opacity-100 scale-100" 
+                                        leave-to-class="transform opacity-0 scale-95"
+                                    >
                                         <MenuItems class="absolute right-0 z-10 mt-0.5 w-32 origin-top-right rounded-md bg-white dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 dark:ring-gray-700 focus:outline-none">
                                             <MenuItem v-slot="{ active }">
-                                                <Link :href="route('receipts.byMerchant', merchant.id)" :class="[active ? 'bg-gray-50 dark:bg-gray-700' : '', 'block px-3 py-1 text-sm leading-6 text-gray-900 dark:text-gray-100']">
-                                                    {{ __('view_receipts') }}<span class="sr-only">, {{ merchant.name }}</span>
+                                                <Link 
+                                                    :href="route('receipts.byMerchant', merchant.id)" 
+                                                    :class="[active ? 'bg-gray-50 dark:bg-gray-700' : '', 'block px-3 py-1 text-sm leading-6 text-gray-900 dark:text-gray-100']"
+                                                >
+                                                    View Receipts<span class="sr-only">, {{ merchant.name }}</span>
                                                 </Link>
                                             </MenuItem>
                                             <MenuItem v-slot="{ active }">
-                                                <button @click="openLogoModal(merchant)" :class="[active ? 'bg-gray-50 dark:bg-gray-700' : '', 'block w-full px-3 py-1 text-left text-sm leading-6 text-gray-900 dark:text-gray-100']">
-                                                    {{ __('update_logo') }}<span class="sr-only">, {{ merchant.name }}</span>
+                                                <button 
+                                                    @click="openLogoModal(merchant)" 
+                                                    :class="[active ? 'bg-gray-50 dark:bg-gray-700' : '', 'block w-full px-3 py-1 text-left text-sm leading-6 text-gray-900 dark:text-gray-100']"
+                                                >
+                                                    Update Logo<span class="sr-only">, {{ merchant.name }}</span>
                                                 </button>
                                             </MenuItem>
                                         </MenuItems>
@@ -59,13 +69,13 @@
                             </div>
                             <dl class="-my-3 divide-y divide-gray-100 dark:divide-gray-700 px-6 py-4 text-sm leading-6">
                                 <div class="flex justify-between gap-x-4 py-3">
-                                    <dt class="text-gray-500 dark:text-gray-400">{{ __('last_receipt') }}</dt>
+                                    <dt class="text-gray-500 dark:text-gray-400">Last Receipt</dt>
                                     <dd class="text-gray-700 dark:text-gray-300">
                                         <time :datetime="merchant.lastInvoice.dateTime">{{ merchant.lastInvoice.date }}</time>
                                     </dd>
                                 </div>
                                 <div class="flex justify-between gap-x-4 py-3">
-                                    <dt class="text-gray-500 dark:text-gray-400">{{ __('total_amount') }}</dt>
+                                    <dt class="text-gray-500 dark:text-gray-400">Total Amount</dt>
                                     <dd class="text-gray-900 dark:text-gray-100 font-medium">{{ merchant.lastInvoice.amount }}</dd>
                                 </div>
                             </dl>
@@ -75,11 +85,14 @@
                 <template v-else>
                     <div class="bg-gray-900 px-6 py-24 sm:py-32 lg:px-8">
                         <div class="mx-auto max-w-2xl text-center">
-                            <p class="text-base/7 font-semibold text-indigo-600">{{ __('no_merchants_found') }}</p>
-                            <h2 class="text-5xl font-semibold tracking-tight text-white sm:text-7xl">{{ __('upload_first_merchants') }}</h2>
-                            <p class="mt-6 text-lg leading-8 text-gray-300">{{ __('merchants_appear_description') }}</p>
-                            <Link :href="route('documents.upload')" class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
-                                {{ __('upload_receipts') }}
+                            <p class="text-base/7 font-semibold text-indigo-600">No merchants found</p>
+                            <h2 class="text-5xl font-semibold tracking-tight text-white sm:text-7xl">Upload your first receipt</h2>
+                            <p class="mt-6 text-lg leading-8 text-gray-300">Merchants will appear here after you upload your first receipt.</p>
+                            <Link 
+                                :href="route('documents.upload')" 
+                                class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                            >
+                                Upload Receipts
                             </Link>
                         </div>
                     </div>
@@ -117,11 +130,11 @@
                                 <div>
                                     <div class="mt-3 text-center sm:mt-5">
                                         <DialogTitle as="h3" class="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
-                                            {{ __('merchant_logo_upload') }}
+                                            Update Merchant Logo
                                         </DialogTitle>
                                         <div class="mt-2">
                                             <p class="text-sm text-gray-500 dark:text-gray-400">
-                                                Velg en ny logo for denne butikken. Støttede formater er JPEG, PNG, og GIF.
+                                                Upload a new logo for this merchant. The logo will be displayed on all receipts and in the merchant list.
                                             </p>
                                         </div>
                                     </div>
@@ -135,12 +148,19 @@
                                                             for="logo-upload"
                                                             class="relative cursor-pointer rounded-md bg-white dark:bg-gray-800 font-semibold text-indigo-600 dark:text-indigo-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2 hover:text-indigo-500"
                                                         >
-                                                            <span>{{ __('upload_file') }}</span>
-                                                            <input @change="handleFileSelect" id="logo-upload" name="logo-upload" type="file" class="sr-only" accept="image/*" />
+                                                            <span>Upload a file</span>
+                                                            <input 
+                                                                @change="handleFileSelect" 
+                                                                id="logo-upload" 
+                                                                name="logo-upload" 
+                                                                type="file" 
+                                                                class="sr-only" 
+                                                                accept="image/*" 
+                                                            />
                                                         </label>
-                                                        <p class="pl-1">{{ __('drag_drop') }}</p>
+                                                        <p class="pl-1">or drag and drop</p>
                                                     </div>
-                                                    <p class="text-xs leading-5 text-gray-600 dark:text-gray-400">{{ __('supported_formats') }}</p>
+                                                    <p class="text-xs leading-5 text-gray-600 dark:text-gray-400">PNG, JPG, GIF up to 2MB</p>
                                                 </template>
                                                 <template v-else>
                                                     <div class="flex flex-col items-center">
@@ -154,7 +174,7 @@
                                                                 @click.prevent="clearSelectedFile" 
                                                                 class="absolute -top-2 -right-2 rounded-full bg-red-100 dark:bg-red-900 p-1 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800"
                                                             >
-                                                                <span class="sr-only">{{ __('remove_file') }}</span>
+                                                                <span class="sr-only">Remove file</span>
                                                                 <XMarkIcon class="h-4 w-4" />
                                                             </button>
                                                         </div>
@@ -169,14 +189,14 @@
                                                 class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:col-start-2"
                                                 :disabled="!selectedFile"
                                             >
-                                                {{ __('upload') }}
+                                                Upload
                                             </button>
                                             <button
                                                 type="button"
                                                 class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 sm:col-start-1 sm:mt-0"
                                                 @click="closeLogoModal"
                                             >
-                                                {{ __('cancel') }}
+                                                Cancel
                                             </button>
                                         </div>
                                     </form>
@@ -192,7 +212,7 @@
 
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { Menu, MenuButton, MenuItem, MenuItems, Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import { EllipsisHorizontalIcon, PhotoIcon, XMarkIcon } from '@heroicons/vue/20/solid'
 import { ref } from 'vue'
@@ -204,64 +224,49 @@ defineProps({
     }
 });
 
-const page = usePage();
-const __ = (key) => {
-  const messages = page.props.language?.messages || {};
-  const parts = key.split('.');
-  let value = messages;
-  
-  for (const part of parts) {
-    value = value?.[part];
-    if (value === undefined) break;
-  }
-  
-  return value || key.split('.').pop();
-};
-
-const isLogoModalOpen = ref(false)
-const selectedMerchant = ref(null)
-const selectedFile = ref(null)
-const selectedFilePreview = ref(null)
+const isLogoModalOpen = ref(false);
+const selectedMerchant = ref(null);
+const selectedFile = ref(null);
+const selectedFilePreview = ref(null);
 
 const openLogoModal = (merchant) => {
-    selectedMerchant.value = merchant
-    isLogoModalOpen.value = true
-}
+    selectedMerchant.value = merchant;
+    isLogoModalOpen.value = true;
+};
 
 const handleFileSelect = (event) => {
-    const file = event.target.files[0]
+    const file = event.target.files[0];
     if (file) {
-        selectedFile.value = file
-        const reader = new FileReader()
+        selectedFile.value = file;
+        const reader = new FileReader();
         reader.onload = (e) => {
-            selectedFilePreview.value = e.target.result
-        }
-        reader.readAsDataURL(file)
+            selectedFilePreview.value = e.target.result;
+        };
+        reader.readAsDataURL(file);
     }
-}
+};
 
 const clearSelectedFile = () => {
-    selectedFile.value = null
-    selectedFilePreview.value = null
-}
+    selectedFile.value = null;
+    selectedFilePreview.value = null;
+};
 
 const closeLogoModal = () => {
-    isLogoModalOpen.value = false
-    selectedMerchant.value = null
-    selectedFile.value = null
-    selectedFilePreview.value = null
-}
+    isLogoModalOpen.value = false;
+    selectedMerchant.value = null;
+    clearSelectedFile();
+};
 
 const submitLogo = () => {
-    if (!selectedFile.value || !selectedMerchant.value) return
+    if (!selectedFile.value || !selectedMerchant.value) return;
 
-    const form = new FormData()
-    form.append('logo', selectedFile.value)
+    const form = new FormData();
+    form.append('logo', selectedFile.value);
 
     router.post(route('merchants.updateLogo', selectedMerchant.value.id), form, {
         onSuccess: () => {
-            closeLogoModal()
+            closeLogoModal();
         },
-    })
-}
+    });
+};
 </script> 

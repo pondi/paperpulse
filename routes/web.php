@@ -39,9 +39,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/vendors', [VendorController::class, 'index'])->name('vendors.index');
     Route::get('/vendors/{vendor}', [VendorController::class, 'show'])->name('vendors.show');
     Route::post('/vendors/{vendor}/logo', [VendorController::class, 'updateLogo'])->name('vendors.updateLogo');
-});
 
-Route::middleware('auth')->group(function () {
     // Document routes
     Route::get('/documents/upload', function () {
         return Inertia::render('Documents/Upload');
@@ -49,7 +47,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/documents/store', [DocumentController::class, 'store'])->name('documents.store');
     Route::get('/documents/serve', [DocumentController::class, 'serve'])->name('documents.serve');
     Route::get('/documents/url', [DocumentController::class, 'getSecureUrl'])->name('documents.url');
-    
+
     // Receipt routes
     Route::get('/receipts', [ReceiptController::class, 'index'])->name('receipts.index');
     Route::get('/receipts/{receipt}', [ReceiptController::class, 'show'])->name('receipts.show');
@@ -61,7 +59,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/receipts/{receipt}/line-items', [ReceiptController::class, 'addLineItem'])->name('receipts.line-items.store');
     Route::patch('/receipts/{receipt}/line-items/{lineItem}', [ReceiptController::class, 'updateLineItem'])->name('receipts.line-items.update');
     Route::delete('/receipts/{receipt}/line-items/{lineItem}', [ReceiptController::class, 'deleteLineItem'])->name('receipts.line-items.destroy');
-    
+
     // Jobs routes
     Route::get('/jobs', function () {
         return Inertia::render('Jobs/Index');

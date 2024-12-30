@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class Merchant extends Model
 {
@@ -18,18 +19,17 @@ class Merchant extends Model
         'website'
     ];
 
-    public function logo()
+    protected $appends = ['logo_url'];
+
+    public function logo(): MorphOne
     {
-        return $this->hasOne(MerchantLogo::class);
+        return $this->morphOne(Logo::class, 'logoable');
     }
 
-    public function getLogoUrlAttribute()
+    public function getLogoUrlAttribute(): string
     {
-        if ($this->logo) {
-            return 'data:' . $this->logo->mime_type . ';base64,' . base64_encode($this->logo->logo_data);
-        }
-        
-        return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=7F9CF5&background=EBF4FF';
+        return $this->logo?->getUrl() 
+            ?? "https://ui-avatars.com/api/?name=" . urlencode($this->name) . "&color=7F9CF5&background=EBF4FF";
     }
 
     public function receipts()

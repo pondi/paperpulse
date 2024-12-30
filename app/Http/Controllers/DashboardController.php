@@ -29,7 +29,7 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard', [
             'receiptCount' => $receiptStats->count ?? 0,
-            'totalAmount' => $receiptStats->total_amount ?? 0,
+            'totalAmount' => (float)($receiptStats->total_amount ?? 0),
             'merchantCount' => $merchantCount,
             'recentReceipts' => $recentReceipts
         ]);

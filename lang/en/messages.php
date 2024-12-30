@@ -3,6 +3,7 @@
 return [
     // Navigation
     'receipts' => 'Receipts',
+    'all_receipts' => 'All Receipts',
     'merchants' => 'Merchants',
     'vendors' => 'Vendors',
     'upload' => 'Upload',

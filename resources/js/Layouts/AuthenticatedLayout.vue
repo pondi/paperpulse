@@ -188,29 +188,28 @@ import SearchBar from '@/Components/SearchBar.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
 const sidebarOpen = ref(false)
+const page = usePage();
+const __ = (key) => page.props.language.messages[key] || key;
 
 const navigation = [
-  { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon, current: route().current('dashboard') },
+  { name: 'dashboard', href: route('dashboard'), icon: HomeIcon, current: route().current('dashboard') },
   { 
-    name: 'Receipts', 
+    name: 'receipts', 
     href: route('receipts.index'), 
     icon: DocumentDuplicateIcon, 
     current: route().current('receipts.*') || route().current('merchants.*') || route().current('vendors.*'),
     children: [
-      { name: 'All Receipts', href: route('receipts.index'), current: route().current('receipts.index') },
-      { name: 'Merchants', href: route('merchants.index'), current: route().current('merchants.*') },
-      { name: 'Vendors', href: route('vendors.index'), current: route().current('vendors.index') },
+      { name: 'all_receipts', href: route('receipts.index'), current: route().current('receipts.index') },
+      { name: 'merchants', href: route('merchants.index'), current: route().current('merchants.*') },
+      { name: 'vendors', href: route('vendors.index'), current: route().current('vendors.index') },
     ]
   },
-  { name: 'Upload', href: route('documents.upload'), icon: FolderIcon, current: route().current('documents.upload') },
-  { name: 'Job Status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index') },
+  { name: 'upload', href: route('documents.upload'), icon: FolderIcon, current: route().current('documents.upload') },
+  { name: 'job_status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index') },
 ]
 
 const userNavigation = [
-  { name: 'Your Profile', href: route('profile.edit') },
-  { name: 'Sign out', href: route('logout'), method: 'post' }
+  { name: 'profile', href: route('profile.edit') },
+  { name: 'logout', href: route('logout'), method: 'post' }
 ]
-
-const page = usePage();
-const __ = (key) => page.props.language.messages[key] || key;
 </script>

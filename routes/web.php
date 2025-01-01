@@ -13,6 +13,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Public routes
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -22,11 +23,12 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
+// Authenticated & Inertia routes
+Route::middleware(['auth', 'verified', 'web'])->group(function () {
+    // Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+    // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -61,13 +63,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/receipts/{receipt}/line-items/{lineItem}', [ReceiptController::class, 'deleteLineItem'])->name('receipts.line-items.destroy');
 
     // Jobs routes
-    Route::get('/jobs', function () {
-        return Inertia::render('Jobs/Index');
-    })->name('jobs.index');
-    Route::get('/jobs/status', [JobController::class, 'index'])->name('jobs.status');
-});
+    Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');
+    Route::get('/jobs/status', [JobController::class, 'getStatus'])->name('jobs.status');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+    // Search routes
     Route::get('/search', [SearchController::class, 'search'])->name('search');
 });
 

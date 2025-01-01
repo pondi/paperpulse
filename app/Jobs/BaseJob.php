@@ -2,83 +2,206 @@
 
 namespace App\Jobs;
 
-use App\Models\JobMonitor;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
+use App\Models\JobHistory;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 abstract class BaseJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $jobUuid;
-    protected $jobMonitor;
+    /**
+     * The unique identifier for this job chain.
+     */
+    protected string $jobID;
 
-    public function __construct()
+    /**
+     * The unique identifier for this specific task.
+     */
+    protected ?string $uuid = null;
+
+    /**
+     * The name of this job for display purposes.
+     */
+    protected string $jobName;
+
+    /**
+     * Create a new job instance.
+     */
+    public function __construct(string $jobID)
     {
-        $this->jobUuid = (string) Str::uuid();
-        $this->createJobMonitor();
+        if (empty($jobID)) {
+            throw new \InvalidArgumentException('JobID cannot be empty');
+        }
+        $this->jobID = $jobID;
+        $this->jobName = class_basename($this);
     }
 
-    protected function createJobMonitor()
+    /**
+     * Get the job's payload.
+     */
+    public function payload(): array
     {
-        $this->jobMonitor = JobMonitor::create([
-            'job_uuid' => $this->jobUuid,
-            'batch_id' => $this->batch()?->id,
-            'name' => static::class,
-            'status' => 'queued',
-            'queue' => $this->queue ?? 'default',
-            'payload' => $this->payload(),
-            'queued_at' => now(),
-        ]);
+        if (!$this->uuid) {
+            $this->uuid = (string) Str::uuid();
+        }
+
+        if (empty($this->jobID)) {
+            Log::error('JobID is empty in payload', [
+                'class' => static::class,
+                'uuid' => $this->uuid
+            ]);
+            throw new \RuntimeException('JobID cannot be empty');
+        }
+
+        return [
+            'uuid' => $this->uuid,
+            'data' => [
+                'commandName' => $this->jobName,
+                'jobID' => $this->jobID,
+                'command' => serialize($this)
+            ],
+        ];
     }
 
-    public function handle()
+    /**
+     * Get the job ID.
+     */
+    public function getJobID(): string
     {
-        $this->jobMonitor->update([
-            'status' => 'processing',
-            'started_at' => now(),
-            'attempt' => $this->attempts(),
-        ]);
+        return $this->jobID;
+    }
+
+    /**
+     * Get the job UUID.
+     */
+    public function getUUID(): ?string
+    {
+        return $this->uuid;
+    }
+
+    /**
+     * Get the job name.
+     */
+    public function getJobName(): string
+    {
+        return $this->jobName;
+    }
+
+    /**
+     * Execute the job.
+     */
+    final public function handle(): void
+    {
+        if (empty($this->jobID)) {
+            Log::error('JobID is empty in handle', [
+                'class' => static::class,
+                'uuid' => $this->uuid
+            ]);
+            throw new \RuntimeException('JobID cannot be empty');
+        }
 
         try {
-            $result = $this->execute();
-            
-            $this->jobMonitor->update([
-                'status' => 'completed',
-                'progress' => 100,
-                'finished_at' => now(),
-            ]);
-
-            return $result;
-        } catch (\Exception $e) {
-            $this->jobMonitor->update([
-                'status' => 'failed',
-                'exception' => $e->getMessage(),
-                'finished_at' => now(),
-            ]);
-
+            $this->handleJob();
+        } catch (\Throwable $e) {
+            $this->failed($e);
             throw $e;
         }
     }
 
-    protected function payload(): array
+    /**
+     * Execute the job's logic.
+     */
+    abstract protected function handleJob(): void;
+
+    /**
+     * Get the tags that should be assigned to the job.
+     */
+    public function tags(): array
     {
         return [
-            'id' => $this->jobUuid,
-            'displayName' => class_basename(static::class),
-            'data' => $this->getPayloadData(),
+            'job:' . $this->jobID,
+            'task:' . $this->uuid,
+            'type:' . class_basename($this),
         ];
     }
 
-    abstract protected function execute();
-    abstract protected function getPayloadData(): array;
-
-    public function updateProgress(int $progress)
+    /**
+     * Store metadata for this job.
+     */
+    protected function storeMetadata(array $metadata): void
     {
-        $this->jobMonitor->update(['progress' => $progress]);
+        if (empty($this->jobID)) {
+            Log::error('JobID is empty in storeMetadata', [
+                'class' => static::class,
+                'uuid' => $this->uuid
+            ]);
+            throw new \RuntimeException('JobID cannot be empty');
+        }
+
+        Cache::put(
+            "job.{$this->jobID}.fileMetaData",
+            $metadata,
+            now()->addMinutes(60)
+        );
+    }
+
+    /**
+     * Get metadata for this job.
+     */
+    protected function getMetadata(): ?array
+    {
+        if (empty($this->jobID)) {
+            Log::error('JobID is empty in getMetadata', [
+                'class' => static::class,
+                'uuid' => $this->uuid
+            ]);
+            throw new \RuntimeException('JobID cannot be empty');
+        }
+
+        return Cache::get("job.{$this->jobID}.fileMetaData");
+    }
+
+    /**
+     * Update the job's progress.
+     */
+    protected function updateProgress(int $progress): void
+    {
+        if (!$this->uuid) {
+            $this->uuid = (string) Str::uuid();
+        }
+
+        JobHistory::where('uuid', $this->uuid)
+            ->update(['progress' => $progress]);
+    }
+
+    /**
+     * Mark the job as failed.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        if (!$this->uuid) {
+            $this->uuid = (string) Str::uuid();
+        }
+
+        JobHistory::where('uuid', $this->uuid)
+            ->update([
+                'status' => 'failed',
+                'finished_at' => now(),
+                'exception' => $exception->getMessage()
+            ]);
+
+        Log::error('Job failed', [
+            'class' => static::class,
+            'job_id' => $this->jobID,
+            'uuid' => $this->uuid,
+            'error' => $exception->getMessage()
+        ]);
     }
 } 

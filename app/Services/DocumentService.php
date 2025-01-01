@@ -51,10 +51,10 @@ class DocumentService
         Log::info("(DocumentService) [{$jobName}] - Upload processing started (file: {$incomingFile->getClientOriginalName()})");
 
         Bus::chain([
-            new ProcessFile($jobID),
-            new ProcessReceipt($jobID),
-            new MatchMerchant($jobID),
-            new DeleteWorkingFiles($jobID),
+            (new ProcessFile($jobID))->onQueue('receipts'),
+            (new ProcessReceipt($jobID))->onQueue('receipts'),
+            (new MatchMerchant($jobID))->onQueue('receipts'),
+            (new DeleteWorkingFiles($jobID))->onQueue('receipts'),
         ])->dispatch();
 
         Log::debug("(DocumentService) [{$jobName}] Upload processing details", [

@@ -2,53 +2,70 @@
 
 namespace App\Jobs;
 
-use App\Models\File;
 use App\Services\ConversionService;
-use App\Services\DocumentService;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
-class ProcessFile implements ShouldQueue
+class ProcessFile extends BaseJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    protected $jobID;
-
+    /**
+     * Create a new job instance.
+     */
     public function __construct(string $jobID)
     {
-        $this->jobID = $jobID;
+        parent::__construct($jobID);
+        $this->jobName = 'Process File';
     }
 
-    public function handle(ConversionService $conversionService, DocumentService $documentService)
+    /**
+     * Execute the job's logic.
+     */
+    protected function handleJob(): void
     {
         try {
-            $fileMetaData = Cache::get("job.{$this->jobID}.fileMetaData");
-            
-            if (!$fileMetaData) {
-                Log::error("(ProcessFile) [{$fileMetaData['jobName']}] - File metadata not found (job: {$this->jobID})", [
-                    'error' => 'No file metadata found in cache'
-                ]);
-                return;
+            $metadata = $this->getMetadata();
+            if (!$metadata) {
+                throw new \Exception('No metadata found for job');
             }
 
-            if ($fileMetaData['fileExtension'] === 'pdf') {
-                $conversionService->pdfToImage(
-                    $fileMetaData['filePath'],
-                    $fileMetaData['fileGUID'],
-                    $documentService
+            Log::info("Processing file", [
+                'job_id' => $this->jobID,
+                'task_id' => $this->uuid,
+                'file_path' => $metadata['filePath']
+            ]);
+
+            $this->updateProgress(10);
+
+            // Get the conversion service
+            $conversionService = app(ConversionService::class);
+
+            // Convert the file if needed
+            if ($metadata['fileExtension'] !== 'pdf') {
+                $pdfPath = $conversionService->convertToPdf(
+                    $metadata['filePath'],
+                    $metadata['fileExtension']
                 );
+                
+                if (!$pdfPath) {
+                    throw new \Exception('Failed to convert file to PDF');
+                }
+
+                $metadata['filePath'] = $pdfPath;
+                $metadata['fileExtension'] = 'pdf';
+                $this->storeMetadata($metadata);
             }
 
-            Log::info("(ProcessFile) [{$fileMetaData['jobName']}] - Processing completed (file: {$fileMetaData['fileGUID']})");
+            $this->updateProgress(100);
+
+            Log::info("File processed successfully", [
+                'job_id' => $this->jobID,
+                'task_id' => $this->uuid
+            ]);
         } catch (\Exception $e) {
-            Log::error("(ProcessFile) [{$fileMetaData['jobName']}] - Processing failed (job: {$this->jobID})", [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+            Log::error("File processing failed", [
+                'job_id' => $this->jobID,
+                'task_id' => $this->uuid,
+                'error' => $e->getMessage()
             ]);
             throw $e;
         }

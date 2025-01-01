@@ -3,18 +3,24 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class JobHistory extends Model
 {
+    protected $table = 'job_history';
+
     protected $fillable = [
-        'job_id',
-        'job_uuid',
+        'uuid',
+        'parent_uuid',
         'name',
-        'status',
         'queue',
         'payload',
+        'status',
+        'attempt',
+        'progress',
+        'order_in_chain',
         'exception',
-        'attempts',
         'started_at',
         'finished_at'
     ];
@@ -23,6 +29,31 @@ class JobHistory extends Model
         'payload' => 'array',
         'started_at' => 'datetime',
         'finished_at' => 'datetime',
-        'attempts' => 'integer'
     ];
-} 
+
+    /**
+     * Get all tasks for this job
+     */
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(JobHistory::class, 'parent_uuid', 'uuid')
+            ->orderBy('order_in_chain');
+    }
+
+    /**
+     * Get the parent job
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(JobHistory::class, 'parent_uuid', 'uuid');
+    }
+
+    /**
+     * Scope a query to only include parent jobs
+     */
+    public function scopeParentJobs($query)
+    {
+        return $query->whereNull('parent_uuid')
+            ->orderBy('created_at', 'desc');
+    }
+}

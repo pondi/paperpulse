@@ -75,14 +75,57 @@ class MatchMerchant implements ShouldQueue
     private function fetchDataFromCache()
     {
         $fileMetaData = Cache::get("job.{$this->jobID}.fileMetaData");
-        $this->fileID = $fileMetaData['fileID'];
-
         $receiptMetaData = Cache::get("job.{$this->jobID}.receiptMetaData");
+
+        if (!$fileMetaData || !$receiptMetaData) {
+            Log::error("(MatchMerchant) - Required cache data missing", [
+                'jobID' => $this->jobID,
+                'fileMetaData' => $fileMetaData,
+                'receiptMetaData' => $receiptMetaData
+            ]);
+            throw new \RuntimeException("Required cache data missing for job {$this->jobID}");
+        }
+
+        // Validate required fields are present
+        $requiredFileFields = ['fileID', 'jobName'];
+        $requiredReceiptFields = ['receiptID', 'merchantName'];
+        
+        foreach ($requiredFileFields as $field) {
+            if (!isset($fileMetaData[$field])) {
+                Log::error("(MatchMerchant) - Required file metadata field missing", [
+                    'jobID' => $this->jobID,
+                    'missing_field' => $field,
+                    'fileMetaData' => $fileMetaData
+                ]);
+                throw new \RuntimeException("Required file metadata field {$field} missing for job {$this->jobID}");
+            }
+        }
+
+        foreach ($requiredReceiptFields as $field) {
+            if (!isset($receiptMetaData[$field])) {
+                Log::error("(MatchMerchant) - Required receipt metadata field missing", [
+                    'jobID' => $this->jobID,
+                    'missing_field' => $field,
+                    'receiptMetaData' => $receiptMetaData
+                ]);
+                throw new \RuntimeException("Required receipt metadata field {$field} missing for job {$this->jobID}");
+            }
+        }
+
+        // Assign values with null coalescing for optional fields
+        $this->fileID = $fileMetaData['fileID'];
+        $this->jobName = $fileMetaData['jobName'];
         $this->receiptID = $receiptMetaData['receiptID'];
         $this->merchantName = $receiptMetaData['merchantName'];
-        $this->merchantAddress = $receiptMetaData['merchantAddress'];
-        $this->merchantVatNumber = $receiptMetaData['merchantVatID'];
-        $this->jobName = $fileMetaData['jobName'];
+        $this->merchantAddress = $receiptMetaData['merchantAddress'] ?? null;
+        $this->merchantVatNumber = $receiptMetaData['merchantVatID'] ?? null;
+
+        Log::debug("(MatchMerchant) [{$this->jobName}] - Cache data fetched successfully", [
+            'jobID' => $this->jobID,
+            'fileID' => $this->fileID,
+            'receiptID' => $this->receiptID,
+            'merchantName' => $this->merchantName
+        ]);
     }
 
     private function fetchAllMerchants()

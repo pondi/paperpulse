@@ -23,6 +23,7 @@ class MatchMerchant implements ShouldQueue
     protected $merchantName;
     protected $merchantAddress;
     protected $merchantVatNumber;
+    protected $jobName;
 
     public $timeout = 3600;
 
@@ -74,13 +75,57 @@ class MatchMerchant implements ShouldQueue
     private function fetchDataFromCache()
     {
         $fileMetaData = Cache::get("job.{$this->jobID}.fileMetaData");
-        $this->fileID = $fileMetaData['fileID'];
-
         $receiptMetaData = Cache::get("job.{$this->jobID}.receiptMetaData");
+
+        if (!$fileMetaData || !$receiptMetaData) {
+            Log::error("(MatchMerchant) - Required cache data missing", [
+                'jobID' => $this->jobID,
+                'fileMetaData' => $fileMetaData,
+                'receiptMetaData' => $receiptMetaData
+            ]);
+            throw new \RuntimeException("Required cache data missing for job {$this->jobID}");
+        }
+
+        // Validate required fields are present
+        $requiredFileFields = ['fileID', 'jobName'];
+        $requiredReceiptFields = ['receiptID', 'merchantName'];
+        
+        foreach ($requiredFileFields as $field) {
+            if (!isset($fileMetaData[$field])) {
+                Log::error("(MatchMerchant) - Required file metadata field missing", [
+                    'jobID' => $this->jobID,
+                    'missing_field' => $field,
+                    'fileMetaData' => $fileMetaData
+                ]);
+                throw new \RuntimeException("Required file metadata field {$field} missing for job {$this->jobID}");
+            }
+        }
+
+        foreach ($requiredReceiptFields as $field) {
+            if (!isset($receiptMetaData[$field])) {
+                Log::error("(MatchMerchant) - Required receipt metadata field missing", [
+                    'jobID' => $this->jobID,
+                    'missing_field' => $field,
+                    'receiptMetaData' => $receiptMetaData
+                ]);
+                throw new \RuntimeException("Required receipt metadata field {$field} missing for job {$this->jobID}");
+            }
+        }
+
+        // Assign values with null coalescing for optional fields
+        $this->fileID = $fileMetaData['fileID'];
+        $this->jobName = $fileMetaData['jobName'];
         $this->receiptID = $receiptMetaData['receiptID'];
         $this->merchantName = $receiptMetaData['merchantName'];
-        $this->merchantAddress = $receiptMetaData['merchantAddress'];
-        $this->merchantVatNumber = $receiptMetaData['merchantVatID'];
+        $this->merchantAddress = $receiptMetaData['merchantAddress'] ?? null;
+        $this->merchantVatNumber = $receiptMetaData['merchantVatID'] ?? null;
+
+        Log::debug("(MatchMerchant) [{$this->jobName}] - Cache data fetched successfully", [
+            'jobID' => $this->jobID,
+            'fileID' => $this->fileID,
+            'receiptID' => $this->receiptID,
+            'merchantName' => $this->merchantName
+        ]);
     }
 
     private function fetchAllMerchants()
@@ -99,33 +144,55 @@ class MatchMerchant implements ShouldQueue
             'max_tokens' => 500,
         ]);
 
-        Log::info('MatchMerchant Job - ReceiptID:' . $this->receiptID . ' - OpenAI response: ', $response->toArray());
+        Log::debug("(MatchMerchant) [{$this->jobName}] - OpenAI response received (receipt: {$this->receiptID})", [
+            'response' => $response->toArray()
+        ]);
 
-        return json_decode(stripslashes($response['choices'][0]['text']), true) ?? null;
+        $text = trim($response['choices'][0]['text']);
+        
+        // If response is empty or just whitespace, return null
+        if (empty($text)) {
+            return null;
+        }
+
+        // Try to decode JSON response
+        $decoded = json_decode(stripslashes($text), true);
+        
+        // If JSON decode failed or result is empty, return null
+        if ($decoded === null || empty($decoded)) {
+            return null;
+        }
+
+        return $decoded;
     }
-
 
     private function updateReceipt($merchantId)
     {
         $receipt = Receipt::find($this->receiptID);
-        $receipt->merchant_id = $merchantId;
-        $receipt->save();
-
-        Log::info('MatchMerchant Job - ReceiptID:' . $this->receiptID . ' - Receipt updated:', $receipt->toArray());
+        if ($receipt) {
+            $receipt->merchant_id = $merchantId;
+            $receipt->save();
+            Log::info("(MatchMerchant) [{$this->jobName}] - Receipt updated (receipt: {$this->receiptID})");
+        } else {
+            Log::error("(MatchMerchant) [{$this->jobName}] - Receipt not found (receipt: {$this->receiptID})");
+        }
     }
 
     private function updateMerchant($merchantId)
     {
         $merchant = Merchant::find($merchantId);
-        if ($this->merchantAddress) {
-            $merchant->address = $this->merchantAddress;
+        if ($merchant) {
+            if ($this->merchantAddress) {
+                $merchant->address = $this->merchantAddress;
+            }
+            if ($this->merchantVatNumber) {
+                $merchant->vat_number = $this->merchantVatNumber;
+            }
+            $merchant->save();
+            Log::info("(MatchMerchant) [{$this->jobName}] - Merchant updated (receipt: {$this->receiptID})");
+        } else {
+            Log::error("(MatchMerchant) [{$this->jobName}] - Merchant not found (receipt: {$this->receiptID}, merchant: {$merchantId})");
         }
-        if ($this->merchantVatNumber) {
-            $merchant->vat_number = $this->merchantVatNumber;
-        }
-        $merchant->save();
-
-        Log::info('MatchMerchant Job - ReceiptID:' . $this->receiptID . ' - Merchant updated:', $merchant->toArray());
     }
 
     private function createMerchant()
@@ -134,6 +201,6 @@ class MatchMerchant implements ShouldQueue
 
         $this->updateReceipt($newMerchant->id);
 
-        Log::info('MatchMerchant Job - ReceiptID:' . $this->receiptID . ' - New merchant created:', ['name' => $this->merchantName, 'address' => $this->merchantAddress, 'vat_number' => $this->merchantVatNumber]);
+        Log::info("(MatchMerchant) [{$this->jobName}] - New merchant created (receipt: {$this->receiptID})");
     }
 }

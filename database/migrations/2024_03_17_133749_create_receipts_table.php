@@ -16,12 +16,12 @@ return new class extends Migration
             $table->foreignId('file_id')->constrained('files');
             $table->text('receipt_data')->nullable();
             $table->date('receipt_date')->nullable();
-            $table->string('tax_amount')->nullable();
-            $table->string('total_amount')->nullable();
+            $table->decimal('tax_amount', 10, 2)->nullable();
+            $table->decimal('total_amount', 10, 2)->nullable();
             $table->string('currency')->nullable();
             $table->string('receipt_category')->nullable();
             $table->text('receipt_description')->nullable();
-            $table->integer('merchant_id')->nullable();
+            $table->foreignId('merchant_id')->nullable()->constrained('merchants')->nullOnDelete();
             $table->timestamps();
         });
     }

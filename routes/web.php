@@ -10,6 +10,7 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\PulseDavController;
+use App\Http\Controllers\ExportController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -69,6 +70,13 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
 
     // Search routes
     Route::get('/search', [SearchController::class, 'search'])->name('search');
+
+    // Export routes
+    Route::prefix('export')->name('export.')->group(function () {
+        Route::get('/receipts/csv', [ExportController::class, 'exportCsv'])->name('receipts.csv');
+        Route::get('/receipts/pdf', [ExportController::class, 'exportPdf'])->name('receipts.pdf');
+        Route::get('/receipt/{id}/pdf', [ExportController::class, 'exportReceiptPdf'])->name('receipt.pdf');
+    });
 
     // PulseDav routes
     Route::prefix('pulsedav')->name('pulsedav.')->group(function () {

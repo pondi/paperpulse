@@ -9,6 +9,7 @@ use App\Http\Controllers\JobController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\PulseDavController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -68,6 +69,15 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
 
     // Search routes
     Route::get('/search', [SearchController::class, 'search'])->name('search');
+
+    // PulseDav routes
+    Route::prefix('pulsedav')->name('pulsedav.')->group(function () {
+        Route::get('/', [PulseDavController::class, 'index'])->name('index');
+        Route::post('/sync', [PulseDavController::class, 'sync'])->name('sync');
+        Route::post('/process', [PulseDavController::class, 'process'])->name('process');
+        Route::get('/files/{id}/status', [PulseDavController::class, 'status'])->name('status');
+        Route::delete('/files/{id}', [PulseDavController::class, 'destroy'])->name('destroy');
+    });
 });
 
 require __DIR__.'/auth.php';

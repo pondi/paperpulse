@@ -23,7 +23,7 @@ class DocumentController extends Controller
     public function store(Request $request, DocumentService $documentService, ConversionService $conversionService)
     {
         $request->validate([
-            'file' => 'required|file|mimes:jpeg,png,jpg,gif,svg,pdf|max:2048',
+            'file' => 'required|file|mimes:jpeg,png,jpg,gif,pdf|max:2048',
         ]);
 
         try {
@@ -51,9 +51,9 @@ class DocumentController extends Controller
     public function serve(Request $request, DocumentService $documentService)
     {
         $request->validate([
-            'guid' => 'required|string',
-            'type' => 'required|string',
-            'extension' => 'required|string'
+            'guid' => 'required|string|regex:/^[a-f0-9\-]{36}$/i',
+            'type' => 'required|string|in:receipts,image,pdf',
+            'extension' => 'required|string|in:jpg,jpeg,png,gif,pdf'
         ]);
 
         $guid = $request->input('guid');

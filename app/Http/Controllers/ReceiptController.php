@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Receipt;
 use App\Services\ReceiptService;
 use App\Services\DocumentService;
+use App\Traits\SanitizesInput;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -12,6 +13,7 @@ use Inertia\Inertia;
 
 class ReceiptController extends Controller
 {
+    use SanitizesInput;
 
     public function index()
     {
@@ -131,7 +133,19 @@ class ReceiptController extends Controller
 
     public function byMerchant($merchant)
     {
-        $receipts = Receipt::where('merchant_id', $merchant)
+        // Validate merchant ID
+        $merchantModel = \App\Models\Merchant::findOrFail($merchant);
+        
+        // Verify user has access to this merchant through their receipts
+        $hasAccess = Receipt::where('merchant_id', $merchantModel->id)
+            ->where('user_id', auth()->id())
+            ->exists();
+            
+        if (!$hasAccess) {
+            abort(403, 'Unauthorized access to merchant');
+        }
+        
+        $receipts = Receipt::where('merchant_id', $merchantModel->id)
             ->where('user_id', auth()->id())
             ->with(['merchant', 'file', 'lineItems'])
             ->orderBy('receipt_date', 'desc')
@@ -191,10 +205,13 @@ class ReceiptController extends Controller
             'total_amount' => 'required|numeric',
             'tax_amount' => 'nullable|numeric',
             'currency' => 'required|string|size:3',
-            'receipt_category' => 'nullable|string',
-            'receipt_description' => 'nullable|string',
+            'receipt_category' => 'nullable|string|max:255',
+            'receipt_description' => 'nullable|string|max:1000',
             'merchant_id' => 'nullable|exists:merchants,id',
         ]);
+        
+        // Sanitize string inputs
+        $validated = $this->sanitizeData($validated, ['receipt_category', 'receipt_description']);
 
         $receipt->update($validated);
 
@@ -206,12 +223,15 @@ class ReceiptController extends Controller
         $this->authorize('update', $receipt);
         
         $validated = $request->validate([
-            'text' => 'required|string',
-            'sku' => 'nullable|string',
-            'qty' => 'required|numeric',
-            'price' => 'required|numeric',
-            'total' => 'required|numeric',
+            'text' => 'required|string|max:255',
+            'sku' => 'nullable|string|max:100',
+            'qty' => 'required|numeric|min:0',
+            'price' => 'required|numeric|min:0',
+            'total' => 'required|numeric|min:0',
         ]);
+        
+        // Sanitize string inputs
+        $validated = $this->sanitizeData($validated, ['text', 'sku']);
 
         $lineItem = $receipt->lineItems()->findOrFail($lineItemId);
         $lineItem->update($validated);
@@ -234,12 +254,15 @@ class ReceiptController extends Controller
         $this->authorize('update', $receipt);
         
         $validated = $request->validate([
-            'text' => 'required|string',
-            'sku' => 'nullable|string',
-            'qty' => 'required|numeric',
-            'price' => 'required|numeric',
-            'total' => 'required|numeric',
+            'text' => 'required|string|max:255',
+            'sku' => 'nullable|string|max:100',
+            'qty' => 'required|numeric|min:0',
+            'price' => 'required|numeric|min:0',
+            'total' => 'required|numeric|min:0',
         ]);
+        
+        // Sanitize string inputs
+        $validated = $this->sanitizeData($validated, ['text', 'sku']);
 
         $receipt->lineItems()->create($validated);
 

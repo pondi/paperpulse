@@ -12,17 +12,23 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // Get total amount and count of receipts
-        $receiptStats = Receipt::select(
-            DB::raw('COUNT(*) as count'),
-            DB::raw('SUM(total_amount) as total_amount')
-        )->first();
+        $userId = auth()->id();
+        
+        // Get total amount and count of receipts for current user
+        $receiptStats = Receipt::where('user_id', $userId)
+            ->select(
+                DB::raw('COUNT(*) as count'),
+                DB::raw('SUM(total_amount) as total_amount')
+            )->first();
 
-        // Get count of unique merchants
-        $merchantCount = Merchant::count();
+        // Get count of unique merchants for current user
+        $merchantCount = Merchant::whereHas('receipts', function ($query) use ($userId) {
+            $query->where('user_id', $userId);
+        })->count();
 
-        // Get recent receipts
+        // Get recent receipts for current user
         $recentReceipts = Receipt::with('merchant')
+            ->where('user_id', $userId)
             ->orderBy('receipt_date', 'desc')
             ->take(5)
             ->get();

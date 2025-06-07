@@ -25,7 +25,10 @@ class VendorController extends Controller
                     ->where('logos.logoable_type', '=', Vendor::class);
             })
             ->join('line_items', 'vendors.id', '=', 'line_items.vendor_id')
-            ->join('receipts', 'line_items.receipt_id', '=', 'receipts.id')
+            ->join('receipts', function ($join) {
+                $join->on('line_items.receipt_id', '=', 'receipts.id')
+                    ->where('receipts.user_id', '=', auth()->id());
+            })
             ->select([
                 'vendors.id',
                 'vendors.name',
@@ -79,7 +82,22 @@ class VendorController extends Controller
 
     public function show(Vendor $vendor): Response
     {
-        $vendor->load(['lineItems' => fn ($query) => $query->with('receipt')]);
+        // Verify user has access to this vendor through their receipts
+        $hasAccess = $vendor->lineItems()
+            ->whereHas('receipt', function ($query) {
+                $query->where('user_id', auth()->id());
+            })
+            ->exists();
+            
+        if (!$hasAccess) {
+            abort(403, 'Unauthorized access to vendor');
+        }
+        
+        $vendor->load(['lineItems' => function ($query) {
+            $query->whereHas('receipt', function ($q) {
+                $q->where('user_id', auth()->id());
+            })->with('receipt');
+        }]);
 
         return Inertia::render('Receipt/VendorDetails', [
             'vendor' => $vendor
@@ -88,6 +106,17 @@ class VendorController extends Controller
 
     public function updateLogo(Request $request, Vendor $vendor): RedirectResponse
     {
+        // Verify user has access to this vendor through their receipts
+        $hasAccess = $vendor->lineItems()
+            ->whereHas('receipt', function ($query) {
+                $query->where('user_id', auth()->id());
+            })
+            ->exists();
+            
+        if (!$hasAccess) {
+            abort(403, 'Unauthorized access to vendor');
+        }
+        
         $validated = $request->validate([
             'logo' => ['required', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048']
         ]);

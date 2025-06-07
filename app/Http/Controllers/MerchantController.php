@@ -73,6 +73,15 @@ class MerchantController extends Controller
 
     public function updateLogo(Request $request, Merchant $merchant): RedirectResponse
     {
+        // Verify user has access to this merchant through their receipts
+        $hasAccess = $merchant->receipts()
+            ->where('user_id', auth()->id())
+            ->exists();
+            
+        if (!$hasAccess) {
+            abort(403, 'Unauthorized access to merchant');
+        }
+        
         $request->validate([
             'logo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);

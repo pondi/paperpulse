@@ -98,9 +98,11 @@ trait SanitizesInput
         }
 
         if ($allowDecimal) {
-            return filter_var($number, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
+            $result = filter_var($number, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
+            return $result !== false ? (float) $result : null;
         }
 
-        return filter_var($number, FILTER_SANITIZE_NUMBER_INT);
+        $result = filter_var($number, FILTER_SANITIZE_NUMBER_INT);
+        return $result !== false ? (int) $result : null;
     }
 }

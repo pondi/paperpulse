@@ -26,7 +26,6 @@ readonly class LogoService
      * @param  string  $mimeType  The MIME type of the logo
      * @param  class-string<Model>  $entityType  The class name of the entity (Merchant or Vendor)
      * @param  string  $entityName  The name of the entity
-     * @param  Model  $model  The model instance
      */
     public function findOrCreateLogo(
         string $logoData,

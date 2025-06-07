@@ -79,8 +79,8 @@ class DocumentService
             if (! $success) {
                 Log::error('[DocumentService] Document storage failed', [
                     'error' => 'Failed to store document',
-                    'file_name' => $incomingFile->getClientOriginalName(),
-                    'trace' => $e->getTraceAsString(),
+                    'guid' => $guid,
+                    'type' => $type,
                 ]);
 
                 return false;

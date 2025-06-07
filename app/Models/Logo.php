@@ -43,6 +43,8 @@ class Logo extends Model
 
     /**
      * Find an existing logo by its hash.
+     *
+     * @return static|null
      */
     public static function findByHash(string $hash): ?static
     {
@@ -51,6 +53,8 @@ class Logo extends Model
 
     /**
      * Create or retrieve a logo by its binary data and mime type, considering entity name matches.
+     *
+     * @return static
      */
     public static function findOrCreateFromData(
         string $logoData,

@@ -11,14 +11,8 @@ use Inertia\Inertia;
 
 class DocumentController extends Controller
 {
-    protected $documentService;
-    protected $conversionService;
-
-    public function __construct(DocumentService $documentService, ConversionService $conversionService)
+    public function __construct()
     {
-        $this->documentService = $documentService;
-        $this->conversionService = $conversionService;
-        
         // Apply rate limiting middleware to store method
         $this->middleware('throttle:file-uploads')->only('store');
     }
@@ -26,28 +20,35 @@ class DocumentController extends Controller
     /**
      * Store uploaded documents
      */
-    public function store(Request $request)
+    public function store(Request $request, DocumentService $documentService, ConversionService $conversionService)
     {
         $request->validate([
-            'files.*' => 'required|file|mimes:jpeg,png,jpg,gif,svg,pdf|max:2048',
+            'file' => 'required|file|mimes:jpeg,png,jpg,gif,svg,pdf|max:2048',
         ]);
 
-        if($request->hasfile('files'))
-        {
-            foreach($request->file('files') as $file)
-            {
-                $this->documentService->processUpload($file);
-            }
+        try {
+            $uploadedFile = $request->file('file');
+            
+            // Process the upload
+            $processedFiles = $documentService->processUpload($uploadedFile);
+            
+            return response()->json([
+                'message' => 'File uploaded successfully',
+                'data' => $processedFiles
+            ]);
+        } catch (\Exception $e) {
+            Log::error("(DocumentController) [store] - Failed to upload document", [
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to upload file',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return redirect()->route('receipts.index')->with('success', 'Documents uploaded successfully');
     }
 
-    /**
-     * Serve a document securely
-     * This route should be signed to prevent unauthorized access
-     */
-    public function serve(Request $request)
+    public function serve(Request $request, DocumentService $documentService)
     {
         $request->validate([
             'guid' => 'required|string',
@@ -60,7 +61,7 @@ class DocumentController extends Controller
         $extension = $request->input('extension');
 
         // Get the document content
-        $content = $this->documentService->getDocument($guid, $type, $extension);
+        $content = $documentService->getDocument($guid, $type, $extension);
         
         if (!$content) {
             Log::error("(DocumentController) [serve] - Document not found (guid: {$guid})", [
@@ -68,50 +69,59 @@ class DocumentController extends Controller
                 'extension' => $extension,
                 'user_id' => $request->user()->id
             ]);
-            abort(404, 'Document not found');
+            
+            return response()->json(['error' => 'Document not found'], 404);
         }
 
-        // Determine content type using ConversionService
-        $contentType = $this->conversionService->getContentType($extension);
+        // Map type to MIME type
+        $mimeTypes = [
+            'image' => 'image/' . $extension,
+            'pdf' => 'application/pdf'
+        ];
 
-        // Create a streamed response to handle large files efficiently
+        $mimeType = $mimeTypes[$type] ?? 'application/octet-stream';
+
+        // Create a StreamedResponse
         return new StreamedResponse(function () use ($content) {
             echo $content;
         }, 200, [
-            'Content-Type' => $contentType,
-            'Content-Disposition' => 'inline; filename="' . $guid . '.' . $extension . '"',
-            'Cache-Control' => 'private, no-cache, no-store, must-revalidate',
-            'Pragma' => 'no-cache',
-            'Expires' => '0'
+            'Content-Type' => $mimeType,
+            'Content-Length' => strlen($content),
+            'Content-Disposition' => 'inline; filename="document.' . $extension . '"',
+            'Cache-Control' => 'private, max-age=3600',
+            'X-Frame-Options' => 'SAMEORIGIN',
+            'X-Content-Type-Options' => 'nosniff',
         ]);
     }
 
-    /**
-     * Generate a secure URL for accessing a document
-     */
-    public function getSecureUrl(Request $request)
+    public function getSecureUrl(Request $request, DocumentService $documentService)
     {
         $request->validate([
-            'guid' => 'required|string',
-            'type' => 'required|string',
-            'extension' => 'required|string'
+            'file_id' => 'required|integer'
         ]);
 
-        $guid = $request->input('guid');
-        $type = $request->input('type');
-        $extension = $request->input('extension');
+        $fileId = $request->input('file_id');
 
-        $url = $this->documentService->getSecureUrl($guid, $type, $extension);
+        try {
+            $url = $documentService->getSecureUrl($fileId);
+            
+            if (!$url) {
+                Log::error("(DocumentController) [getSecureUrl] - Could not generate secure URL", [
+                    'file_id' => $fileId,
+                    'user_id' => $request->user()->id
+                ]);
+                
+                return response()->json(['error' => 'Could not generate secure URL'], 500);
+            }
 
-        if (!$url) {
-            Log::error("(DocumentController) [getSecureUrl] - Secure URL generation failed (guid: {$guid})", [
-                'type' => $type,
-                'extension' => $extension,
-                'user_id' => $request->user()->id
+            return response()->json(['url' => $url]);
+        } catch (\Exception $e) {
+            Log::error("(DocumentController) [getSecureUrl] - Error generating secure URL", [
+                'file_id' => $fileId,
+                'error' => $e->getMessage()
             ]);
-            abort(404, 'Document not found');
+            
+            return response()->json(['error' => 'Error generating secure URL'], 500);
         }
-
-        return redirect()->away($url);
     }
-} 
+}

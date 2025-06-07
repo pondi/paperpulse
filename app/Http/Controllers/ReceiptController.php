@@ -12,14 +12,6 @@ use Inertia\Inertia;
 
 class ReceiptController extends Controller
 {
-    protected $receiptService;
-    protected $documentService;
-
-    public function __construct(ReceiptService $receiptService, DocumentService $documentService)
-    {
-        $this->receiptService = $receiptService;
-        $this->documentService = $documentService;
-    }
 
     public function index()
     {
@@ -179,11 +171,11 @@ class ReceiptController extends Controller
         ]);
     }
 
-    public function destroy(Receipt $receipt)
+    public function destroy(Receipt $receipt, ReceiptService $receiptService)
     {
         $this->authorize('delete', $receipt);
         
-        if ($this->receiptService->deleteReceipt($receipt)) {
+        if ($receiptService->deleteReceipt($receipt)) {
             return redirect()->route('receipts.index')->with('success', 'The receipt was deleted');
         }
         

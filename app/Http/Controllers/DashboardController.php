@@ -2,18 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Receipt;
 use App\Models\Merchant;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
+use App\Models\Receipt;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
     public function index()
     {
         $userId = auth()->id();
-        
+
         // Get total amount and count of receipts for current user
         $receiptStats = Receipt::where('user_id', $userId)
             ->select(
@@ -35,9 +34,9 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard', [
             'receiptCount' => $receiptStats->count ?? 0,
-            'totalAmount' => (float)($receiptStats->total_amount ?? 0),
+            'totalAmount' => (float) ($receiptStats->total_amount ?? 0),
             'merchantCount' => $merchantCount,
-            'recentReceipts' => $recentReceipts
+            'recentReceipts' => $recentReceipts,
         ]);
     }
-} 
+}

@@ -9,9 +9,9 @@ use Laravel\Scout\Searchable;
 
 class Receipt extends Model
 {
+    use BelongsToUser;
     use HasFactory;
     use Searchable;
-    use BelongsToUser;
 
     protected $fillable = [
         'file_id',

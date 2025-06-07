@@ -22,11 +22,11 @@ return new class extends Migration
             $table->integer('sort_order')->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            
+
             $table->unique(['user_id', 'slug']);
             $table->index(['user_id', 'is_active']);
         });
-        
+
         // Add foreign key to receipts table for custom categories
         Schema::table('receipts', function (Blueprint $table) {
             $table->foreignId('category_id')->nullable()->after('receipt_category')->constrained()->nullOnDelete();
@@ -42,7 +42,7 @@ return new class extends Migration
             $table->dropForeign(['category_id']);
             $table->dropColumn('category_id');
         });
-        
+
         Schema::dropIfExists('categories');
     }
 };

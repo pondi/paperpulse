@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\Models\Receipt;
 use App\Models\LineItem;
 use App\Models\Merchant;
+use App\Models\Receipt;
+use Illuminate\Console\Command;
 
 class ReindexMeilisearch extends Command
 {
@@ -46,9 +46,9 @@ class ReindexMeilisearch extends Command
         foreach ($models as $model) {
             $modelName = class_basename($model);
             $this->info("Reindexing {$modelName}...");
-            
+
             $this->call('scout:import', ['model' => $model]);
-            
+
             $count = $model::count();
             $this->info("✓ {$modelName} reindexed ({$count} records)");
         }

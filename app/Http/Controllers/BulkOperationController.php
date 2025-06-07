@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Receipt;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Response;
+use App\Notifications\BulkOperationCompleted;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Notifications\BulkOperationCompleted;
+use Illuminate\Support\Facades\Response;
 
 class BulkOperationController extends Controller
 {
@@ -37,7 +37,7 @@ class BulkOperationController extends Controller
             }
         }
 
-        return redirect()->back()->with('success', 
+        return redirect()->back()->with('success',
             trans_choice('Deleted :count receipt|Deleted :count receipts', $deletedCount, ['count' => $deletedCount])
         );
     }
@@ -55,7 +55,7 @@ class BulkOperationController extends Controller
         ]);
 
         // Ensure either category_id or category is provided
-        if (!$request->category_id && !$request->category) {
+        if (! $request->category_id && ! $request->category) {
             return redirect()->back()->with('error', 'Please select a category.');
         }
 
@@ -68,7 +68,7 @@ class BulkOperationController extends Controller
             }
             $data['category_id'] = $request->category_id;
         }
-        
+
         if ($request->category) {
             $data['receipt_category'] = $request->category;
         }
@@ -88,7 +88,7 @@ class BulkOperationController extends Controller
             }
         }
 
-        return redirect()->back()->with('success', 
+        return redirect()->back()->with('success',
             trans_choice('Categorized :count receipt|Categorized :count receipts', $updatedCount, ['count' => $updatedCount])
         );
     }
@@ -109,16 +109,16 @@ class BulkOperationController extends Controller
             ->orderBy('receipt_date', 'desc')
             ->get();
 
-        $filename = 'receipts_selection_' . now()->format('Y-m-d_His') . '.csv';
-        
+        $filename = 'receipts_selection_'.now()->format('Y-m-d_His').'.csv';
+
         $headers = [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
-        $callback = function() use ($receipts) {
+        $callback = function () use ($receipts) {
             $file = fopen('php://output', 'w');
-            
+
             // Header row
             fputcsv($file, [
                 'Receipt Date',
@@ -133,8 +133,8 @@ class BulkOperationController extends Controller
             ]);
 
             foreach ($receipts as $receipt) {
-                $lineItems = $receipt->lineItems->map(function($item) {
-                    return $item->text . ' (Qty: ' . $item->qty . ', Price: ' . $item->price . ')';
+                $lineItems = $receipt->lineItems->map(function ($item) {
+                    return $item->text.' (Qty: '.$item->qty.', Price: '.$item->price.')';
                 })->implode('; ');
 
                 fputcsv($file, [
@@ -180,8 +180,8 @@ class BulkOperationController extends Controller
         ];
 
         $pdf = Pdf::loadView('exports.receipts-pdf', $data);
-        
-        $filename = 'receipts_selection_' . now()->format('Y-m-d_His') . '.pdf';
+
+        $filename = 'receipts_selection_'.now()->format('Y-m-d_His').'.pdf';
 
         return $pdf->download($filename);
     }

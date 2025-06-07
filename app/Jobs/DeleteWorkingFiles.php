@@ -37,17 +37,16 @@ class DeleteWorkingFiles implements ShouldQueue
         $jobName = $fileMetaData['jobName'];
 
         foreach ($fileExtensions as $extension) {
-            $filePath = 'uploads/' . $fileGUID . $extension;
+            $filePath = 'uploads/'.$fileGUID.$extension;
 
             if (Storage::disk('local')->exists($filePath)) {
                 Storage::disk('local')->delete($filePath);
                 Log::debug("(DeleteWorkingFiles) [{$jobName}] - File deleted (file: {$fileGUID})", [
-                    'file_path' => $filePath
+                    'file_path' => $filePath,
                 ]);
-            }
-            else {
+            } else {
                 Log::error("(DeleteWorkingFiles) [{$jobName}] - File not found (file: {$fileGUID})", [
-                    'file_path' => $filePath
+                    'file_path' => $filePath,
                 ]);
             }
         }

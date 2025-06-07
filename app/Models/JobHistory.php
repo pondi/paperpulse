@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class JobHistory extends Model
 {
@@ -22,7 +22,7 @@ class JobHistory extends Model
         'order_in_chain',
         'exception',
         'started_at',
-        'finished_at'
+        'finished_at',
     ];
 
     protected $casts = [

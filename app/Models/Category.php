@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 
 class Category extends Model
 {
-    use HasFactory, BelongsToUser;
+    use BelongsToUser, HasFactory;
 
     protected $fillable = [
         'user_id',
@@ -70,16 +70,16 @@ class Category extends Model
 
         while (true) {
             $query = static::where('user_id', $userId)->where('slug', $slug);
-            
+
             if ($excludeId) {
                 $query->where('id', '!=', $excludeId);
             }
 
-            if (!$query->exists()) {
+            if (! $query->exists()) {
                 break;
             }
 
-            $slug = $originalSlug . '-' . $count;
+            $slug = $originalSlug.'-'.$count;
             $count++;
         }
 

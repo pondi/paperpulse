@@ -16,7 +16,7 @@ class Merchant extends Model
         'vat_number',
         'email',
         'phone',
-        'website'
+        'website',
     ];
 
     protected $appends = ['logo_url'];
@@ -28,8 +28,8 @@ class Merchant extends Model
 
     public function getLogoUrlAttribute(): string
     {
-        return $this->logo?->getUrl() 
-            ?? "https://ui-avatars.com/api/?name=" . urlencode($this->name) . "&color=7F9CF5&background=EBF4FF";
+        return $this->logo?->getUrl()
+            ?? 'https://ui-avatars.com/api/?name='.urlencode($this->name).'&color=7F9CF5&background=EBF4FF';
     }
 
     public function receipts()

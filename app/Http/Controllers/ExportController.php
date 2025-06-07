@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Receipt;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Response;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Response;
 
 class ExportController extends Controller
 {
@@ -43,16 +43,16 @@ class ExportController extends Controller
 
         $receipts = $query->orderBy('receipt_date', 'desc')->get();
 
-        $filename = 'receipts_' . now()->format('Y-m-d_His') . '.csv';
-        
+        $filename = 'receipts_'.now()->format('Y-m-d_His').'.csv';
+
         $headers = [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
-        $callback = function() use ($receipts) {
+        $callback = function () use ($receipts) {
             $file = fopen('php://output', 'w');
-            
+
             // Header row
             fputcsv($file, [
                 'Receipt Date',
@@ -67,8 +67,8 @@ class ExportController extends Controller
             ]);
 
             foreach ($receipts as $receipt) {
-                $lineItems = $receipt->lineItems->map(function($item) {
-                    return $item->text . ' (Qty: ' . $item->qty . ', Price: ' . $item->price . ')';
+                $lineItems = $receipt->lineItems->map(function ($item) {
+                    return $item->text.' (Qty: '.$item->qty.', Price: '.$item->price.')';
                 })->implode('; ');
 
                 fputcsv($file, [
@@ -127,8 +127,8 @@ class ExportController extends Controller
         ];
 
         $pdf = Pdf::loadView('exports.receipts-pdf', $data);
-        
-        $filename = 'receipts_' . now()->format('Y-m-d_His') . '.pdf';
+
+        $filename = 'receipts_'.now()->format('Y-m-d_His').'.pdf';
 
         return $pdf->download($filename);
     }
@@ -148,8 +148,8 @@ class ExportController extends Controller
         ];
 
         $pdf = Pdf::loadView('exports.receipt-single-pdf', $data);
-        
-        $filename = 'receipt_' . $receipt->id . '_' . now()->format('Y-m-d_His') . '.pdf';
+
+        $filename = 'receipt_'.$receipt->id.'_'.now()->format('Y-m-d_His').'.pdf';
 
         return $pdf->download($filename);
     }

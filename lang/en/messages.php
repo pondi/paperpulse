@@ -16,7 +16,7 @@ return [
     'product_vendors' => 'Product Vendors',
     'no_vendors_found' => 'No vendors found',
     'share' => 'Share',
-    
+
     // Receipt related
     'receipt_details' => 'Receipt Details',
     'receipt_status' => 'Receipt Status',
@@ -91,7 +91,7 @@ return [
     'unknown_merchant' => 'Unknown merchant',
     'no_description' => 'No description',
     'uncategorized' => 'Uncategorized',
-    
+
     // Bulk operations
     'select_all' => 'Select All',
     'selected' => ':count selected',
@@ -110,7 +110,7 @@ return [
     'utilities' => 'Utilities',
     'healthcare' => 'Healthcare',
     'other' => 'Other',
-    
+
     // Categories
     'categories' => 'Categories',
     'add_category' => 'Add Category',
@@ -125,7 +125,7 @@ return [
     'inactive' => 'Inactive',
     'active' => 'Active',
     'create' => 'Create',
-    
+
     // Preferences
     'preferences' => 'Preferences',
     'general_preferences' => 'General Preferences',
@@ -172,7 +172,7 @@ return [
     'save_preferences' => 'Save Preferences',
     'reset_to_defaults' => 'Reset to defaults',
     'reset_preferences_confirm' => 'Are you sure you want to reset all preferences to their default values?',
-    
+
     // Notifications
     'notifications' => 'Notifications',
     'notification_preferences' => 'Notification Preferences',
@@ -219,4 +219,4 @@ return [
     'show_receipt_preview_description' => 'Display receipt thumbnails in list views.',
     'analytics_enabled_description' => 'Show analytics dashboard with spending insights.',
     'share_usage_data_description' => 'Help improve the application by sharing anonymous usage data.',
-]; 
+];

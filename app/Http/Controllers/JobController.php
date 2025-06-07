@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\JobHistory;
 use App\Models\PulseDavFile;
 use Carbon\Carbon;
-use Illuminate\Http\{Request, JsonResponse};
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\{DB, Log};
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Inertia\{Inertia, Response};
+use Inertia\Inertia;
+use Inertia\Response;
 
 class JobController extends Controller
 {
@@ -33,11 +36,11 @@ class JobController extends Controller
             'order' => $job->order_in_chain,
         ];
 
-        if (!$isChild) {
+        if (! $isChild) {
             $data['tasks'] = $job->tasks()
                 ->orderBy('order_in_chain')
                 ->get()
-                ->map(fn(JobHistory $child): array => $this->transformJob($child, true))
+                ->map(fn (JobHistory $child): array => $this->transformJob($child, true))
                 ->all();
         }
 
@@ -49,7 +52,7 @@ class JobController extends Controller
      */
     private function extractJobIDFromCommand(mixed $command): ?string
     {
-        if (!$command) {
+        if (! $command) {
             return null;
         }
 
@@ -61,12 +64,14 @@ class JobController extends Controller
             $reflection = new \ReflectionClass($command);
             $property = $reflection->getProperty('jobID');
             $property->setAccessible(true);
+
             return $property->getValue($command);
         } catch (\Throwable $e) {
             Log::warning('Failed to extract jobID from command', [
                 'command_class' => $command::class,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -83,19 +88,20 @@ class JobController extends Controller
             ->map(function (object $job): ?array {
                 try {
                     $payload = json_decode($job->payload, true, 512, JSON_THROW_ON_ERROR);
-                    
-                    if (!isset($payload['data']['command'])) {
+
+                    if (! isset($payload['data']['command'])) {
                         Log::warning('Invalid job payload structure - missing command', compact('payload'));
+
                         return null;
                     }
-                    
+
                     $command = @unserialize($payload['data']['command']);
                     $jobID = $this->extractJobIDFromCommand($command);
-                    
-                    $commandName = $payload['displayName'] 
-                        ?? $payload['data']['commandName'] 
+
+                    $commandName = $payload['displayName']
+                        ?? $payload['data']['commandName']
                         ?? ($command ? class_basename($command::class) : 'Unknown Job');
-                    
+
                     return [
                         'uuid' => $payload['uuid'] ?? Str::uuid()->toString(),
                         'parent_uuid' => $jobID,
@@ -105,14 +111,15 @@ class JobController extends Controller
                         'started_at' => $this->formatTimestamp($job->reserved_at ?? $job->created_at),
                         'progress' => 0,
                         'attempt' => $job->attempts,
-                        'order_in_chain' => $this->getOrderInChain($commandName)
+                        'order_in_chain' => $this->getOrderInChain($commandName),
                     ];
                 } catch (\Throwable $e) {
                     Log::warning('Failed to process pending job', [
                         'error' => $e->getMessage(),
                         'job_id' => $job->id,
-                        'payload' => $job->payload ?? null
+                        'payload' => $job->payload ?? null,
                     ]);
+
                     return null;
                 }
             })
@@ -125,12 +132,12 @@ class JobController extends Controller
      */
     private function formatTimestamp(string|int|null $timestamp): ?string
     {
-        if (!$timestamp) {
+        if (! $timestamp) {
             return null;
         }
 
-        return is_int($timestamp) 
-            ? Carbon::createFromTimestamp($timestamp)->toDateTimeString() 
+        return is_int($timestamp)
+            ? Carbon::createFromTimestamp($timestamp)->toDateTimeString()
             : $timestamp;
     }
 
@@ -140,7 +147,7 @@ class JobController extends Controller
     private function getJobStats(): array
     {
         $query = JobHistory::parentJobs();
-        
+
         return [
             'pending' => (clone $query)->where('status', 'pending')->count(),
             'processing' => (clone $query)->where('status', 'processing')->count(),
@@ -155,7 +162,7 @@ class JobController extends Controller
     private function getPulseDavStats(): array
     {
         $query = PulseDavFile::where('user_id', auth()->id());
-        
+
         return [
             'total' => (clone $query)->count(),
             'pending' => (clone $query)->where('status', 'pending')->count(),
@@ -173,9 +180,9 @@ class JobController extends Controller
         $historyQuery = JobHistory::query()
             ->whereNull('parent_uuid')
             ->orderBy('created_at', 'desc')
-            ->when($request->filled('status'), fn(Builder $query) => $query->where('status', $request->status))
-            ->when($request->filled('queue'), fn(Builder $query) => $query->where('queue', $request->queue))
-            ->when($request->filled('search'), fn(Builder $query) => $query->where('name', 'like', "%{$request->search}%"));
+            ->when($request->filled('status'), fn (Builder $query) => $query->where('status', $request->status))
+            ->when($request->filled('queue'), fn (Builder $query) => $query->where('queue', $request->queue))
+            ->when($request->filled('search'), fn (Builder $query) => $query->where('name', 'like', "%{$request->search}%"));
 
         $historyJobs = $historyQuery->with('tasks')->paginate(50);
 
@@ -197,7 +204,7 @@ class JobController extends Controller
             });
 
         return Inertia::render('Jobs/Index', [
-            'jobs' => $historyJobs->map(fn(JobHistory $job) => $this->transformJob($job))->all(),
+            'jobs' => $historyJobs->map(fn (JobHistory $job) => $this->transformJob($job))->all(),
             'stats' => $this->getJobStats(),
             'pulseDavStats' => $this->getPulseDavStats(),
             'recentPulseDavFiles' => $recentPulseDavFiles,
@@ -209,14 +216,14 @@ class JobController extends Controller
             'filters' => [
                 'status' => $request->input('status', ''),
                 'queue' => $request->input('queue', ''),
-                'search' => $request->input('search', '')
+                'search' => $request->input('search', ''),
             ],
             'pagination' => [
                 'current_page' => $historyJobs->currentPage(),
                 'last_page' => $historyJobs->lastPage(),
                 'per_page' => $historyJobs->perPage(),
-                'total' => $historyJobs->total()
-            ]
+                'total' => $historyJobs->total(),
+            ],
         ]);
     }
 
@@ -229,9 +236,9 @@ class JobController extends Controller
             $pendingJobs = $this->getPendingJobs();
 
             $historyQuery = JobHistory::parentJobs()
-                ->when($request->status, fn(Builder $query) => $query->where('status', $request->status))
-                ->when($request->queue, fn(Builder $query) => $query->where('queue', $request->queue))
-                ->when($request->search, fn(Builder $query) => $query->where('name', 'like', "%{$request->search}%"));
+                ->when($request->status, fn (Builder $query) => $query->where('status', $request->status))
+                ->when($request->queue, fn (Builder $query) => $query->where('queue', $request->queue))
+                ->when($request->search, fn (Builder $query) => $query->where('name', 'like', "%{$request->search}%"));
 
             $historyJobs = $historyQuery
                 ->with('tasks')
@@ -239,9 +246,9 @@ class JobController extends Controller
                 ->paginate(50);
 
             return response()->json([
-                'data' => $historyJobs->map(function(JobHistory $job) use ($pendingJobs): array {
+                'data' => $historyJobs->map(function (JobHistory $job) use ($pendingJobs): array {
                     $jobData = $this->transformJob($job);
-                    
+
                     if (isset($pendingJobs[$job->uuid])) {
                         $pendingTasks = $pendingJobs[$job->uuid]->values();
                         $jobData['tasks'] = collect($jobData['tasks'])
@@ -250,7 +257,7 @@ class JobController extends Controller
                             ->values()
                             ->all();
                     }
-                    
+
                     return $jobData;
                 }),
                 'stats' => $this->getJobStats(),
@@ -261,18 +268,18 @@ class JobController extends Controller
                     'current_page' => $historyJobs->currentPage(),
                     'last_page' => $historyJobs->lastPage(),
                 ],
-                'success' => true
+                'success' => true,
             ]);
         } catch (\Throwable $e) {
             Log::error('Failed to fetch job status:', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'message' => 'Could not fetch job status',
                 'error' => $e->getMessage(),
-                'success' => false
+                'success' => false,
             ], 500);
         }
     }
@@ -290,4 +297,4 @@ class JobController extends Controller
             default => 0,
         };
     }
-} 
+}

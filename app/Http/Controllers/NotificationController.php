@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Notifications\DatabaseNotification;
 
 class NotificationController extends Controller
 {
@@ -13,7 +12,7 @@ class NotificationController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        
+
         $notifications = $user->notifications()
             ->latest()
             ->limit(50)

@@ -130,7 +130,7 @@ class CategoryController extends Controller
 
         foreach ($request->categories as $categoryData) {
             $category = Category::find($categoryData['id']);
-            
+
             // Ensure the user owns the category
             if ($category && $category->user_id === auth()->id()) {
                 $category->update(['sort_order' => $categoryData['sort_order']]);
@@ -146,14 +146,14 @@ class CategoryController extends Controller
     public function createDefaults()
     {
         $user = auth()->user();
-        
+
         // Check if user already has categories
         if ($user->categories()->exists()) {
             return redirect()->back()->with('info', 'You already have categories.');
         }
 
         $defaults = Category::getDefaultCategories();
-        
+
         foreach ($defaults as $index => $default) {
             $user->categories()->create([
                 'name' => $default['name'],

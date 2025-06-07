@@ -18,11 +18,11 @@ return new class extends Migration
             $table->boolean('notify_bulk_complete')->default(true);
             $table->boolean('notify_scanner_import')->default(true);
             $table->boolean('notify_weekly_summary_ready')->default(true);
-            
+
             // Email notification preferences (rename existing columns)
             $table->renameColumn('email_processing_complete', 'email_notify_processing_complete');
             $table->renameColumn('email_processing_failed', 'email_notify_processing_failed');
-            
+
             // Add new email notification preferences
             $table->boolean('email_notify_bulk_complete')->default(false);
             $table->boolean('email_notify_scanner_import')->default(false);
@@ -47,7 +47,7 @@ return new class extends Migration
                 'email_notify_scanner_import',
                 'email_notify_weekly_summary',
             ]);
-            
+
             // Rename columns back
             $table->renameColumn('email_notify_processing_complete', 'email_processing_complete');
             $table->renameColumn('email_notify_processing_failed', 'email_processing_failed');

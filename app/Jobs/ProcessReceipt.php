@@ -2,13 +2,13 @@
 
 namespace App\Jobs;
 
-use App\Services\ConversionService;
-use App\Services\ReceiptService;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
 use App\Models\File;
 use App\Models\Receipt;
 use App\Notifications\ReceiptProcessed;
+use App\Services\ConversionService;
+use App\Services\ReceiptService;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class ProcessReceipt extends BaseJob
 {
@@ -28,14 +28,14 @@ class ProcessReceipt extends BaseJob
     {
         try {
             $metadata = $this->getMetadata();
-            if (!$metadata) {
+            if (! $metadata) {
                 throw new \Exception('No metadata found for job');
             }
 
-            Log::info("Processing receipt", [
+            Log::info('Processing receipt', [
                 'job_id' => $this->jobID,
                 'task_id' => $this->uuid,
-                'file_guid' => $metadata['fileGUID']
+                'file_guid' => $metadata['fileGUID'],
             ]);
 
             $this->updateProgress(10);
@@ -67,14 +67,14 @@ class ProcessReceipt extends BaseJob
 
             // Verify cache data is set before proceeding
             $cachedData = Cache::get("job.{$this->jobID}.receiptMetaData");
-            if (!$cachedData) {
+            if (! $cachedData) {
                 throw new \Exception('Failed to cache receipt data');
             }
 
-            Log::debug("Receipt data cached for merchant matching", [
+            Log::debug('Receipt data cached for merchant matching', [
                 'job_id' => $this->jobID,
                 'receipt_id' => $receiptData['receiptID'],
-                'cached_data' => $cachedData
+                'cached_data' => $cachedData,
             ]);
 
             $this->updateProgress(100);
@@ -84,10 +84,10 @@ class ProcessReceipt extends BaseJob
                 ->onQueue('receipts')
                 ->delay(now()->addSeconds(5));
 
-            Log::info("Receipt processed successfully", [
+            Log::info('Receipt processed successfully', [
                 'job_id' => $this->jobID,
                 'task_id' => $this->uuid,
-                'receipt_id' => $receiptData['receiptID']
+                'receipt_id' => $receiptData['receiptID'],
             ]);
 
             // Send notification to user
@@ -100,17 +100,17 @@ class ProcessReceipt extends BaseJob
                     }
                 }
             } catch (\Exception $e) {
-                Log::warning("Failed to send receipt processed notification", [
+                Log::warning('Failed to send receipt processed notification', [
                     'error' => $e->getMessage(),
-                    'receipt_id' => $receiptData['receiptID']
+                    'receipt_id' => $receiptData['receiptID'],
                 ]);
             }
         } catch (\Exception $e) {
-            Log::error("Receipt processing failed", [
+            Log::error('Receipt processing failed', [
                 'job_id' => $this->jobID,
                 'task_id' => $this->uuid,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             // Send failure notification to user
@@ -120,16 +120,16 @@ class ProcessReceipt extends BaseJob
                     $file = File::find($metadata['fileId']);
                     if ($file && $file->user) {
                         // Create a temporary receipt object for the notification
-                        $tempReceipt = new Receipt();
+                        $tempReceipt = new Receipt;
                         $tempReceipt->file_id = $file->id;
                         $tempReceipt->user_id = $file->user_id;
-                        
+
                         $file->user->notify(new ReceiptProcessed($tempReceipt, false, $e->getMessage()));
                     }
                 }
             } catch (\Exception $notifError) {
-                Log::warning("Failed to send receipt failure notification", [
-                    'error' => $notifError->getMessage()
+                Log::warning('Failed to send receipt failure notification', [
+                    'error' => $notifError->getMessage(),
                 ]);
             }
 

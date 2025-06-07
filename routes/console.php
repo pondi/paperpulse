@@ -1,11 +1,11 @@
 <?php
 
+use App\Jobs\CleanupPulseDavFiles;
+use App\Jobs\SyncPulseDavFiles;
+use App\Jobs\SyncPulseDavFilesRealtime;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
-use App\Jobs\SyncPulseDavFiles;
-use App\Jobs\SyncPulseDavFilesRealtime;
-use App\Jobs\CleanupPulseDavFiles;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());

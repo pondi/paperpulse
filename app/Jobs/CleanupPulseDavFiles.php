@@ -4,13 +4,13 @@ namespace App\Jobs;
 
 use App\Models\PulseDavFile;
 use App\Services\PulseDavService;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
 
 class CleanupPulseDavFiles implements ShouldQueue
 {
@@ -47,7 +47,7 @@ class CleanupPulseDavFiles implements ShouldQueue
             try {
                 $pulseDavService->deleteFile($file);
                 $deletedCount++;
-                
+
                 Log::info('Deleted old PulseDav file', [
                     'pulsedav_file_id' => $file->id,
                     'filename' => $file->filename,

@@ -2,14 +2,14 @@
 
 namespace App\Services;
 
-use App\Models\Receipt;
 use App\Models\LineItem;
-use HelgeSverre\ReceiptScanner\ReceiptScanner;
+use App\Models\Receipt;
 use HelgeSverre\ReceiptScanner\Facades\Text;
 use HelgeSverre\ReceiptScanner\ModelNames;
-use Illuminate\Support\Facades\Storage;
+use HelgeSverre\ReceiptScanner\ReceiptScanner;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ReceiptService
 {
@@ -26,14 +26,14 @@ class ReceiptService
     public function processReceiptData(int $fileId, string $fileGuid, string $filePath): array
     {
         try {
-            Log::info("Processing receipt data", [
+            Log::info('Processing receipt data', [
                 'file_id' => $fileId,
-                'file_guid' => $fileGuid
+                'file_guid' => $fileGuid,
             ]);
 
             // Get the file content
             $fileContent = file_get_contents($filePath);
-            if (!$fileContent) {
+            if (! $fileContent) {
                 throw new \Exception('Could not read file content');
             }
 
@@ -41,7 +41,7 @@ class ReceiptService
             $textPdfOcr = Text::textractUsingS3Upload($fileContent);
 
             // Parse the receipt using GPT
-            $scanner = new ReceiptScanner();
+            $scanner = new ReceiptScanner;
             $parsedReceipt = $scanner->scan(
                 text: $textPdfOcr,
                 model: ModelNames::TURBO_INSTRUCT,
@@ -51,9 +51,9 @@ class ReceiptService
                 asArray: true,
             );
 
-            Log::debug("Receipt parsed", [
+            Log::debug('Receipt parsed', [
                 'file_id' => $fileId,
-                'parsed_data' => $parsedReceipt
+                'parsed_data' => $parsedReceipt,
             ]);
 
             // Create the receipt record
@@ -87,9 +87,9 @@ class ReceiptService
             $receipt->load(['merchant', 'lineItems']);
             $receipt->searchable();
 
-            Log::info("Receipt data processed successfully", [
+            Log::info('Receipt data processed successfully', [
                 'file_id' => $fileId,
-                'receipt_id' => $receipt->id
+                'receipt_id' => $receipt->id,
             ]);
 
             return [
@@ -101,10 +101,10 @@ class ReceiptService
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Receipt data processing failed", [
+            Log::error('Receipt data processing failed', [
                 'error' => $e->getMessage(),
                 'file_id' => $fileId,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
         }
@@ -139,15 +139,17 @@ class ReceiptService
             }
 
             DB::commit();
+
             return true;
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('[ReceiptService] Receipt deletion failed', [
                 'error' => $e->getMessage(),
                 'receipt_id' => $receipt->id,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
+
             return false;
         }
     }
-} 
+}

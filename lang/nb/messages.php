@@ -15,7 +15,7 @@ return [
     'product_vendors' => 'Produktleverandører',
     'no_vendors_found' => 'Ingen leverandører funnet',
     'share' => 'Del',
-    
+
     // Receipt related
     'receipt_details' => 'Kvitteringsdetaljer',
     'receipt_status' => 'Status',
@@ -90,7 +90,7 @@ return [
     'unknown_merchant' => 'Ukjent forhandler',
     'no_description' => 'Ingen beskrivelse',
     'uncategorized' => 'Ukategorisert',
-    
+
     // Bulk operations
     'select_all' => 'Velg alle',
     'selected' => ':count valgt',
@@ -109,7 +109,7 @@ return [
     'utilities' => 'Verktøy',
     'healthcare' => 'Helsevesen',
     'other' => 'Annet',
-    
+
     // Categories
     'categories' => 'Kategorier',
     'add_category' => 'Legg til kategori',
@@ -124,7 +124,7 @@ return [
     'inactive' => 'Inaktiv',
     'active' => 'Aktiv',
     'create' => 'Opprett',
-    
+
     // Preferences
     'preferences' => 'Innstillinger',
     'general_preferences' => 'Generelle innstillinger',
@@ -171,4 +171,4 @@ return [
     'save_preferences' => 'Lagre innstillinger',
     'reset_to_defaults' => 'Tilbakestill til standard',
     'reset_preferences_confirm' => 'Er du sikker på at du vil tilbakestille alle innstillinger til standardverdiene?',
-]; 
+];

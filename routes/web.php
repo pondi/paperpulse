@@ -1,20 +1,20 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\MerchantController;
-use App\Http\Controllers\ReceiptController;
-use App\Http\Controllers\VendorController;
-use App\Http\Controllers\JobController;
-use App\Http\Controllers\DocumentController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\SearchController;
-use App\Http\Controllers\PulseDavController;
-use App\Http\Controllers\ExportController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\BulkOperationController;
 use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\PreferencesController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\ExportController;
+use App\Http\Controllers\JobController;
+use App\Http\Controllers\MerchantController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PreferencesController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PulseDavController;
+use App\Http\Controllers\ReceiptController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\VendorController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -33,7 +33,7 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified', 'web'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    
+
     // Analytics
     Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
 
@@ -58,7 +58,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     // Merchant routes
     Route::get('/merchants', [MerchantController::class, 'index'])->name('merchants.index');
     Route::post('/merchants/{merchant}/logo', [MerchantController::class, 'updateLogo'])->name('merchants.updateLogo');
-    
+
     // Vendor routes
     Route::get('/vendors', [VendorController::class, 'index'])->name('vendors.index');
     Route::get('/vendors/{vendor}', [VendorController::class, 'show'])->name('vendors.show');

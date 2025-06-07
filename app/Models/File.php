@@ -9,16 +9,16 @@ use Laravel\Scout\Searchable;
 
 class File extends Model
 {
+    use BelongsToUser;
     use HasFactory;
     use Searchable;
-    use BelongsToUser;
 
     protected $fillable = [
         'user_id',
-        'name', 
-        'type', 
-        'size', 
-        'data', 
+        'name',
+        'type',
+        'size',
+        'data',
         'uploaded_at',
         'file_path',
         'original_filename',

@@ -4,12 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Vendor;
 use App\Services\LogoService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Date;
 
 class VendorController extends Controller
 {
@@ -40,7 +40,7 @@ class VendorController extends Controller
                 'logos.mime_type',
                 DB::raw('SUM(CAST((line_items.qty * line_items.price) AS DECIMAL(10,2))) as total_value'),
                 DB::raw('MAX(receipts.receipt_date) as last_item_date'),
-                DB::raw('COUNT(DISTINCT line_items.id) as total_items')
+                DB::raw('COUNT(DISTINCT line_items.id) as total_items'),
             ])
             ->groupBy([
                 'vendors.id',
@@ -50,7 +50,7 @@ class VendorController extends Controller
                 'vendors.contact_phone',
                 'vendors.description',
                 'logos.logo_data',
-                'logos.mime_type'
+                'logos.mime_type',
             ])
             ->get()
             ->map(fn (Vendor $vendor): array => [
@@ -60,23 +60,23 @@ class VendorController extends Controller
                 'website' => $vendor->website,
                 'contact' => [
                     'email' => $vendor->contact_email,
-                    'phone' => $vendor->contact_phone
+                    'phone' => $vendor->contact_phone,
                 ],
                 'stats' => [
-                    'date' => $vendor->last_item_date 
+                    'date' => $vendor->last_item_date
                         ? Date::parse($vendor->last_item_date)->format('F j, Y')
                         : 'No items',
                     'dateTime' => $vendor->last_item_date,
                     'totalItems' => $vendor->total_items,
-                    'totalValue' => $vendor->total_value 
-                        ? number_format((float)$vendor->total_value, 2) . ' kr' 
+                    'totalValue' => $vendor->total_value
+                        ? number_format((float) $vendor->total_value, 2).' kr'
                         : '0.00 kr',
-                    'status' => $vendor->total_items > 0 ? 'Active' : 'No items'
-                ]
+                    'status' => $vendor->total_items > 0 ? 'Active' : 'No items',
+                ],
             ]);
 
         return Inertia::render('Receipt/Vendors', [
-            'vendors' => $vendors
+            'vendors' => $vendors,
         ]);
     }
 
@@ -88,11 +88,11 @@ class VendorController extends Controller
                 $query->where('user_id', auth()->id());
             })
             ->exists();
-            
-        if (!$hasAccess) {
+
+        if (! $hasAccess) {
             abort(403, 'Unauthorized access to vendor');
         }
-        
+
         $vendor->load(['lineItems' => function ($query) {
             $query->whereHas('receipt', function ($q) {
                 $q->where('user_id', auth()->id());
@@ -100,7 +100,7 @@ class VendorController extends Controller
         }]);
 
         return Inertia::render('Receipt/VendorDetails', [
-            'vendor' => $vendor
+            'vendor' => $vendor,
         ]);
     }
 
@@ -112,13 +112,13 @@ class VendorController extends Controller
                 $query->where('user_id', auth()->id());
             })
             ->exists();
-            
-        if (!$hasAccess) {
+
+        if (! $hasAccess) {
             abort(403, 'Unauthorized access to vendor');
         }
-        
+
         $validated = $request->validate([
-            'logo' => ['required', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048']
+            'logo' => ['required', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
         ]);
 
         $file = $request->file('logo');
@@ -126,4 +126,4 @@ class VendorController extends Controller
 
         return back();
     }
-} 
+}

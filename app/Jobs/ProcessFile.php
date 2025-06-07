@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Services\ConversionService;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class ProcessFile extends BaseJob
 {
@@ -24,14 +23,14 @@ class ProcessFile extends BaseJob
     {
         try {
             $metadata = $this->getMetadata();
-            if (!$metadata) {
+            if (! $metadata) {
                 throw new \Exception('No metadata found for job');
             }
 
-            Log::info("Processing file", [
+            Log::info('Processing file', [
                 'job_id' => $this->jobID,
                 'task_id' => $this->uuid,
-                'file_path' => $metadata['filePath']
+                'file_path' => $metadata['filePath'],
             ]);
 
             $this->updateProgress(10);
@@ -45,8 +44,8 @@ class ProcessFile extends BaseJob
                     $metadata['filePath'],
                     $metadata['fileExtension']
                 );
-                
-                if (!$pdfPath) {
+
+                if (! $pdfPath) {
                     throw new \Exception('Failed to convert file to PDF');
                 }
 
@@ -57,15 +56,15 @@ class ProcessFile extends BaseJob
 
             $this->updateProgress(100);
 
-            Log::info("File processed successfully", [
-                'job_id' => $this->jobID,
-                'task_id' => $this->uuid
-            ]);
-        } catch (\Exception $e) {
-            Log::error("File processing failed", [
+            Log::info('File processed successfully', [
                 'job_id' => $this->jobID,
                 'task_id' => $this->uuid,
-                'error' => $e->getMessage()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('File processing failed', [
+                'job_id' => $this->jobID,
+                'task_id' => $this->uuid,
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }

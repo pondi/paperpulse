@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('mime_type');
             $table->string('hash')->unique()->index();  // For deduplication
             $table->timestamps();
-            
+
             // Add a unique constraint to prevent duplicate logos for the same entity
             $table->unique(['logoable_type', 'logoable_id']);
         });
@@ -25,4 +25,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('logos');
     }
-}; 
+};

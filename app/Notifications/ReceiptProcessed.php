@@ -13,7 +13,9 @@ class ReceiptProcessed extends Notification implements ShouldQueue
     use Queueable;
 
     protected $receipt;
+
     protected $success;
+
     protected $errorMessage;
 
     /**
@@ -32,13 +34,13 @@ class ReceiptProcessed extends Notification implements ShouldQueue
     public function via($notifiable): array
     {
         $channels = ['database'];
-        
+
         if ($this->success && $notifiable->preference('email_notify_processing_complete')) {
             $channels[] = 'mail';
-        } elseif (!$this->success && $notifiable->preference('email_notify_processing_failed')) {
+        } elseif (! $this->success && $notifiable->preference('email_notify_processing_failed')) {
             $channels[] = 'mail';
         }
-        
+
         return $channels;
     }
 
@@ -51,8 +53,8 @@ class ReceiptProcessed extends Notification implements ShouldQueue
             return (new MailMessage)
                 ->subject('Receipt Processed Successfully')
                 ->line('Your receipt has been processed successfully.')
-                ->line('Merchant: ' . ($this->receipt->merchant?->name ?? 'Unknown'))
-                ->line('Amount: ' . number_format($this->receipt->total_amount, 2) . ' ' . $this->receipt->currency)
+                ->line('Merchant: '.($this->receipt->merchant?->name ?? 'Unknown'))
+                ->line('Amount: '.number_format($this->receipt->total_amount, 2).' '.$this->receipt->currency)
                 ->action('View Receipt', route('receipts.show', $this->receipt->id))
                 ->line('Thank you for using PaperPulse!');
         } else {
@@ -60,7 +62,7 @@ class ReceiptProcessed extends Notification implements ShouldQueue
                 ->subject('Receipt Processing Failed')
                 ->error()
                 ->line('We encountered an error while processing your receipt.')
-                ->line('Error: ' . ($this->errorMessage ?? 'Unknown error'))
+                ->line('Error: '.($this->errorMessage ?? 'Unknown error'))
                 ->line('Please try uploading the receipt again or contact support if the issue persists.')
                 ->action('Upload New Receipt', route('documents.upload'));
         }

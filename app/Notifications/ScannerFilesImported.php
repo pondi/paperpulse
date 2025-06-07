@@ -12,7 +12,9 @@ class ScannerFilesImported extends Notification implements ShouldQueue
     use Queueable;
 
     protected $fileCount;
+
     protected $processedCount;
+
     protected $failedCount;
 
     /**
@@ -31,11 +33,11 @@ class ScannerFilesImported extends Notification implements ShouldQueue
     public function via($notifiable): array
     {
         $channels = ['database'];
-        
+
         if ($notifiable->preference('email_notify_scanner_import')) {
             $channels[] = 'mail';
         }
-        
+
         return $channels;
     }
 

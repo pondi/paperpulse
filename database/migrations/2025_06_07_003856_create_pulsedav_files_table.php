@@ -24,7 +24,7 @@ return new class extends Migration
             $table->text('error_message')->nullable();
             $table->foreignId('receipt_id')->nullable()->constrained()->onDelete('set null');
             $table->timestamps();
-            
+
             $table->index(['user_id', 'status']);
             $table->index('s3_path');
             $table->index('uploaded_at');

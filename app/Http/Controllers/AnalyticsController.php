@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Receipt;
-use App\Models\Merchant;
 use App\Models\LineItem;
+use App\Models\Receipt;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 use Inertia\Inertia;
 
 class AnalyticsController extends Controller
@@ -16,7 +15,7 @@ class AnalyticsController extends Controller
     {
         $userId = auth()->id();
         $period = $request->get('period', 'month'); // month, quarter, year
-        
+
         $startDate = $this->getStartDate($period);
         $endDate = Carbon::now();
 
@@ -32,7 +31,7 @@ class AnalyticsController extends Controller
         $periodReceipts = Receipt::where('user_id', $userId)
             ->whereBetween('receipt_date', [$startDate, $endDate])
             ->count();
-        
+
         $periodAmount = Receipt::where('user_id', $userId)
             ->whereBetween('receipt_date', [$startDate, $endDate])
             ->sum('total_amount');
@@ -81,7 +80,7 @@ class AnalyticsController extends Controller
             ->get()
             ->map(function ($item) {
                 return [
-                    'month' => Carbon::parse($item->month . '-01')->format('M Y'),
+                    'month' => Carbon::parse($item->month.'-01')->format('M Y'),
                     'receipt_count' => $item->receipt_count,
                     'total' => (float) $item->total,
                 ];
@@ -108,9 +107,9 @@ class AnalyticsController extends Controller
 
         // Most purchased items
         $topItems = LineItem::whereHas('receipt', function ($query) use ($userId, $startDate, $endDate) {
-                $query->where('user_id', $userId)
-                    ->whereBetween('receipt_date', [$startDate, $endDate]);
-            })
+            $query->where('user_id', $userId)
+                ->whereBetween('receipt_date', [$startDate, $endDate]);
+        })
             ->select('text', DB::raw('SUM(qty) as total_qty'), DB::raw('COUNT(*) as purchase_count'))
             ->groupBy('text')
             ->orderByDesc('purchase_count')

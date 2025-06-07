@@ -16,13 +16,13 @@ trait BelongsToUser
         // Add global scope to filter by authenticated user
         static::addGlobalScope('user', function (Builder $builder) {
             if (auth()->check()) {
-                $builder->where((new static)->getTable() . '.user_id', auth()->id());
+                $builder->where((new static)->getTable().'.user_id', auth()->id());
             }
         });
 
         // Automatically set user_id on creating
         static::creating(function ($model) {
-            if (auth()->check() && !$model->user_id) {
+            if (auth()->check() && ! $model->user_id) {
                 $model->user_id = auth()->id();
             }
         });
@@ -31,8 +31,8 @@ trait BelongsToUser
     /**
      * Scope a query to include records for a specific user.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param int $userId
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  int  $userId
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeForUser($query, $userId)
@@ -43,7 +43,7 @@ trait BelongsToUser
     /**
      * Scope a query to include all records (bypass user scope).
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeWithoutUserScope($query)

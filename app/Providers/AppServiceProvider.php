@@ -2,20 +2,20 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\RateLimiter;
+use App\Listeners\CreateUserPreferences;
+use App\Models\Category;
+use App\Models\File;
+use App\Models\Receipt;
+use App\Policies\CategoryPolicy;
+use App\Policies\FilePolicy;
+use App\Policies\ReceiptPolicy;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Auth\Events\Registered;
-use App\Listeners\CreateUserPreferences;
 use Illuminate\Support\Facades\Gate;
-use App\Models\Receipt;
-use App\Models\File;
-use App\Models\Category;
-use App\Policies\ReceiptPolicy;
-use App\Policies\FilePolicy;
-use App\Policies\CategoryPolicy;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -34,7 +34,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureRateLimiting();
         $this->registerPolicies();
-        
+
         // Register event listeners
         Event::listen(Registered::class, CreateUserPreferences::class);
     }

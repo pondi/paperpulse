@@ -12,7 +12,9 @@ class BulkOperationCompleted extends Notification implements ShouldQueue
     use Queueable;
 
     protected $operation;
+
     protected $count;
+
     protected $details;
 
     /**
@@ -31,11 +33,11 @@ class BulkOperationCompleted extends Notification implements ShouldQueue
     public function via($notifiable): array
     {
         $channels = ['database'];
-        
+
         if ($notifiable->preference('email_notify_bulk_complete')) {
             $channels[] = 'mail';
         }
-        
+
         return $channels;
     }
 

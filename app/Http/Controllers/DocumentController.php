@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\DocumentService;
 use App\Services\ConversionService;
+use App\Services\DocumentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use Inertia\Inertia;
 
 class DocumentController extends Controller
 {
@@ -28,22 +27,22 @@ class DocumentController extends Controller
 
         try {
             $uploadedFile = $request->file('file');
-            
+
             // Process the upload
             $processedFiles = $documentService->processUpload($uploadedFile);
-            
+
             return response()->json([
                 'message' => 'File uploaded successfully',
-                'data' => $processedFiles
+                'data' => $processedFiles,
             ]);
         } catch (\Exception $e) {
-            Log::error("(DocumentController) [store] - Failed to upload document", [
-                'error' => $e->getMessage()
+            Log::error('(DocumentController) [store] - Failed to upload document', [
+                'error' => $e->getMessage(),
             ]);
-            
+
             return response()->json([
                 'message' => 'Failed to upload file',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -53,7 +52,7 @@ class DocumentController extends Controller
         $request->validate([
             'guid' => 'required|string|regex:/^[a-f0-9\-]{36}$/i',
             'type' => 'required|string|in:receipts,image,pdf',
-            'extension' => 'required|string|in:jpg,jpeg,png,gif,pdf'
+            'extension' => 'required|string|in:jpg,jpeg,png,gif,pdf',
         ]);
 
         $guid = $request->input('guid');
@@ -62,21 +61,21 @@ class DocumentController extends Controller
 
         // Get the document content
         $content = $documentService->getDocument($guid, $type, $extension);
-        
-        if (!$content) {
+
+        if (! $content) {
             Log::error("(DocumentController) [serve] - Document not found (guid: {$guid})", [
                 'type' => $type,
                 'extension' => $extension,
-                'user_id' => $request->user()->id
+                'user_id' => $request->user()->id,
             ]);
-            
+
             return response()->json(['error' => 'Document not found'], 404);
         }
 
         // Map type to MIME type
         $mimeTypes = [
-            'image' => 'image/' . $extension,
-            'pdf' => 'application/pdf'
+            'image' => 'image/'.$extension,
+            'pdf' => 'application/pdf',
         ];
 
         $mimeType = $mimeTypes[$type] ?? 'application/octet-stream';
@@ -87,7 +86,7 @@ class DocumentController extends Controller
         }, 200, [
             'Content-Type' => $mimeType,
             'Content-Length' => strlen($content),
-            'Content-Disposition' => 'inline; filename="document.' . $extension . '"',
+            'Content-Disposition' => 'inline; filename="document.'.$extension.'"',
             'Cache-Control' => 'private, max-age=3600',
             'X-Frame-Options' => 'SAMEORIGIN',
             'X-Content-Type-Options' => 'nosniff',
@@ -97,30 +96,30 @@ class DocumentController extends Controller
     public function getSecureUrl(Request $request, DocumentService $documentService)
     {
         $request->validate([
-            'file_id' => 'required|integer'
+            'file_id' => 'required|integer',
         ]);
 
         $fileId = $request->input('file_id');
 
         try {
             $url = $documentService->getSecureUrl($fileId);
-            
-            if (!$url) {
-                Log::error("(DocumentController) [getSecureUrl] - Could not generate secure URL", [
+
+            if (! $url) {
+                Log::error('(DocumentController) [getSecureUrl] - Could not generate secure URL', [
                     'file_id' => $fileId,
-                    'user_id' => $request->user()->id
+                    'user_id' => $request->user()->id,
                 ]);
-                
+
                 return response()->json(['error' => 'Could not generate secure URL'], 500);
             }
 
             return response()->json(['url' => $url]);
         } catch (\Exception $e) {
-            Log::error("(DocumentController) [getSecureUrl] - Error generating secure URL", [
+            Log::error('(DocumentController) [getSecureUrl] - Error generating secure URL', [
                 'file_id' => $fileId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            
+
             return response()->json(['error' => 'Error generating secure URL'], 500);
         }
     }

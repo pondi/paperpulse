@@ -2,27 +2,33 @@
 
 namespace App\Jobs;
 
-use OpenAI\Laravel\Facades\OpenAI;
 use App\Models\Merchant;
 use App\Models\Receipt;
 use Illuminate\Bus\Queueable;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use OpenAI\Laravel\Facades\OpenAI;
 
 class MatchMerchant implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $jobID;
+
     protected $fileID;
+
     protected $receiptID;
+
     protected $merchantName;
+
     protected $merchantAddress;
+
     protected $merchantVatNumber;
+
     protected $jobName;
 
     public $timeout = 3600;
@@ -53,16 +59,18 @@ class MatchMerchant implements ShouldQueue
         $merchants = $this->fetchAllMerchants();
         $bestMatch = $this->getBestMatchFromOpenAI($merchants);
 
-        if (!$bestMatch || !isset($bestMatch['name'])) {
+        if (! $bestMatch || ! isset($bestMatch['name'])) {
             $this->createMerchant();
+
             return;
         }
 
         $matchedMerchantName = $bestMatch['name'];
         $merchantIds = array_column($merchants, 'id', 'name');
 
-        if (!isset($merchantIds[$matchedMerchantName])) {
+        if (! isset($merchantIds[$matchedMerchantName])) {
             $this->createMerchant();
+
             return;
         }
 
@@ -77,11 +85,11 @@ class MatchMerchant implements ShouldQueue
         $fileMetaData = Cache::get("job.{$this->jobID}.fileMetaData");
         $receiptMetaData = Cache::get("job.{$this->jobID}.receiptMetaData");
 
-        if (!$fileMetaData || !$receiptMetaData) {
-            Log::error("(MatchMerchant) - Required cache data missing", [
+        if (! $fileMetaData || ! $receiptMetaData) {
+            Log::error('(MatchMerchant) - Required cache data missing', [
                 'jobID' => $this->jobID,
                 'fileMetaData' => $fileMetaData,
-                'receiptMetaData' => $receiptMetaData
+                'receiptMetaData' => $receiptMetaData,
             ]);
             throw new \RuntimeException("Required cache data missing for job {$this->jobID}");
         }
@@ -89,24 +97,24 @@ class MatchMerchant implements ShouldQueue
         // Validate required fields are present
         $requiredFileFields = ['fileID', 'jobName'];
         $requiredReceiptFields = ['receiptID', 'merchantName'];
-        
+
         foreach ($requiredFileFields as $field) {
-            if (!isset($fileMetaData[$field])) {
-                Log::error("(MatchMerchant) - Required file metadata field missing", [
+            if (! isset($fileMetaData[$field])) {
+                Log::error('(MatchMerchant) - Required file metadata field missing', [
                     'jobID' => $this->jobID,
                     'missing_field' => $field,
-                    'fileMetaData' => $fileMetaData
+                    'fileMetaData' => $fileMetaData,
                 ]);
                 throw new \RuntimeException("Required file metadata field {$field} missing for job {$this->jobID}");
             }
         }
 
         foreach ($requiredReceiptFields as $field) {
-            if (!isset($receiptMetaData[$field])) {
-                Log::error("(MatchMerchant) - Required receipt metadata field missing", [
+            if (! isset($receiptMetaData[$field])) {
+                Log::error('(MatchMerchant) - Required receipt metadata field missing', [
                     'jobID' => $this->jobID,
                     'missing_field' => $field,
-                    'receiptMetaData' => $receiptMetaData
+                    'receiptMetaData' => $receiptMetaData,
                 ]);
                 throw new \RuntimeException("Required receipt metadata field {$field} missing for job {$this->jobID}");
             }
@@ -124,7 +132,7 @@ class MatchMerchant implements ShouldQueue
             'jobID' => $this->jobID,
             'fileID' => $this->fileID,
             'receiptID' => $this->receiptID,
-            'merchantName' => $this->merchantName
+            'merchantName' => $this->merchantName,
         ]);
     }
 
@@ -139,17 +147,17 @@ class MatchMerchant implements ShouldQueue
     {
         $response = OpenAI::completions()->create([
             'model' => 'gpt-3.5-turbo-instruct',
-            'prompt' => "We have a list of merchant names: " . json_encode($merchants) . ". Find the closest match to the input, but if you do not finde a close match then return an emtpy string. It needs to be really close. Here is the merchant you need to find in the list: " . $this->merchantName .
-                        "You have to respond with a JSON object with the merchant name and id. If the merchant name is not found, respond with an empty string. Reply ONLY with JSON object or empty string and nothing else.",
+            'prompt' => 'We have a list of merchant names: '.json_encode($merchants).'. Find the closest match to the input, but if you do not finde a close match then return an emtpy string. It needs to be really close. Here is the merchant you need to find in the list: '.$this->merchantName.
+                        'You have to respond with a JSON object with the merchant name and id. If the merchant name is not found, respond with an empty string. Reply ONLY with JSON object or empty string and nothing else.',
             'max_tokens' => 500,
         ]);
 
         Log::debug("(MatchMerchant) [{$this->jobName}] - OpenAI response received (receipt: {$this->receiptID})", [
-            'response' => $response->toArray()
+            'response' => $response->toArray(),
         ]);
 
         $text = trim($response['choices'][0]['text']);
-        
+
         // If response is empty or just whitespace, return null
         if (empty($text)) {
             return null;
@@ -157,7 +165,7 @@ class MatchMerchant implements ShouldQueue
 
         // Try to decode JSON response
         $decoded = json_decode(stripslashes($text), true);
-        
+
         // If JSON decode failed or result is empty, return null
         if ($decoded === null || empty($decoded)) {
             return null;

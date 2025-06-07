@@ -82,10 +82,10 @@ class User extends Authenticatable
      */
     public function preference($key, $default = null)
     {
-        if (!$this->preferences) {
+        if (! $this->preferences) {
             return $default ?? UserPreference::defaultPreferences()[$key] ?? null;
         }
-        
+
         return $this->preferences->$key ?? $default;
     }
 }

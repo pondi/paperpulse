@@ -33,12 +33,12 @@ class ApiResource extends JsonResource
     public function toArray(Request $request): array
     {
         $data = parent::toArray($request);
-        
+
         // Remove any sensitive fields
         foreach (static::$hiddenFields as $field) {
             unset($data[$field]);
         }
-        
+
         // Recursively clean nested data
         return $this->cleanSensitiveData($data);
     }
@@ -52,15 +52,16 @@ class ApiResource extends JsonResource
             // Remove any key that might contain sensitive data
             if ($this->isSensitiveKey($key)) {
                 unset($data[$key]);
+
                 continue;
             }
-            
+
             // Recursively clean nested arrays
             if (is_array($value)) {
                 $data[$key] = $this->cleanSensitiveData($value);
             }
         }
-        
+
         return $data;
     }
 
@@ -82,15 +83,15 @@ class ApiResource extends JsonResource
             'cvv',
             'bank',
         ];
-        
+
         $lowercaseKey = strtolower($key);
-        
+
         foreach ($sensitivePatterns as $pattern) {
             if (str_contains($lowercaseKey, $pattern)) {
                 return true;
             }
         }
-        
+
         return false;
     }
 }

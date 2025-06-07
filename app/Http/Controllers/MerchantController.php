@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Merchant;
 use App\Services\LogoService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
 
 class MerchantController extends Controller
 {
@@ -58,16 +58,16 @@ class MerchantController extends Controller
                 'name' => $merchant->name,
                 'imageUrl' => $this->logoService->getImageUrl($merchant, $merchant->logo_data, $merchant->mime_type),
                 'lastInvoice' => [
-                    'date' => $merchant->last_receipt_date 
-                        ? date('F j, Y', strtotime($merchant->last_receipt_date)) 
+                    'date' => $merchant->last_receipt_date
+                        ? date('F j, Y', strtotime($merchant->last_receipt_date))
                         : 'Ingen kvitteringer',
                     'dateTime' => $merchant->last_receipt_date,
-                    'amount' => number_format((float)$merchant->total_amount, 2, ',', ' ') . ' kr'
-                ]
+                    'amount' => number_format((float) $merchant->total_amount, 2, ',', ' ').' kr',
+                ],
             ]);
 
         return Inertia::render('Receipt/Merchants', [
-            'merchants' => $merchants
+            'merchants' => $merchants,
         ]);
     }
 
@@ -77,13 +77,13 @@ class MerchantController extends Controller
         $hasAccess = $merchant->receipts()
             ->where('user_id', auth()->id())
             ->exists();
-            
-        if (!$hasAccess) {
+
+        if (! $hasAccess) {
             abort(403, 'Unauthorized access to merchant');
         }
-        
+
         $request->validate([
-            'logo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'logo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $file = $request->file('logo');

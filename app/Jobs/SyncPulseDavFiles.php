@@ -3,8 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\User;
-use App\Services\PulseDavService;
 use App\Notifications\ScannerFilesImported;
+use App\Services\PulseDavService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -39,7 +39,7 @@ class SyncPulseDavFiles implements ShouldQueue
                         'user_id' => $user->id,
                         'synced_count' => $synced,
                     ]);
-                    
+
                     // Notify user about new scanner files
                     if ($user->preference('notify_scanner_imports')) {
                         $user->notify(new ScannerFilesImported($synced));

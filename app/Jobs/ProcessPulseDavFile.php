@@ -2,16 +2,16 @@
 
 namespace App\Jobs;
 
-use App\Models\PulseDavFile;
 use App\Models\File;
+use App\Models\PulseDavFile;
 use App\Services\PulseDavService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProcessPulseDavFile implements ShouldQueue
@@ -19,7 +19,9 @@ class ProcessPulseDavFile implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 3600;
+
     public $tries = 5;
+
     public $backoff = 10;
 
     protected $pulseDavFile;
@@ -43,9 +45,9 @@ class ProcessPulseDavFile implements ShouldQueue
 
             // Download file from S3
             $fileContent = $pulseDavService->downloadFile($this->pulseDavFile->s3_path);
-            
+
             // Store temporarily
-            $tempPath = 'temp/' . Str::uuid() . '_' . $this->pulseDavFile->filename;
+            $tempPath = 'temp/'.Str::uuid().'_'.$this->pulseDavFile->filename;
             Storage::disk('local')->put($tempPath, $fileContent);
 
             // Create File record
@@ -82,7 +84,7 @@ class ProcessPulseDavFile implements ShouldQueue
 
         } catch (\Exception $e) {
             $this->pulseDavFile->markAsFailed($e->getMessage());
-            
+
             Log::error('Failed to process S3 file', [
                 'pulsedav_file_id' => $this->pulseDavFile->id,
                 'error' => $e->getMessage(),

@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\PulseDavService;
 use App\Models\PulseDavFile;
+use App\Services\PulseDavService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -87,6 +87,7 @@ class PulseDavController extends Controller
 
         try {
             $this->pulseDavService->deleteFile($file);
+
             return response()->json([
                 'message' => 'File deleted successfully',
             ]);

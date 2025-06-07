@@ -3,11 +3,10 @@
 namespace App\Providers;
 
 use App\Models\JobHistory;
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\ServiceProvider;
 
 class JobServiceProvider extends ServiceProvider
 {
@@ -27,6 +26,7 @@ class JobServiceProvider extends ServiceProvider
             $reflection = new \ReflectionClass($command);
             $property = $reflection->getProperty('jobID');
             $property->setAccessible(true);
+
             return $property->getValue($command);
         } catch (\Exception $e) {
             return null;
@@ -43,7 +43,7 @@ class JobServiceProvider extends ServiceProvider
             $jobID = $this->extractJobIDFromCommand($command);
 
             // If jobID is still null, try to get it from the serialized command
-            if (!$jobID && isset($payload['data']['command'])) {
+            if (! $jobID && isset($payload['data']['command'])) {
                 $commandData = $payload['data']['command'];
                 if (is_string($commandData)) {
                     $unserialized = @unserialize($commandData);
@@ -61,10 +61,10 @@ class JobServiceProvider extends ServiceProvider
                 'uuid' => $uuid,
                 'order_in_chain' => null,
                 'queue' => 'receipts',
-                'command_data' => $payload['data'] ?? []
+                'command_data' => $payload['data'] ?? [],
             ];
 
-            if (!$jobID || !$uuid || !$commandName) {
+            if (! $jobID || ! $uuid || ! $commandName) {
                 Log::error('Missing required job information', [
                     'jobID' => $jobID,
                     'uuid' => $uuid,
@@ -72,14 +72,15 @@ class JobServiceProvider extends ServiceProvider
                     'command_class' => get_class($command),
                     'payload' => $payload,
                     'command_data' => $payload['data']['command'] ?? null,
-                    'unserialized_command' => isset($unserialized) ? get_class($unserialized) : null
+                    'unserialized_command' => isset($unserialized) ? get_class($unserialized) : null,
                 ]);
+
                 return $baseReturn;
             }
 
             // Get metadata from cache
             $metadata = Cache::get("job.{$jobID}.fileMetaData");
-            
+
             // Set order in chain based on job type
             $orderInChain = match (class_basename($command)) {
                 'ProcessFile' => 1,
@@ -96,7 +97,7 @@ class JobServiceProvider extends ServiceProvider
                 'order_in_chain' => $orderInChain,
                 'uuid' => $uuid,
                 'queue' => $payload['queue'] ?? 'receipts',
-                'command_data' => $payload['data'] ?? []
+                'command_data' => $payload['data'] ?? [],
             ];
 
         } catch (\Exception $e) {
@@ -106,8 +107,9 @@ class JobServiceProvider extends ServiceProvider
                 'payload' => $payload,
                 'command_class' => get_class($command ?? null),
                 'command_data' => $payload['data']['command'] ?? null,
-                'unserialized_command' => isset($unserialized) ? get_class($unserialized) : null
+                'unserialized_command' => isset($unserialized) ? get_class($unserialized) : null,
             ]);
+
             return [
                 'name' => $payload['data']['commandName'] ?? class_basename($command),
                 'parent_uuid' => null,
@@ -115,7 +117,7 @@ class JobServiceProvider extends ServiceProvider
                 'uuid' => $uuid ?? null,
                 'order_in_chain' => null,
                 'queue' => 'receipts',
-                'command_data' => $payload['data'] ?? []
+                'command_data' => $payload['data'] ?? [],
             ];
         }
     }
@@ -127,22 +129,23 @@ class JobServiceProvider extends ServiceProvider
             try {
                 $payload = $event->job->payload();
                 $command = null;
-                
+
                 // Try to unserialize command
                 if (isset($payload['data']['command'])) {
                     $command = @unserialize($payload['data']['command']);
                 }
-                
-                if (!$command) {
+
+                if (! $command) {
                     Log::error('Failed to unserialize command', [
                         'payload' => $payload,
-                        'raw_command' => $payload['data']['command'] ?? null
+                        'raw_command' => $payload['data']['command'] ?? null,
                     ]);
+
                     return;
                 }
 
                 $details = $this->getJobDetails($command, $payload);
-                
+
                 // Ensure all required fields are present
                 $details = array_merge([
                     'uuid' => null,
@@ -151,15 +154,16 @@ class JobServiceProvider extends ServiceProvider
                     'metadata' => null,
                     'queue' => 'receipts',
                     'order_in_chain' => null,
-                    'command_data' => []
+                    'command_data' => [],
                 ], $details);
 
-                if (!$details['uuid'] || !$details['name']) {
+                if (! $details['uuid'] || ! $details['name']) {
                     Log::error('Missing required job details', [
                         'details' => $details,
                         'command_class' => get_class($command),
-                        'command_data' => $payload['data']['command'] ?? null
+                        'command_data' => $payload['data']['command'] ?? null,
                     ]);
+
                     return;
                 }
 
@@ -175,7 +179,7 @@ class JobServiceProvider extends ServiceProvider
                                 'metadata' => $details['metadata'],
                                 'status' => 'processing',
                                 'command' => $details['name'],
-                                'data' => $details['command_data']
+                                'data' => $details['command_data'],
                             ],
                             'status' => 'processing',
                             'started_at' => now(),
@@ -183,7 +187,7 @@ class JobServiceProvider extends ServiceProvider
                             'order_in_chain' => null,
                             'attempt' => $event->job->attempts(),
                             'exception' => null,
-                            'finished_at' => null
+                            'finished_at' => null,
                         ]
                     );
                 }
@@ -198,7 +202,7 @@ class JobServiceProvider extends ServiceProvider
                         'payload' => [
                             'metadata' => $details['metadata'],
                             'command' => $details['name'],
-                            'data' => $details['command_data']
+                            'data' => $details['command_data'],
                         ],
                         'status' => 'processing',
                         'attempt' => $event->job->attempts(),
@@ -206,7 +210,7 @@ class JobServiceProvider extends ServiceProvider
                         'progress' => 0,
                         'order_in_chain' => $details['order_in_chain'],
                         'exception' => null,
-                        'finished_at' => null
+                        'finished_at' => null,
                     ]
                 );
 
@@ -221,14 +225,14 @@ class JobServiceProvider extends ServiceProvider
                     'parent_uuid' => $details['parent_uuid'],
                     'order' => $details['order_in_chain'],
                     'attempt' => $event->job->attempts(),
-                    'command_class' => get_class($command)
+                    'command_class' => get_class($command),
                 ]);
             } catch (\Exception $e) {
                 Log::error('Failed to process job start', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'payload' => $payload ?? null,
-                    'command_data' => $payload['data']['command'] ?? null
+                    'command_data' => $payload['data']['command'] ?? null,
                 ]);
             }
         });
@@ -237,18 +241,19 @@ class JobServiceProvider extends ServiceProvider
         Queue::after(function ($event) {
             try {
                 $payload = $event->job->payload();
-                if (!isset($payload['uuid'])) {
+                if (! isset($payload['uuid'])) {
                     Log::error('Missing UUID in job payload');
+
                     return;
                 }
 
                 $jobHistory = JobHistory::where('uuid', $payload['uuid'])->first();
-                
+
                 if ($jobHistory) {
                     $jobHistory->update([
                         'status' => 'completed',
                         'finished_at' => now(),
-                        'progress' => 100
+                        'progress' => 100,
                     ]);
 
                     // Update parent progress
@@ -258,13 +263,13 @@ class JobServiceProvider extends ServiceProvider
 
                     Log::info('Job completed', [
                         'uuid' => $payload['uuid'],
-                        'parent_uuid' => $jobHistory->parent_uuid
+                        'parent_uuid' => $jobHistory->parent_uuid,
                     ]);
                 }
             } catch (\Exception $e) {
                 Log::error('Failed to process job completion', [
                     'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => $e->getTraceAsString(),
                 ]);
             }
         });
@@ -273,18 +278,19 @@ class JobServiceProvider extends ServiceProvider
         Queue::failing(function ($event) {
             try {
                 $payload = $event->job->payload();
-                if (!isset($payload['uuid'])) {
+                if (! isset($payload['uuid'])) {
                     Log::error('Missing UUID in job payload on failure');
+
                     return;
                 }
 
                 $jobHistory = JobHistory::where('uuid', $payload['uuid'])->first();
-                
+
                 if ($jobHistory) {
                     $jobHistory->update([
                         'status' => 'failed',
                         'finished_at' => now(),
-                        'exception' => $event->exception->getMessage()
+                        'exception' => $event->exception->getMessage(),
                     ]);
 
                     // Mark parent as failed
@@ -294,20 +300,20 @@ class JobServiceProvider extends ServiceProvider
                             ->update([
                                 'status' => 'failed',
                                 'finished_at' => now(),
-                                'exception' => 'Chain failed: ' . $event->exception->getMessage()
+                                'exception' => 'Chain failed: '.$event->exception->getMessage(),
                             ]);
                     }
 
                     Log::error('Job failed', [
                         'uuid' => $payload['uuid'],
                         'exception' => $event->exception->getMessage(),
-                        'parent_uuid' => $jobHistory->parent_uuid
+                        'parent_uuid' => $jobHistory->parent_uuid,
                     ]);
                 }
             } catch (\Exception $e) {
                 Log::error('Failed to process job failure', [
                     'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => $e->getTraceAsString(),
                 ]);
             }
         });
@@ -321,12 +327,12 @@ class JobServiceProvider extends ServiceProvider
                     ->update([
                         'status' => 'failed',
                         'exception' => 'Job timeout - exceeded 1 hour',
-                        'finished_at' => now()
+                        'finished_at' => now(),
                     ]);
             } catch (\Exception $e) {
                 Log::error('Failed in queue loop', [
                     'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => $e->getTraceAsString(),
                 ]);
             }
         });
@@ -338,21 +344,23 @@ class JobServiceProvider extends ServiceProvider
             $parent = JobHistory::where('uuid', $parentUuid)
                 ->whereNull('parent_uuid')
                 ->first();
-                
-            if (!$parent) {
+
+            if (! $parent) {
                 Log::warning('Parent job not found for progress update', [
-                    'parent_uuid' => $parentUuid
+                    'parent_uuid' => $parentUuid,
                 ]);
+
                 return;
             }
 
             $children = JobHistory::where('parent_uuid', $parentUuid)->get();
             $totalChildren = $children->count();
-            
+
             if ($totalChildren === 0) {
                 Log::warning('No child jobs found for parent', [
-                    'parent_uuid' => $parentUuid
+                    'parent_uuid' => $parentUuid,
                 ]);
+
                 return;
             }
 
@@ -362,9 +370,9 @@ class JobServiceProvider extends ServiceProvider
 
             // Calculate progress and round to nearest integer
             $progress = round(($completedChildren / $totalChildren) * 100);
-            
+
             // Determine parent status based on child jobs
-            $status = match(true) {
+            $status = match (true) {
                 $failedChildren > 0 => 'failed',
                 $completedChildren === $totalChildren => 'completed',
                 $processingChildren > 0 => 'processing',
@@ -373,10 +381,10 @@ class JobServiceProvider extends ServiceProvider
 
             $parent->progress = $progress;
             $parent->status = $status;
-            
+
             if ($status === 'completed' || $status === 'failed') {
                 $parent->finished_at = now();
-                
+
                 // If failed, include information about failed children
                 if ($status === 'failed') {
                     $failedJobs = $children->where('status', 'failed')
@@ -395,13 +403,13 @@ class JobServiceProvider extends ServiceProvider
                 'failed_children' => $failedChildren,
                 'processing_children' => $processingChildren,
                 'progress' => $progress,
-                'status' => $status
+                'status' => $status,
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to update parent progress', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'parent_uuid' => $parentUuid
+                'parent_uuid' => $parentUuid,
             ]);
         }
     }

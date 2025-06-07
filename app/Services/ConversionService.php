@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use Spatie\PdfToImage\Pdf;
 use Illuminate\Support\Facades\Log;
+use Spatie\PdfToImage\Pdf;
 
 class ConversionService
 {
@@ -14,16 +14,16 @@ class ConversionService
     {
         try {
             $spatiePDF = new Pdf($storedFilePath);
-            $outputPath = storage_path('app/uploads/' . $fileGUID . '.jpg');
+            $outputPath = storage_path('app/uploads/'.$fileGUID.'.jpg');
 
             // Generate the image
             $spatiePDF->quality(85)
                 ->size(400)
                 ->save($outputPath);
 
-            Log::debug("(ConversionService) [pdfToImage] - PDF converted to image", [
+            Log::debug('(ConversionService) [pdfToImage] - PDF converted to image', [
                 'file_path' => $storedFilePath,
-                'file_guid' => $fileGUID
+                'file_guid' => $fileGUID,
             ]);
 
             // Store image in permanent storage
@@ -41,7 +41,7 @@ class ConversionService
         } catch (\Exception $e) {
             Log::error("(ConversionService) [pdfToImage] - Error converting PDF to image (file: {$fileGUID})", [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
         }
@@ -60,4 +60,4 @@ class ConversionService
             default => 'application/octet-stream',
         };
     }
-} 
+}

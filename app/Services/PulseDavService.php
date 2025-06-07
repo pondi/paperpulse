@@ -4,16 +4,16 @@ namespace App\Services;
 
 use App\Models\PulseDavFile;
 use App\Models\User;
-use Aws\S3\S3Client;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use App\Notifications\ScannerFilesImported;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class PulseDavService
 {
     protected $s3Client;
+
     protected $bucket;
+
     protected $incomingPrefix;
 
     public function __construct()
@@ -28,8 +28,8 @@ class PulseDavService
      */
     public function listUserFiles(User $user)
     {
-        $prefix = $this->incomingPrefix . $user->id . '/';
-        
+        $prefix = $this->incomingPrefix.$user->id.'/';
+
         try {
             $objects = $this->s3Client->listObjectsV2([
                 'Bucket' => $this->bucket,
@@ -59,6 +59,7 @@ class PulseDavService
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
             ]);
+
             return [];
         }
     }
@@ -77,7 +78,7 @@ class PulseDavService
                 ->where('user_id', $user->id)
                 ->exists();
 
-            if (!$exists) {
+            if (! $exists) {
                 PulseDavFile::create([
                     'user_id' => $user->id,
                     's3_path' => $fileData['s3_path'],
@@ -133,11 +134,11 @@ class PulseDavService
             $s3File->delete();
 
             // Optionally move file to archive folder in S3
-            $archivePath = 'archive/' . $s3File->s3_path;
-            
+            $archivePath = 'archive/'.$s3File->s3_path;
+
             $this->s3Client->copyObject([
                 'Bucket' => $this->bucket,
-                'CopySource' => $this->bucket . '/' . $s3File->s3_path,
+                'CopySource' => $this->bucket.'/'.$s3File->s3_path,
                 'Key' => $archivePath,
             ]);
 
@@ -202,7 +203,7 @@ class PulseDavService
             ]);
 
             $request = $this->s3Client->createPresignedRequest($command, "+{$expiration} minutes");
-            
+
             return (string) $request->getUri();
         } catch (\Exception $e) {
             Log::error('Failed to generate temporary URL', [

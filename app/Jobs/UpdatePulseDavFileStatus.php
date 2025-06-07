@@ -2,8 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Models\PulseDavFile;
 use App\Models\File;
+use App\Models\PulseDavFile;
 use App\Models\Receipt;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,6 +17,7 @@ class UpdatePulseDavFileStatus implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $file;
+
     protected $pulseDavFileId;
 
     /**
@@ -34,12 +35,13 @@ class UpdatePulseDavFileStatus implements ShouldQueue
     public function handle()
     {
         $pulseDavFile = PulseDavFile::find($this->pulseDavFileId);
-        
-        if (!$pulseDavFile) {
+
+        if (! $pulseDavFile) {
             Log::warning('PulseDavFile not found for status update', [
                 'pulsedav_file_id' => $this->pulseDavFileId,
                 'file_id' => $this->file->id,
             ]);
+
             return;
         }
 

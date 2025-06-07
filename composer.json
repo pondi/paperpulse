@@ -19,6 +19,7 @@
         "laravel/breeze": "^2.0",
         "laravel/framework": "^11.0",
         "laravel/horizon": "^5.23",
+        "laravel/octane": "^2.9",
         "laravel/sanctum": "^4.0",
         "laravel/scout": "^10.8",
         "laravel/tinker": "^2.9",

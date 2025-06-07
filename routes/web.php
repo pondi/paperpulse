@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\FileController;
 use App\Http\Controllers\MerchantController;
 use App\Http\Controllers\ReceiptController;
 use App\Http\Controllers\VendorController;

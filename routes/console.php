@@ -2,7 +2,20 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
+use App\Jobs\SyncPulseDavFiles;
+use App\Jobs\CleanupPulseDavFiles;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote')->hourly();
+
+// Schedule PulseDav sync every 30 minutes
+Schedule::job(new SyncPulseDavFiles)->everyThirtyMinutes()
+    ->name('sync-pulsedav-files')
+    ->withoutOverlapping();
+
+// Schedule PulseDav cleanup daily at 2am
+Schedule::job(new CleanupPulseDavFiles(30))->dailyAt('02:00')
+    ->name('cleanup-pulsedav-files')
+    ->withoutOverlapping();

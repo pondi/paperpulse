@@ -23,6 +23,11 @@ class File extends Model
         'file_size',
         'mime_type',
         'status',
+        'meta',
+    ];
+
+    protected $casts = [
+        'meta' => 'array',
     ];
 
     public function user()

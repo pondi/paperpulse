@@ -58,11 +58,15 @@ class ProcessPulseDavFile implements ShouldQueue
                 'status' => 'pending',
             ]);
 
-            // Dispatch the existing processing chain
+            // Store PulseDavFile ID in the File model for tracking
+            $file->update(['meta' => json_encode(['pulsedav_file_id' => $this->pulseDavFile->id])]);
+
+            // Dispatch the existing processing chain with status update at the end
             ProcessFile::withChain([
                 new ProcessReceipt($file),
                 new MatchMerchant($file),
                 new DeleteWorkingFiles($file),
+                new UpdatePulseDavFileStatus($file, $this->pulseDavFile->id),
             ])->dispatch($file);
 
             // Update S3 file record

@@ -18,7 +18,6 @@ yarn-error.log
 /.idea
 /.vscode
 
-# AI Documentation (local only)
 CLAUDE.md
 PAPERPULSE.md
 PULSEDAV.md

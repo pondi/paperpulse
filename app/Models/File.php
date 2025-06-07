@@ -11,7 +11,24 @@ class File extends Model
     use HasFactory;
     use Searchable;
 
-    protected $fillable = ['name', 'type', 'size', 'data', 'uploaded_at'];
+    protected $fillable = [
+        'user_id',
+        'name', 
+        'type', 
+        'size', 
+        'data', 
+        'uploaded_at',
+        'file_path',
+        'original_filename',
+        'file_size',
+        'mime_type',
+        'status',
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function receipts()
     {

@@ -44,4 +44,20 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Get the PulseDav files for the user.
+     */
+    public function pulseDavFiles()
+    {
+        return $this->hasMany(PulseDavFile::class);
+    }
+
+    /**
+     * Get the receipts for the user.
+     */
+    public function receipts()
+    {
+        return $this->hasMany(Receipt::class);
+    }
 }

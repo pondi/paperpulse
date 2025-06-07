@@ -11,9 +11,27 @@ class Receipt extends Model
     use HasFactory;
     use Searchable;
 
+    protected $fillable = [
+        'file_id',
+        'merchant_id',
+        'user_id',
+        'receipt_date',
+        'tax_amount',
+        'total_amount',
+        'currency',
+        'receipt_category',
+        'receipt_description',
+        'receipt_data',
+    ];
+
     public function file()
     {
         return $this->belongsTo(File::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function merchant()

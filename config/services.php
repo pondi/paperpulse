@@ -31,4 +31,9 @@ return [
         ],
     ],
 
+    'pulsedav' => [
+        'auth_enabled' => env('PULSEDAV_AUTH_ENABLED', true),
+        's3_incoming_prefix' => env('AWS_S3_INCOMING_PREFIX', 'incoming/'),
+    ],
+
 ];

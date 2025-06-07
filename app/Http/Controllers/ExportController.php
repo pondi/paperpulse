@@ -10,6 +10,12 @@ use Carbon\Carbon;
 
 class ExportController extends Controller
 {
+    public function __construct()
+    {
+        // Apply rate limiting middleware to all export methods
+        $this->middleware('throttle:exports');
+    }
+
     /**
      * Export receipts as CSV
      */

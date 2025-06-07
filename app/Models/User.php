@@ -60,4 +60,32 @@ class User extends Authenticatable
     {
         return $this->hasMany(Receipt::class);
     }
+
+    /**
+     * Get the categories for the user.
+     */
+    public function categories()
+    {
+        return $this->hasMany(Category::class);
+    }
+
+    /**
+     * Get the user's preferences.
+     */
+    public function preferences()
+    {
+        return $this->hasOne(UserPreference::class);
+    }
+
+    /**
+     * Get user preference value with fallback to default
+     */
+    public function preference($key, $default = null)
+    {
+        if (!$this->preferences) {
+            return $default ?? UserPreference::defaultPreferences()[$key] ?? null;
+        }
+        
+        return $this->preferences->$key ?? $default;
+    }
 }

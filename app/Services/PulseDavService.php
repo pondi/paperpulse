@@ -8,6 +8,7 @@ use Aws\S3\S3Client;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use App\Notifications\ScannerFilesImported;
 
 class PulseDavService
 {
@@ -86,6 +87,20 @@ class PulseDavService
                     'status' => 'pending',
                 ]);
                 $synced++;
+            }
+        }
+
+        // Send notification if files were synced
+        if ($synced > 0 && $user->preferences) {
+            if ($user->preferences->notify_scanner_import) {
+                try {
+                    $user->notify(new ScannerFilesImported($synced));
+                } catch (\Exception $e) {
+                    Log::warning('Failed to send scanner import notification', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
         }
 

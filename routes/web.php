@@ -12,6 +12,10 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\PulseDavController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\BulkOperationController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\PreferencesController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -34,10 +38,23 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     // Analytics
     Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
 
+    // Categories
+    Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
+    Route::patch('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+    Route::post('/categories/order', [CategoryController::class, 'updateOrder'])->name('categories.order');
+    Route::post('/categories/defaults', [CategoryController::class, 'createDefaults'])->name('categories.defaults');
+
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Preferences routes
+    Route::get('/preferences', [PreferencesController::class, 'index'])->name('preferences.index');
+    Route::patch('/preferences', [PreferencesController::class, 'update'])->name('preferences.update');
+    Route::post('/preferences/reset', [PreferencesController::class, 'reset'])->name('preferences.reset');
 
     // Merchant routes
     Route::get('/merchants', [MerchantController::class, 'index'])->name('merchants.index');
@@ -68,6 +85,15 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::patch('/receipts/{receipt}/line-items/{lineItem}', [ReceiptController::class, 'updateLineItem'])->name('receipts.line-items.update');
     Route::delete('/receipts/{receipt}/line-items/{lineItem}', [ReceiptController::class, 'deleteLineItem'])->name('receipts.line-items.destroy');
 
+    // Bulk operations
+    Route::prefix('bulk')->name('bulk.')->group(function () {
+        Route::post('/receipts/delete', [BulkOperationController::class, 'bulkDelete'])->name('receipts.delete');
+        Route::post('/receipts/categorize', [BulkOperationController::class, 'bulkCategorize'])->name('receipts.categorize');
+        Route::post('/receipts/export/csv', [BulkOperationController::class, 'bulkExportCsv'])->name('receipts.export.csv');
+        Route::post('/receipts/export/pdf', [BulkOperationController::class, 'bulkExportPdf'])->name('receipts.export.pdf');
+        Route::post('/receipts/stats', [BulkOperationController::class, 'getStats'])->name('receipts.stats');
+    });
+
     // Jobs routes
     Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');
     Route::get('/jobs/status', [JobController::class, 'getStatus'])->name('jobs.status');
@@ -90,6 +116,13 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::get('/files/{id}/status', [PulseDavController::class, 'status'])->name('status');
         Route::delete('/files/{id}', [PulseDavController::class, 'destroy'])->name('destroy');
     });
+
+    // Notification routes
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::post('/notifications/clear', [NotificationController::class, 'clear'])->name('notifications.clear');
 });
 
 require __DIR__.'/auth.php';

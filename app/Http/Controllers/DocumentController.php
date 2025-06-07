@@ -18,6 +18,9 @@ class DocumentController extends Controller
     {
         $this->documentService = $documentService;
         $this->conversionService = $conversionService;
+        
+        // Apply rate limiting middleware to store method
+        $this->middleware('throttle:file-uploads')->only('store');
     }
 
     /**

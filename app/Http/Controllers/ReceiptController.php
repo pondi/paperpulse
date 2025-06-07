@@ -23,13 +23,16 @@ class ReceiptController extends Controller
 
     public function index()
     {
-        $receipts = Receipt::with(['merchant', 'file', 'lineItems'])
+        $receipts = Receipt::with(['merchant', 'file', 'lineItems', 'category'])
+            ->where('user_id', auth()->id())
             ->orderBy('receipt_date', 'desc')
             ->get()
             ->map(function ($receipt) {
                 return [
                     'id' => $receipt->id,
                     'merchant' => $receipt->merchant,
+                    'category' => $receipt->category,
+                    'category_id' => $receipt->category_id,
                     'receipt_date' => $receipt->receipt_date,
                     'tax_amount' => $receipt->tax_amount,
                     'total_amount' => $receipt->total_amount,
@@ -54,8 +57,14 @@ class ReceiptController extends Controller
                 ];
             });
 
+        $categories = auth()->user()->categories()
+            ->active()
+            ->ordered()
+            ->get();
+
         return Inertia::render('Receipt/Index', [
-            'receipts' => $receipts
+            'receipts' => $receipts,
+            'categories' => $categories
         ]);
     }
 
@@ -132,6 +141,8 @@ class ReceiptController extends Controller
                 return [
                     'id' => $receipt->id,
                     'merchant' => $receipt->merchant,
+                    'category' => $receipt->category,
+                    'category_id' => $receipt->category_id,
                     'receipt_date' => $receipt->receipt_date,
                     'tax_amount' => $receipt->tax_amount,
                     'total_amount' => $receipt->total_amount,

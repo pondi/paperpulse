@@ -15,6 +15,7 @@ class Receipt extends Model
         'file_id',
         'merchant_id',
         'user_id',
+        'category_id',
         'receipt_date',
         'tax_amount',
         'total_amount',
@@ -42,6 +43,11 @@ class Receipt extends Model
     public function lineItems()
     {
         return $this->hasMany(LineItem::class);
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
     }
 
     /**

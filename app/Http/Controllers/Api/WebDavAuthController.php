@@ -10,6 +10,11 @@ use App\Models\User;
 
 class WebDavAuthController extends Controller
 {
+    public function __construct()
+    {
+        // Rate limiting is handled in routes/api.php
+    }
+
     /**
      * Authenticate PulseDav users
      *

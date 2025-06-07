@@ -70,6 +70,8 @@ class ReceiptController extends Controller
 
     public function show(Receipt $receipt)
     {
+        $this->authorize('view', $receipt);
+        
         $receipt->load(['merchant', 'file', 'lineItems']);
         
         return Inertia::render('Receipt/Show', [
@@ -103,6 +105,8 @@ class ReceiptController extends Controller
 
     public function showImage(Receipt $receipt)
     {
+        $this->authorize('view', $receipt);
+        
         if (!$receipt->file || !$receipt->file->guid) {
             abort(404);
         }
@@ -120,6 +124,8 @@ class ReceiptController extends Controller
 
     public function showPdf(Receipt $receipt)
     {
+        $this->authorize('view', $receipt);
+        
         if (!$receipt->file || !$receipt->file->guid) {
             abort(404);
         }
@@ -134,6 +140,7 @@ class ReceiptController extends Controller
     public function byMerchant($merchant)
     {
         $receipts = Receipt::where('merchant_id', $merchant)
+            ->where('user_id', auth()->id())
             ->with(['merchant', 'file', 'lineItems'])
             ->orderBy('receipt_date', 'desc')
             ->get()
@@ -174,6 +181,8 @@ class ReceiptController extends Controller
 
     public function destroy(Receipt $receipt)
     {
+        $this->authorize('delete', $receipt);
+        
         if ($this->receiptService->deleteReceipt($receipt)) {
             return redirect()->route('receipts.index')->with('success', 'The receipt was deleted');
         }
@@ -183,6 +192,8 @@ class ReceiptController extends Controller
 
     public function update(Request $request, Receipt $receipt)
     {
+        $this->authorize('update', $receipt);
+        
         $validated = $request->validate([
             'receipt_date' => 'required|date',
             'total_amount' => 'required|numeric',
@@ -200,6 +211,8 @@ class ReceiptController extends Controller
 
     public function updateLineItem(Request $request, Receipt $receipt, $lineItemId)
     {
+        $this->authorize('update', $receipt);
+        
         $validated = $request->validate([
             'text' => 'required|string',
             'sku' => 'nullable|string',
@@ -216,6 +229,8 @@ class ReceiptController extends Controller
 
     public function deleteLineItem(Receipt $receipt, $lineItemId)
     {
+        $this->authorize('update', $receipt);
+        
         $lineItem = $receipt->lineItems()->findOrFail($lineItemId);
         $lineItem->delete();
 
@@ -224,6 +239,8 @@ class ReceiptController extends Controller
 
     public function addLineItem(Request $request, Receipt $receipt)
     {
+        $this->authorize('update', $receipt);
+        
         $validated = $request->validate([
             'text' => 'required|string',
             'sku' => 'nullable|string',

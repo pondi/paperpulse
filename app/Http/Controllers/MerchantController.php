@@ -23,7 +23,10 @@ class MerchantController extends Controller
                 $join->on('merchants.id', '=', 'logos.logoable_id')
                     ->where('logos.logoable_type', '=', Merchant::class);
             })
-            ->join('receipts', 'merchants.id', '=', 'receipts.merchant_id')
+            ->join('receipts', function ($join) {
+                $join->on('merchants.id', '=', 'receipts.merchant_id')
+                    ->where('receipts.user_id', '=', auth()->id());
+            })
             ->select(
                 'merchants.id',
                 'merchants.name',

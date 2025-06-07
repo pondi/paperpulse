@@ -9,6 +9,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Auth\Events\Registered;
 use App\Listeners\CreateUserPreferences;
+use Illuminate\Support\Facades\Gate;
+use App\Models\Receipt;
+use App\Models\File;
+use App\Models\Category;
+use App\Policies\ReceiptPolicy;
+use App\Policies\FilePolicy;
+use App\Policies\CategoryPolicy;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,6 +33,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureRateLimiting();
+        $this->registerPolicies();
         
         // Register event listeners
         Event::listen(Registered::class, CreateUserPreferences::class);
@@ -77,5 +85,15 @@ class AppServiceProvider extends ServiceProvider
                     ], 429);
                 });
         });
+    }
+
+    /**
+     * Register the application's policies.
+     */
+    protected function registerPolicies(): void
+    {
+        Gate::policy(Receipt::class, ReceiptPolicy::class);
+        Gate::policy(File::class, FilePolicy::class);
+        Gate::policy(Category::class, CategoryPolicy::class);
     }
 }

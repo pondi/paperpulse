@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: paperpulse-config
+  namespace: paperpulse
+  labels:
+    app.kubernetes.io/name: paperpulse
+    app.kubernetes.io/component: config
+data:
+  # Application
+  APP_NAME: "PaperPulse"
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  APP_URL: "https://paperpulse.example.com"
+  
+  # Database
+  DB_CONNECTION: "pgsql"
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_DATABASE: "paperpulse"
+  
+  # Redis
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  CACHE_STORE: "redis"
+  SESSION_DRIVER: "redis"
+  QUEUE_CONNECTION: "redis"
+  
+  # Meilisearch
+  SCOUT_DRIVER: "meilisearch"
+  MEILISEARCH_HOST: "http://meilisearch-service:7700"
+  MEILISEARCH_ENV: "production"
+  
+  # AWS
+  AWS_DEFAULT_REGION: "us-east-1"
+  
+  # Mail
+  MAIL_MAILER: "smtp"
+  MAIL_FROM_ADDRESS: "noreply@paperpulse.example.com"
+  MAIL_FROM_NAME: "PaperPulse"
+  
+  # PulseDav
+  PULSEDAV_AUTH_ENABLED: "true"
+  AWS_S3_INCOMING_PREFIX: "incoming/"
+  
+  # Logging
+  LOG_CHANNEL: "stack"
+  LOG_LEVEL: "error"

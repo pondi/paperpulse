@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperpulse-worker
+  namespace: paperpulse
+  labels:
+    app.kubernetes.io/name: paperpulse
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: paperpulse
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: paperpulse
+        app.kubernetes.io/component: worker
+    spec:
+      containers:
+      - name: worker
+        image: paperpulse/worker:latest
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: paperpulse-config
+        - secretRef:
+            name: paperpulse-secret
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: storage
+          mountPath: /app/storage
+        livenessProbe:
+          exec:
+            command: ["php", "artisan", "horizon:status"]
+          initialDelaySeconds: 30
+          periodSeconds: 60
+          timeoutSeconds: 10
+      volumes:
+      - name: storage
+        emptyDir: {}

@@ -269,6 +269,27 @@ Meilisearch settings in `config/scout.php`:
 ],
 ```
 
+### Safe Migrations
+
+PaperPulse includes automatic migration handling with distributed locking:
+
+```bash
+# Run migrations with locking (recommended)
+php artisan migrate:safe --force
+
+# Run with seeders (development only)
+php artisan migrate:safe --seed
+
+# Custom lock timeout
+php artisan migrate:safe --force --lock-timeout=600
+```
+
+Features:
+- Distributed locking prevents concurrent migrations
+- Automatic retry and timeout handling
+- Cache rebuilding after migrations
+- Health check includes migration status
+
 ## 🧪 Testing
 
 Run the test suite:

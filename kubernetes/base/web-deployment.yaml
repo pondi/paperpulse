@@ -22,16 +22,7 @@ spec:
       - name: migrations
         image: paperpulse/web:latest
         imagePullPolicy: Always
-        command: ["/bin/bash", "-c"]
-        args:
-        - |
-          echo "Waiting for database..."
-          until php artisan db:monitor > /dev/null 2>&1; do
-            sleep 3
-          done
-          echo "Running migrations..."
-          php artisan migrate --force --isolated
-          echo "Migrations complete"
+        command: ["php", "artisan", "migrate:safe", "--force"]
         envFrom:
         - configMapRef:
             name: paperpulse-config

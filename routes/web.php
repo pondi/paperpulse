@@ -16,6 +16,9 @@ use App\Http\Controllers\ReceiptController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\VendorController;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -126,10 +129,45 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
 
 // Health check endpoint for Docker/Kubernetes
 Route::get('/up', function () {
+    $status = 'ok';
+    $checks = [];
+    
+    // Check database connection
+    try {
+        DB::connection()->getPdo();
+        $checks['database'] = true;
+    } catch (\Exception $e) {
+        $status = 'error';
+        $checks['database'] = false;
+    }
+    
+    // Check Redis connection
+    try {
+        Cache::store('redis')->get('health-check');
+        $checks['redis'] = true;
+    } catch (\Exception $e) {
+        $status = 'error';
+        $checks['redis'] = false;
+    }
+    
+    // Check if migrations are up to date
+    try {
+        $pendingMigrations = collect(DB::select('SELECT migration FROM migrations'))
+            ->pluck('migration')
+            ->diff(collect(File::files(database_path('migrations')))
+                ->map(fn($file) => str_replace('.php', '', $file->getFilename()))
+            )
+            ->isEmpty();
+        $checks['migrations'] = $pendingMigrations;
+    } catch (\Exception $e) {
+        $checks['migrations'] = false;
+    }
+    
     return response()->json([
-        'status' => 'ok',
+        'status' => $status,
         'timestamp' => now()->toIso8601String(),
-    ]);
+        'checks' => $checks,
+    ], $status === 'ok' ? 200 : 503);
 })->name('health');
 
 require __DIR__.'/auth.php';

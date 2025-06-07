@@ -3,21 +3,8 @@ set -e
 
 echo "Starting web server..."
 
-# Wait for database
-until php artisan db:monitor > /dev/null 2>&1; do
-    echo "Waiting for database..."
-    sleep 3
-done
-
-# Run migrations (with lock to prevent concurrent execution)
-echo "Running migrations..."
-php artisan migrate --force --isolated
-
-# Clear and cache configs
-echo "Optimizing application..."
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+# Run migrations with proper locking
+/app/docker/scripts/run-migrations.sh
 
 # Ensure storage permissions
 chown -R www-data:www-data /app/storage /app/bootstrap/cache

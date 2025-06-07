@@ -110,13 +110,46 @@ php artisan horizon
 
 ## 🐳 Docker Deployment
 
-### Using Docker Compose (Recommended)
+### Quick Start
 ```bash
+# Copy environment file
+cp .env.docker.example .env
+
+# Edit .env with your settings
+nano .env
+
+# Build and start services
+make build
+make up
+
+# Run migrations
+make migrate
+```
+
+### Using Docker Compose
+```bash
+# Production deployment
 docker-compose up -d
+
+# Development with hot reload
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
+
+### Available Make Commands
+```bash
+make build       # Build Docker images
+make up          # Start production services
+make up-dev      # Start development services
+make down        # Stop all services
+make logs        # View logs
+make shell       # Access web container
+make migrate     # Run migrations
+make test        # Run tests
 ```
 
 This will start:
-- Web server (Caddy with automatic HTTPS)
+- Web server (FrankenPHP with Laravel Octane)
+- Caddy reverse proxy (automatic HTTPS)
 - PostgreSQL database
 - Redis cache
 - Meilisearch

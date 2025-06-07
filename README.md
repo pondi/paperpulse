@@ -192,6 +192,19 @@ AWS_S3_INCOMING_PREFIX=incoming/
 
 ## 🔧 Configuration
 
+### Admin Access
+Horizon dashboard is protected and requires admin privileges:
+
+```bash
+# Promote a user to admin
+php artisan user:promote-admin user@example.com
+
+# Demote an admin to regular user
+php artisan user:demote-admin user@example.com
+```
+
+Admin users can access the Horizon dashboard at `/horizon` in production.
+
 ### Queue Workers
 Configure Horizon in `config/horizon.php`:
 ```php

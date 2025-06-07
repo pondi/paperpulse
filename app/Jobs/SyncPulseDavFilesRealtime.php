@@ -12,50 +12,49 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class SyncPulseDavFiles implements ShouldQueue
+class SyncPulseDavFilesRealtime implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
-     * Execute the job.
+     * Execute the job for users with real-time sync enabled.
      */
     public function handle(PulseDavService $pulseDavService)
     {
-        Log::info('Starting PulseDav file sync for all users');
+        // Only sync for users who have enabled real-time sync
+        $users = User::whereHas('preference', function ($query) {
+            $query->where('pulsedav_realtime_sync', true);
+        })->get();
 
-        $users = User::whereHas('pulseDavFiles')
-            ->orWhereHas('receipts')
-            ->get();
+        if ($users->isEmpty()) {
+            return;
+        }
 
-        $totalSynced = 0;
+        Log::info('Starting real-time PulseDav file sync', [
+            'user_count' => $users->count(),
+        ]);
 
         foreach ($users as $user) {
             try {
                 $synced = $pulseDavService->syncS3Files($user);
-                $totalSynced += $synced;
 
                 if ($synced > 0) {
-                    Log::info('Synced PulseDav files for user', [
+                    Log::info('Real-time sync found new files', [
                         'user_id' => $user->id,
                         'synced_count' => $synced,
                     ]);
                     
-                    // Notify user about new scanner files
+                    // Notify user immediately
                     if ($user->preference('notify_scanner_imports')) {
                         $user->notify(new ScannerFilesImported($synced));
                     }
                 }
             } catch (\Exception $e) {
-                Log::error('Failed to sync PulseDav files for user', [
+                Log::error('Failed real-time sync for user', [
                     'user_id' => $user->id,
                     'error' => $e->getMessage(),
                 ]);
             }
         }
-
-        Log::info('Completed PulseDav file sync', [
-            'total_users' => $users->count(),
-            'total_synced' => $totalSynced,
-        ]);
     }
 }

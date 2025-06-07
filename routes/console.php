@@ -4,6 +4,7 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use App\Jobs\SyncPulseDavFiles;
+use App\Jobs\SyncPulseDavFilesRealtime;
 use App\Jobs\CleanupPulseDavFiles;
 
 Artisan::command('inspire', function () {
@@ -13,6 +14,11 @@ Artisan::command('inspire', function () {
 // Schedule PulseDav sync every 30 minutes
 Schedule::job(new SyncPulseDavFiles)->everyThirtyMinutes()
     ->name('sync-pulsedav-files')
+    ->withoutOverlapping();
+
+// Schedule real-time PulseDav sync every 5 minutes for users who enabled it
+Schedule::job(new SyncPulseDavFilesRealtime)->everyFiveMinutes()
+    ->name('sync-pulsedav-files-realtime')
     ->withoutOverlapping();
 
 // Schedule PulseDav cleanup daily at 2am

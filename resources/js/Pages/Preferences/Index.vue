@@ -420,6 +420,19 @@
               />
               <InputError class="mt-2" :message="form.errors.file_retention_days" />
             </div>
+
+            <div class="flex items-center justify-between">
+              <label for="pulsedav_realtime_sync" class="flex flex-col">
+                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('pulsedav_realtime_sync') }}</span>
+                <span class="text-sm text-gray-500">{{ __('pulsedav_realtime_sync_description') }}</span>
+              </label>
+              <input
+                id="pulsedav_realtime_sync"
+                v-model="form.pulsedav_realtime_sync"
+                type="checkbox"
+                class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+            </div>
           </div>
         </section>
       </div>
@@ -538,6 +551,7 @@ const form = useForm({
   auto_process_scanner_uploads: props.preferences.auto_process_scanner_uploads ?? false,
   delete_after_processing: props.preferences.delete_after_processing ?? false,
   file_retention_days: props.preferences.file_retention_days || 30,
+  pulsedav_realtime_sync: props.preferences.pulsedav_realtime_sync ?? false,
   analytics_enabled: props.preferences.analytics_enabled ?? true,
   share_usage_data: props.preferences.share_usage_data ?? false,
 });

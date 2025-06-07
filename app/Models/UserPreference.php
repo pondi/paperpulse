@@ -40,6 +40,7 @@ class UserPreference extends Model
         'file_retention_days',
         'analytics_enabled',
         'share_usage_data',
+        'pulsedav_realtime_sync',
     ];
 
     protected $casts = [
@@ -62,6 +63,7 @@ class UserPreference extends Model
         'delete_after_processing' => 'boolean',
         'analytics_enabled' => 'boolean',
         'share_usage_data' => 'boolean',
+        'pulsedav_realtime_sync' => 'boolean',
         'receipts_per_page' => 'integer',
         'file_retention_days' => 'integer',
     ];
@@ -116,6 +118,7 @@ class UserPreference extends Model
             'file_retention_days' => 30,
             'analytics_enabled' => true,
             'share_usage_data' => false,
+            'pulsedav_realtime_sync' => false,
         ];
     }
 

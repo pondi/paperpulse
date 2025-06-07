@@ -162,6 +162,8 @@ return [
     'delete_after_processing_description' => 'Delete source files from S3 after successful processing.',
     'file_retention_days' => 'File retention days',
     'file_retention_days_description' => 'Number of days to keep processed files before automatic deletion.',
+    'pulsedav_realtime_sync' => 'Real-time scanner sync',
+    'pulsedav_realtime_sync_description' => 'Check for new scanner uploads every 5 minutes instead of every 30 minutes.',
     'privacy' => 'Privacy',
     'enable_analytics' => 'Enable analytics',
     'enable_analytics_description' => 'Allow collection of anonymous usage data to improve the application.',

@@ -161,6 +161,8 @@ return [
     'delete_after_processing_description' => 'Slett kildefiler fra S3 etter vellykket behandling.',
     'file_retention_days' => 'Filoppbevaringsdager',
     'file_retention_days_description' => 'Antall dager å beholde behandlede filer før automatisk sletting.',
+    'pulsedav_realtime_sync' => 'Sanntidssynkronisering for skanner',
+    'pulsedav_realtime_sync_description' => 'Sjekk for nye skanneropplastinger hvert 5. minutt i stedet for hvert 30. minutt.',
     'privacy' => 'Personvern',
     'enable_analytics' => 'Aktiver analyser',
     'enable_analytics_description' => 'Tillat innsamling av anonyme bruksdata for å forbedre applikasjonen.',

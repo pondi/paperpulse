@@ -182,6 +182,7 @@ import {
   UsersIcon,
   XMarkIcon,
   CloudArrowDownIcon,
+  ChartBarIcon,
 } from '@heroicons/vue/24/outline'
 import { ChevronDownIcon } from '@heroicons/vue/20/solid'
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
@@ -205,6 +206,7 @@ const navigation = [
       { name: 'vendors', href: route('vendors.index'), current: route().current('vendors.index') },
     ]
   },
+  { name: 'analytics', href: route('analytics.index'), icon: ChartBarIcon, current: route().current('analytics.*') },
   { name: 'upload', href: route('documents.upload'), icon: FolderIcon, current: route().current('documents.upload') },
   { name: 'scanner_imports', href: route('pulsedav.index'), icon: CloudArrowDownIcon, current: route().current('pulsedav.*') },
   { name: 'job_status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index') },

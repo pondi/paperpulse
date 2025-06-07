@@ -6,6 +6,7 @@ return [
     'merchants' => 'Butikker',
     'vendors' => 'Leverandører',
     'upload' => 'Last opp',
+    'analytics' => 'Analyser',
     'scanner_imports' => 'Skanner Importer',
     'job_status' => 'Jobbstatus',
     'dashboard' => 'Oversikt',

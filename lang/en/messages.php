@@ -7,6 +7,7 @@ return [
     'merchants' => 'Merchants',
     'vendors' => 'Vendors',
     'upload' => 'Upload',
+    'analytics' => 'Analytics',
     'scanner_imports' => 'Scanner Imports',
     'job_status' => 'Job Status',
     'dashboard' => 'Dashboard',

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\JobHistory;
+use App\Models\PulseDavFile;
 use Carbon\Carbon;
 use Illuminate\Http\{Request, JsonResponse};
 use Illuminate\Support\Collection;
@@ -149,6 +150,22 @@ class JobController extends Controller
     }
 
     /**
+     * Get PulseDav file processing statistics.
+     */
+    private function getPulseDavStats(): array
+    {
+        $query = PulseDavFile::where('user_id', auth()->id());
+        
+        return [
+            'total' => (clone $query)->count(),
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'processing' => (clone $query)->where('status', 'processing')->count(),
+            'completed' => (clone $query)->where('status', 'completed')->count(),
+            'failed' => (clone $query)->where('status', 'failed')->count(),
+        ];
+    }
+
+    /**
      * Display the jobs index page.
      */
     public function index(Request $request): Response
@@ -162,9 +179,28 @@ class JobController extends Controller
 
         $historyJobs = $historyQuery->with('tasks')->paginate(50);
 
+        // Get recent PulseDav files with processing status
+        $recentPulseDavFiles = PulseDavFile::where('user_id', auth()->id())
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($file) {
+                return [
+                    'id' => $file->id,
+                    'filename' => $file->filename,
+                    'status' => $file->status,
+                    'uploaded_at' => $file->uploaded_at?->toDateTimeString(),
+                    'processed_at' => $file->processed_at?->toDateTimeString(),
+                    'error_message' => $file->error_message,
+                    'receipt_id' => $file->receipt_id,
+                ];
+            });
+
         return Inertia::render('Jobs/Index', [
             'jobs' => $historyJobs->map(fn(JobHistory $job) => $this->transformJob($job))->all(),
             'stats' => $this->getJobStats(),
+            'pulseDavStats' => $this->getPulseDavStats(),
+            'recentPulseDavFiles' => $recentPulseDavFiles,
             'queues' => JobHistory::select('queue')
                 ->whereNull('parent_uuid')
                 ->distinct()

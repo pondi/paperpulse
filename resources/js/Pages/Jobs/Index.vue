@@ -9,7 +9,11 @@
     <div class="py-12 bg-gray-900">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <JobStats :stats="stats" />
-        <JobFilters v-model:form="form" :queues="queues" />
+        
+        <!-- PulseDav File Processing Status -->
+        <PulseDavStats :stats="pulseDavStats" :recent-files="recentPulseDavFiles" />
+        
+        <JobFilters :form="form" :queues="queues" @update:form="updateForm" />
         
         <!-- Jobs List -->
         <div v-if="jobs?.length" class="space-y-4">
@@ -23,7 +27,8 @@
 
         <Pagination 
           v-if="pagination?.last_page > 1" 
-          v-model:page="form.page" 
+          :page="form.page"
+          @update:page="page => form.page = page" 
           :pagination="pagination" 
         />
       </div>
@@ -36,6 +41,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { reactive, watch } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import JobStats from '@/Pages/Jobs/Components/JobStats.vue';
+import PulseDavStats from '@/Pages/Jobs/Components/PulseDavStats.vue';
 import JobFilters from '@/Pages/Jobs/Components/JobFilters.vue';
 import JobCard from '@/Pages/Jobs/Components/JobCard.vue';
 import Pagination from '@/Pages/Jobs/Components/Pagination.vue';
@@ -69,9 +75,29 @@ interface Pagination {
   total: number;
 }
 
+interface PulseDavFile {
+  id: number;
+  filename: string;
+  status: string;
+  uploaded_at: string | null;
+  processed_at: string | null;
+  error_message: string | null;
+  receipt_id: number | null;
+}
+
+interface PulseDavStats {
+  total: number;
+  pending: number;
+  processing: number;
+  completed: number;
+  failed: number;
+}
+
 interface Props {
   jobs: Job[];
   stats: Stats;
+  pulseDavStats?: PulseDavStats;
+  recentPulseDavFiles?: PulseDavFile[];
   queues: string[];
   filters: {
     status: string;
@@ -89,6 +115,14 @@ const props = withDefaults(defineProps<Props>(), {
     completed: 0,
     failed: 0
   }),
+  pulseDavStats: () => ({
+    total: 0,
+    pending: 0,
+    processing: 0,
+    completed: 0,
+    failed: 0
+  }),
+  recentPulseDavFiles: () => [],
   queues: () => [],
   filters: () => ({
     status: '',
@@ -110,12 +144,16 @@ const form = reactive({
   page: props.pagination?.current_page ?? 1
 });
 
+const updateForm = (newForm: typeof form) => {
+  Object.assign(form, newForm);
+};
+
 watch(form, (newForm) => {
   router.get('/jobs', newForm, {
     preserveState: true,
     preserveScroll: true,
     replace: true,
-    only: ['jobs', 'stats', 'pagination']
+    only: ['jobs', 'stats', 'pulseDavStats', 'recentPulseDavFiles', 'pagination']
   });
 }, { deep: true });
 </script> 

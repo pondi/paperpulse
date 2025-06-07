@@ -1,0 +1,35 @@
+{
+    frankenphp {
+        worker {
+            file /app/public/index.php
+            env APP_RUNTIME "Octane\\FrankenPhpRuntime"
+            num 10
+        }
+    }
+}
+
+:8000 {
+    root * /app/public
+    encode gzip
+
+    # Security headers
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    }
+
+    # Handle static files
+    @static {
+        file
+        path *.ico *.css *.js *.gif *.jpg *.jpeg *.png *.svg *.woff *.woff2 *.ttf *.eot
+    }
+    handle @static {
+        header Cache-Control "public, max-age=31536000, immutable"
+    }
+
+    # PHP handling with FrankenPHP
+    php_server
+}

@@ -124,4 +124,12 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::post('/notifications/clear', [NotificationController::class, 'clear'])->name('notifications.clear');
 });
 
+// Health check endpoint for Docker/Kubernetes
+Route::get('/up', function () {
+    return response()->json([
+        'status' => 'ok',
+        'timestamp' => now()->toIso8601String(),
+    ]);
+})->name('health');
+
 require __DIR__.'/auth.php';

@@ -483,26 +483,17 @@ const isSelected = (item) => {
             return selectedFiles.value.includes(item.id);
         } else {
             const s3Path = item.s3_path || item.path;
-            const isSelected = selectedFiles.value.some(f => {
+            return selectedFiles.value.some(f => {
                 if (typeof f === 'object') {
                     return (f.s3_path || f.path) === s3Path;
                 }
                 return false;
             });
-            
-            // Debug logging for duplicate selection issue
-            if (isSelected) {
-                console.log('File is selected:', item.name, s3Path);
-            }
-            
-            return isSelected;
         }
     }
 };
 
 const toggleSelection = (item) => {
-    console.log('Toggle selection for:', item);
-    
     if (item.is_folder) {
         const index = selectedFolders.value.findIndex(f => f.s3_path === item.s3_path);
         if (index > -1) {
@@ -523,8 +514,6 @@ const toggleSelection = (item) => {
         } else {
             // Folder view - use s3_path as unique identifier
             const s3Path = item.s3_path || item.path;
-            console.log('File s3_path:', s3Path);
-            console.log('Current selectedFiles:', selectedFiles.value);
             
             const index = selectedFiles.value.findIndex(f => {
                 if (typeof f === 'object') {
@@ -534,10 +523,8 @@ const toggleSelection = (item) => {
             });
             
             if (index > -1) {
-                console.log('Removing file from selection');
                 selectedFiles.value.splice(index, 1);
             } else {
-                console.log('Adding file to selection');
                 selectedFiles.value.push({
                     ...item,
                     s3_path: s3Path // Ensure s3_path is set
@@ -545,9 +532,6 @@ const toggleSelection = (item) => {
             }
         }
     }
-    
-    console.log('After toggle - selectedFiles:', selectedFiles.value);
-    console.log('After toggle - selectedFolders:', selectedFolders.value);
 };
 
 const clearSelections = () => {
@@ -589,13 +573,6 @@ const importSelections = async () => {
             return;
         }
 
-        console.log('Importing selections:', {
-            selectedFiles: selectedFiles.value,
-            selectedFolders: selectedFolders.value,
-            selections: selections,
-            fileType: importOptions.value.fileType,
-            tagIds: importOptions.value.tagIds,
-        });
 
         const response = await fetch(route('pulsedav.import'), {
             method: 'POST',

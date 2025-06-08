@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PulseDavFile;
+use App\Models\PulseDavImportBatch;
 use App\Models\User;
 use App\Notifications\ScannerFilesImported;
 use Illuminate\Support\Facades\Log;

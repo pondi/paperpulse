@@ -58,7 +58,7 @@
                           <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
                             <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-gray-800 py-2 shadow-lg ring-1 ring-gray-700 focus:outline-none">
                               <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
-                                <Link :href="item.href" :method="item.method" :class="[active ? 'bg-gray-700 text-gray-100' : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100', 'block px-3 py-1 text-sm/6']">
+                                <Link :href="item.href" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-gray-700 text-gray-100' : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100', 'block px-3 py-1 text-sm/6', item.method ? 'w-full text-left' : '']">
                                   {{ __(item.name.toLowerCase()) }}
                                 </Link>
                               </MenuItem>
@@ -118,7 +118,7 @@
                   <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
                     <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-gray-800 py-2 shadow-lg ring-1 ring-gray-700 focus:outline-none">
                       <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
-                        <Link :href="item.href" :method="item.method" :class="[active ? 'bg-gray-700 text-gray-100' : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100', 'block px-3 py-1 text-sm/6']">
+                        <Link :href="item.href" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-gray-700 text-gray-100' : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100', 'block px-3 py-1 text-sm/6', item.method ? 'w-full text-left' : '']">
                           {{ __(item.name.toLowerCase()) }}
                         </Link>
                       </MenuItem>
@@ -172,7 +172,8 @@
                       <Link
                         :href="item.href"
                         :method="item.method"
-                        :class="[active ? 'bg-gray-50 dark:bg-gray-700' : '', 'block px-3 py-1 text-sm text-gray-900 dark:text-gray-100']"
+                        :as="item.method ? 'button' : 'a'"
+                        :class="[active ? 'bg-gray-50 dark:bg-gray-700' : '', 'block px-3 py-1 text-sm text-gray-900 dark:text-gray-100', item.method ? 'w-full text-left' : '']"
                       >
                         {{ __(item.name.toLowerCase()) }}
                       </Link>

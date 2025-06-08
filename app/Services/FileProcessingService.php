@@ -3,11 +3,13 @@
 namespace App\Services;
 
 use App\Jobs\AnalyzeDocument;
+use App\Jobs\ApplyTags;
 use App\Jobs\DeleteWorkingFiles;
 use App\Jobs\MatchMerchant;
 use App\Jobs\ProcessDocument;
 use App\Jobs\ProcessFile;
 use App\Jobs\ProcessReceipt;
+use App\Jobs\UpdatePulseDavFileStatus;
 use App\Models\File;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
@@ -220,20 +222,64 @@ class FileProcessingService
      */
     protected function dispatchJobChain(string $jobId, string $fileType): void
     {
+        // Get metadata to check if this is a PulseDav import
+        $metadata = Cache::get("job.{$jobId}.fileMetaData");
+        $isPulseDav = isset($metadata['source']) && $metadata['source'] === 'pulsedav';
+        $tagIds = $metadata['metadata']['tagIds'] ?? [];
+        $pulseDavFileId = $metadata['metadata']['pulseDavFileId'] ?? null;
+        
         if ($fileType === 'receipt') {
-            Bus::chain([
+            $jobs = [
                 (new ProcessFile($jobId))->onQueue('receipts'),
                 (new ProcessReceipt($jobId))->onQueue('receipts'),
                 (new MatchMerchant($jobId))->onQueue('receipts'),
-                (new DeleteWorkingFiles($jobId))->onQueue('receipts'),
-            ])->dispatch();
+            ];
+            
+            // Add tag application if there are tags
+            if (!empty($tagIds) && isset($metadata['fileId'])) {
+                $file = \App\Models\File::find($metadata['fileId']);
+                if ($file) {
+                    $jobs[] = (new ApplyTags($jobId, $file, $tagIds))->onQueue('receipts');
+                }
+            }
+            
+            $jobs[] = (new DeleteWorkingFiles($jobId))->onQueue('receipts');
+            
+            // Add PulseDav status update if this is from PulseDav
+            if ($isPulseDav && $pulseDavFileId && isset($metadata['fileId'])) {
+                $file = \App\Models\File::find($metadata['fileId']);
+                if ($file) {
+                    $jobs[] = (new UpdatePulseDavFileStatus($jobId, $file, $pulseDavFileId, 'receipt'))->onQueue('receipts');
+                }
+            }
+            
+            Bus::chain($jobs)->dispatch();
         } else {
-            Bus::chain([
+            $jobs = [
                 (new ProcessFile($jobId))->onQueue('documents'),
                 (new ProcessDocument($jobId))->onQueue('documents'),
                 (new AnalyzeDocument($jobId))->onQueue('documents'),
-                (new DeleteWorkingFiles($jobId))->onQueue('documents'),
-            ])->dispatch();
+            ];
+            
+            // Add tag application if there are tags
+            if (!empty($tagIds) && isset($metadata['fileId'])) {
+                $file = \App\Models\File::find($metadata['fileId']);
+                if ($file) {
+                    $jobs[] = (new ApplyTags($jobId, $file, $tagIds))->onQueue('documents');
+                }
+            }
+            
+            $jobs[] = (new DeleteWorkingFiles($jobId))->onQueue('documents');
+            
+            // Add PulseDav status update if this is from PulseDav
+            if ($isPulseDav && $pulseDavFileId && isset($metadata['fileId'])) {
+                $file = \App\Models\File::find($metadata['fileId']);
+                if ($file) {
+                    $jobs[] = (new UpdatePulseDavFileStatus($jobId, $file, $pulseDavFileId, 'document'))->onQueue('documents');
+                }
+            }
+            
+            Bus::chain($jobs)->dispatch();
         }
     }
     

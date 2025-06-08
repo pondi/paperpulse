@@ -131,7 +131,10 @@ class PreferencesController extends Controller
         foreach ($regions as $name => $mask) {
             $zones = \DateTimeZone::listIdentifiers($mask);
             foreach ($zones as $timezone) {
-                $timezones[$name][] = $timezone;
+                $timezones[] = [
+                    'value' => $timezone,
+                    'label' => str_replace(['_', '/'], [' ', ' / '], $timezone),
+                ];
             }
         }
 

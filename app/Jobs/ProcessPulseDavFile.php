@@ -10,6 +10,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -69,24 +71,45 @@ class ProcessPulseDavFile implements ShouldQueue
                 'tag_ids' => $this->tagIds,
             ])]);
 
+            // Generate a job ID for the chain
+            $jobId = (string) Str::uuid();
+
+            // Cache metadata for job chain
+            $metadata = [
+                'fileId' => $file->id,
+                'fileGuid' => $file->guid ?? Str::uuid(),
+                'filePath' => Storage::disk('local')->path($tempPath),
+                'fileExtension' => pathinfo($this->pulseDavFile->filename, PATHINFO_EXTENSION),
+                'fileType' => $this->pulseDavFile->file_type ?? 'receipt',
+                'userId' => $this->pulseDavFile->user_id,
+                's3OriginalPath' => $this->pulseDavFile->s3_path,
+                'jobName' => 'PulseDav-' . $this->pulseDavFile->filename,
+                'metadata' => ['tag_ids' => $this->tagIds],
+                'source' => 'pulsedav',
+            ];
+            
+            Cache::put("job.{$jobId}.fileMetaData", $metadata, now()->addHours(2));
+
             // Dispatch the appropriate processing chain based on file type
             if ($this->pulseDavFile->file_type === 'document') {
-                ProcessFile::withChain([
-                    new ProcessDocument($file),
-                    new AnalyzeDocument($file),
-                    new ApplyTags($file, $this->tagIds),
-                    new DeleteWorkingFiles($file),
-                    new UpdatePulseDavFileStatus($file, $this->pulseDavFile->id, 'document'),
-                ])->dispatch($file);
+                Bus::chain([
+                    new ProcessFile($jobId),
+                    new ProcessDocument($jobId),
+                    new AnalyzeDocument($jobId),
+                    new ApplyTags($jobId, $file, $this->tagIds),
+                    new DeleteWorkingFiles($jobId),
+                    new UpdatePulseDavFileStatus($jobId, $file, $this->pulseDavFile->id, 'document'),
+                ])->dispatch();
             } else {
                 // Default to receipt processing
-                ProcessFile::withChain([
-                    new ProcessReceipt($file),
-                    new MatchMerchant($file),
-                    new ApplyTags($file, $this->tagIds),
-                    new DeleteWorkingFiles($file),
-                    new UpdatePulseDavFileStatus($file, $this->pulseDavFile->id, 'receipt'),
-                ])->dispatch($file);
+                Bus::chain([
+                    new ProcessFile($jobId),
+                    new ProcessReceipt($jobId),
+                    new MatchMerchant($jobId),
+                    new ApplyTags($jobId, $file, $this->tagIds),
+                    new DeleteWorkingFiles($jobId),
+                    new UpdatePulseDavFileStatus($jobId, $file, $this->pulseDavFile->id, 'receipt'),
+                ])->dispatch();
             }
 
             // Update S3 file record

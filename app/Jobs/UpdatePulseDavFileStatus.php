@@ -6,17 +6,10 @@ use App\Models\File;
 use App\Models\PulseDavFile;
 use App\Models\Receipt;
 use App\Models\Document;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class UpdatePulseDavFileStatus implements ShouldQueue
+class UpdatePulseDavFileStatus extends BaseJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
     protected $file;
 
     protected $pulseDavFileId;
@@ -26,8 +19,9 @@ class UpdatePulseDavFileStatus implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(File $file, $pulseDavFileId, $type = 'receipt')
+    public function __construct(string $jobID, File $file, $pulseDavFileId, $type = 'receipt')
     {
+        parent::__construct($jobID);
         $this->file = $file;
         $this->pulseDavFileId = $pulseDavFileId;
         $this->type = $type;
@@ -36,7 +30,7 @@ class UpdatePulseDavFileStatus implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle()
+    protected function handleJob(): void
     {
         $pulseDavFile = PulseDavFile::find($this->pulseDavFileId);
 

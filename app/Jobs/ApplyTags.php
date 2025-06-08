@@ -5,25 +5,19 @@ namespace App\Jobs;
 use App\Models\File;
 use App\Models\Receipt;
 use App\Models\Document;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class ApplyTags implements ShouldQueue
+class ApplyTags extends BaseJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
     protected $file;
     protected $tagIds;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(File $file, array $tagIds = [])
+    public function __construct(string $jobID, File $file, array $tagIds = [])
     {
+        parent::__construct($jobID);
         $this->file = $file;
         $this->tagIds = $tagIds;
     }
@@ -31,7 +25,7 @@ class ApplyTags implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle()
+    protected function handleJob(): void
     {
         if (empty($this->tagIds)) {
             Log::info('No tags to apply', ['file_id' => $this->file->id]);

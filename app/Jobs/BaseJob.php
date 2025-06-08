@@ -107,8 +107,17 @@ abstract class BaseJob implements ShouldQueue
             throw new \RuntimeException('JobID cannot be empty');
         }
 
+        // Ensure we have a UUID
+        if (! $this->uuid) {
+            $this->uuid = (string) Str::uuid();
+        }
+
+        // Create or update job history record
+        $this->createOrUpdateJobHistory();
+
         try {
             $this->handleJob();
+            $this->markAsCompleted();
         } catch (\Throwable $e) {
             $this->failed($e);
             throw $e;
@@ -179,6 +188,60 @@ abstract class BaseJob implements ShouldQueue
 
         JobHistory::where('uuid', $this->uuid)
             ->update(['progress' => $progress]);
+    }
+
+    /**
+     * Create or update job history record.
+     */
+    protected function createOrUpdateJobHistory(): void
+    {
+        $parentJob = JobHistory::where('uuid', $this->jobID)->first();
+        
+        $data = [
+            'uuid' => $this->uuid,
+            'parent_uuid' => $parentJob ? $this->jobID : null,
+            'name' => $this->jobName,
+            'queue' => property_exists($this, 'queue') && $this->queue ? $this->queue : 'default',
+            'status' => 'processing',
+            'started_at' => now(),
+            'attempt' => $this->attempts() ?? 1,
+            'order_in_chain' => $this->getOrderInChain(),
+        ];
+
+        JobHistory::updateOrCreate(
+            ['uuid' => $this->uuid],
+            $data
+        );
+    }
+
+    /**
+     * Get the order in the job chain.
+     */
+    protected function getOrderInChain(): int
+    {
+        return match ($this->jobName) {
+            'ProcessFile' => 1,
+            'ProcessReceipt' => 2,
+            'ProcessDocument' => 2,
+            'MatchMerchant' => 3,
+            'AnalyzeDocument' => 3,
+            'ApplyTags' => 4,
+            'DeleteWorkingFiles' => 5,
+            default => 0,
+        };
+    }
+
+    /**
+     * Mark the job as completed.
+     */
+    protected function markAsCompleted(): void
+    {
+        JobHistory::where('uuid', $this->uuid)
+            ->update([
+                'status' => 'completed',
+                'finished_at' => now(),
+                'progress' => 100,
+            ]);
     }
 
     /**

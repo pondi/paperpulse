@@ -154,7 +154,7 @@ class PulseDavController extends Controller
             'selections.*.s3_path' => 'required|string',
             'file_type' => 'required|in:receipt,document',
             'tag_ids' => 'nullable|array',
-            'tag_ids.*' => 'exists:tags,id',
+            'tag_ids.*' => 'integer',
             'notes' => 'nullable|string|max:500',
         ]);
 

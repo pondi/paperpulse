@@ -23,8 +23,8 @@ class DocumentService
 
     public function __construct(FileProcessingService $fileProcessingService, StorageService $storageService)
     {
-        $this->disk = Storage::disk('documents');
-        $this->isS3 = config('filesystems.disks.documents.driver') === 's3';
+        $this->disk = Storage::disk('paperpulse');
+        $this->isS3 = config('filesystems.disks.paperpulse.driver') === 's3';
         $this->fileProcessingService = $fileProcessingService;
         $this->storageService = $storageService;
     }
@@ -36,7 +36,11 @@ class DocumentService
     public function processUpload($incomingFile, $fileType = 'receipt')
     {
         // Delegate to the new FileProcessingService
-        $userId = auth()->id() ?? 1; // Get current user ID
+        $userId = auth()->id();
+        
+        if (!$userId) {
+            throw new \Exception('User not authenticated');
+        }
         
         $result = $this->fileProcessingService->processUpload(
             $incomingFile,
@@ -44,7 +48,7 @@ class DocumentService
             $userId
         );
         
-        return $result['success'];
+        return $result;
     }
 
     /**

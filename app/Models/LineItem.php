@@ -6,6 +6,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Laravel\Scout\Searchable;
 
+/**
+ * App\Models\LineItem
+ *
+ * @property int $id
+ * @property int $receipt_id
+ * @property string|null $text
+ * @property string|null $sku
+ * @property float|null $qty
+ * @property float|null $price
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ *
+ * @property-read \App\Models\Receipt $receipt
+ */
 class LineItem extends Model
 {
     use HasFactory;
@@ -13,13 +27,9 @@ class LineItem extends Model
 
     protected $fillable = ['text', 'sku', 'qty', 'price'];
 
-    // In Receipt model
-    public function lineItems()
-    {
-        return $this->hasMany(LineItem::class);
-    }
-
-    // In LineItem model
+    /**
+     * Get the receipt that owns the line item.
+     */
     public function receipt()
     {
         return $this->belongsTo(Receipt::class);

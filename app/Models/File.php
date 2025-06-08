@@ -11,7 +11,7 @@ class File extends Model
 {
     use BelongsToUser;
     use HasFactory;
-    use Searchable;
+    // use Searchable; // Temporarily disabled due to Meilisearch configuration issue
 
     protected $fillable = [
         'user_id',

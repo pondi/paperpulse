@@ -44,6 +44,7 @@ class AnalyticsController extends Controller
             ->orderByDesc('total')
             ->get()
             ->map(function ($item) {
+                /** @var object $item */
                 return [
                     'category' => $item->receipt_category ?: 'Uncategorized',
                     'total' => (float) $item->total,
@@ -60,6 +61,7 @@ class AnalyticsController extends Controller
             ->limit(10)
             ->get()
             ->map(function ($item) {
+                /** @var \App\Models\Receipt $item */
                 return [
                     'merchant' => $item->merchant?->name ?: 'Unknown',
                     'receipt_count' => $item->receipt_count,
@@ -79,6 +81,7 @@ class AnalyticsController extends Controller
             ->orderBy('month')
             ->get()
             ->map(function ($item) {
+                /** @var object $item */
                 return [
                     'month' => Carbon::parse($item->month.'-01')->format('M Y'),
                     'receipt_count' => $item->receipt_count,

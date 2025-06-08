@@ -72,6 +72,9 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
 
     // Document routes
     Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
+    Route::get('/documents/upload-debug', function() {
+        return Inertia::render('Documents/UploadDebug');
+    })->name('documents.upload-debug');
     Route::get('/documents/upload', [DocumentController::class, 'upload'])->name('documents.upload');
     Route::get('/documents/shared', [DocumentController::class, 'shared'])->name('documents.shared');
     Route::get('/documents/categories', [DocumentController::class, 'categories'])->name('documents.categories');
@@ -140,9 +143,20 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::prefix('pulsedav')->name('pulsedav.')->group(function () {
         Route::get('/', [PulseDavController::class, 'index'])->name('index');
         Route::post('/sync', [PulseDavController::class, 'sync'])->name('sync');
+        Route::post('/sync-folders', [PulseDavController::class, 'syncWithFolders'])->name('sync-folders');
         Route::post('/process', [PulseDavController::class, 'process'])->name('process');
         Route::get('/files/{id}/status', [PulseDavController::class, 'status'])->name('status');
         Route::delete('/files/{id}', [PulseDavController::class, 'destroy'])->name('destroy');
+        
+        // Folder support routes
+        Route::get('/folders', [PulseDavController::class, 'folders'])->name('folders');
+        Route::get('/folder-contents', [PulseDavController::class, 'folderContents'])->name('folder-contents');
+        Route::post('/import', [PulseDavController::class, 'importSelections'])->name('import');
+        Route::post('/folder-tags', [PulseDavController::class, 'updateFolderTags'])->name('folder-tags');
+        
+        // Tag routes
+        Route::get('/tags/search', [PulseDavController::class, 'searchTags'])->name('tags.search');
+        Route::post('/tags', [PulseDavController::class, 'createTag'])->name('tags.create');
     });
 
     // Notification routes

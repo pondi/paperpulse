@@ -136,7 +136,7 @@ class DocumentController extends Controller
         try {
             // Delete from S3
             if ($document->file && $document->file->s3_path) {
-                Storage::disk('s3')->delete($document->file->s3_path);
+                Storage::disk('paperpulse')->delete($document->file->s3_path);
             }
             
             // Delete document (will cascade to relationships)
@@ -166,7 +166,7 @@ class DocumentController extends Controller
         }
         
         try {
-            $file = Storage::disk('s3')->get($document->file->s3_path);
+            $file = Storage::disk('paperpulse')->get($document->file->s3_path);
             
             return response($file)
                 ->header('Content-Type', $document->file->mime_type)
@@ -239,7 +239,7 @@ class DocumentController extends Controller
                 try {
                     // Delete from S3
                     if ($document->file && $document->file->s3_path) {
-                        Storage::disk('s3')->delete($document->file->s3_path);
+                        Storage::disk('paperpulse')->delete($document->file->s3_path);
                     }
                     $document->delete();
                     $deleted++;
@@ -401,10 +401,41 @@ class DocumentController extends Controller
             $uploadedFiles = $request->file('files');
             $processedFiles = [];
             
-            foreach ($uploadedFiles as $uploadedFile) {
+            // Debug logging
+            Log::info('(DocumentController) [store] - Files received', [
+                'has_files' => $request->hasFile('files'),
+                'files_count' => is_array($uploadedFiles) ? count($uploadedFiles) : 'not_array',
+                'file_type' => $fileType,
+                'all_files' => $request->allFiles(),
+            ]);
+            
+            // Ensure we have files
+            if (!$uploadedFiles) {
+                Log::error('(DocumentController) [store] - No files found in request');
+                return back()->with('error', 'No files were uploaded. Please select files and try again.');
+            }
+            
+            // Ensure we have an array of files
+            if (!is_array($uploadedFiles)) {
+                $uploadedFiles = [$uploadedFiles];
+            }
+            
+            foreach ($uploadedFiles as $index => $uploadedFile) {
+                Log::info('(DocumentController) [store] - Processing file', [
+                    'index' => $index,
+                    'filename' => $uploadedFile->getClientOriginalName(),
+                    'size' => $uploadedFile->getSize(),
+                    'mime' => $uploadedFile->getMimeType(),
+                ]);
+                
                 // Process the upload based on file type
                 $result = $documentService->processUpload($uploadedFile, $fileType);
                 $processedFiles[] = $result;
+                
+                Log::info('(DocumentController) [store] - File processed', [
+                    'index' => $index,
+                    'result' => $result,
+                ]);
             }
 
             return redirect()->route($fileType === 'document' ? 'documents.index' : 'receipts.index')

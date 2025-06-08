@@ -16,7 +16,7 @@ trait BelongsToUser
         // Add global scope to filter by authenticated user
         static::addGlobalScope('user', function (Builder $builder) {
             if (auth()->check()) {
-                $builder->where((new static)->getTable().'.user_id', auth()->id());
+                $builder->where($builder->getModel()->getTable().'.user_id', auth()->id());
             }
         });
 

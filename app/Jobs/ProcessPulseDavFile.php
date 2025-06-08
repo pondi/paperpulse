@@ -25,13 +25,15 @@ class ProcessPulseDavFile implements ShouldQueue
     public $backoff = 10;
 
     protected $pulseDavFile;
+    protected $tagIds;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(PulseDavFile $pulseDavFile)
+    public function __construct(PulseDavFile $pulseDavFile, array $tagIds = [])
     {
         $this->pulseDavFile = $pulseDavFile;
+        $this->tagIds = $tagIds;
     }
 
     /**
@@ -61,14 +63,18 @@ class ProcessPulseDavFile implements ShouldQueue
                 'file_type' => $this->pulseDavFile->file_type ?? 'receipt',
             ]);
 
-            // Store PulseDavFile ID in the File model for tracking
-            $file->update(['meta' => json_encode(['pulsedav_file_id' => $this->pulseDavFile->id])]);
+            // Store PulseDavFile ID and tags in the File model for tracking
+            $file->update(['meta' => json_encode([
+                'pulsedav_file_id' => $this->pulseDavFile->id,
+                'tag_ids' => $this->tagIds,
+            ])]);
 
             // Dispatch the appropriate processing chain based on file type
             if ($this->pulseDavFile->file_type === 'document') {
                 ProcessFile::withChain([
                     new ProcessDocument($file),
                     new AnalyzeDocument($file),
+                    new ApplyTags($file, $this->tagIds),
                     new DeleteWorkingFiles($file),
                     new UpdatePulseDavFileStatus($file, $this->pulseDavFile->id, 'document'),
                 ])->dispatch($file);
@@ -77,6 +83,7 @@ class ProcessPulseDavFile implements ShouldQueue
                 ProcessFile::withChain([
                     new ProcessReceipt($file),
                     new MatchMerchant($file),
+                    new ApplyTags($file, $this->tagIds),
                     new DeleteWorkingFiles($file),
                     new UpdatePulseDavFileStatus($file, $this->pulseDavFile->id, 'receipt'),
                 ])->dispatch($file);

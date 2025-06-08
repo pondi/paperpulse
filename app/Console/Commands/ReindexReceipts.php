@@ -26,7 +26,7 @@ class ReindexReceipts extends Command
         // Reindex in chunks to avoid memory issues
         Receipt::with(['merchant', 'lineItems'])
             ->chunkById(100, function ($receipts) {
-                $receipts->searchable();
+                $receipts->each->searchable();
                 $this->info('Indexed '.$receipts->count().' receipts');
             });
 

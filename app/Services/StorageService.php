@@ -28,35 +28,9 @@ class StorageService
             return; // Already configured
         }
         
-        // Incoming bucket configuration (PulseDav uploads)
-        config([
-            'filesystems.disks.s3-incoming' => [
-                'driver' => 's3',
-                'key' => env('AWS_ACCESS_KEY_ID'),
-                'secret' => env('AWS_SECRET_ACCESS_KEY'),
-                'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
-                'bucket' => env('AWS_INCOMING_BUCKET'),
-                'visibility' => 'private',
-                'throw' => true,
-            ]
-        ]);
-        
-        // Storage bucket configuration (permanent storage)
-        config([
-            'filesystems.disks.s3-storage' => [
-                'driver' => 's3',
-                'key' => env('AWS_ACCESS_KEY_ID'),
-                'secret' => env('AWS_SECRET_ACCESS_KEY'),
-                'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
-                'bucket' => env('AWS_STORAGE_BUCKET'),
-                'visibility' => 'private',
-                'throw' => true,
-            ]
-        ]);
-        
         try {
-            $this->incomingDisk = Storage::disk('s3-incoming');
-            $this->storageDisk = Storage::disk('s3-storage');
+            $this->incomingDisk = Storage::disk('pulsedav');
+            $this->storageDisk = Storage::disk('paperpulse');
         } catch (Exception $e) {
             Log::error('Failed to configure S3 disks: ' . $e->getMessage());
             // Fall back to local storage if S3 is not configured
@@ -354,7 +328,7 @@ class StorageService
      */
     public function isS3Storage(): bool
     {
-        return config('filesystems.disks.documents.driver') === 's3';
+        return config('filesystems.disks.paperpulse.driver') === 's3';
     }
     
     /**

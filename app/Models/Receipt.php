@@ -7,6 +7,35 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Laravel\Scout\Searchable;
 
+/**
+ * App\Models\Receipt
+ *
+ * @property int $id
+ * @property int $file_id
+ * @property int $user_id
+ * @property int|null $merchant_id
+ * @property int|null $category_id
+ * @property \Carbon\Carbon|null $receipt_date
+ * @property float|null $tax_amount
+ * @property float|null $total_amount
+ * @property string|null $currency
+ * @property string|null $receipt_category
+ * @property string|null $receipt_description
+ * @property array|null $receipt_data
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ *
+ * @property-read \App\Models\File $file
+ * @property-read \App\Models\User $user
+ * @property-read \App\Models\Merchant|null $merchant
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\LineItem[] $lineItems
+ * @property-read \App\Models\Category|null $category
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Tag[] $tags
+ *
+ * @method static \Illuminate\Database\Eloquent\Builder|Receipt newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Receipt newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Receipt query()
+ */
 class Receipt extends Model
 {
     use BelongsToUser;

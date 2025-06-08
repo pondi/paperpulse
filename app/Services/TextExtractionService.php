@@ -27,14 +27,14 @@ class TextExtractionService
     {
         $this->textractClient = new TextractClient([
             'version' => 'latest',
-            'region' => env('TEXTRACT_REGION', 'eu-central-1'),
+            'region' => config('receipt-scanner.textract_region', 'eu-central-1'),
             'credentials' => [
-                'key' => env('TEXTRACT_KEY'),
-                'secret' => env('TEXTRACT_SECRET'),
+                'key' => config('receipt-scanner.textract_key'),
+                'secret' => config('receipt-scanner.textract_secret'),
             ],
         ]);
         
-        $this->textractBucket = env('TEXTRACT_BUCKET');
+        $this->textractBucket = config('filesystems.disks.textract.bucket');
     }
     
     /**

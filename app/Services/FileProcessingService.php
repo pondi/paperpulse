@@ -356,9 +356,9 @@ class FileProcessingService
         $extension = strtolower($extension);
         
         if ($fileType === 'receipt') {
-            $supported = explode(',', env('SUPPORTED_RECEIPT_FORMATS', 'jpg,jpeg,png,gif,bmp,pdf'));
+            $supported = explode(',', config('documents.supported_receipt_formats'));
         } else {
-            $supported = explode(',', env('SUPPORTED_DOCUMENT_FORMATS', 'doc,docx,xls,xlsx,ppt,pptx,odt,ods,odp,pdf,rtf'));
+            $supported = explode(',', config('documents.supported_document_formats'));
         }
         
         return in_array($extension, $supported);
@@ -373,9 +373,9 @@ class FileProcessingService
     public function getMaxFileSize(string $fileType): int
     {
         if ($fileType === 'receipt') {
-            return env('MAX_RECEIPT_SIZE', 10) * 1024 * 1024; // MB to bytes
+            return config('documents.max_receipt_size') * 1024 * 1024; // MB to bytes
         } else {
-            return env('MAX_DOCUMENT_SIZE', 50) * 1024 * 1024; // MB to bytes
+            return config('documents.max_document_size') * 1024 * 1024; // MB to bytes
         }
     }
 }

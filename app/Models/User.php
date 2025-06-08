@@ -48,6 +48,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's preferences.
+     */
+    public function preferences()
+    {
+        return $this->hasOne(UserPreference::class);
+    }
+
+    /**
      * Get the PulseDav files for the user.
      */
     public function pulseDavFiles()
@@ -80,17 +88,9 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the user's preferences.
-     */
-    public function preferences()
-    {
-        return $this->hasOne(UserPreference::class);
-    }
-
-    /**
      * Get user preference value with fallback to default
      */
-    public function preference($key, $default = null)
+    public function getPreference($key, $default = null)
     {
         if (! $this->preferences) {
             return $default ?? UserPreference::defaultPreferences()[$key] ?? null;

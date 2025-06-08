@@ -169,7 +169,7 @@
                                 </div>
                                 
                                 <!-- Upload Progress -->
-                                <div v-if="form.progress" class="absolute inset-x-0 bottom-0 p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-700">
+                                <div v-if="isUploading" class="absolute inset-x-0 bottom-0 p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-700">
                                     <div class="relative pt-1">
                                         <div class="flex mb-2 items-center justify-between">
                                             <div>
@@ -179,13 +179,13 @@
                                             </div>
                                             <div class="text-right">
                                                 <span class="text-xs font-semibold inline-block text-indigo-600 dark:text-indigo-400">
-                                                    {{ form.progress.percentage }}%
+                                                    {{ uploadProgress }}%
                                                 </span>
                                             </div>
                                         </div>
                                         <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-indigo-200 dark:bg-indigo-900">
                                             <div
-                                                :style="{ width: form.progress.percentage + '%' }"
+                                                :style="{ width: uploadProgress + '%' }"
                                                 class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-600 transition-all duration-300"
                                             ></div>
                                         </div>
@@ -196,14 +196,14 @@
                             <!-- Submit Button -->
                             <div class="mt-6 flex justify-center">
                                 <button type="submit"
-                                    :disabled="selectedFiles.length === 0 || form.processing"
+                                    :disabled="selectedFiles.length === 0 || isUploading"
                                     :class="[
                                         'rounded-md px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors duration-200',
-                                        (selectedFiles.length === 0 || form.processing)
+                                        (selectedFiles.length === 0 || isUploading)
                                             ? 'bg-gray-400 cursor-not-allowed' 
                                             : 'bg-indigo-600 hover:bg-indigo-500'
                                     ]">
-                                    <span v-if="form.processing">Uploading...</span>
+                                    <span v-if="isUploading">Uploading...</span>
                                     <span v-else>Upload {{ selectedFiles.length }} {{ selectedFiles.length === 1 ? 'file' : 'files' }}</span>
                                 </button>
                             </div>
@@ -254,6 +254,8 @@ const uploadSuccess = ref(false);
 const uploadError = ref<string | null>(null);
 const fileUpload = ref<HTMLFormElement | null>(null);
 const fileType = ref<'receipt' | 'document'>('receipt'); // Default to receipt
+const isUploading = ref(false);
+const uploadProgress = ref(0);
 
 const {
     selectedFiles,
@@ -274,56 +276,54 @@ const {
     }
 });
 
-const form = useForm({
-    files: null as File[] | null,
-    file_type: 'receipt' as 'receipt' | 'document',
-});
-
-watch(selectedFiles, (files) => {
-    if (!files.length) {
-        form.files = null;
-        return;
-    }
-    
-    const dt = new DataTransfer();
-    files.forEach(fileObj => dt.items.add(fileObj.file));
-    form.files = dt.files;
-}, { deep: true });
-
-watch(fileType, (newType) => {
-    form.file_type = newType;
-});
+// File type is tracked separately from the form
+// The form is created dynamically in the submit function
 
 async function submit() {
-    if (!form.files?.length) return;
+    if (!selectedFiles.value.length) return;
+    
+    isUploading.value = true;
+    uploadProgress.value = 0;
+    
+    // Create a new form with proper file array structure
+    const uploadForm = useForm({
+        files: selectedFiles.value.map(f => f.file),
+        file_type: fileType.value,
+    });
     
     try {
-        await form.post('/documents/store', {
+        await uploadForm.post('/documents/store', {
             preserveScroll: true,
             onSuccess: () => {
                 resetFiles();
-                form.reset();
                 uploadSuccess.value = true;
+                isUploading.value = false;
+                uploadProgress.value = 0;
                 setTimeout(() => {
                     uploadSuccess.value = false;
                 }, 5000);
             },
             onError: (errors) => {
                 uploadError.value = Object.values(errors)[0] as string;
+                isUploading.value = false;
+                uploadProgress.value = 0;
                 setTimeout(() => {
                     uploadError.value = null;
                 }, 5000);
             },
             onProgress: (event) => {
                 if (event.total) {
-                    form.progress = {
-                        percentage: Math.round((event.loaded / event.total) * 100),
-                    };
+                    uploadProgress.value = Math.round((event.loaded / event.total) * 100);
                 }
+            },
+            onFinish: () => {
+                isUploading.value = false;
             },
         });
     } catch (error) {
         uploadError.value = 'An unexpected error occurred during upload';
+        isUploading.value = false;
+        uploadProgress.value = 0;
         setTimeout(() => {
             uploadError.value = null;
         }, 5000);

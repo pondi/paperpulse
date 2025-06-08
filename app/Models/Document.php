@@ -96,6 +96,14 @@ class Document extends Model
     }
 
     /**
+     * Get the owner of the document (alias for user relation).
+     */
+    public function owner()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
      * Get the category that the document belongs to.
      */
     public function category()
@@ -119,6 +127,21 @@ class Document extends Model
     public function shares()
     {
         return $this->hasMany(FileShare::class, 'file_id', 'file_id');
+    }
+
+    /**
+     * Get the users that this document is shared with.
+     */
+    public function sharedUsers()
+    {
+        return $this->hasManyThrough(
+            User::class,
+            FileShare::class,
+            'file_id', // Foreign key on file_shares table
+            'id', // Foreign key on users table
+            'file_id', // Local key on documents table
+            'shared_with_user_id' // Local key on file_shares table
+        );
     }
 
     /**

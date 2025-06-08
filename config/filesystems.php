@@ -44,48 +44,41 @@ return [
             'throw' => false,
         ],
 
+        // PulseDav incoming bucket for WebDAV uploads
+        'pulsedav' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_INCOMING_BUCKET'),
+            'url' => env('AWS_URL'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
+        
+        // PaperPulse permanent storage bucket
+        'paperpulse' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_STORAGE_BUCKET'),
+            'url' => env('AWS_URL'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
+
+        // Textract temporary storage
         'textract' => [
             'driver' => 's3',
             'key' => env('TEXTRACT_KEY'),
             'secret' => env('TEXTRACT_SECRET'),
             'region' => env('TEXTRACT_REGION'),
             'bucket' => env('TEXTRACT_BUCKET'),
-            'throw' => true,
-        ],
-
-        'documents' => [
-            'driver' => env('DOCUMENTS_STORAGE_DRIVER', 'local'),
-            'root' => env('DOCUMENTS_STORAGE_ROOT', storage_path('app/documents')),
-            'url' => env('DOCUMENTS_AWS_URL'),
-            'endpoint' => env('DOCUMENTS_AWS_ENDPOINT'),
-            'use_path_style_endpoint' => env('DOCUMENTS_AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => true,
-            'visibility' => 'private',
-            'key' => env('DOCUMENTS_AWS_ACCESS_KEY_ID'),
-            'secret' => env('DOCUMENTS_AWS_SECRET_ACCESS_KEY'),
-            'region' => env('DOCUMENTS_AWS_DEFAULT_REGION'),
-            'bucket' => env('DOCUMENTS_AWS_BUCKET'),
-        ],
-        
-        // Incoming bucket for PulseDav uploads
-        's3-incoming' => [
-            'driver' => 's3',
-            'key' => env('AWS_ACCESS_KEY_ID'),
-            'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_DEFAULT_REGION'),
-            'bucket' => env('AWS_INCOMING_BUCKET'),
-            'visibility' => 'private',
-            'throw' => true,
-        ],
-        
-        // Storage bucket for permanent storage
-        's3-storage' => [
-            'driver' => 's3',
-            'key' => env('AWS_ACCESS_KEY_ID'),
-            'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_DEFAULT_REGION'),
-            'bucket' => env('AWS_STORAGE_BUCKET'),
-            'visibility' => 'private',
             'throw' => true,
         ],
 

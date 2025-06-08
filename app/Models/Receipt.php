@@ -27,6 +27,13 @@ class Receipt extends Model
         'receipt_data',
     ];
 
+    protected $casts = [
+        'receipt_data' => 'array',
+        'receipt_date' => 'date',
+        'tax_amount' => 'decimal:2',
+        'total_amount' => 'decimal:2',
+    ];
+
     public function file()
     {
         return $this->belongsTo(File::class);
@@ -50,6 +57,12 @@ class Receipt extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function tags()
+    {
+        return $this->belongsToMany(Tag::class, 'receipt_tags')
+            ->withTimestamps();
     }
 
     /**

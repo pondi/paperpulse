@@ -17,54 +17,34 @@ use Illuminate\Support\Str;
 class DocumentService
 {
     protected $disk;
-
     protected $isS3;
+    protected FileProcessingService $fileProcessingService;
+    protected StorageService $storageService;
 
-    public function __construct()
+    public function __construct(FileProcessingService $fileProcessingService, StorageService $storageService)
     {
         $this->disk = Storage::disk('documents');
         $this->isS3 = config('filesystems.disks.documents.driver') === 's3';
+        $this->fileProcessingService = $fileProcessingService;
+        $this->storageService = $storageService;
     }
 
     /**
      * Process an uploaded file
+     * @deprecated Use FileProcessingService::processUpload() instead
      */
     public function processUpload($incomingFile, $fileType = 'receipt')
     {
-        $jobID = (string) Str::uuid();
-        $fileGUID = (string) Str::uuid();
-        $jobName = $this->generateJobName();
-
-        // Store the original file in permanent storage
-        $fileContent = file_get_contents($incomingFile->getRealPath());
-        $this->storeDocument(
-            $fileContent,
-            $fileGUID,
-            $jobName,
-            'receipts',
-            $incomingFile->getClientOriginalExtension()
+        // Delegate to the new FileProcessingService
+        $userId = auth()->id() ?? 1; // Get current user ID
+        
+        $result = $this->fileProcessingService->processUpload(
+            $incomingFile,
+            $fileType,
+            $userId
         );
-
-        $fileMetaData = $this->createFileModel($incomingFile, $fileGUID, $jobName);
-        $fileMetaData['jobName'] = $jobName;
-        Cache::put("job.{$jobID}.fileMetaData", $fileMetaData, now()->addMinutes(5));
-
-        Log::info("(DocumentService) [{$jobName}] - Upload processing started (file: {$incomingFile->getClientOriginalName()})");
-
-        Bus::chain([
-            (new ProcessFile($jobID))->onQueue('receipts'),
-            (new ProcessReceipt($jobID))->onQueue('receipts'),
-            (new MatchMerchant($jobID))->onQueue('receipts'),
-            (new DeleteWorkingFiles($jobID))->onQueue('receipts'),
-        ])->dispatch();
-
-        Log::debug("(DocumentService) [{$jobName}] Upload processing details", [
-            'file_name' => $incomingFile->getClientOriginalName(),
-            'size' => $incomingFile->getSize(),
-            'mime_type' => $incomingFile->getMimeType(),
-        ]);
-
-        return true;
+        
+        return $result['success'];
     }
 
     /**

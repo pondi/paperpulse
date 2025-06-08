@@ -4,16 +4,9 @@
     "description": "The skeleton application for the Laravel framework.",
     "keywords": ["laravel", "framework"],
     "license": "MIT",
-    "repositories": [
-        {
-          "type": "vcs",
-          "url": "https://github.com/pondi/receipt-scanner.git"
-        }
-      ],
     "require": {
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.1",
-        "helgesverre/receipt-scanner": "dev-main",
         "http-interop/http-factory-guzzle": "^1.2",
         "inertiajs/inertia-laravel": "^1.0",
         "laravel/breeze": "^2.0",
@@ -23,9 +16,12 @@
         "laravel/sanctum": "^4.0",
         "laravel/scout": "^10.8",
         "laravel/tinker": "^2.9",
+        "league/flysystem-aws-s3-v3": "*",
         "meilisearch/meilisearch-php": "^1.12",
+        "mozex/anthropic-php": "^1.0",
         "opcodesio/log-viewer": "^3.6",
-        "spatie/pdf-to-image": "^3.1",
+        "openai-php/laravel": "^0.11.0",
+        "smalot/pdfparser": "*",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {

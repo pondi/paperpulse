@@ -12,8 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('files', function (Blueprint $table) {
-            $table->foreignId('user_id')->after('id')->constrained()->cascadeOnDelete();
-            $table->index('user_id');
+            if (!Schema::hasColumn('files', 'status')) {
+                $table->enum('status', ['pending', 'processing', 'completed', 'failed'])
+                    ->default('pending')
+                    ->after('processing_type');
+                $table->index('status');
+            }
         });
     }
 
@@ -23,8 +27,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('files', function (Blueprint $table) {
-            $table->dropForeign(['user_id']);
-            $table->dropColumn('user_id');
+            if (Schema::hasColumn('files', 'status')) {
+                $table->dropIndex(['status']);
+                $table->dropColumn('status');
+            }
         });
     }
 };

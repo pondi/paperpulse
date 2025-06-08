@@ -66,6 +66,28 @@ return [
             'region' => env('DOCUMENTS_AWS_DEFAULT_REGION'),
             'bucket' => env('DOCUMENTS_AWS_BUCKET'),
         ],
+        
+        // Incoming bucket for PulseDav uploads
+        's3-incoming' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_INCOMING_BUCKET'),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
+        
+        // Storage bucket for permanent storage
+        's3-storage' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_STORAGE_BUCKET'),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
 
     ],
 
@@ -83,5 +105,16 @@ return [
     'links' => [
         public_path('storage') => storage_path('app/public'),
     ],
+    
+    /*
+    |--------------------------------------------------------------------------
+    | S3 Bucket Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for dual S3 bucket setup for document processing
+    |
+    */
+    
+    'incoming_prefix' => env('AWS_S3_INCOMING_PREFIX', 'incoming/'),
 
 ];

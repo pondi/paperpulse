@@ -4,9 +4,7 @@ namespace App\Services;
 
 use App\Models\LineItem;
 use App\Models\Receipt;
-use HelgeSverre\ReceiptScanner\Facades\Text;
-use HelgeSverre\ReceiptScanner\ModelNames;
-use HelgeSverre\ReceiptScanner\ReceiptScanner;
+use App\Services\ReceiptAnalysisService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -14,10 +12,17 @@ use Illuminate\Support\Facades\Storage;
 class ReceiptService
 {
     protected $documentService;
+    protected $receiptAnalysisService;
+    protected $textExtractionService;
 
-    public function __construct(DocumentService $documentService)
-    {
+    public function __construct(
+        DocumentService $documentService,
+        ReceiptAnalysisService $receiptAnalysisService,
+        TextExtractionService $textExtractionService
+    ) {
         $this->documentService = $documentService;
+        $this->receiptAnalysisService = $receiptAnalysisService;
+        $this->textExtractionService = $textExtractionService;
     }
 
     /**
@@ -31,57 +36,27 @@ class ReceiptService
                 'file_guid' => $fileGuid,
             ]);
 
-            // Get the file content
-            $fileContent = file_get_contents($filePath);
-            if (! $fileContent) {
-                throw new \Exception('Could not read file content');
+            // Get the file model to get user ID
+            $file = \App\Models\File::findOrFail($fileId);
+            
+            // Extract text from the file using TextExtractionService
+            $ocrText = $this->textExtractionService->extract($filePath, 'receipt', $fileGuid);
+            
+            if (empty($ocrText)) {
+                throw new \Exception('No text could be extracted from the file');
             }
 
-            // Extract text from the file using Textract
-            $textPdfOcr = Text::textractUsingS3Upload($fileContent);
-
-            // Parse the receipt using GPT
-            $scanner = new ReceiptScanner;
-            $parsedReceipt = $scanner->scan(
-                text: $textPdfOcr,
-                model: ModelNames::TURBO_INSTRUCT,
-                maxTokens: 500,
-                temperature: 0.2,
-                template: 'norwegian-receipt',
-                asArray: true,
-            );
-
-            Log::debug('Receipt parsed', [
+            Log::debug('Text extracted from receipt', [
                 'file_id' => $fileId,
-                'parsed_data' => $parsedReceipt,
+                'text_length' => strlen($ocrText),
             ]);
 
-            // Create the receipt record
-            DB::beginTransaction();
-
-            $receipt = new Receipt;
-            $receipt->file_id = $fileId;
-            $receipt->receipt_data = json_encode($parsedReceipt);
-            $receipt->receipt_date = $parsedReceipt['date'] ?? null;
-            $receipt->tax_amount = $parsedReceipt['taxAmount'] ?? null;
-            $receipt->total_amount = $parsedReceipt['totalAmount'] ?? null;
-            $receipt->currency = $parsedReceipt['currency'] ?? null;
-            $receipt->receipt_category = $parsedReceipt['category'] ?? null;
-            $receipt->receipt_description = $parsedReceipt['description'] ?? null;
-            $receipt->save();
-
-            // Create line items
-            foreach ($parsedReceipt['lineItems'] as $item) {
-                $lineItem = new LineItem;
-                $lineItem->receipt_id = $receipt->id;
-                $lineItem->text = $item['text'];
-                $lineItem->sku = $item['sku'];
-                $lineItem->qty = $item['qty'];
-                $lineItem->price = $item['price'];
-                $lineItem->save();
-            }
-
-            DB::commit();
+            // Use the new ReceiptAnalysisService to analyze and create receipt
+            $receipt = $this->receiptAnalysisService->analyzeAndCreateReceipt(
+                $ocrText,
+                $fileId,
+                $file->user_id
+            );
 
             // Make the receipt searchable after all relations are saved
             $receipt->load(['merchant', 'lineItems']);
@@ -90,17 +65,17 @@ class ReceiptService
             Log::info('Receipt data processed successfully', [
                 'file_id' => $fileId,
                 'receipt_id' => $receipt->id,
+                'merchant_id' => $receipt->merchant_id,
             ]);
 
             return [
                 'receiptID' => $receipt->id,
-                'merchantName' => $parsedReceipt['merchant']['name'],
-                'merchantAddress' => $parsedReceipt['merchant']['address'],
-                'merchantVatID' => $parsedReceipt['merchant']['vatId'],
+                'merchantName' => $receipt->merchant?->name ?? 'Unknown',
+                'merchantAddress' => $receipt->merchant?->address ?? '',
+                'merchantVatID' => $receipt->merchant?->org_number ?? '',
             ];
 
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Receipt data processing failed', [
                 'error' => $e->getMessage(),
                 'file_id' => $fileId,

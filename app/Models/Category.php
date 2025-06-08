@@ -44,6 +44,14 @@ class Category extends Model
     }
 
     /**
+     * Get the documents for the category.
+     */
+    public function documents()
+    {
+        return $this->hasMany(Document::class);
+    }
+
+    /**
      * Scope a query to only include active categories.
      */
     public function scopeActive($query)
@@ -100,6 +108,22 @@ class Category extends Model
     public function getReceiptCountAttribute()
     {
         return $this->receipts()->count();
+    }
+
+    /**
+     * Get the document count for this category.
+     */
+    public function getDocumentCountAttribute()
+    {
+        return $this->documents()->count();
+    }
+
+    /**
+     * Get the total item count (receipts + documents) for this category.
+     */
+    public function getTotalItemCountAttribute()
+    {
+        return $this->receipts()->count() + $this->documents()->count();
     }
 
     /**

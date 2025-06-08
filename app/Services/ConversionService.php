@@ -7,8 +7,15 @@ use Spatie\PdfToImage\Pdf;
 
 class ConversionService
 {
+    protected StorageService $storageService;
+    
+    public function __construct(StorageService $storageService)
+    {
+        $this->storageService = $storageService;
+    }
+    
     /**
-     * Convert PDF to JPG image
+     * Convert PDF to JPG image for receipt processing
      */
     public function pdfToImage(string $storedFilePath, string $fileGUID, DocumentService $documentService): bool
     {

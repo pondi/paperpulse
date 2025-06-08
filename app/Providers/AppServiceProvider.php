@@ -9,6 +9,8 @@ use App\Models\Receipt;
 use App\Policies\CategoryPolicy;
 use App\Policies\FilePolicy;
 use App\Policies\ReceiptPolicy;
+use App\Services\AI\AIService;
+use App\Services\AI\AIServiceFactory;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -24,7 +26,40 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Register services as singletons for better performance
+        $this->app->singleton(\App\Services\StorageService::class, function ($app) {
+            return new \App\Services\StorageService();
+        });
+        
+        $this->app->singleton(\App\Services\TextExtractionService::class, function ($app) {
+            return new \App\Services\TextExtractionService(
+                $app->make(\App\Services\StorageService::class)
+            );
+        });
+        
+        $this->app->singleton(\App\Services\FileProcessingService::class, function ($app) {
+            return new \App\Services\FileProcessingService(
+                $app->make(\App\Services\StorageService::class),
+                $app->make(\App\Services\TextExtractionService::class)
+            );
+        });
+        
+        // Register AI services
+        $this->app->bind(AIService::class, function ($app) {
+            return AIServiceFactory::create();
+        });
+        
+        $this->app->singleton(\App\Services\ReceiptAnalysisService::class, function ($app) {
+            return new \App\Services\ReceiptAnalysisService(
+                $app->make(AIService::class)
+            );
+        });
+        
+        $this->app->singleton(\App\Services\DocumentAnalysisService::class, function ($app) {
+            return new \App\Services\DocumentAnalysisService(
+                $app->make(AIService::class)
+            );
+        });
     }
 
     /**

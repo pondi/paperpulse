@@ -67,6 +67,17 @@
                     </svg>
                     <p class="whitespace-nowrap">{{ formatDate(receipt.receipt_date) }}</p>
                   </div>
+                  <!-- Tags -->
+                  <div v-if="receipt.tags && receipt.tags.length > 0" class="mt-2 flex flex-wrap gap-1">
+                    <span
+                      v-for="tag in receipt.tags"
+                      :key="tag.id"
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                      :style="{ backgroundColor: tag.color + '20', color: tag.color }"
+                    >
+                      {{ tag.name }}
+                    </span>
+                  </div>
                 </div>
                 <div :class="[getCategoryClass(receipt.receipt_category), 'flex-none rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset']">
                   {{ receipt.receipt_category || __('uncategorized') }}

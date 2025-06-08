@@ -77,6 +77,17 @@
             </dl>
           </div>
 
+          <!-- Tags -->
+          <div class="bg-gray-800 rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-200 mb-4">Tags</h3>
+            <TagManager
+              v-model="receiptTags"
+              :readonly="!isEditing"
+              @tag-added="handleTagAdded"
+              @tag-removed="handleTagRemoved"
+            />
+          </div>
+
           <!-- Line Items -->
           <div class="bg-gray-800 rounded-lg p-6">
             <div class="flex items-center justify-between mb-6">
@@ -217,6 +228,7 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Modal from '@/Components/Modal.vue';
 import SharingControls from '@/Components/SharingControls.vue';
+import TagManager from '@/Components/TagManager.vue';
 import {
   ArrowLeftIcon,
   DocumentIcon,
@@ -242,6 +254,7 @@ const showAddLineItem = ref(false);
 const editingLineItem = ref(null);
 const imageError = ref(false);
 const editedReceipt = ref({ ...props.receipt });
+const receiptTags = ref(props.receipt.tags || []);
 const lineItemForm = ref({
   text: '',
   sku: '',
@@ -253,6 +266,40 @@ const lineItemForm = ref({
 const handleSharesUpdated = (shares) => {
   // Update the receipt's shared_users
   props.receipt.shared_users = shares;
+};
+
+const handleTagAdded = (tag) => {
+  // When in edit mode, just update the local tags
+  if (isEditing.value) {
+    if (!receiptTags.value.find(t => t.id === tag.id)) {
+      receiptTags.value.push(tag);
+    }
+  } else {
+    // When not editing, immediately save to server
+    router.post(route('receipts.tags.store', props.receipt.id), {
+      name: tag.name
+    }, {
+      preserveScroll: true,
+      onSuccess: () => {
+        receiptTags.value = [...receiptTags.value, tag];
+      }
+    });
+  }
+};
+
+const handleTagRemoved = (tag) => {
+  // When in edit mode, just update the local tags
+  if (isEditing.value) {
+    receiptTags.value = receiptTags.value.filter(t => t.id !== tag.id);
+  } else {
+    // When not editing, immediately remove from server
+    router.delete(route('receipts.tags.destroy', [props.receipt.id, tag.id]), {
+      preserveScroll: true,
+      onSuccess: () => {
+        receiptTags.value = receiptTags.value.filter(t => t.id !== tag.id);
+      }
+    });
+  }
 };
 
 const formatCurrency = (amount, currency) => {
@@ -351,7 +398,12 @@ const deleteLineItem = (id) => {
 
 watch(isEditing, (newValue) => {
   if (!newValue && JSON.stringify(props.receipt) !== JSON.stringify(editedReceipt.value)) {
-    router.patch(route('receipts.update', props.receipt.id), editedReceipt.value);
+    // Include tags as array of IDs
+    const dataToSave = {
+      ...editedReceipt.value,
+      tags: receiptTags.value.map(t => t.id)
+    };
+    router.patch(route('receipts.update', props.receipt.id), dataToSave);
   }
 });
 </script> 

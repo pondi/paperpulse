@@ -102,6 +102,8 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::delete('/receipts/{receipt}/line-items/{lineItem}', [ReceiptController::class, 'deleteLineItem'])->name('receipts.line-items.destroy');
     Route::post('/receipts/{receipt}/share', [ReceiptController::class, 'share'])->name('receipts.share');
     Route::delete('/receipts/{receipt}/share/{user}', [ReceiptController::class, 'unshare'])->name('receipts.unshare');
+    Route::post('/receipts/{receipt}/tags', [ReceiptController::class, 'addTag'])->name('receipts.tags.store');
+    Route::delete('/receipts/{receipt}/tags/{tag}', [ReceiptController::class, 'removeTag'])->name('receipts.tags.destroy');
 
     // Bulk operations
     Route::prefix('bulk')->name('bulk.')->group(function () {

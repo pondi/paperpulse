@@ -14,7 +14,7 @@ class ReceiptController extends Controller
 
     public function index()
     {
-        $receipts = Receipt::with(['merchant', 'file', 'lineItems', 'category'])
+        $receipts = Receipt::with(['merchant', 'file', 'lineItems', 'category', 'tags'])
             ->where('user_id', auth()->id())
             ->orderBy('receipt_date', 'desc')
             ->get()
@@ -45,6 +45,13 @@ class ReceiptController extends Controller
                             'total_amount' => $item->total,
                         ];
                     }),
+                    'tags' => $receipt->tags->map(function ($tag) {
+                        return [
+                            'id' => $tag->id,
+                            'name' => $tag->name,
+                            'color' => $tag->color,
+                        ];
+                    }),
                 ];
             });
 
@@ -63,7 +70,7 @@ class ReceiptController extends Controller
     {
         $this->authorize('view', $receipt);
 
-        $receipt->load(['merchant', 'file', 'lineItems']);
+        $receipt->load(['merchant', 'file', 'lineItems', 'tags']);
 
         return Inertia::render('Receipt/Show', [
             'receipt' => [
@@ -88,6 +95,13 @@ class ReceiptController extends Controller
                         'qty' => $item->qty,
                         'price' => $item->price,
                         'total' => $item->total,
+                    ];
+                }),
+                'tags' => $receipt->tags->map(function ($tag) {
+                    return [
+                        'id' => $tag->id,
+                        'name' => $tag->name,
+                        'color' => $tag->color,
                     ];
                 }),
             ],
@@ -205,12 +219,20 @@ class ReceiptController extends Controller
             'receipt_category' => 'nullable|string|max:255',
             'receipt_description' => 'nullable|string|max:1000',
             'merchant_id' => 'nullable|exists:merchants,id',
+            'tags' => 'sometimes|array',
+            'tags.*' => 'integer|exists:tags,id',
         ]);
 
         // Sanitize string inputs
         $validated = $this->sanitizeData($validated, ['receipt_category', 'receipt_description']);
 
-        $receipt->update($validated);
+        // Update receipt
+        $receipt->update(array_diff_key($validated, ['tags' => '']));
+        
+        // Sync tags if provided
+        if (isset($validated['tags'])) {
+            $receipt->tags()->sync($validated['tags']);
+        }
 
         return redirect()->back()->with('success', 'Receipt updated successfully');
     }
@@ -266,6 +288,42 @@ class ReceiptController extends Controller
         return redirect()->back()->with('success', 'Line item added successfully');
     }
 
+    /**
+     * Add tag to receipt
+     */
+    public function addTag(Request $request, Receipt $receipt)
+    {
+        $this->authorize('update', $receipt);
+        
+        $validated = $request->validate([
+            'name' => 'required|string|max:50',
+        ]);
+        
+        $tag = \App\Models\Tag::findOrCreateByName(
+            $validated['name'],
+            auth()->id()
+        );
+        
+        if (!$receipt->tags->contains($tag->id)) {
+            $receipt->tags()->attach($tag->id, ['file_type' => 'receipt']);
+        }
+        
+        return back()->with('success', 'Tag added successfully');
+    }
+    
+    /**
+     * Remove tag from receipt
+     */
+    public function removeTag(Receipt $receipt, \App\Models\Tag $tag)
+    {
+        $this->authorize('update', $receipt);
+        $this->authorize('view', $tag);
+        
+        $receipt->tags()->detach($tag->id);
+        
+        return back()->with('success', 'Tag removed successfully');
+    }
+    
     /**
      * Get shares for a receipt (API)
      */

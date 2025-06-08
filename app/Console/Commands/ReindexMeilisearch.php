@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Document;
+use App\Models\File;
 use App\Models\LineItem;
 use App\Models\Merchant;
 use App\Models\Receipt;
@@ -32,6 +34,8 @@ class ReindexMeilisearch extends Command
             Receipt::class,
             LineItem::class,
             Merchant::class,
+            Document::class,
+            File::class,
         ];
 
         if ($this->option('fresh')) {

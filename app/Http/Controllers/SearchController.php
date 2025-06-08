@@ -2,69 +2,67 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Receipt;
+use App\Services\SearchService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
 class SearchController extends Controller
 {
+    protected SearchService $searchService;
+    
+    public function __construct(SearchService $searchService)
+    {
+        $this->searchService = $searchService;
+    }
+    
     public function search(Request $request)
     {
         $query = $request->input('query');
 
         if (empty($query)) {
-            return response()->json(['results' => []]);
+            return response()->json(['results' => [], 'facets' => []]);
         }
 
-        $results = Receipt::search($query)
-            ->query(function ($builder) {
-                $builder->with(['merchant', 'lineItems']);
-            })
-            ->get()
-            ->map(function ($receipt) {
-                $description = '';
+        // Build filters from request
+        $filters = [
+            'type' => $request->input('type', 'all'),
+            'limit' => $request->input('limit', 20),
+        ];
+        
+        // Add date filters if provided
+        if ($request->has('date_from')) {
+            $filters['date_from'] = $request->input('date_from');
+        }
+        if ($request->has('date_to')) {
+            $filters['date_to'] = $request->input('date_to');
+        }
+        
+        // Add amount filters for receipts
+        if ($request->has('amount_min')) {
+            $filters['amount_min'] = $request->input('amount_min');
+        }
+        if ($request->has('amount_max')) {
+            $filters['amount_max'] = $request->input('amount_max');
+        }
+        
+        // Add category filter
+        if ($request->has('category')) {
+            $filters['category'] = $request->input('category');
+        }
+        
+        // Add document type filter
+        if ($request->has('document_type')) {
+            $filters['document_type'] = $request->input('document_type');
+        }
+        
+        // Add tag filters
+        if ($request->has('tags')) {
+            $filters['tags'] = is_array($request->input('tags')) 
+                ? $request->input('tags') 
+                : explode(',', $request->input('tags'));
+        }
+        
+        $searchResults = $this->searchService->search($query, $filters);
 
-                // Add merchant info if available
-                if ($receipt->merchant) {
-                    $description .= $receipt->merchant->name;
-                }
-
-                // Add total amount
-                if ($receipt->total_amount) {
-                    $description .= ' - '.number_format($receipt->total_amount, 2).' '.$receipt->currency;
-                }
-
-                // Add date if available
-                if ($receipt->receipt_date) {
-                    $date = $receipt->receipt_date instanceof Carbon
-                        ? $receipt->receipt_date
-                        : Carbon::parse($receipt->receipt_date);
-                    $description .= ' - '.$date->format('Y-m-d');
-                }
-
-                // Add receipt category if available
-                if ($receipt->receipt_category) {
-                    $description .= ' - '.$receipt->receipt_category;
-                }
-
-                return [
-                    'id' => $receipt->id,
-                    'title' => $receipt->merchant?->name ?? 'Unknown Merchant',
-                    'description' => $description,
-                    'url' => route('receipts.show', $receipt->id),
-                    'date' => $receipt->receipt_date ? (
-                        $receipt->receipt_date instanceof Carbon
-                            ? $receipt->receipt_date->format('Y-m-d')
-                            : Carbon::parse($receipt->receipt_date)->format('Y-m-d')
-                    ) : null,
-                    'total' => $receipt->total_amount ? number_format($receipt->total_amount, 2).' '.$receipt->currency : null,
-                    'category' => $receipt->receipt_category,
-                    'items' => $receipt->lineItems->take(3)->map(function ($item) {
-                        return $item->text;
-                    })->join(', '),
-                ];
-            });
-
-        return response()->json(['results' => $results]);
+        return response()->json($searchResults);
     }
 }

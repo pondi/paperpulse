@@ -4,11 +4,19 @@ namespace App\Policies;
 
 use App\Models\Receipt;
 use App\Models\User;
+use App\Services\SharingService;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 class ReceiptPolicy
 {
     use HandlesAuthorization;
+    
+    protected SharingService $sharingService;
+    
+    public function __construct(SharingService $sharingService)
+    {
+        $this->sharingService = $sharingService;
+    }
 
     /**
      * Determine whether the user can view any models.
@@ -23,7 +31,7 @@ class ReceiptPolicy
      */
     public function view(User $user, Receipt $receipt): bool
     {
-        return $user->id === $receipt->user_id;
+        return $this->sharingService->userHasAccess($receipt, $user, 'view');
     }
 
     /**
@@ -39,7 +47,7 @@ class ReceiptPolicy
      */
     public function update(User $user, Receipt $receipt): bool
     {
-        return $user->id === $receipt->user_id;
+        return $this->sharingService->userHasAccess($receipt, $user, 'edit');
     }
 
     /**
@@ -47,6 +55,7 @@ class ReceiptPolicy
      */
     public function delete(User $user, Receipt $receipt): bool
     {
+        // Only owner can delete
         return $user->id === $receipt->user_id;
     }
 
@@ -63,6 +72,15 @@ class ReceiptPolicy
      */
     public function forceDelete(User $user, Receipt $receipt): bool
     {
+        return $user->id === $receipt->user_id;
+    }
+    
+    /**
+     * Determine whether the user can share the receipt.
+     */
+    public function share(User $user, Receipt $receipt): bool
+    {
+        // Only owner can share
         return $user->id === $receipt->user_id;
     }
 }

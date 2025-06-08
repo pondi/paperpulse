@@ -68,10 +68,19 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::post('/vendors/{vendor}/logo', [VendorController::class, 'updateLogo'])->name('vendors.updateLogo');
 
     // Document routes
+    Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
     Route::get('/documents/upload', function () {
         return Inertia::render('Documents/Upload');
     })->name('documents.upload');
     Route::post('/documents/store', [DocumentController::class, 'store'])->name('documents.store');
+    Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
+    Route::patch('/documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
+    Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
+    Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
+    Route::post('/documents/{document}/share', [DocumentController::class, 'share'])->name('documents.share');
+    Route::delete('/documents/{document}/share/{user}', [DocumentController::class, 'unshare'])->name('documents.unshare');
+    Route::post('/documents/{document}/tags', [DocumentController::class, 'addTag'])->name('documents.tags.add');
+    Route::delete('/documents/{document}/tags/{tag}', [DocumentController::class, 'removeTag'])->name('documents.tags.remove');
     Route::get('/documents/serve', [DocumentController::class, 'serve'])->name('documents.serve');
     Route::get('/documents/url', [DocumentController::class, 'getSecureUrl'])->name('documents.url');
 

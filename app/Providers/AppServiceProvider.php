@@ -4,9 +4,11 @@ namespace App\Providers;
 
 use App\Listeners\CreateUserPreferences;
 use App\Models\Category;
+use App\Models\Document;
 use App\Models\File;
 use App\Models\Receipt;
 use App\Policies\CategoryPolicy;
+use App\Policies\DocumentPolicy;
 use App\Policies\FilePolicy;
 use App\Policies\ReceiptPolicy;
 use App\Services\AI\AIService;
@@ -59,6 +61,16 @@ class AppServiceProvider extends ServiceProvider
             return new \App\Services\DocumentAnalysisService(
                 $app->make(AIService::class)
             );
+        });
+        
+        // Register SharingService
+        $this->app->singleton(\App\Services\SharingService::class, function ($app) {
+            return new \App\Services\SharingService();
+        });
+        
+        // Register SearchService
+        $this->app->singleton(\App\Services\SearchService::class, function ($app) {
+            return new \App\Services\SearchService();
         });
     }
 
@@ -130,5 +142,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Receipt::class, ReceiptPolicy::class);
         Gate::policy(File::class, FilePolicy::class);
         Gate::policy(Category::class, CategoryPolicy::class);
+        Gate::policy(Document::class, DocumentPolicy::class);
     }
 }

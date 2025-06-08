@@ -51,11 +51,13 @@ class PulseDavController extends Controller
         $request->validate([
             'file_ids' => 'required|array',
             'file_ids.*' => 'exists:pulsedav_files,id',
+            'file_type' => 'nullable|in:receipt,document',
         ]);
 
         $queued = $this->pulseDavService->processFiles(
             $request->file_ids,
-            $request->user()
+            $request->user(),
+            $request->file_type ?? 'receipt'
         );
 
         return response()->json([

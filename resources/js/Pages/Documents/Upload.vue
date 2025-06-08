@@ -46,8 +46,40 @@
                         <p class="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-400">
                             Upload your receipts and documents. They will be automatically processed and organized for you.
                         </p>
+
+                        <!-- File Type Selection -->
+                        <div class="mt-8 flex justify-center">
+                            <div class="inline-flex rounded-md shadow-sm" role="group">
+                                <button
+                                    type="button"
+                                    @click="fileType = 'receipt'"
+                                    :class="[
+                                        'px-4 py-2 text-sm font-medium rounded-l-lg border',
+                                        fileType === 'receipt'
+                                            ? 'bg-indigo-600 text-white border-indigo-600 z-10'
+                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    ]"
+                                >
+                                    <ReceiptRefundIcon class="h-5 w-5 inline-block mr-2" />
+                                    Receipt
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="fileType = 'document'"
+                                    :class="[
+                                        'px-4 py-2 text-sm font-medium rounded-r-lg border',
+                                        fileType === 'document'
+                                            ? 'bg-indigo-600 text-white border-indigo-600 z-10'
+                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    ]"
+                                >
+                                    <DocumentIcon class="h-5 w-5 inline-block mr-2" />
+                                    Document
+                                </button>
+                            </div>
+                        </div>
                         
-                        <form class="mt-10" ref="fileUpload" @submit.prevent="submit">
+                        <form class="mt-6" ref="fileUpload" @submit.prevent="submit">
                             <div 
                                 class="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 dark:border-gray-700 px-6 py-10 relative"
                                 :class="[
@@ -67,7 +99,7 @@
                                     multiple 
                                     class="sr-only" 
                                     @change="handleFileSelect"
-                                    accept=".pdf,.png,.jpg,.jpeg"
+                                    :accept="fileType === 'receipt' ? '.pdf,.png,.jpg,.jpeg' : '.pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv'"
                                 />
 
                                 <!-- Empty State -->
@@ -79,7 +111,12 @@
                                         </span>
                                         <p class="pl-1">or drag and drop</p>
                                     </div>
-                                    <p class="text-xs leading-5 text-gray-600 dark:text-gray-400">PDF, PNG, JPG up to 10MB</p>
+                                    <p class="text-xs leading-5 text-gray-600 dark:text-gray-400">
+                                        {{ fileType === 'receipt' 
+                                            ? 'PDF, PNG, JPG up to 10MB' 
+                                            : 'PDF, PNG, JPG, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV up to 50MB' 
+                                        }}
+                                    </p>
                                 </div>
 
                                 <!-- File Preview -->
@@ -125,7 +162,7 @@
                                                 multiple 
                                                 class="sr-only" 
                                                 @change="handleAdditionalFiles"
-                                                accept=".pdf,.png,.jpg,.jpeg"
+                                                :accept="fileType === 'receipt' ? '.pdf,.png,.jpg,.jpeg' : '.pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv'"
                                             />
                                         </label>
                                     </div>
@@ -182,7 +219,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { useForm } from '@inertiajs/vue3';
-import { CheckCircleIcon, XMarkIcon, PhotoIcon, DocumentIcon } from '@heroicons/vue/20/solid'
+import { CheckCircleIcon, XMarkIcon, PhotoIcon, DocumentIcon, ReceiptRefundIcon } from '@heroicons/vue/20/solid'
 import { ref, watch } from 'vue';
 import { useFileUpload } from '@/Composables/useFileUpload';
 
@@ -194,8 +231,29 @@ interface FileObject {
     type: string;
 }
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB for receipts
+const MAX_DOCUMENT_SIZE = 50 * 1024 * 1024; // 50MB for documents
+
+const RECEIPT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+const DOCUMENT_TYPES = [
+    'application/pdf', 
+    'image/png', 
+    'image/jpeg', 
+    'image/jpg',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain',
+    'text/csv'
+];
+
+const uploadSuccess = ref(false);
+const uploadError = ref<string | null>(null);
+const fileUpload = ref<HTMLFormElement | null>(null);
+const fileType = ref<'receipt' | 'document'>('receipt'); // Default to receipt
 
 const {
     selectedFiles,
@@ -206,8 +264,8 @@ const {
     removeFile,
     resetFiles
 } = useFileUpload({
-    maxFileSize: MAX_FILE_SIZE,
-    allowedTypes: ALLOWED_TYPES,
+    maxFileSize: fileType.value === 'receipt' ? MAX_FILE_SIZE : MAX_DOCUMENT_SIZE,
+    allowedTypes: fileType.value === 'receipt' ? RECEIPT_TYPES : DOCUMENT_TYPES,
     onError: (error: string) => {
         uploadError.value = error;
         setTimeout(() => {
@@ -216,12 +274,9 @@ const {
     }
 });
 
-const uploadSuccess = ref(false);
-const uploadError = ref<string | null>(null);
-const fileUpload = ref<HTMLFormElement | null>(null);
-
 const form = useForm({
     files: null as File[] | null,
+    file_type: 'receipt' as 'receipt' | 'document',
 });
 
 watch(selectedFiles, (files) => {
@@ -234,6 +289,10 @@ watch(selectedFiles, (files) => {
     files.forEach(fileObj => dt.items.add(fileObj.file));
     form.files = dt.files;
 }, { deep: true });
+
+watch(fileType, (newType) => {
+    form.file_type = newType;
+});
 
 async function submit() {
     if (!form.files?.length) return;

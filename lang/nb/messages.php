@@ -3,8 +3,12 @@
 return [
     // Navigation
     'receipts' => 'Kvitteringer',
+    'all_receipts' => 'Alle kvitteringer',
     'merchants' => 'Butikker',
     'vendors' => 'Leverandører',
+    'documents' => 'Dokumenter',
+    'all_documents' => 'Alle dokumenter',
+    'shared_with_me' => 'Delt med meg',
     'upload' => 'Last opp',
     'analytics' => 'Analyser',
     'scanner_imports' => 'Skanner Importer',

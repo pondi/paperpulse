@@ -47,6 +47,8 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
     Route::post('/categories/order', [CategoryController::class, 'updateOrder'])->name('categories.order');
     Route::post('/categories/defaults', [CategoryController::class, 'createDefaults'])->name('categories.defaults');
+    Route::post('/categories/{category}/share', [CategoryController::class, 'share'])->name('categories.share');
+    Route::delete('/categories/{category}/share/{user}', [CategoryController::class, 'unshare'])->name('categories.unshare');
 
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -69,9 +71,9 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
 
     // Document routes
     Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
-    Route::get('/documents/upload', function () {
-        return Inertia::render('Documents/Upload');
-    })->name('documents.upload');
+    Route::get('/documents/upload', [DocumentController::class, 'upload'])->name('documents.upload');
+    Route::get('/documents/shared', [DocumentController::class, 'shared'])->name('documents.shared');
+    Route::get('/documents/categories', [DocumentController::class, 'categories'])->name('documents.categories');
     Route::post('/documents/store', [DocumentController::class, 'store'])->name('documents.store');
     Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
     Route::patch('/documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
@@ -79,8 +81,10 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
     Route::post('/documents/{document}/share', [DocumentController::class, 'share'])->name('documents.share');
     Route::delete('/documents/{document}/share/{user}', [DocumentController::class, 'unshare'])->name('documents.unshare');
-    Route::post('/documents/{document}/tags', [DocumentController::class, 'addTag'])->name('documents.tags.add');
-    Route::delete('/documents/{document}/tags/{tag}', [DocumentController::class, 'removeTag'])->name('documents.tags.remove');
+    Route::post('/documents/{document}/tags', [DocumentController::class, 'addTag'])->name('documents.tags.store');
+    Route::delete('/documents/{document}/tags/{tag}', [DocumentController::class, 'removeTag'])->name('documents.tags.destroy');
+    Route::delete('/documents/bulk', [DocumentController::class, 'destroyBulk'])->name('documents.destroy-bulk');
+    Route::get('/documents/bulk/download', [DocumentController::class, 'downloadBulk'])->name('documents.download-bulk');
     Route::get('/documents/serve', [DocumentController::class, 'serve'])->name('documents.serve');
     Route::get('/documents/url', [DocumentController::class, 'getSecureUrl'])->name('documents.url');
 

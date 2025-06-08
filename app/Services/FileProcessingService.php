@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\AnalyzeDocument;
 use App\Jobs\DeleteWorkingFiles;
 use App\Jobs\MatchMerchant;
 use App\Jobs\ProcessDocument;
@@ -230,7 +231,7 @@ class FileProcessingService
             Bus::chain([
                 (new ProcessFile($jobId))->onQueue('documents'),
                 (new ProcessDocument($jobId))->onQueue('documents'),
-                // AnalyzeDocument job will be added in Step 3
+                (new AnalyzeDocument($jobId))->onQueue('documents'),
                 (new DeleteWorkingFiles($jobId))->onQueue('documents'),
             ])->dispatch();
         }

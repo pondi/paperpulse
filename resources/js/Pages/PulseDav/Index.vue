@@ -41,14 +41,26 @@
                     <div class="p-6">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-semibold text-gray-900">Scanner Files</h3>
-                            <button
-                                v-if="selectedFiles.length > 0"
-                                @click="processSelectedFiles"
-                                :disabled="processing"
-                                class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50"
-                            >
-                                Process {{ selectedFiles.length }} File{{ selectedFiles.length > 1 ? 's' : '' }}
-                            </button>
+                            <div class="flex items-center space-x-4">
+                                <div v-if="selectedFiles.length > 0" class="flex items-center space-x-2">
+                                    <label class="text-sm font-medium text-gray-700">Process as:</label>
+                                    <select
+                                        v-model="selectedFileType"
+                                        class="rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm"
+                                    >
+                                        <option value="receipt">Receipt</option>
+                                        <option value="document">Document</option>
+                                    </select>
+                                </div>
+                                <button
+                                    v-if="selectedFiles.length > 0"
+                                    @click="processSelectedFiles"
+                                    :disabled="processing"
+                                    class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50"
+                                >
+                                    Process {{ selectedFiles.length }} File{{ selectedFiles.length > 1 ? 's' : '' }}
+                                </button>
+                            </div>
                         </div>
 
                         <div v-if="files.data.length === 0" class="text-center py-8 text-gray-500">
@@ -75,6 +87,9 @@
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Uploaded
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Type
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Status
@@ -105,6 +120,11 @@
                                             {{ formatDate(file.uploaded_at) }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                {{ file.file_type || 'receipt' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
                                             <span
                                                 class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                                                 :class="getStatusClass(file.status)"
@@ -122,6 +142,13 @@
                                                 class="text-indigo-600 hover:text-indigo-900 mr-3"
                                             >
                                                 View Receipt
+                                            </Link>
+                                            <Link
+                                                v-if="file.document_id"
+                                                :href="route('documents.show', file.document_id)"
+                                                class="text-indigo-600 hover:text-indigo-900 mr-3"
+                                            >
+                                                View Document
                                             </Link>
                                             <button
                                                 @click="deleteFile(file)"
@@ -176,6 +203,7 @@ const syncMessage = ref('');
 const syncSuccess = ref(false);
 const processing = ref(false);
 const selectedFiles = ref([]);
+const selectedFileType = ref('receipt');
 
 const selectableFiles = computed(() => {
     return props.files.data.filter(file => isSelectable(file));
@@ -237,6 +265,7 @@ const processSelectedFiles = async () => {
             },
             body: JSON.stringify({
                 file_ids: selectedFiles.value,
+                file_type: selectedFileType.value,
             }),
         });
 

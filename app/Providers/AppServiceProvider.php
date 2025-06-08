@@ -7,10 +7,12 @@ use App\Models\Category;
 use App\Models\Document;
 use App\Models\File;
 use App\Models\Receipt;
+use App\Models\Tag;
 use App\Policies\CategoryPolicy;
 use App\Policies\DocumentPolicy;
 use App\Policies\FilePolicy;
 use App\Policies\ReceiptPolicy;
+use App\Policies\TagPolicy;
 use App\Services\AI\AIService;
 use App\Services\AI\AIServiceFactory;
 use Illuminate\Auth\Events\Registered;
@@ -143,5 +145,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(File::class, FilePolicy::class);
         Gate::policy(Category::class, CategoryPolicy::class);
         Gate::policy(Document::class, DocumentPolicy::class);
+        Gate::policy(Tag::class, TagPolicy::class);
     }
 }

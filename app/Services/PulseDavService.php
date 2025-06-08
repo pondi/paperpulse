@@ -86,6 +86,7 @@ class PulseDavService
                     'size' => $fileData['size'],
                     'uploaded_at' => $fileData['uploaded_at'],
                     'status' => 'pending',
+                    'file_type' => config('receipt-scanner.default_pulsedav_type', 'receipt'),
                 ]);
                 $synced++;
             }
@@ -164,16 +165,18 @@ class PulseDavService
             'id' => $s3File->id,
             'filename' => $s3File->filename,
             'status' => $s3File->status,
+            'file_type' => $s3File->file_type,
             'processed_at' => $s3File->processed_at,
             'error_message' => $s3File->error_message,
             'receipt_id' => $s3File->receipt_id,
+            'document_id' => $s3File->document_id,
         ];
     }
 
     /**
      * Process multiple files
      */
-    public function processFiles(array $fileIds, User $user)
+    public function processFiles(array $fileIds, User $user, $fileType = 'receipt')
     {
         $files = PulseDavFile::whereIn('id', $fileIds)
             ->where('user_id', $user->id)
@@ -182,6 +185,9 @@ class PulseDavService
 
         $queued = 0;
         foreach ($files as $file) {
+            // Update file type before processing
+            $file->update(['file_type' => $fileType]);
+            
             // Dispatch job to process this file
             \App\Jobs\ProcessPulseDavFile::dispatch($file);
             $file->markAsProcessing();

@@ -58,18 +58,29 @@ class ProcessPulseDavFile implements ShouldQueue
                 'file_size' => $this->pulseDavFile->size,
                 'mime_type' => Storage::disk('local')->mimeType($tempPath),
                 'status' => 'pending',
+                'file_type' => $this->pulseDavFile->file_type ?? 'receipt',
             ]);
 
             // Store PulseDavFile ID in the File model for tracking
             $file->update(['meta' => json_encode(['pulsedav_file_id' => $this->pulseDavFile->id])]);
 
-            // Dispatch the existing processing chain with status update at the end
-            ProcessFile::withChain([
-                new ProcessReceipt($file),
-                new MatchMerchant($file),
-                new DeleteWorkingFiles($file),
-                new UpdatePulseDavFileStatus($file, $this->pulseDavFile->id),
-            ])->dispatch($file);
+            // Dispatch the appropriate processing chain based on file type
+            if ($this->pulseDavFile->file_type === 'document') {
+                ProcessFile::withChain([
+                    new ProcessDocument($file),
+                    new AnalyzeDocument($file),
+                    new DeleteWorkingFiles($file),
+                    new UpdatePulseDavFileStatus($file, $this->pulseDavFile->id, 'document'),
+                ])->dispatch($file);
+            } else {
+                // Default to receipt processing
+                ProcessFile::withChain([
+                    new ProcessReceipt($file),
+                    new MatchMerchant($file),
+                    new DeleteWorkingFiles($file),
+                    new UpdatePulseDavFileStatus($file, $this->pulseDavFile->id, 'receipt'),
+                ])->dispatch($file);
+            }
 
             // Update S3 file record
             $this->pulseDavFile->update([

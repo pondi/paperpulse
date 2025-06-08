@@ -18,10 +18,12 @@ class PulseDavFile extends Model
         'filename',
         'size',
         'status',
+        'file_type',
         'uploaded_at',
         'processed_at',
         'error_message',
         'receipt_id',
+        'document_id',
     ];
 
     protected $casts = [
@@ -44,6 +46,14 @@ class PulseDavFile extends Model
     public function receipt()
     {
         return $this->belongsTo(Receipt::class);
+    }
+
+    /**
+     * Get the document associated with this S3 file.
+     */
+    public function document()
+    {
+        return $this->belongsTo(Document::class);
     }
 
     /**
@@ -89,14 +99,21 @@ class PulseDavFile extends Model
     /**
      * Mark the file as completed.
      */
-    public function markAsCompleted($receiptId = null)
+    public function markAsCompleted($relatedId = null, $type = 'receipt')
     {
-        $this->update([
+        $updateData = [
             'status' => 'completed',
             'processed_at' => now(),
-            'receipt_id' => $receiptId,
             'error_message' => null,
-        ]);
+        ];
+        
+        if ($type === 'receipt') {
+            $updateData['receipt_id'] = $relatedId;
+        } else {
+            $updateData['document_id'] = $relatedId;
+        }
+        
+        $this->update($updateData);
     }
 
     /**

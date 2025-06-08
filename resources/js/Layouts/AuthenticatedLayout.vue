@@ -220,6 +220,7 @@ import {
   UsersIcon,
   XMarkIcon,
   CloudArrowDownIcon,
+  CloudArrowUpIcon,
   ChartBarIcon,
   UserCircleIcon,
 } from '@heroicons/vue/24/outline'
@@ -239,16 +240,26 @@ const navigation = [
     name: 'receipts', 
     href: route('receipts.index'), 
     icon: DocumentDuplicateIcon, 
-    current: route().current('receipts.*') || route().current('merchants.*') || route().current('vendors.*') || route().current('categories.*'),
+    current: route().current('receipts.*') || route().current('merchants.*') || route().current('vendors.*'),
     children: [
       { name: 'all_receipts', href: route('receipts.index'), current: route().current('receipts.index') },
-      { name: 'categories', href: route('categories.index'), current: route().current('categories.*') },
       { name: 'merchants', href: route('merchants.index'), current: route().current('merchants.*') },
       { name: 'vendors', href: route('vendors.index'), current: route().current('vendors.index') },
     ]
   },
+  { 
+    name: 'documents', 
+    href: route('documents.index'), 
+    icon: FolderIcon, 
+    current: route().current('documents.*') && !route().current('documents.upload'),
+    children: [
+      { name: 'all_documents', href: route('documents.index'), current: route().current('documents.index') },
+      { name: 'shared_with_me', href: route('documents.shared'), current: route().current('documents.shared') },
+      { name: 'categories', href: route('documents.categories'), current: route().current('documents.categories') },
+    ]
+  },
   { name: 'analytics', href: route('analytics.index'), icon: ChartBarIcon, current: route().current('analytics.*') },
-  { name: 'upload', href: route('documents.upload'), icon: FolderIcon, current: route().current('documents.upload') },
+  { name: 'upload', href: route('documents.upload'), icon: CloudArrowUpIcon, current: route().current('documents.upload') },
   { name: 'scanner_imports', href: route('pulsedav.index'), icon: CloudArrowDownIcon, current: route().current('pulsedav.*') },
   { name: 'job_status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index') },
 ]

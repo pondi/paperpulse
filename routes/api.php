@@ -21,3 +21,9 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 // PulseDav Authentication
 Route::post('/webdav/auth', [\App\Http\Controllers\Api\WebDavAuthController::class, 'authenticate'])
     ->middleware('throttle:pulsedav-auth');
+
+// File Sharing API
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/documents/{document}/shares', [\App\Http\Controllers\DocumentController::class, 'getShares']);
+    Route::get('/receipts/{receipt}/shares', [\App\Http\Controllers\ReceiptController::class, 'getShares']);
+});

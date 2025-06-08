@@ -270,6 +270,21 @@ class DocumentController extends Controller
     }
     
     /**
+     * Get shares for a document (API)
+     */
+    public function getShares(Document $document)
+    {
+        $this->authorize('view', $document);
+        
+        $shares = \App\Models\FileShare::where('file_id', $document->file_id)
+            ->where('file_type', 'document')
+            ->with('sharedWithUser:id,name,email')
+            ->get();
+            
+        return response()->json($shares);
+    }
+    
+    /**
      * Display shared documents
      */
     public function shared(Request $request)

@@ -10,6 +10,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
 import Modal from '@/Components/Modal.vue';
 import TagManager from '@/Components/TagManager.vue';
+import SharingControls from '@/Components/SharingControls.vue';
 import { 
     DocumentIcon,
     TagIcon,
@@ -68,7 +69,6 @@ interface Props {
 const props = defineProps<Props>();
 
 const isEditing = ref(false);
-const showShareModal = ref(false);
 const showDeleteModal = ref(false);
 const documentTags = ref(props.document.tags);
 
@@ -79,10 +79,6 @@ const form = useForm({
     tags: props.document.tags.map(t => t.id),
 });
 
-const shareForm = useForm({
-    email: '',
-    permission: 'view' as 'view' | 'edit',
-});
 
 const selectedCategory = computed(() => {
     return props.categories.find(c => c.id === form.category_id);
@@ -161,25 +157,15 @@ const handleTagRemoved = (tag: Tag) => {
     }
 };
 
-const shareDocument = () => {
-    shareForm.post(route('documents.share', props.document.id), {
-        preserveScroll: true,
-        onSuccess: () => {
-            shareForm.reset();
-            showShareModal.value = false;
-        }
-    });
-};
-
-const removeShare = (userId: number) => {
-    router.delete(route('documents.unshare', [props.document.id, userId]), {
-        preserveScroll: true
-    });
-};
 
 const getFileIcon = (fileType: string) => {
     // This would be expanded to show different icons based on file type
     return DocumentIcon;
+};
+
+const handleSharesUpdated = (shares: any[]) => {
+    // Update the document's shared_users
+    props.document.shared_users = shares;
 };
 </script>
 
@@ -210,13 +196,12 @@ const getFileIcon = (fileType: string) => {
                         <ArrowDownTrayIcon class="h-4 w-4 mr-2" />
                         Download
                     </button>
-                    <button
-                        @click="showShareModal = true"
-                        class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                        <ShareIcon class="h-4 w-4 mr-2" />
-                        Share
-                    </button>
+                    <SharingControls
+                        :file-id="document.id"
+                        file-type="document"
+                        :current-shares="document.shared_users || []"
+                        @shares-updated="handleSharesUpdated"
+                    />
                     <button
                         v-if="!isEditing"
                         @click="isEditing = true"
@@ -429,51 +414,6 @@ const getFileIcon = (fileType: string) => {
             </div>
         </div>
 
-        <!-- Share Modal -->
-        <Modal :show="showShareModal" @close="showShareModal = false">
-            <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                    Share Document
-                </h2>
-                
-                <div class="space-y-4">
-                    <div>
-                        <InputLabel for="email" value="Email address" />
-                        <TextInput
-                            id="email"
-                            v-model="shareForm.email"
-                            type="email"
-                            class="mt-1 block w-full"
-                            placeholder="user@example.com"
-                        />
-                        <InputError :message="shareForm.errors.email" class="mt-2" />
-                    </div>
-
-                    <div>
-                        <InputLabel for="permission" value="Permission" />
-                        <select
-                            id="permission"
-                            v-model="shareForm.permission"
-                            class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
-                        >
-                            <option value="view">View only</option>
-                            <option value="edit">Can edit</option>
-                        </select>
-                        <InputError :message="shareForm.errors.permission" class="mt-2" />
-                    </div>
-                </div>
-
-                <div class="mt-6 flex justify-end space-x-3">
-                    <SecondaryButton @click="showShareModal = false">
-                        Cancel
-                    </SecondaryButton>
-                    <PrimaryButton @click="shareDocument" :disabled="shareForm.processing">
-                        <UserPlusIcon class="h-4 w-4 mr-2" />
-                        Share
-                    </PrimaryButton>
-                </div>
-            </div>
-        </Modal>
 
         <!-- Delete Confirmation Modal -->
         <Modal :show="showDeleteModal" @close="showDeleteModal = false">

@@ -9,6 +9,12 @@
           {{ receipt.merchant?.name || __('unknown_merchant') }}
         </h2>
         <div class="flex items-center gap-x-4">
+          <SharingControls
+            :file-id="receipt.id"
+            file-type="receipt"
+            :current-shares="receipt.shared_users || []"
+            @shares-updated="handleSharesUpdated"
+          />
           <Link
             :href="route('receipts.index')"
             class="inline-flex items-center gap-x-2 px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150"
@@ -210,6 +216,7 @@ import { ref, computed, watch } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Modal from '@/Components/Modal.vue';
+import SharingControls from '@/Components/SharingControls.vue';
 import {
   ArrowLeftIcon,
   DocumentIcon,
@@ -242,6 +249,11 @@ const lineItemForm = ref({
   price: 0,
   total: 0
 });
+
+const handleSharesUpdated = (shares) => {
+  // Update the receipt's shared_users
+  props.receipt.shared_users = shares;
+};
 
 const formatCurrency = (amount, currency) => {
   if (!amount) return '0,00'

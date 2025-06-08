@@ -267,6 +267,21 @@ class ReceiptController extends Controller
     }
 
     /**
+     * Get shares for a receipt (API)
+     */
+    public function getShares(Receipt $receipt)
+    {
+        $this->authorize('view', $receipt);
+        
+        $shares = \App\Models\FileShare::where('file_id', $receipt->file_id)
+            ->where('file_type', 'receipt')
+            ->with('sharedWithUser:id,name,email')
+            ->get();
+            
+        return response()->json($shares);
+    }
+    
+    /**
      * Share receipt with another user
      */
     public function share(Request $request, Receipt $receipt)

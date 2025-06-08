@@ -29,6 +29,12 @@ class PulseDavController extends Controller
         // Get user's tags for the tag selector
         $tags = auth()->user()->tags()->orderBy('name')->get();
 
+        \Log::info('PulseDav index', [
+            'user_id' => auth()->id(),
+            'files_count' => $files->count(),
+            'tags_count' => $tags->count(),
+        ]);
+
         return Inertia::render('PulseDav/Index', [
             'files' => $files,
             'tags' => $tags,

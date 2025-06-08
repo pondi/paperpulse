@@ -229,7 +229,8 @@
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr v-for="file in files.data" :key="file.id" v-if="!file.is_folder">
+                                    <template v-for="file in files.data" :key="file.id">
+                                        <tr v-if="!file.is_folder">
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <input
                                                 v-if="isSelectable(file)"
@@ -290,6 +291,7 @@
                                             </button>
                                         </td>
                                     </tr>
+                                    </template>
                                 </tbody>
                             </table>
                         </div>

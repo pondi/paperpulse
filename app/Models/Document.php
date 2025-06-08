@@ -108,7 +108,8 @@ class Document extends Model
      */
     public function tags()
     {
-        return $this->belongsToMany(Tag::class, 'document_tags')
+        return $this->belongsToMany(Tag::class, 'file_tags', 'file_id', 'tag_id')
+            ->wherePivot('file_type', 'document')
             ->withTimestamps();
     }
 

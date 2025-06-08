@@ -16,11 +16,11 @@ import {
     TagIcon, 
     ShareIcon,
     TrashIcon,
-    DownloadIcon,
+    ArrowDownTrayIcon,
     EyeIcon,
     XMarkIcon,
     FunnelIcon,
-    ViewGridIcon,
+    Squares2X2Icon,
     ListBulletIcon
 } from '@heroicons/vue/24/outline';
 
@@ -189,7 +189,7 @@ const applyFilter = (filters: any) => {
                                     : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
                             ]"
                         >
-                            <ViewGridIcon class="h-5 w-5" />
+                            <Squares2X2Icon class="h-5 w-5" />
                         </button>
                         <button
                             @click="viewMode = 'list'"
@@ -216,7 +216,7 @@ const applyFilter = (filters: any) => {
                                 @click="downloadSelected"
                                 class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
                             >
-                                <DownloadIcon class="h-4 w-4 mr-1" />
+                                <ArrowDownTrayIcon class="h-4 w-4 mr-1" />
                                 Download
                             </button>
                             <button

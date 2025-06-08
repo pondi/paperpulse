@@ -61,7 +61,8 @@ class Receipt extends Model
 
     public function tags()
     {
-        return $this->belongsToMany(Tag::class, 'receipt_tags')
+        return $this->belongsToMany(Tag::class, 'file_tags', 'file_id', 'tag_id')
+            ->wherePivot('file_type', 'receipt')
             ->withTimestamps();
     }
 

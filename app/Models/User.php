@@ -72,6 +72,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the tags for the user.
+     */
+    public function tags()
+    {
+        return $this->hasMany(Tag::class);
+    }
+
+    /**
      * Get the user's preferences.
      */
     public function preferences()

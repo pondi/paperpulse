@@ -19,6 +19,7 @@ return [
     'product_vendors' => 'Product Vendors',
     'no_vendors_found' => 'No vendors found',
     'share' => 'Share',
+    'tags' => 'Tags',
 
     // Receipt related
     'receipt_details' => 'Receipt Details',

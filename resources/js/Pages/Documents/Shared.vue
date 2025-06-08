@@ -9,7 +9,7 @@ import {
     TagIcon, 
     UserIcon,
     EyeIcon,
-    DownloadIcon
+    ArrowDownTrayIcon
 } from '@heroicons/vue/24/outline';
 
 interface SharedDocument {
@@ -199,7 +199,7 @@ const applyFilter = (filters: any) => {
                                                 :href="route('documents.download', document.id)"
                                                 class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
                                             >
-                                                <DownloadIcon class="h-5 w-5" />
+                                                <ArrowDownTrayIcon class="h-5 w-5" />
                                             </a>
                                         </div>
                                     </td>

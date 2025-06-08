@@ -14,6 +14,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PulseDavController;
 use App\Http\Controllers\ReceiptController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\TagController;
 use App\Http\Controllers\VendorController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Cache;
@@ -115,6 +116,14 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
 
     // Search routes
     Route::get('/search', [SearchController::class, 'search'])->name('search');
+
+    // Tag routes
+    Route::get('/tags', [TagController::class, 'index'])->name('tags.index');
+    Route::get('/tags/all', [TagController::class, 'all'])->name('tags.all');
+    Route::post('/tags', [TagController::class, 'store'])->name('tags.store');
+    Route::patch('/tags/{tag}', [TagController::class, 'update'])->name('tags.update');
+    Route::delete('/tags/{tag}', [TagController::class, 'destroy'])->name('tags.destroy');
+    Route::post('/tags/{tag}/merge', [TagController::class, 'merge'])->name('tags.merge');
 
     // Export routes
     Route::prefix('export')->name('export.')->group(function () {

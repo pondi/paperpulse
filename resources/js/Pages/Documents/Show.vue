@@ -9,12 +9,13 @@ import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
 import Modal from '@/Components/Modal.vue';
+import TagManager from '@/Components/TagManager.vue';
 import { 
     DocumentIcon,
     TagIcon,
     FolderIcon,
     ShareIcon,
-    DownloadIcon,
+    ArrowDownTrayIcon,
     TrashIcon,
     PencilIcon,
     XMarkIcon,
@@ -25,6 +26,7 @@ import {
 interface Tag {
     id: number;
     name: string;
+    color: string;
 }
 
 interface Category {
@@ -68,7 +70,7 @@ const props = defineProps<Props>();
 const isEditing = ref(false);
 const showShareModal = ref(false);
 const showDeleteModal = ref(false);
-const newTag = ref('');
+const documentTags = ref(props.document.tags);
 
 const form = useForm({
     title: props.document.title,
@@ -105,6 +107,9 @@ const formatDate = (date: string) => {
 };
 
 const saveDocument = () => {
+    // Update tags to be the array of tag IDs
+    form.tags = documentTags.value.map(t => t.id);
+    
     form.put(route('documents.update', props.document.id), {
         onSuccess: () => {
             isEditing.value = false;
@@ -124,21 +129,36 @@ const downloadDocument = () => {
     window.location.href = route('documents.download', props.document.id);
 };
 
-const addTag = () => {
-    if (newTag.value.trim()) {
+const handleTagAdded = (tag: Tag) => {
+    // When in edit mode, just update the form data
+    if (isEditing.value) {
+        form.tags.push(tag.id);
+    } else {
+        // When not editing, immediately save to server
         router.post(route('documents.tags.store', props.document.id), {
-            name: newTag.value.trim()
+            name: tag.name
         }, {
             preserveScroll: true,
             onSuccess: () => {
-                newTag.value = '';
+                documentTags.value = [...documentTags.value, tag];
             }
         });
     }
 };
 
-const removeTag = (tagId: number) => {
-    form.tags = form.tags.filter(id => id !== tagId);
+const handleTagRemoved = (tag: Tag) => {
+    // When in edit mode, just update the form data
+    if (isEditing.value) {
+        form.tags = form.tags.filter(id => id !== tag.id);
+    } else {
+        // When not editing, immediately remove from server
+        router.delete(route('documents.tags.destroy', [props.document.id, tag.id]), {
+            preserveScroll: true,
+            onSuccess: () => {
+                documentTags.value = documentTags.value.filter(t => t.id !== tag.id);
+            }
+        });
+    }
 };
 
 const shareDocument = () => {
@@ -187,7 +207,7 @@ const getFileIcon = (fileType: string) => {
                         @click="downloadDocument"
                         class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
-                        <DownloadIcon class="h-4 w-4 mr-2" />
+                        <ArrowDownTrayIcon class="h-4 w-4 mr-2" />
                         Download
                     </button>
                     <button
@@ -315,38 +335,15 @@ const getFileIcon = (fileType: string) => {
                                     <!-- Tags -->
                                     <div>
                                         <InputLabel value="Tags" />
-                                        <div class="mt-1 flex flex-wrap gap-2">
-                                            <span 
-                                                v-for="tag in document.tags" 
-                                                :key="tag.id"
-                                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                                            >
-                                                <TagIcon class="h-4 w-4 mr-1" />
-                                                {{ tag.name }}
-                                                <button
-                                                    v-if="isEditing"
-                                                    @click="removeTag(tag.id)"
-                                                    class="ml-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                                                >
-                                                    <XMarkIcon class="h-4 w-4" />
-                                                </button>
-                                            </span>
-                                            <div v-if="isEditing" class="inline-flex items-center">
-                                                <TextInput
-                                                    v-model="newTag"
-                                                    type="text"
-                                                    placeholder="Add tag..."
-                                                    class="h-8 text-sm"
-                                                    @keyup.enter="addTag"
-                                                />
-                                                <button
-                                                    @click="addTag"
-                                                    class="ml-1 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                                                >
-                                                    <PlusIcon class="h-5 w-5" />
-                                                </button>
-                                            </div>
+                                        <div class="mt-1">
+                                            <TagManager
+                                                v-model="documentTags"
+                                                :readonly="!isEditing"
+                                                @tag-added="handleTagAdded"
+                                                @tag-removed="handleTagRemoved"
+                                            />
                                         </div>
+                                        <InputError :message="form.errors.tags" class="mt-2" />
                                     </div>
 
                                     <!-- Timestamps -->

@@ -19,6 +19,7 @@ return [
     'product_vendors' => 'Produktleverandører',
     'no_vendors_found' => 'Ingen leverandører funnet',
     'share' => 'Del',
+    'tags' => 'Tagger',
 
     // Receipt related
     'receipt_details' => 'Kvitteringsdetaljer',

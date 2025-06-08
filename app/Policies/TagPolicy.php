@@ -12,7 +12,7 @@ class TagPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true; // Users can view their own tags list
+        return true;
     }
 
     /**
@@ -20,8 +20,7 @@ class TagPolicy
      */
     public function view(User $user, Tag $tag): bool
     {
-        // Users can only view their own tags
-        return $tag->user_id === $user->id;
+        return $user->id === $tag->user_id;
     }
 
     /**
@@ -29,7 +28,7 @@ class TagPolicy
      */
     public function create(User $user): bool
     {
-        return true; // All authenticated users can create tags
+        return true;
     }
 
     /**
@@ -37,8 +36,7 @@ class TagPolicy
      */
     public function update(User $user, Tag $tag): bool
     {
-        // Users can only update their own tags
-        return $tag->user_id === $user->id;
+        return $user->id === $tag->user_id;
     }
 
     /**
@@ -46,25 +44,6 @@ class TagPolicy
      */
     public function delete(User $user, Tag $tag): bool
     {
-        // Users can only delete their own tags
-        return $tag->user_id === $user->id;
-    }
-
-    /**
-     * Determine whether the user can restore the model.
-     */
-    public function restore(User $user, Tag $tag): bool
-    {
-        // Users can only restore their own tags
-        return $tag->user_id === $user->id;
-    }
-
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
-    public function forceDelete(User $user, Tag $tag): bool
-    {
-        // Users can only force delete their own tags
-        return $tag->user_id === $user->id;
+        return $user->id === $tag->user_id;
     }
 }

@@ -24,6 +24,11 @@ class ProcessFile extends BaseJob
     protected function handleJob(): void
     {
         try {
+            Log::info("[ProcessFile] Starting job execution", [
+                'job_id' => $this->jobID,
+                'uuid' => $this->uuid,
+            ]);
+
             $metadata = $this->getMetadata();
             if (! $metadata) {
                 throw new \Exception('No metadata found for job');

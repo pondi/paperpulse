@@ -19,17 +19,17 @@ abstract class BaseJob implements ShouldQueue
     /**
      * The unique identifier for this job chain.
      */
-    protected string $jobID;
+    public string $jobID;
 
     /**
      * The unique identifier for this specific task.
      */
-    protected ?string $uuid = null;
+    public ?string $uuid = null;
 
     /**
      * The name of this job for display purposes.
      */
-    protected string $jobName;
+    public string $jobName;
 
     /**
      * Create a new job instance.

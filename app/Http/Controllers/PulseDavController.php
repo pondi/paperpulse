@@ -149,41 +149,92 @@ class PulseDavController extends Controller
      */
     public function importSelections(Request $request)
     {
-        $request->validate([
-            'selections' => 'required|array',
-            'selections.*.s3_path' => 'required|string',
-            'file_type' => 'required|in:receipt,document',
-            'tag_ids' => 'nullable|array',
-            'tag_ids.*' => 'integer',
-            'notes' => 'nullable|string|max:500',
-        ]);
+        try {
+            $validator = \Validator::make($request->all(), [
+                'selections' => 'required|array',
+                'selections.*.s3_path' => 'required|string',
+                'file_type' => 'required|in:receipt,document',
+                'tag_ids' => 'nullable|array',
+                'tag_ids.*' => 'integer',
+                'notes' => 'nullable|string|max:500',
+            ]);
 
-        // Verify tags belong to user
-        if ($request->has('tag_ids')) {
-            $userTagIds = auth()->user()->tags()->pluck('id')->toArray();
-            $invalidTags = array_diff($request->tag_ids, $userTagIds);
-            if (!empty($invalidTags)) {
-                return response()->json([
-                    'error' => 'Invalid tags selected',
-                ], 422);
+            if ($validator->fails()) {
+                $response = [
+                    'error' => 'Validation failed',
+                    'errors' => $validator->errors()->toArray(),
+                ];
+
+                if (config('app.debug')) {
+                    $response['debug'] = [
+                        'request_data' => $request->all(),
+                        'failed_rules' => $validator->failed(),
+                    ];
+                    \Log::debug('PulseDav import validation failed', $response);
+                }
+
+                return response()->json($response, 422);
             }
+
+            // Verify tags belong to user
+            if ($request->has('tag_ids') && !empty($request->tag_ids)) {
+                $userTagIds = auth()->user()->tags()->pluck('id')->toArray();
+                $invalidTags = array_diff($request->tag_ids, $userTagIds);
+                if (!empty($invalidTags)) {
+                    $response = [
+                        'error' => 'Invalid tags selected',
+                        'invalid_tag_ids' => array_values($invalidTags),
+                    ];
+
+                    if (config('app.debug')) {
+                        $response['debug'] = [
+                            'user_tag_ids' => $userTagIds,
+                            'requested_tag_ids' => $request->tag_ids,
+                        ];
+                        \Log::debug('PulseDav import invalid tags', $response);
+                    }
+
+                    return response()->json($response, 422);
+                }
+            }
+
+            $result = $this->pulseDavService->importSelections(
+                $request->user(),
+                $request->selections,
+                [
+                    'file_type' => $request->file_type,
+                    'tag_ids' => $request->tag_ids ?? [],
+                    'notes' => $request->notes,
+                ]
+            );
+
+            return response()->json([
+                'message' => "Imported {$result['imported']} files successfully",
+                'batch_id' => $result['batch_id'],
+                'imported' => $result['imported'],
+            ]);
+        } catch (\Exception $e) {
+            $response = [
+                'error' => 'Import failed',
+                'message' => $e->getMessage(),
+            ];
+
+            if (config('app.debug')) {
+                $response['debug'] = [
+                    'exception' => get_class($e),
+                    'trace' => $e->getTraceAsString(),
+                    'request_data' => $request->all(),
+                ];
+            }
+
+            \Log::error('PulseDav import exception', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all(),
+            ]);
+
+            return response()->json($response, 500);
         }
-
-        $result = $this->pulseDavService->importSelections(
-            $request->user(),
-            $request->selections,
-            [
-                'file_type' => $request->file_type,
-                'tag_ids' => $request->tag_ids ?? [],
-                'notes' => $request->notes,
-            ]
-        );
-
-        return response()->json([
-            'message' => "Imported {$result['imported']} files successfully",
-            'batch_id' => $result['batch_id'],
-            'imported' => $result['imported'],
-        ]);
     }
 
     /**

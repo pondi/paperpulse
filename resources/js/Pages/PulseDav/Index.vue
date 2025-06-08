@@ -478,11 +478,31 @@ const isSelected = (item) => {
     if (item.is_folder) {
         return selectedFolders.value.some(f => f.s3_path === item.s3_path);
     } else {
-        return selectedFiles.value.includes(item.id);
+        // In folder view, files might not have ID, use s3_path
+        if (item.id) {
+            return selectedFiles.value.includes(item.id);
+        } else {
+            const s3Path = item.s3_path || item.path;
+            const isSelected = selectedFiles.value.some(f => {
+                if (typeof f === 'object') {
+                    return (f.s3_path || f.path) === s3Path;
+                }
+                return false;
+            });
+            
+            // Debug logging for duplicate selection issue
+            if (isSelected) {
+                console.log('File is selected:', item.name, s3Path);
+            }
+            
+            return isSelected;
+        }
     }
 };
 
 const toggleSelection = (item) => {
+    console.log('Toggle selection for:', item);
+    
     if (item.is_folder) {
         const index = selectedFolders.value.findIndex(f => f.s3_path === item.s3_path);
         if (index > -1) {
@@ -491,13 +511,43 @@ const toggleSelection = (item) => {
             selectedFolders.value.push(item);
         }
     } else {
-        const index = selectedFiles.value.indexOf(item.id);
-        if (index > -1) {
-            selectedFiles.value.splice(index, 1);
+        // Handle files - in folder view they might not have ID
+        if (item.id) {
+            // List view - use ID
+            const index = selectedFiles.value.indexOf(item.id);
+            if (index > -1) {
+                selectedFiles.value.splice(index, 1);
+            } else {
+                selectedFiles.value.push(item.id);
+            }
         } else {
-            selectedFiles.value.push(item.id);
+            // Folder view - use s3_path as unique identifier
+            const s3Path = item.s3_path || item.path;
+            console.log('File s3_path:', s3Path);
+            console.log('Current selectedFiles:', selectedFiles.value);
+            
+            const index = selectedFiles.value.findIndex(f => {
+                if (typeof f === 'object') {
+                    return (f.s3_path || f.path) === s3Path;
+                }
+                return false;
+            });
+            
+            if (index > -1) {
+                console.log('Removing file from selection');
+                selectedFiles.value.splice(index, 1);
+            } else {
+                console.log('Adding file to selection');
+                selectedFiles.value.push({
+                    ...item,
+                    s3_path: s3Path // Ensure s3_path is set
+                });
+            }
         }
     }
+    
+    console.log('After toggle - selectedFiles:', selectedFiles.value);
+    console.log('After toggle - selectedFolders:', selectedFolders.value);
 };
 
 const clearSelections = () => {
@@ -506,16 +556,46 @@ const clearSelections = () => {
 };
 
 const importSelections = async () => {
-    if (!hasSelections.value) return;
+    if (!hasSelections.value) {
+        alert('Please select at least one file or folder to import.');
+        return;
+    }
 
     importing.value = true;
 
     try {
         // Build selections array
+        const fileSelections = selectedFiles.value.map(f => {
+            if (typeof f === 'object' && f.s3_path) {
+                // File object from folder view
+                return { s3_path: f.s3_path };
+            } else if (typeof f === 'string' || typeof f === 'number') {
+                // File ID from list view
+                const file = props.files.data.find(file => file.id === f);
+                return file ? { s3_path: file.s3_path } : null;
+            }
+            return null;
+        }).filter(Boolean);
+
         const selections = [
             ...selectedFolders.value.map(f => ({ s3_path: f.s3_path })),
-            ...props.files.data.filter(f => selectedFiles.value.includes(f.id)).map(f => ({ s3_path: f.s3_path }))
+            ...fileSelections
         ];
+
+        // Double-check we have selections
+        if (selections.length === 0) {
+            alert('No files or folders selected. Please select items to import.');
+            importing.value = false;
+            return;
+        }
+
+        console.log('Importing selections:', {
+            selectedFiles: selectedFiles.value,
+            selectedFolders: selectedFolders.value,
+            selections: selections,
+            fileType: importOptions.value.fileType,
+            tagIds: importOptions.value.tagIds,
+        });
 
         const response = await fetch(route('pulsedav.import'), {
             method: 'POST',
@@ -540,7 +620,37 @@ const importSelections = async () => {
             importOptions.value.notes = '';
             router.visit(route('jobs.index'));
         } else {
-            alert(data.error || 'Failed to import files');
+            console.error('Import failed:', data);
+            
+            // Build detailed error message
+            let errorMessage = data.error || 'Failed to import files';
+            
+            if (data.errors) {
+                const errorDetails = Object.entries(data.errors)
+                    .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+                    .join('\n');
+                errorMessage += '\n\nValidation errors:\n' + errorDetails;
+            }
+            
+            if (data.invalid_tag_ids) {
+                errorMessage += '\n\nInvalid tag IDs: ' + data.invalid_tag_ids.join(', ');
+            }
+            
+            // Log debug info if available
+            if (data.debug) {
+                console.group('Import Debug Information');
+                console.log('Request data:', data.debug.request_data);
+                if (data.debug.failed_rules) {
+                    console.log('Failed validation rules:', data.debug.failed_rules);
+                }
+                if (data.debug.user_tag_ids) {
+                    console.log('User tag IDs:', data.debug.user_tag_ids);
+                    console.log('Requested tag IDs:', data.debug.requested_tag_ids);
+                }
+                console.groupEnd();
+            }
+            
+            alert(errorMessage);
         }
     } catch (error) {
         console.error('Failed to import files:', error);

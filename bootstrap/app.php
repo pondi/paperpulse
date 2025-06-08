@@ -26,5 +26,33 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
+            if ($request->expectsJson()) {
+                $response = [
+                    'message' => $e->getMessage(),
+                    'errors' => $e->errors(),
+                ];
+
+                if (config('app.debug')) {
+                    $response['debug'] = [
+                        'validator_data' => $e->validator->getData(),
+                        'failed_rules' => $e->validator->failed(),
+                    ];
+                }
+
+                return response()->json($response, 422);
+            }
+        });
+
+        $exceptions->render(function (\Exception $e, $request) {
+            if ($request->expectsJson() && config('app.debug')) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'exception' => get_class($e),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => collect($e->getTrace())->take(5)->toArray(),
+                ], 500);
+            }
+        });
     })->create();

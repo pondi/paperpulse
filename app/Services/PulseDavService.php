@@ -373,7 +373,8 @@ class PulseDavService
                     
                     $items[] = [
                         'name' => $folderName,
-                        'path' => $prefix['Prefix'],
+                        's3_path' => $prefix['Prefix'],
+                        'path' => $prefix['Prefix'], // Keep for backward compatibility
                         'is_folder' => true,
                         'size' => 0,
                         'uploaded_at' => null,
@@ -391,7 +392,8 @@ class PulseDavService
                     
                     $items[] = [
                         'name' => basename($object['Key']),
-                        'path' => $object['Key'],
+                        's3_path' => $object['Key'],
+                        'path' => $object['Key'], // Keep for backward compatibility
                         'is_folder' => false,
                         'size' => $object['Size'],
                         'uploaded_at' => $object['LastModified'],

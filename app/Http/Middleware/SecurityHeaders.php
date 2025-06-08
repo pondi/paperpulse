@@ -33,12 +33,19 @@ class SecurityHeaders
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
         // Content Security Policy
-        $csp = "default-src 'self'; ".
-               "script-src 'self' 'unsafe-inline' 'unsafe-eval'; ".
-               "style-src 'self' 'unsafe-inline'; ".
+        $viteServer = '';
+        if (app()->environment('local') && file_exists(public_path('hot'))) {
+            // In development with Vite running, allow the dev server
+            $viteUrl = trim(file_get_contents(public_path('hot')));
+            $viteServer = ' ' . $viteUrl;
+        }
+
+        $csp = "default-src 'self'{$viteServer}; ".
+               "script-src 'self' 'unsafe-inline' 'unsafe-eval'{$viteServer}; ".
+               "style-src 'self' 'unsafe-inline' https://fonts.bunny.net; ".
                "img-src 'self' data: blob:; ".
-               "font-src 'self' data:; ".
-               "connect-src 'self'; ".
+               "font-src 'self' data: https://fonts.bunny.net; ".
+               "connect-src 'self'{$viteServer} ws://localhost:* wss://localhost:* ws://paperpulse.test:* wss://paperpulse.test:*; ".
                "media-src 'self'; ".
                "object-src 'none'; ".
                "base-uri 'self'; ".

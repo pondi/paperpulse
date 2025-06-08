@@ -19,9 +19,9 @@ class MatchMerchant implements ShouldQueue
 
     protected $jobID;
 
-    protected $fileID;
+    protected $fileId;
 
-    protected $receiptID;
+    protected $receiptId;
 
     protected $merchantName;
 
@@ -95,8 +95,8 @@ class MatchMerchant implements ShouldQueue
         }
 
         // Validate required fields are present
-        $requiredFileFields = ['fileID', 'jobName'];
-        $requiredReceiptFields = ['receiptID', 'merchantName'];
+        $requiredFileFields = ['fileId', 'jobName'];
+        $requiredReceiptFields = ['receiptId', 'merchantName'];
 
         foreach ($requiredFileFields as $field) {
             if (! isset($fileMetaData[$field])) {
@@ -121,17 +121,17 @@ class MatchMerchant implements ShouldQueue
         }
 
         // Assign values with null coalescing for optional fields
-        $this->fileID = $fileMetaData['fileID'];
+        $this->fileId = $fileMetaData['fileId'];
         $this->jobName = $fileMetaData['jobName'];
-        $this->receiptID = $receiptMetaData['receiptID'];
+        $this->receiptId = $receiptMetaData['receiptId'];
         $this->merchantName = $receiptMetaData['merchantName'];
         $this->merchantAddress = $receiptMetaData['merchantAddress'] ?? null;
         $this->merchantVatNumber = $receiptMetaData['merchantVatID'] ?? null;
 
         Log::debug("(MatchMerchant) [{$this->jobName}] - Cache data fetched successfully", [
             'jobID' => $this->jobID,
-            'fileID' => $this->fileID,
-            'receiptID' => $this->receiptID,
+            'fileId' => $this->fileId,
+            'receiptId' => $this->receiptId,
             'merchantName' => $this->merchantName,
         ]);
     }
@@ -152,7 +152,7 @@ class MatchMerchant implements ShouldQueue
             'max_tokens' => 500,
         ]);
 
-        Log::debug("(MatchMerchant) [{$this->jobName}] - OpenAI response received (receipt: {$this->receiptID})", [
+        Log::debug("(MatchMerchant) [{$this->jobName}] - OpenAI response received (receipt: {$this->receiptId})", [
             'response' => $response->toArray(),
         ]);
 
@@ -176,13 +176,13 @@ class MatchMerchant implements ShouldQueue
 
     private function updateReceipt($merchantId)
     {
-        $receipt = Receipt::find($this->receiptID);
+        $receipt = Receipt::find($this->receiptId);
         if ($receipt) {
             $receipt->merchant_id = $merchantId;
             $receipt->save();
-            Log::info("(MatchMerchant) [{$this->jobName}] - Receipt updated (receipt: {$this->receiptID})");
+            Log::info("(MatchMerchant) [{$this->jobName}] - Receipt updated (receipt: {$this->receiptId})");
         } else {
-            Log::error("(MatchMerchant) [{$this->jobName}] - Receipt not found (receipt: {$this->receiptID})");
+            Log::error("(MatchMerchant) [{$this->jobName}] - Receipt not found (receipt: {$this->receiptId})");
         }
     }
 
@@ -197,9 +197,9 @@ class MatchMerchant implements ShouldQueue
                 $merchant->vat_number = $this->merchantVatNumber;
             }
             $merchant->save();
-            Log::info("(MatchMerchant) [{$this->jobName}] - Merchant updated (receipt: {$this->receiptID})");
+            Log::info("(MatchMerchant) [{$this->jobName}] - Merchant updated (receipt: {$this->receiptId})");
         } else {
-            Log::error("(MatchMerchant) [{$this->jobName}] - Merchant not found (receipt: {$this->receiptID}, merchant: {$merchantId})");
+            Log::error("(MatchMerchant) [{$this->jobName}] - Merchant not found (receipt: {$this->receiptId}, merchant: {$merchantId})");
         }
     }
 
@@ -209,6 +209,6 @@ class MatchMerchant implements ShouldQueue
 
         $this->updateReceipt($newMerchant->id);
 
-        Log::info("(MatchMerchant) [{$this->jobName}] - New merchant created (receipt: {$this->receiptID})");
+        Log::info("(MatchMerchant) [{$this->jobName}] - New merchant created (receipt: {$this->receiptId})");
     }
 }

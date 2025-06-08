@@ -35,7 +35,7 @@ class ProcessReceipt extends BaseJob
             Log::info('Processing receipt', [
                 'job_id' => $this->jobID,
                 'task_id' => $this->uuid,
-                'file_guid' => $metadata['fileGUID'],
+                'file_guid' => $metadata['fileGuid'],
             ]);
 
             $this->updateProgress(10);
@@ -48,7 +48,7 @@ class ProcessReceipt extends BaseJob
             if ($metadata['fileExtension'] === 'pdf') {
                 $conversionService->pdfToImage(
                     $metadata['filePath'],
-                    $metadata['fileGUID'],
+                    $metadata['fileGuid'],
                     app(\App\Services\DocumentService::class)
                 );
             }
@@ -57,8 +57,8 @@ class ProcessReceipt extends BaseJob
 
             // Process the receipt data
             $receiptData = $receiptService->processReceiptData(
-                $metadata['fileID'],
-                $metadata['fileGUID'],
+                $metadata['fileId'],
+                $metadata['fileGuid'],
                 $metadata['filePath']
             );
 
@@ -73,7 +73,7 @@ class ProcessReceipt extends BaseJob
 
             Log::debug('Receipt data cached for merchant matching', [
                 'job_id' => $this->jobID,
-                'receipt_id' => $receiptData['receiptID'],
+                'receipt_id' => $receiptData['receiptId'],
                 'cached_data' => $cachedData,
             ]);
 
@@ -87,14 +87,14 @@ class ProcessReceipt extends BaseJob
             Log::info('Receipt processed successfully', [
                 'job_id' => $this->jobID,
                 'task_id' => $this->uuid,
-                'receipt_id' => $receiptData['receiptID'],
+                'receipt_id' => $receiptData['receiptId'],
             ]);
 
             // Send notification to user
             try {
                 $file = File::find($metadata['fileId']);
                 if ($file && $file->user) {
-                    $receipt = Receipt::find($receiptData['receiptID']);
+                    $receipt = Receipt::find($receiptData['receiptId']);
                     if ($receipt) {
                         $file->user->notify(new ReceiptProcessed($receipt, true));
                     }
@@ -102,7 +102,7 @@ class ProcessReceipt extends BaseJob
             } catch (\Exception $e) {
                 Log::warning('Failed to send receipt processed notification', [
                     'error' => $e->getMessage(),
-                    'receipt_id' => $receiptData['receiptID'],
+                    'receipt_id' => $receiptData['receiptId'],
                 ]);
             }
         } catch (\Exception $e) {

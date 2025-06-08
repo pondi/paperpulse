@@ -15,6 +15,12 @@
         @routes
         @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
         @inertiaHead
+        
+        <!-- Debug -->
+        <script>
+            console.log('Blade template loaded');
+            console.log('Page component:', "{{ $page['component'] ?? 'undefined' }}");
+        </script>
     </head>
     <body class="h-full">
         @inertia

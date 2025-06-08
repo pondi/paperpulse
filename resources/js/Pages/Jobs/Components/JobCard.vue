@@ -1,5 +1,9 @@
 <template>
-  <div class="bg-gray-800 shadow-sm rounded-lg p-6 border border-gray-700">
+  <div :class="{
+    'shadow-sm rounded-lg p-6 border': true,
+    'bg-gray-800 border-gray-700': job.status !== 'failed',
+    'bg-red-900/20 border-red-800': job.status === 'failed'
+  }">
     <div class="flex justify-between items-start mb-4">
       <div>
         <h3 class="font-semibold text-lg text-white">{{ job.name }}</h3>
@@ -28,15 +32,15 @@
     <!-- Job Details -->
     <div class="grid grid-cols-3 gap-4 text-sm text-gray-400 mb-4">
       <div>
-        <p>Started: {{ job.started_at }}</p>
-        <p v-if="job.finished_at">Finished: {{ job.finished_at }}</p>
+        <p>Started: {{ formatDateTime(job.started_at) }}</p>
+        <p v-if="job.finished_at">Finished: {{ formatDateTime(job.finished_at) }}</p>
       </div>
       <div>
         <p>Queue: {{ job.queue }}</p>
         <p>Attempt: {{ job.attempt }}</p>
       </div>
       <div>
-        <p v-if="job.duration">Duration: {{ job.duration }}s</p>
+        <p v-if="job.duration !== null && job.duration !== undefined">Duration: {{ formatDuration(job.duration) }}</p>
       </div>
     </div>
 
@@ -57,20 +61,23 @@
             {{ task.status }}
           </span>
         </div>
-        <div v-if="task.exception" class="text-red-400 mt-1">
+        <div v-if="task.exception" class="mt-2 p-2 bg-red-900/20 border border-red-800 rounded text-red-300 text-xs">
           {{ task.exception }}
         </div>
       </div>
     </div>
 
     <!-- Error Message -->
-    <div v-if="job.exception" class="mt-4 text-red-400 text-sm">
-      {{ job.exception }}
+    <div v-if="job.exception" class="mt-4 p-4 bg-red-900/30 border border-red-700 rounded-lg">
+      <h4 class="text-red-400 font-semibold mb-2">Error Details</h4>
+      <pre class="text-red-300 text-sm whitespace-pre-wrap">{{ job.exception }}</pre>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { formatDateTime, formatDuration } from '@/utils/datetime';
+
 interface Job {
   id: string;
   name: string;

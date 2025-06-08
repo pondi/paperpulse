@@ -86,13 +86,17 @@ class DocumentService
     /**
      * Get a document's content directly
      */
-    public function getDocument(string $guid, string $jobName, string $type = 'receipts', string $extension = 'pdf')
+    public function getDocument(string $guid, string $type = 'receipts', string $extension = 'pdf')
     {
         try {
             $path = $this->getPath($guid, $type, $extension);
 
             if (! $this->disk->exists($path)) {
-                Log::error("(DocumentService) [{$jobName}] - Document not found for retrieval (guid: {$guid})");
+                Log::error("(DocumentService) - Document not found for retrieval", [
+                    'guid' => $guid,
+                    'type' => $type,
+                    'extension' => $extension
+                ]);
 
                 return null;
             }

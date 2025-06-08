@@ -143,7 +143,7 @@ class ReceiptAnalysisService
         $query = Merchant::query();
         
         if (!empty($merchantData['org_number'])) {
-            $query->orWhere('org_number', $merchantData['org_number']);
+            $query->orWhere('vat_number', $merchantData['org_number']);
         }
         
         $query->orWhere('name', 'ILIKE', '%' . $merchantData['name'] . '%');
@@ -155,7 +155,7 @@ class ReceiptAnalysisService
             $merchant->update(array_filter([
                 'address' => $merchantData['address'] ?? $merchant->address,
                 'phone' => $merchantData['phone'] ?? $merchant->phone,
-                'org_number' => $merchantData['org_number'] ?? $merchant->org_number,
+                'vat_number' => $merchantData['org_number'] ?? $merchant->vat_number,
             ]));
             
             return $merchant;
@@ -166,7 +166,7 @@ class ReceiptAnalysisService
             'name' => $merchantData['name'],
             'address' => $merchantData['address'] ?? null,
             'phone' => $merchantData['phone'] ?? null,
-            'org_number' => $merchantData['org_number'] ?? null,
+            'vat_number' => $merchantData['org_number'] ?? null,
             'type' => $this->categorizeMerchant($merchantData['name']),
             'status' => 'active'
         ]);

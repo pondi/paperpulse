@@ -120,12 +120,21 @@ class TextExtractionService
                 ]);
                 
                 // Extract text from Textract response
-                $text = $this->parseTextractResponse($result);
+                $text = $this->parseTextractResponse($result->toArray());
                 
                 return $text;
             } finally {
                 // Clean up temporary file
-                $textractDisk->delete($textractPath);
+                try {
+                    $textractDisk->delete($textractPath);
+                } catch (\Exception $e) {
+                    Log::warning('[TextExtractionService] Could not delete temporary file from S3', [
+                        'path' => $textractPath,
+                        'error' => $e->getMessage(),
+                        'bucket' => $this->textractBucket
+                    ]);
+                    // Continue processing - don't fail the entire job
+                }
             }
         } catch (Exception $e) {
             Log::error('[TextExtractionService] Receipt text extraction failed', [
@@ -188,12 +197,21 @@ class TextExtractionService
                 ]);
                 
                 // Extract text with layout preservation
-                $text = $this->parseTextractDocumentResponse($result);
+                $text = $this->parseTextractDocumentResponse($result->toArray());
                 
                 return $text;
             } finally {
                 // Clean up temporary file
-                $textractDisk->delete($textractPath);
+                try {
+                    $textractDisk->delete($textractPath);
+                } catch (\Exception $e) {
+                    Log::warning('[TextExtractionService] Could not delete temporary file from S3', [
+                        'path' => $textractPath,
+                        'error' => $e->getMessage(),
+                        'bucket' => $this->textractBucket
+                    ]);
+                    // Continue processing - don't fail the entire job
+                }
             }
         } catch (Exception $e) {
             Log::error('[TextExtractionService] Document text extraction failed', [

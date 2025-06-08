@@ -8,6 +8,7 @@ use App\Models\FileShare;
 use App\Services\ConversionService;
 use App\Services\DocumentService;
 use App\Services\SharingService;
+use App\Services\StorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -450,38 +451,54 @@ class DocumentController extends Controller
         }
     }
 
-    public function serve(Request $request, DocumentService $documentService)
+    public function serve(Request $request, StorageService $storageService)
     {
         $request->validate([
             'guid' => 'required|string|regex:/^[a-f0-9\-]{36}$/i',
-            'type' => 'required|string|in:receipts,image,pdf',
+            'type' => 'required|string|in:receipts,image,pdf,documents',
             'extension' => 'required|string|in:jpg,jpeg,png,gif,pdf',
+            'user_id' => 'required|integer',
         ]);
 
         $guid = $request->input('guid');
         $type = $request->input('type');
         $extension = $request->input('extension');
+        $userId = $request->input('user_id');
+
+        // Verify user has access to this file
+        if ($userId != auth()->id() && !auth()->user()->is_admin) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Determine file type and variant
+        $fileType = in_array($type, ['receipts', 'receipt']) ? 'receipt' : 'document';
+        // For receipts, PDFs are stored as 'original', not 'processed'
+        $variant = 'original';
 
         // Get the document content
-        $content = $documentService->getDocument($guid, $type, $extension);
+        $content = $storageService->getFileByUserAndGuid($userId, $guid, $fileType, $variant, $extension);
 
         if (! $content) {
-            Log::error("(DocumentController) [serve] - Document not found (guid: {$guid})", [
+            Log::error("(DocumentController) [serve] - Document not found", [
+                'guid' => $guid,
                 'type' => $type,
                 'extension' => $extension,
-                'user_id' => $request->user()->id,
+                'user_id' => $userId,
             ]);
 
             return response()->json(['error' => 'Document not found'], 404);
         }
 
-        // Map type to MIME type
+        // Map extension to MIME type
         $mimeTypes = [
-            'image' => 'image/'.$extension,
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
             'pdf' => 'application/pdf',
         ];
 
-        $mimeType = $mimeTypes[$type] ?? 'application/octet-stream';
+        $mimeType = $mimeTypes[$extension] ?? 'application/octet-stream';
 
         // Create a StreamedResponse
         return new StreamedResponse(function () use ($content) {

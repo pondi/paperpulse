@@ -22,17 +22,23 @@ class JobController extends Controller
      */
     private function transformJob(JobHistory $job, bool $isChild = false): array
     {
+        // Calculate duration safely - ensure it's never negative
+        $duration = null;
+        if ($job->started_at && $job->finished_at) {
+            $duration = abs($job->finished_at->diffInSeconds($job->started_at));
+        }
+
         $data = [
             'id' => $job->uuid,
             'name' => $job->name,
             'status' => $job->status,
             'queue' => $job->queue,
-            'started_at' => $job->started_at?->toDateTimeString(),
-            'finished_at' => $job->finished_at?->toDateTimeString(),
+            'started_at' => $job->started_at?->toIso8601String(),
+            'finished_at' => $job->finished_at?->toIso8601String(),
             'progress' => (int) $job->progress,
             'attempt' => $job->attempt,
             'exception' => $job->exception,
-            'duration' => $job->finished_at?->diffInSeconds($job->started_at),
+            'duration' => $duration,
             'order' => $job->order_in_chain,
         ];
 
@@ -137,8 +143,8 @@ class JobController extends Controller
         }
 
         return is_int($timestamp)
-            ? Carbon::createFromTimestamp($timestamp)->toDateTimeString()
-            : $timestamp;
+            ? Carbon::createFromTimestamp($timestamp)->toIso8601String()
+            : Carbon::parse($timestamp)->toIso8601String();
     }
 
     /**
@@ -196,8 +202,8 @@ class JobController extends Controller
                     'id' => $file->id,
                     'filename' => $file->filename,
                     'status' => $file->status,
-                    'uploaded_at' => $file->uploaded_at?->toDateTimeString(),
-                    'processed_at' => $file->processed_at?->toDateTimeString(),
+                    'uploaded_at' => $file->uploaded_at?->toIso8601String(),
+                    'processed_at' => $file->processed_at?->toIso8601String(),
                     'error_message' => $file->error_message,
                     'receipt_id' => $file->receipt_id,
                 ];

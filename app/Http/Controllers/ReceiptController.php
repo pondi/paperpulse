@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Receipt;
+use App\Services\DocumentService;
 use App\Services\ReceiptService;
 use App\Traits\SanitizesInput;
 use Illuminate\Http\Request;
@@ -11,6 +12,13 @@ use Inertia\Inertia;
 class ReceiptController extends Controller
 {
     use SanitizesInput;
+
+    protected DocumentService $documentService;
+
+    public function __construct(DocumentService $documentService)
+    {
+        $this->documentService = $documentService;
+    }
 
     public function index()
     {
@@ -34,8 +42,10 @@ class ReceiptController extends Controller
                         'id' => $receipt->file->id,
                         'url' => route('receipts.showImage', $receipt->id),
                         'pdfUrl' => $receipt->file->guid ? route('receipts.showPdf', $receipt->id) : null,
+                        'extension' => $receipt->file->fileExtension ?? 'jpg',
+                        'mime_type' => $receipt->file->mime_type,
                     ] : null,
-                    'lineItems' => $receipt->lineItems->map(function ($item) {
+                    'lineItems' => $receipt->lineItems ? $receipt->lineItems->map(function ($item) {
                         return [
                             'id' => $item->id,
                             'description' => $item->text,
@@ -44,14 +54,14 @@ class ReceiptController extends Controller
                             'unit_price' => $item->price,
                             'total_amount' => $item->total,
                         ];
-                    }),
-                    'tags' => $receipt->tags->map(function ($tag) {
+                    }) : [],
+                    'tags' => $receipt->tags ? $receipt->tags->map(function ($tag) {
                         return [
                             'id' => $tag->id,
                             'name' => $tag->name,
                             'color' => $tag->color,
                         ];
-                    }),
+                    }) : [],
                 ];
             });
 
@@ -86,8 +96,10 @@ class ReceiptController extends Controller
                     'id' => $receipt->file->id,
                     'url' => route('receipts.showImage', $receipt->id),
                     'pdfUrl' => $receipt->file->guid ? route('receipts.showPdf', $receipt->id) : null,
+                    'extension' => $receipt->file->fileExtension ?? 'jpg',
+                    'mime_type' => $receipt->file->mime_type,
                 ] : null,
-                'lineItems' => $receipt->lineItems->map(function ($item) {
+                'lineItems' => $receipt->lineItems ? $receipt->lineItems->map(function ($item) {
                     return [
                         'id' => $item->id,
                         'text' => $item->text,
@@ -96,14 +108,14 @@ class ReceiptController extends Controller
                         'price' => $item->price,
                         'total' => $item->total,
                     ];
-                }),
-                'tags' => $receipt->tags->map(function ($tag) {
+                }) : [],
+                'tags' => $receipt->tags ? $receipt->tags->map(function ($tag) {
                     return [
                         'id' => $tag->id,
                         'name' => $tag->name,
                         'color' => $tag->color,
                     ];
-                }),
+                }) : [],
             ],
         ]);
     }
@@ -116,14 +128,14 @@ class ReceiptController extends Controller
             abort(404);
         }
 
-        if (! $this->documentService->documentExists($receipt->file->guid, 'receipts', 'jpg')) {
-            abort(404, 'Image not found in storage');
-        }
+        // Use the actual file extension, defaulting to jpg if not set
+        $extension = $receipt->file->fileExtension ?? 'jpg';
 
-        return redirect()->route('documents.url', [
+        return redirect()->route('documents.serve', [
             'guid' => $receipt->file->guid,
             'type' => 'receipts',
-            'extension' => 'jpg',
+            'extension' => $extension,
+            'user_id' => $receipt->user_id,
         ]);
     }
 
@@ -135,10 +147,23 @@ class ReceiptController extends Controller
             abort(404);
         }
 
-        return redirect()->route('documents.url', [
+        // For now, just serve the original file format
+        // TODO: Implement PDF conversion for non-PDF receipts
+        $extension = $receipt->file->fileExtension ?? 'jpg';
+        
+        // If it's already a PDF, serve it directly
+        // Otherwise, we would need to convert it to PDF first
+        if ($extension !== 'pdf') {
+            // For now, redirect to the original image
+            // In the future, implement on-the-fly PDF conversion
+            return redirect()->route('receipts.showImage', $receipt->id);
+        }
+
+        return redirect()->route('documents.serve', [
             'guid' => $receipt->file->guid,
             'type' => 'receipts',
             'extension' => 'pdf',
+            'user_id' => $receipt->user_id,
         ]);
     }
 
@@ -177,8 +202,10 @@ class ReceiptController extends Controller
                         'id' => $receipt->file->id,
                         'url' => $receipt->file ? route('receipts.showImage', $receipt->id) : null,
                         'pdfUrl' => $receipt->file->guid ? route('receipts.showPdf', $receipt->id) : null,
+                        'extension' => $receipt->file->fileExtension ?? 'jpg',
+                        'mime_type' => $receipt->file->mime_type,
                     ] : null,
-                    'lineItems' => $receipt->lineItems->map(function ($item) {
+                    'lineItems' => $receipt->lineItems ? $receipt->lineItems->map(function ($item) {
                         return [
                             'id' => $item->id,
                             'description' => $item->text,
@@ -187,7 +214,7 @@ class ReceiptController extends Controller
                             'unit_price' => $item->price,
                             'total_amount' => $item->total,
                         ];
-                    }),
+                    }) : [],
                 ];
             });
 
@@ -282,6 +309,9 @@ class ReceiptController extends Controller
 
         // Sanitize string inputs
         $validated = $this->sanitizeData($validated, ['text', 'sku']);
+
+        // Explicitly add receipt_id to ensure it's set
+        $validated['receipt_id'] = $receipt->id;
 
         $receipt->lineItems()->create($validated);
 

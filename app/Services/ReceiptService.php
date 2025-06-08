@@ -69,10 +69,10 @@ class ReceiptService
             ]);
 
             return [
-                'receiptID' => $receipt->id,
+                'receiptId' => $receipt->id,
                 'merchantName' => $receipt->merchant?->name ?? 'Unknown',
                 'merchantAddress' => $receipt->merchant?->address ?? '',
-                'merchantVatID' => $receipt->merchant?->org_number ?? '',
+                'merchantVatID' => $receipt->merchant?->vat_number ?? '',
             ];
 
         } catch (\Exception $e) {
@@ -95,22 +95,27 @@ class ReceiptService
 
             // Save references to files that should be deleted
             $fileGuid = $receipt->file?->guid;
+            $fileId = $receipt->file?->id;
 
             // Delete line items first (they reference the receipt)
             $receipt->lineItems()->delete();
 
-            // Delete the receipt itself (this removes foreign key constraints)
+            // Delete the receipt itself
             $receipt->delete();
 
             // Delete files from permanent storage
             if ($fileGuid) {
-                $this->documentService->deleteDocument($fileGuid, 'receipts', 'pdf');
-                $this->documentService->deleteDocument($fileGuid, 'receipts', 'jpg');
+                $this->documentService->deleteDocument($fileGuid, 'ReceiptService', 'receipts', 'pdf');
+                $this->documentService->deleteDocument($fileGuid, 'ReceiptService', 'receipts', 'jpg');
             }
 
-            // Delete the file record from the database
-            if ($receipt->file) {
-                $receipt->file->delete();
+            // Delete the file record after the receipt is deleted
+            // This is safe now because the receipt no longer references it
+            if ($fileId) {
+                $file = \App\Models\File::find($fileId);
+                if ($file) {
+                    $file->delete();
+                }
             }
 
             DB::commit();

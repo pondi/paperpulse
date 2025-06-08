@@ -7,30 +7,37 @@
     </template>
 
     <div class="py-12 bg-gray-900">
-      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <JobStats :stats="stats" />
-        
-        <!-- PulseDav File Processing Status -->
-        <PulseDavStats :stats="pulseDavStats" :recent-files="recentPulseDavFiles" />
-        
-        <JobFilters :form="form" :queues="queues" @update:form="updateForm" />
-        
-        <!-- Jobs List -->
-        <div v-if="jobs?.length" class="space-y-4">
-          <JobCard v-for="job in jobs" :key="job.id" :job="job" />
-        </div>
+      <div class="max-w-7xl 2xl:max-w-screen-2xl mx-auto sm:px-6 lg:px-8">
+        <div class="lg:grid lg:grid-cols-12 lg:gap-8">
+          <!-- Left Column: Statistics -->
+          <div class="lg:col-span-4 xl:col-span-3 space-y-6 mb-6 lg:mb-0">
+            <JobStats :stats="stats" />
+            <PulseDavStats :stats="pulseDavStats" :recent-files="recentPulseDavFiles" />
+          </div>
+          
+          <!-- Right Column: Filters and Jobs -->
+          <div class="lg:col-span-8 xl:col-span-9">
+            <JobFilters :form="form" :queues="queues" @update:form="updateForm" class="mb-6" />
+            
+            <!-- Jobs List -->
+            <div v-if="jobs?.length" class="space-y-4">
+              <JobCard v-for="job in jobs" :key="job.id" :job="job" />
+            </div>
 
-        <!-- Empty State -->
-        <div v-else class="bg-gray-800 shadow-sm rounded-lg p-6 text-center text-gray-400 border border-gray-700">
-          No jobs found
-        </div>
+            <!-- Empty State -->
+            <div v-else class="bg-gray-800 shadow-sm rounded-lg p-6 text-center text-gray-400 border border-gray-700">
+              No jobs found
+            </div>
 
-        <Pagination 
-          v-if="pagination?.last_page > 1" 
-          :page="form.page"
-          @update:page="page => form.page = page" 
-          :pagination="pagination" 
-        />
+            <Pagination 
+              v-if="pagination?.last_page > 1" 
+              :page="form.page"
+              @update:page="page => form.page = page" 
+              :pagination="pagination" 
+              class="mt-6"
+            />
+          </div>
+        </div>
       </div>
     </div>
   </AuthenticatedLayout>

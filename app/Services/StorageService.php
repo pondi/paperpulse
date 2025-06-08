@@ -82,12 +82,12 @@ class StorageService
      * 
      * @param string $incomingPath Path in incoming bucket
      * @param int $userId User ID for scoping
-     * @param string $fileId File ID for unique path
+     * @param string $guid File GUID for unique path
      * @param string $fileType 'receipt' or 'document'
      * @param string $extension File extension
      * @return string Path in storage bucket
      */
-    public function moveToStorage(string $incomingPath, int $userId, string $fileId, string $fileType, string $extension): string
+    public function moveToStorage(string $incomingPath, int $userId, string $guid, string $fileType, string $extension): string
     {
         $this->configureDualBuckets();
         
@@ -100,7 +100,7 @@ class StorageService
             $content = $this->incomingDisk->get($incomingPath);
             
             // Generate storage path
-            $storagePath = $this->generateStoragePath($userId, $fileId, $fileType, 'original', $extension);
+            $storagePath = $this->generateStoragePath($userId, $guid, $fileType, 'original', $extension);
             
             // Write to storage bucket
             $success = $this->storageDisk->put($storagePath, $content);
@@ -135,18 +135,18 @@ class StorageService
      * 
      * @param string $content File content
      * @param int $userId User ID for scoping
-     * @param string $fileId File ID for unique path
+     * @param string $guid File GUID for unique path
      * @param string $fileType 'receipt' or 'document'
      * @param string $variant 'original', 'processed', etc.
      * @param string $extension File extension
      * @return string Path in storage bucket
      */
-    public function storeFile(string $content, int $userId, string $fileId, string $fileType, string $variant, string $extension): string
+    public function storeFile(string $content, int $userId, string $guid, string $fileType, string $variant, string $extension): string
     {
         $this->configureDualBuckets();
         
         try {
-            $path = $this->generateStoragePath($userId, $fileId, $fileType, $variant, $extension);
+            $path = $this->generateStoragePath($userId, $guid, $fileType, $variant, $extension);
             
             $success = $this->storageDisk->put($path, $content);
             
@@ -196,6 +196,22 @@ class StorageService
             ]);
             return null;
         }
+    }
+    
+    /**
+     * Get a file's content by user and GUID
+     * 
+     * @param int $userId User ID
+     * @param string $guid File GUID
+     * @param string $fileType 'receipt' or 'document'
+     * @param string $variant 'original', 'processed', etc.
+     * @param string $extension File extension
+     * @return string|null File content
+     */
+    public function getFileByUserAndGuid(int $userId, string $guid, string $fileType, string $variant, string $extension): ?string
+    {
+        $path = $this->generateStoragePath($userId, $guid, $fileType, $variant, $extension);
+        return $this->getFile($path);
     }
     
     /**
@@ -309,16 +325,16 @@ class StorageService
      * Generate a path for the storage bucket
      * 
      * @param int $userId User ID
-     * @param string $fileId File ID
+     * @param string $guid File GUID
      * @param string $fileType 'receipt' or 'document'
      * @param string $variant 'original', 'processed', etc.
      * @param string $extension File extension
      * @return string Generated path
      */
-    protected function generateStoragePath(int $userId, string $fileId, string $fileType, string $variant, string $extension): string
+    protected function generateStoragePath(int $userId, string $guid, string $fileType, string $variant, string $extension): string
     {
         $typeFolder = $fileType === 'receipt' ? 'receipts' : 'documents';
-        return trim("{$typeFolder}/{$userId}/{$fileId}/{$variant}.{$extension}", '/');
+        return trim("{$typeFolder}/{$userId}/{$guid}/{$variant}.{$extension}", '/');
     }
     
     /**

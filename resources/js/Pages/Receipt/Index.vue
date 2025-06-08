@@ -150,17 +150,35 @@
                         <div class="flex justify-center bg-white">
                           <div class="w-[400px]">
                             <template v-if="selectedReceipt?.file?.url">
-                              <img 
-                                :src="selectedReceipt.file.url"
-                                class="w-full h-auto"
-                                :alt="__('receipt_image')"
-                                @error="handleImageError"
-                                :class="{ 'hidden': imageError }"
-                              />
-                              <div v-if="imageError" class="flex flex-col items-center justify-center h-[600px] bg-white border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-                                <ExclamationCircleIcon class="size-16 text-red-400 mb-4" />
-                                <span class="text-sm text-gray-500 dark:text-gray-400">{{ __('receipt_image_load_error') }}</span>
-                              </div>
+                              <!-- Show image for image files -->
+                              <template v-if="['jpg', 'jpeg', 'png', 'gif'].includes(selectedReceipt.file.extension?.toLowerCase() || 'jpg')">
+                                <img 
+                                  :src="selectedReceipt.file.url"
+                                  class="w-full h-auto"
+                                  :alt="__('receipt_image')"
+                                  @error="handleImageError"
+                                  :class="{ 'hidden': imageError }"
+                                />
+                                <div v-if="imageError" class="flex flex-col items-center justify-center h-[600px] bg-white border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+                                  <ExclamationCircleIcon class="size-16 text-red-400 mb-4" />
+                                  <span class="text-sm text-gray-500 dark:text-gray-400">{{ __('receipt_image_load_error') }}</span>
+                                </div>
+                              </template>
+                              <!-- Show PDF viewer for PDF files -->
+                              <template v-else-if="selectedReceipt.file.extension?.toLowerCase() === 'pdf'">
+                                <iframe 
+                                  :src="selectedReceipt.file.url"
+                                  class="w-full h-[800px] border-0"
+                                  :title="__('receipt_pdf')"
+                                />
+                              </template>
+                              <!-- Unsupported file type -->
+                              <template v-else>
+                                <div class="flex flex-col items-center justify-center h-[600px] bg-white border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+                                  <DocumentIcon class="size-16 text-gray-400 mb-4" />
+                                  <span class="text-sm text-gray-500 dark:text-gray-400">{{ __('unsupported_file_type') }}: {{ selectedReceipt.file.extension }}</span>
+                                </div>
+                              </template>
                             </template>
                             <div v-else class="flex flex-col items-center justify-center h-[600px] bg-white border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
                               <ReceiptPercentIcon class="size-16 text-gray-400 mb-4" />
@@ -365,7 +383,8 @@ import {
   ExclamationTriangleIcon,
   ExclamationCircleIcon,
   ReceiptPercentIcon,
-  CheckCircleIcon 
+  CheckCircleIcon,
+  DocumentIcon 
 } from '@heroicons/vue/24/outline';
 import {
   Dialog,

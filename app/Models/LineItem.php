@@ -25,7 +25,7 @@ class LineItem extends Model
     use HasFactory;
     use Searchable;
 
-    protected $fillable = ['text', 'sku', 'qty', 'price'];
+    protected $fillable = ['receipt_id', 'text', 'sku', 'qty', 'price', 'total'];
 
     /**
      * Get the receipt that owns the line item.

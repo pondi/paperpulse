@@ -83,10 +83,15 @@ class JobServiceProvider extends ServiceProvider
 
             // Set order in chain based on job type
             $orderInChain = match (class_basename($command)) {
+                'ProcessPulseDavFile' => 0, // Parent job
                 'ProcessFile' => 1,
                 'ProcessReceipt' => 2,
+                'ProcessDocument' => 2, // Same level as ProcessReceipt
+                'AnalyzeDocument' => 3,
                 'MatchMerchant' => 3,
-                'DeleteWorkingFiles' => 4,
+                'ApplyTags' => 4,
+                'DeleteWorkingFiles' => 5,
+                'UpdatePulseDavFileStatus' => 6,
                 default => null,
             };
 
@@ -167,29 +172,55 @@ class JobServiceProvider extends ServiceProvider
                     return;
                 }
 
-                // For the first job in chain (ProcessFile), create or update parent job
-                if (class_basename($command) === 'ProcessFile') {
-                    JobHistory::updateOrCreate(
-                        ['uuid' => $details['parent_uuid']],
-                        [
-                            'parent_uuid' => null,
-                            'name' => $details['metadata']['jobName'] ?? 'Document Processing',
-                            'queue' => $details['queue'],
-                            'payload' => [
-                                'metadata' => $details['metadata'],
+                // For the first job in chain (ProcessFile or ProcessPulseDavFile), create or update parent job
+                if (in_array(class_basename($command), ['ProcessFile', 'ProcessPulseDavFile'])) {
+                    // For ProcessPulseDavFile, it IS the parent job
+                    if (class_basename($command) === 'ProcessPulseDavFile') {
+                        JobHistory::updateOrCreate(
+                            ['uuid' => $details['uuid']], // Use its own UUID
+                            [
+                                'parent_uuid' => null,
+                                'name' => $details['name'],
+                                'queue' => $details['queue'],
+                                'payload' => [
+                                    'metadata' => $details['metadata'],
+                                    'status' => 'processing',
+                                    'command' => $details['name'],
+                                    'data' => $details['command_data'],
+                                ],
                                 'status' => 'processing',
-                                'command' => $details['name'],
-                                'data' => $details['command_data'],
-                            ],
-                            'status' => 'processing',
-                            'started_at' => now(),
-                            'progress' => 0,
-                            'order_in_chain' => null,
-                            'attempt' => $event->job->attempts(),
-                            'exception' => null,
-                            'finished_at' => null,
-                        ]
-                    );
+                                'started_at' => now(),
+                                'progress' => 0,
+                                'order_in_chain' => null,
+                                'attempt' => $event->job->attempts(),
+                                'exception' => null,
+                                'finished_at' => null,
+                            ]
+                        );
+                    } else {
+                        // For ProcessFile, create parent if it doesn't exist
+                        JobHistory::updateOrCreate(
+                            ['uuid' => $details['parent_uuid']],
+                            [
+                                'parent_uuid' => null,
+                                'name' => $details['metadata']['jobName'] ?? 'Document Processing',
+                                'queue' => $details['queue'],
+                                'payload' => [
+                                    'metadata' => $details['metadata'],
+                                    'status' => 'processing',
+                                    'command' => $details['name'],
+                                    'data' => $details['command_data'],
+                                ],
+                                'status' => 'processing',
+                                'started_at' => now(),
+                                'progress' => 0,
+                                'order_in_chain' => null,
+                                'attempt' => $event->job->attempts(),
+                                'exception' => null,
+                                'finished_at' => null,
+                            ]
+                        );
+                    }
                 }
 
                 // Create or update task entry

@@ -529,7 +529,8 @@ class PulseDavService
         ]);
         
         // Dispatch processing job with tags
-        \App\Jobs\ProcessPulseDavFile::dispatch($file, $allTagIds);
+        \App\Jobs\ProcessPulseDavFile::dispatch($file, $allTagIds)
+            ->onQueue('default');
     }
 
     /**

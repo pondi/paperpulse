@@ -101,6 +101,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Alias for getPreference to match usage in jobs and notifications
+     */
+    public function preference($key, $default = null)
+    {
+        return $this->getPreference($key, $default);
+    }
+
+    /**
      * Check if the user is an administrator
      */
     public function isAdmin(): bool

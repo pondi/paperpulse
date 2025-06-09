@@ -130,10 +130,10 @@ class FileProcessingService
     public function processPulseDavFile(string $incomingPath, string $fileType, int $userId, array $metadata = []): array
     {
         try {
-            // Generate unique identifiers
-            $jobId = (string) Str::uuid();
+            // Use provided jobId or generate a new one
+            $jobId = $metadata['jobId'] ?? (string) Str::uuid();
             $fileGuid = (string) Str::uuid();
-            $jobName = $this->generateJobName();
+            $jobName = $metadata['originalFilename'] ?? $this->generateJobName();
             
             $filename = basename($incomingPath);
             $extension = pathinfo($filename, PATHINFO_EXTENSION);
@@ -227,6 +227,15 @@ class FileProcessingService
         $isPulseDav = isset($metadata['source']) && $metadata['source'] === 'pulsedav';
         $tagIds = $metadata['metadata']['tagIds'] ?? [];
         $pulseDavFileId = $metadata['metadata']['pulseDavFileId'] ?? null;
+        
+        Log::info('Dispatching job chain', [
+            'jobId' => $jobId,
+            'fileType' => $fileType,
+            'isPulseDav' => $isPulseDav,
+            'tagIds' => $tagIds,
+            'pulseDavFileId' => $pulseDavFileId,
+            'jobName' => $metadata['jobName'] ?? 'Unknown',
+        ]);
         
         if ($fileType === 'receipt') {
             $jobs = [

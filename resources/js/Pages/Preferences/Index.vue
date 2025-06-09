@@ -518,8 +518,9 @@ const props = defineProps({
   timezones: Array,
 });
 
+const page = usePage();
 const __ = (key) => {
-  const messages = window.page?.props?.language?.messages || {};
+  const messages = page.props?.language?.messages || {};
   return messages[key] || key;
 };
 

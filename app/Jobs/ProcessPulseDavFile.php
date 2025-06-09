@@ -5,17 +5,11 @@ namespace App\Jobs;
 use App\Models\PulseDavFile;
 use App\Services\FileProcessingService;
 use App\Services\PulseDavService;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
-class ProcessPulseDavFile implements ShouldQueue
+class ProcessPulseDavFile extends BaseJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
     public $timeout = 3600;
 
     public $tries = 5;
@@ -30,16 +24,32 @@ class ProcessPulseDavFile implements ShouldQueue
      */
     public function __construct(PulseDavFile $pulseDavFile, array $tagIds = [])
     {
+        // Generate a unique job ID for this processing chain
+        $jobID = (string) Str::uuid();
+        parent::__construct($jobID);
+        
         $this->pulseDavFile = $pulseDavFile;
         $this->tagIds = $tagIds;
+        $this->jobName = 'Process PulseDav File';
     }
 
     /**
-     * Execute the job.
+     * Execute the job's logic.
      */
-    public function handle(PulseDavService $pulseDavService, FileProcessingService $fileProcessingService)
+    protected function handleJob(): void
     {
+        $pulseDavService = app(PulseDavService::class);
+        $fileProcessingService = app(FileProcessingService::class);
+        
         try {
+            Log::info('ProcessPulseDavFile job started', [
+                'job_id' => $this->jobID,
+                'pulsedav_file_id' => $this->pulseDavFile->id,
+                's3_path' => $this->pulseDavFile->s3_path,
+                'file_type' => $this->pulseDavFile->file_type,
+                'tag_ids' => $this->tagIds,
+            ]);
+            
             // Mark as processing
             $this->pulseDavFile->markAsProcessing();
 
@@ -53,6 +63,7 @@ class ProcessPulseDavFile implements ShouldQueue
                     'pulseDavFileId' => $this->pulseDavFile->id,
                     'source' => 'pulsedav',
                     'originalFilename' => $this->pulseDavFile->filename,
+                    'jobId' => $this->jobID, // Pass the parent job ID
                 ]
             );
 
@@ -64,6 +75,7 @@ class ProcessPulseDavFile implements ShouldQueue
             ]);
 
             Log::info('PulseDav file processed successfully', [
+                'job_id' => $this->jobID,
                 'pulsedav_file_id' => $this->pulseDavFile->id,
                 'file_id' => $result['fileId'] ?? null,
             ]);
@@ -72,6 +84,7 @@ class ProcessPulseDavFile implements ShouldQueue
             $this->pulseDavFile->markAsFailed($e->getMessage());
 
             Log::error('Failed to process PulseDav file', [
+                'job_id' => $this->jobID,
                 'pulsedav_file_id' => $this->pulseDavFile->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

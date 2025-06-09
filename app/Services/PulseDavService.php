@@ -418,13 +418,30 @@ class PulseDavService
      */
     public function syncS3FilesWithFolders(User $user)
     {
+        Log::info('[PulseDavService] Starting sync with folders', [
+            'user_id' => $user->id,
+        ]);
+        
         $items = $this->listUserFilesWithFolders($user);
+        
+        Log::info('[PulseDavService] Found items in S3', [
+            'total_items' => count($items),
+            'sample_items' => array_slice($items, 0, 5), // Log first 5 items
+        ]);
+        
         $synced = 0;
+        $skipped = 0;
         $userPrefix = $this->incomingPrefix . $user->id . '/';
 
         foreach ($items as $itemData) {
             // Extract folder info
             $folderInfo = PulseDavFile::extractFolderInfo($itemData['s3_path'], $userPrefix);
+            
+            Log::debug('[PulseDavService] Processing item for sync', [
+                's3_path' => $itemData['s3_path'],
+                'is_folder' => $itemData['is_folder'],
+                'folder_info' => $folderInfo,
+            ]);
             
             // Check if item already exists in database
             $exists = PulseDavFile::where('s3_path', $itemData['s3_path'])
@@ -432,22 +449,45 @@ class PulseDavService
                 ->exists();
 
             if (!$exists) {
-                PulseDavFile::create([
-                    'user_id' => $user->id,
+                try {
+                    PulseDavFile::create([
+                        'user_id' => $user->id,
+                        's3_path' => $itemData['s3_path'],
+                        'filename' => $itemData['filename'],
+                        'size' => $itemData['size'],
+                        'uploaded_at' => $itemData['uploaded_at'] ?? now(),
+                        'status' => $itemData['is_folder'] ? 'folder' : 'pending',
+                        'file_type' => config('receipt-scanner.default_pulsedav_type', 'receipt'),
+                        'folder_path' => $folderInfo['folder_path'],
+                        'parent_folder' => $folderInfo['parent_folder'],
+                        'depth' => $folderInfo['depth'],
+                        'is_folder' => $itemData['is_folder'],
+                    ]);
+                    $synced++;
+                    
+                    Log::debug('[PulseDavService] Created PulseDavFile record', [
+                        's3_path' => $itemData['s3_path'],
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('[PulseDavService] Failed to create PulseDavFile record', [
+                        's3_path' => $itemData['s3_path'],
+                        'error' => $e->getMessage(),
+                    ]);
+                    $skipped++;
+                }
+            } else {
+                $skipped++;
+                Log::debug('[PulseDavService] Item already exists, skipping', [
                     's3_path' => $itemData['s3_path'],
-                    'filename' => $itemData['filename'],
-                    'size' => $itemData['size'],
-                    'uploaded_at' => $itemData['uploaded_at'] ?? now(),
-                    'status' => $itemData['is_folder'] ? 'folder' : 'pending',
-                    'file_type' => config('receipt-scanner.default_pulsedav_type', 'receipt'),
-                    'folder_path' => $folderInfo['folder_path'],
-                    'parent_folder' => $folderInfo['parent_folder'],
-                    'depth' => $folderInfo['depth'],
-                    'is_folder' => $itemData['is_folder'],
                 ]);
-                $synced++;
             }
         }
+
+        Log::info('[PulseDavService] Sync completed', [
+            'synced' => $synced,
+            'skipped' => $skipped,
+            'total_items' => count($items),
+        ]);
 
         return $synced;
     }
@@ -457,6 +497,13 @@ class PulseDavService
      */
     public function importSelections(User $user, array $selections, array $options = [])
     {
+        Log::info('[PulseDavService] Import started', [
+            'user_id' => $user->id,
+            'selections_count' => count($selections),
+            'selections' => $selections,
+            'options' => $options,
+        ]);
+        
         $fileType = $options['file_type'] ?? 'receipt';
         $tagIds = $options['tag_ids'] ?? [];
         $notes = $options['notes'] ?? null;
@@ -470,17 +517,39 @@ class PulseDavService
             'notes' => $notes,
         ]);
         
+        Log::info('[PulseDavService] Import batch created', [
+            'batch_id' => $batch->id,
+        ]);
+        
         $imported = 0;
+        $skipped = 0;
         
         foreach ($selections as $selection) {
+            Log::debug('[PulseDavService] Processing selection', [
+                'selection' => $selection,
+                's3_path' => $selection['s3_path'],
+            ]);
+            
             // Get the file/folder from database
             $item = PulseDavFile::where('user_id', $user->id)
                 ->where('s3_path', $selection['s3_path'])
                 ->first();
                 
             if (!$item) {
+                Log::warning('[PulseDavService] Item not found in database', [
+                    's3_path' => $selection['s3_path'],
+                    'user_id' => $user->id,
+                ]);
+                $skipped++;
                 continue;
             }
+            
+            Log::info('[PulseDavService] Found item', [
+                'id' => $item->id,
+                'filename' => $item->filename,
+                'is_folder' => $item->is_folder,
+                'status' => $item->status,
+            ]);
             
             if ($item->is_folder) {
                 // Import all files in folder
@@ -489,6 +558,11 @@ class PulseDavService
                     ->filesOnly()
                     ->whereIn('status', ['pending', 'failed'])
                     ->get();
+                
+                Log::info('[PulseDavService] Processing folder', [
+                    'folder_path' => $item->folder_path,
+                    'files_count' => $files->count(),
+                ]);
                     
                 foreach ($files as $file) {
                     $this->importFile($file, $batch, $fileType, $tagIds);
@@ -497,14 +571,30 @@ class PulseDavService
             } else {
                 // Import single file
                 if ($item->isProcessable()) {
+                    Log::info('[PulseDavService] Importing single file', [
+                        'file_id' => $item->id,
+                        'status' => $item->status,
+                    ]);
                     $this->importFile($item, $batch, $fileType, $tagIds);
                     $imported++;
+                } else {
+                    Log::warning('[PulseDavService] File not processable', [
+                        'file_id' => $item->id,
+                        'status' => $item->status,
+                    ]);
+                    $skipped++;
                 }
             }
         }
         
         // Update batch file count
         $batch->update(['file_count' => $imported]);
+        
+        Log::info('[PulseDavService] Import completed', [
+            'batch_id' => $batch->id,
+            'imported' => $imported,
+            'skipped' => $skipped,
+        ]);
         
         return [
             'batch_id' => $batch->id,
@@ -517,15 +607,34 @@ class PulseDavService
      */
     protected function importFile(PulseDavFile $file, PulseDavImportBatch $batch, string $fileType, array $tagIds)
     {
+        Log::info('[PulseDavService] Importing file', [
+            'file_id' => $file->id,
+            'filename' => $file->filename,
+            's3_path' => $file->s3_path,
+            'file_type' => $fileType,
+            'tag_ids' => $tagIds,
+        ]);
+        
         // Get inherited tags from folders
         $inheritedTags = $file->inherited_tags->pluck('id')->toArray();
         $allTagIds = array_unique(array_merge($tagIds, $inheritedTags));
+        
+        Log::debug('[PulseDavService] Tag inheritance', [
+            'direct_tags' => $tagIds,
+            'inherited_tags' => $inheritedTags,
+            'all_tags' => $allTagIds,
+        ]);
         
         // Update file with import info
         $file->update([
             'file_type' => $fileType,
             'import_batch_id' => $batch->id,
             'status' => 'processing',
+        ]);
+        
+        Log::info('[PulseDavService] Dispatching ProcessPulseDavFile job', [
+            'file_id' => $file->id,
+            'all_tag_ids' => $allTagIds,
         ]);
         
         // Dispatch processing job with tags

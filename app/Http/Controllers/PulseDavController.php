@@ -149,6 +149,11 @@ class PulseDavController extends Controller
      */
     public function importSelections(Request $request)
     {
+        \Log::info('[PulseDavController] Import request received', [
+            'user_id' => auth()->id(),
+            'request_data' => $request->all(),
+        ]);
+        
         try {
             $validator = \Validator::make($request->all(), [
                 'selections' => 'required|array',
@@ -170,7 +175,7 @@ class PulseDavController extends Controller
                         'request_data' => $request->all(),
                         'failed_rules' => $validator->failed(),
                     ];
-                    \Log::debug('PulseDav import validation failed', $response);
+                    \Log::debug('[PulseDavController] Import validation failed', $response);
                 }
 
                 return response()->json($response, 422);
@@ -191,12 +196,18 @@ class PulseDavController extends Controller
                             'user_tag_ids' => $userTagIds,
                             'requested_tag_ids' => $request->tag_ids,
                         ];
-                        \Log::debug('PulseDav import invalid tags', $response);
+                        \Log::debug('[PulseDavController] Import invalid tags', $response);
                     }
 
                     return response()->json($response, 422);
                 }
             }
+
+            \Log::info('[PulseDavController] Calling PulseDavService::importSelections', [
+                'selections_count' => count($request->selections),
+                'file_type' => $request->file_type,
+                'tag_ids' => $request->tag_ids ?? [],
+            ]);
 
             $result = $this->pulseDavService->importSelections(
                 $request->user(),
@@ -207,6 +218,10 @@ class PulseDavController extends Controller
                     'notes' => $request->notes,
                 ]
             );
+
+            \Log::info('[PulseDavController] Import completed', [
+                'result' => $result,
+            ]);
 
             return response()->json([
                 'message' => "Imported {$result['imported']} files successfully",
@@ -227,7 +242,7 @@ class PulseDavController extends Controller
                 ];
             }
 
-            \Log::error('PulseDav import exception', [
+            \Log::error('[PulseDavController] Import exception', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'request' => $request->all(),
@@ -276,7 +291,15 @@ class PulseDavController extends Controller
      */
     public function syncWithFolders(Request $request)
     {
+        \Log::info('[PulseDavController] Starting sync with folders', [
+            'user_id' => $request->user()->id,
+        ]);
+        
         $synced = $this->pulseDavService->syncS3FilesWithFolders($request->user());
+
+        \Log::info('[PulseDavController] Sync completed', [
+            'synced' => $synced,
+        ]);
 
         return response()->json([
             'message' => "Synced {$synced} new files/folders from scanner",

@@ -540,6 +540,11 @@ const clearSelections = () => {
 };
 
 const importSelections = async () => {
+    console.log('=== PulseDav Import Started ===');
+    console.log('Has selections:', hasSelections.value);
+    console.log('Selected files:', selectedFiles.value);
+    console.log('Selected folders:', selectedFolders.value);
+    
     if (!hasSelections.value) {
         alert('Please select at least one file or folder to import.');
         return;
@@ -552,10 +557,12 @@ const importSelections = async () => {
         const fileSelections = selectedFiles.value.map(f => {
             if (typeof f === 'object' && f.s3_path) {
                 // File object from folder view
+                console.log('File from folder view:', f);
                 return { s3_path: f.s3_path };
             } else if (typeof f === 'string' || typeof f === 'number') {
                 // File ID from list view
                 const file = props.files.data.find(file => file.id === f);
+                console.log('File from list view:', f, 'found:', file);
                 return file ? { s3_path: file.s3_path } : null;
             }
             return null;
@@ -566,6 +573,8 @@ const importSelections = async () => {
             ...fileSelections
         ];
 
+        console.log('Built selections:', selections);
+        
         // Double-check we have selections
         if (selections.length === 0) {
             alert('No files or folders selected. Please select items to import.');
@@ -573,6 +582,14 @@ const importSelections = async () => {
             return;
         }
 
+        const requestBody = {
+            selections: selections,
+            file_type: importOptions.value.fileType,
+            tag_ids: importOptions.value.tagIds,
+            notes: importOptions.value.notes,
+        };
+        
+        console.log('Request body:', requestBody);
 
         const response = await fetch(route('pulsedav.import'), {
             method: 'POST',
@@ -581,22 +598,21 @@ const importSelections = async () => {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                selections: selections,
-                file_type: importOptions.value.fileType,
-                tag_ids: importOptions.value.tagIds,
-                notes: importOptions.value.notes,
-            }),
+            body: JSON.stringify(requestBody),
         });
 
         const data = await response.json();
+        console.log('Response status:', response.status);
+        console.log('Response data:', data);
         
         if (response.ok) {
+            console.log('Import successful, redirecting to jobs page');
             clearSelections();
             importOptions.value.tagIds = [];
             importOptions.value.notes = '';
             router.visit(route('jobs.index'));
         } else {
+            console.error('Import failed:', data);
             console.error('Import failed:', data);
             
             // Build detailed error message

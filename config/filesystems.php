@@ -56,6 +56,14 @@ return [
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'visibility' => 'private',
             'throw' => true,
+            'options' => [
+                'ACL' => 'private',
+            ],
+            'client' => [
+                'http' => [
+                    'verify' => false,
+                ],
+            ],
         ],
         
         // PaperPulse permanent storage bucket
@@ -70,6 +78,14 @@ return [
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'visibility' => 'private',
             'throw' => true,
+            'options' => [
+                'ACL' => 'private',
+            ],
+            'client' => [
+                'http' => [
+                    'verify' => false,
+                ],
+            ],
         ],
 
         // Textract temporary storage

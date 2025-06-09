@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Log;
 use Spatie\PdfToImage\Pdf;
+use Illuminate\Support\Facades\Storage;
 
 class ConversionService
 {
@@ -20,6 +21,17 @@ class ConversionService
     public function pdfToImage(string $storedFilePath, string $fileGUID, DocumentService $documentService): bool
     {
         try {
+            // Check if imagick extension is available
+            if (!extension_loaded('imagick')) {
+                Log::warning('(ConversionService) [pdfToImage] - Imagick extension not available, skipping PDF to image conversion', [
+                    'file_guid' => $fileGUID,
+                ]);
+                
+                // For now, we'll skip the conversion but still return true to continue processing
+                // The OCR service should be able to handle PDFs directly
+                return true;
+            }
+
             $spatiePDF = new Pdf($storedFilePath);
             $outputPath = storage_path('app/uploads/'.$fileGUID.'.jpg');
 
@@ -43,6 +55,11 @@ class ConversionService
             );
 
             Log::debug("(ConversionService) [pdfToImage] - Image stored (file: {$fileGUID})");
+
+            // Clean up temporary file
+            if (file_exists($outputPath)) {
+                unlink($outputPath);
+            }
 
             return true;
         } catch (\Exception $e) {

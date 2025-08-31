@@ -44,16 +44,58 @@ return [
             'throw' => false,
         ],
 
-        's3' => [
+        // PulseDav incoming bucket for WebDAV uploads
+        'pulsedav' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
             'secret' => env('AWS_SECRET_ACCESS_KEY'),
             'region' => env('AWS_DEFAULT_REGION'),
-            'bucket' => env('AWS_BUCKET'),
+            'bucket' => env('AWS_INCOMING_BUCKET'),
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => false,
+            'visibility' => 'private',
+            'throw' => true,
+            'options' => [
+                'ACL' => 'private',
+            ],
+            'client' => [
+                'http' => [
+                    'verify' => false,
+                ],
+            ],
+        ],
+
+        // PaperPulse permanent storage bucket
+        'paperpulse' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_STORAGE_BUCKET'),
+            'url' => env('AWS_URL'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'throw' => true,
+            'options' => [
+                'ACL' => 'private',
+            ],
+            'client' => [
+                'http' => [
+                    'verify' => false,
+                ],
+            ],
+        ],
+
+        // Textract temporary storage
+        'textract' => [
+            'driver' => 's3',
+            'key' => env('TEXTRACT_KEY'),
+            'secret' => env('TEXTRACT_SECRET'),
+            'region' => env('TEXTRACT_REGION'),
+            'bucket' => env('TEXTRACT_BUCKET'),
+            'throw' => true,
         ],
 
     ],
@@ -72,5 +114,16 @@ return [
     'links' => [
         public_path('storage') => storage_path('app/public'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | S3 Bucket Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for dual S3 bucket setup for document processing
+    |
+    */
+
+    'incoming_prefix' => env('AWS_S3_INCOMING_PREFIX', 'incoming/'),
 
 ];

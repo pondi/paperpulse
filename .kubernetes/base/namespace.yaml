@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: paperpulse
+  labels:
+    app.kubernetes.io/name: paperpulse
+    app.kubernetes.io/instance: production

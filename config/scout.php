@@ -134,9 +134,29 @@ return [
         'host' => env('MEILISEARCH_HOST', 'http://localhost:7700'),
         'key' => env('MEILISEARCH_KEY'),
         'index-settings' => [
-            // 'users' => [
-            //     'filterableAttributes'=> ['id', 'name', 'email'],
-            // ],
+            'receipts' => [
+                'filterableAttributes' => ['id', 'user_id', 'merchant_id', 'category_id', 'status', 'date'],
+                'sortableAttributes' => ['date', 'total_amount', 'created_at'],
+                'searchableAttributes' => ['merchant_name', 'line_items', 'notes'],
+            ],
+            'documents' => [
+                'filterableAttributes' => ['id', 'user_id', 'category_id', 'file_type', 'document_type', 'language'],
+                'sortableAttributes' => ['created_at', 'updated_at', 'title'],
+                'searchableAttributes' => ['title', 'content', 'summary', 'tags'],
+                'displayedAttributes' => ['id', 'title', 'summary', 'file_type', 'document_type', 'category_id', 'created_at'],
+                'rankingRules' => [
+                    'words',
+                    'typo',
+                    'proximity',
+                    'attribute',
+                    'sort',
+                    'exactness',
+                ],
+            ],
+            'line_items' => [
+                'filterableAttributes' => ['id', 'receipt_id', 'user_id'],
+                'searchableAttributes' => ['description', 'sku'],
+            ],
         ],
     ],
 

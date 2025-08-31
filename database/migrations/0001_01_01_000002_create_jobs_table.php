@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('jobs', function (Blueprint $table) {
@@ -43,15 +40,33 @@ return new class extends Migration
             $table->longText('exception');
             $table->timestamp('failed_at')->useCurrent();
         });
+
+        Schema::create('job_history', function (Blueprint $table) {
+            $table->id();
+            $table->string('uuid')->unique();
+            $table->string('parent_uuid')->nullable();
+            $table->string('name');
+            $table->string('queue');
+            $table->json('payload')->nullable();
+            $table->string('status')->default('pending');
+            $table->integer('attempt')->default(0);
+            $table->integer('progress')->default(0);
+            $table->integer('order_in_chain')->default(0);
+            $table->text('exception')->nullable();
+            $table->timestamp('started_at')->nullable();
+            $table->timestamp('finished_at')->nullable();
+            $table->timestamps();
+
+            $table->index(['uuid', 'parent_uuid']);
+            $table->index(['status', 'created_at']);
+        });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('jobs');
-        Schema::dropIfExists('job_batches');
+        Schema::dropIfExists('job_history');
         Schema::dropIfExists('failed_jobs');
+        Schema::dropIfExists('job_batches');
+        Schema::dropIfExists('jobs');
     }
 };

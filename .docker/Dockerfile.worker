@@ -1,0 +1,16 @@
+# Queue worker with Laravel Horizon
+FROM base AS worker
+
+# Copy supervisor configuration
+COPY docker/supervisor/horizon.conf /etc/supervisor/conf.d/horizon.conf
+
+# Copy startup script
+COPY docker/scripts/start-worker.sh /usr/local/bin/start-worker
+RUN chmod +x /usr/local/bin/start-worker
+
+# Health check for Horizon
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD php artisan horizon:status | grep -q "Horizon is running" || exit 1
+
+# Start supervisor
+CMD ["/usr/local/bin/start-worker"]

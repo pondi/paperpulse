@@ -17,3 +17,18 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+/.claude
+
+# Logs directory with sensitive information
+logs/
+
+CLAUDE.md
+PAPERPULSE.md
+PULSEDAV.md
+PLAN.md
+*SECURITY*.md
+*AUDIT*.md
+
+**/caddy
+frankenphp
+frankenphp-worker.php

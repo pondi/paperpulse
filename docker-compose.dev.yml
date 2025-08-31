@@ -1,0 +1,73 @@
+version: '3.8'
+
+# Development overrides for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # Development Caddy configuration
+  caddy:
+    volumes:
+      - ./docker/caddy/Caddyfile.dev:/etc/caddy/Caddyfile
+    environment:
+      - DOMAIN=localhost
+
+  # Web server with hot reload
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        - APP_ENV=local
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_URL=http://localhost
+      - MAIL_HOST=mailpit
+      - MAIL_PORT=1025
+    volumes:
+      # Mount entire app for development
+      - .:/app
+      - /app/vendor
+      - /app/node_modules
+    command: php artisan octane:start --host=0.0.0.0 --port=8000 --watch
+
+  # Single worker in development
+  worker:
+    deploy:
+      replicas: 1
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+    volumes:
+      - .:/app
+      - /app/vendor
+
+  # Scheduler with verbose output
+  scheduler:
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+    volumes:
+      - .:/app
+      - /app/vendor
+
+  # Expose PostgreSQL in development
+  postgres:
+    ports:
+      - "5432:5432"
+
+  # Expose Redis in development
+  redis:
+    ports:
+      - "6379:6379"
+
+  # Expose Meilisearch in development
+  meilisearch:
+    ports:
+      - "7700:7700"
+    environment:
+      - MEILI_ENV=development
+
+  # Enable Mailpit in development
+  mailpit:
+    profiles: []  # Override to always run

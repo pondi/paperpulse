@@ -1,0 +1,11 @@
+includes:
+    - ./vendor/nunomaduro/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+        - config
+        - database
+    level: 5
+    ignoreErrors:
+        - '#Parameter \$factory of attribute class Illuminate\\Database\\Eloquent\\Factories\\HasFactory#'

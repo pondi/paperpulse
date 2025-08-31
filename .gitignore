@@ -19,6 +19,9 @@ yarn-error.log
 /.vscode
 /.claude
 
+# Logs directory with sensitive information
+logs/
+
 CLAUDE.md
 PAPERPULSE.md
 PULSEDAV.md

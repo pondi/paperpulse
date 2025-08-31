@@ -31,14 +31,6 @@ interface AIService
     public function extractMerchant(string $content): array;
 
     /**
-     * Extract line items from receipt text
-     *
-     * @param  string  $content  The receipt text
-     * @return array Line items data
-     */
-    public function extractLineItems(string $content): array;
-
-    /**
      * Generate a summary for a document
      *
      * @param  string  $content  The document content

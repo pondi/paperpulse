@@ -102,7 +102,8 @@ class BatchProcessingService
             'model' => $model,
             'batch_size' => $batchSize,
             'parallel_jobs' => $parallelJobs,
-            'use_batch_api' => $model->hasFeature('batch_api') && $itemCount > 50,
+            // Disable provider batch API path (not implemented) to avoid dead code paths
+            'use_batch_api' => false,
             'cost_optimization' => $itemCount > 20,
         ];
     }

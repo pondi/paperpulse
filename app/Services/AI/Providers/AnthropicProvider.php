@@ -440,58 +440,7 @@ class AnthropicProvider implements AIService
         }
     }
 
-    public function extractLineItems(string $content): array
-    {
-        try {
-            $response = $this->client->messages()->create([
-                'model' => 'claude-3.7-sonnet',
-                'max_tokens' => 800,
-                'temperature' => 0.1,
-                'system' => 'Extract line items from receipt text with high accuracy.',
-                'messages' => [
-                    [
-                        'role' => 'user',
-                        'content' => "Extract line items from this receipt:\n\n{$content}",
-                    ],
-                ],
-                'tools' => [
-                    [
-                        'name' => 'extract_line_items',
-                        'description' => 'Extract line items from receipt',
-                        'input_schema' => [
-                            'type' => 'object',
-                            'properties' => [
-                                'items' => [
-                                    'type' => 'array',
-                                    'items' => [
-                                        'type' => 'object',
-                                        'properties' => [
-                                            'name' => ['type' => 'string'],
-                                            'quantity' => ['type' => 'number'],
-                                            'unit_price' => ['type' => 'number'],
-                                            'total_price' => ['type' => 'number'],
-                                        ],
-                                        'required' => ['name', 'total_price'],
-                                    ],
-                                ],
-                            ],
-                            'required' => ['items'],
-                        ],
-                    ],
-                ],
-                'tool_choice' => ['type' => 'tool', 'name' => 'extract_line_items'],
-            ]);
-
-            $toolUse = $response->content[0];
-
-            return $toolUse->type === 'tool_use' ? ($toolUse->input['items'] ?? []) : [];
-
-        } catch (\Exception $e) {
-            Log::error('Line items extraction failed', ['error' => $e->getMessage()]);
-
-            return [];
-        }
-    }
+    
 
     public function generateSummary(string $content, int $maxLength = 200): string
     {

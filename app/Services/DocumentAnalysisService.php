@@ -22,6 +22,29 @@ class DocumentAnalysisService
     }
 
     /**
+     * Analyze an existing Document model and return structured analysis data.
+     * This is used by AnalyzeDocument job to update the existing row
+     * without creating a new Document entry.
+     */
+    public function analyze(Document $document): array
+    {
+        $content = (string) ($document->content ?? '');
+
+        if ($content === '') {
+            throw new \Exception('No content available for analysis');
+        }
+
+        $result = $this->aiService->analyzeDocument($content, []);
+
+        if (! is_array($result) || ! ($result['success'] ?? false)) {
+            $error = is_array($result) ? ($result['error'] ?? 'Document analysis failed') : 'Document analysis failed';
+            throw new \Exception($error);
+        }
+
+        return $result['data'] ?? [];
+    }
+
+    /**
      * Analyze document content and create document with metadata
      *
      * @param  string  $content  Document text content

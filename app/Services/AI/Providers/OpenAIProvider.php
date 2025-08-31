@@ -336,25 +336,7 @@ class OpenAIProvider implements AIService
         }
     }
 
-    public function extractLineItems(string $content): array
-    {
-        try {
-            $response = OpenAI::completions()->create([
-                'model' => 'gpt-3.5-turbo-instruct',
-                'prompt' => "Extract line items from this receipt. Return JSON array:\n\n".$content,
-                'max_tokens' => 500,
-                'temperature' => 0.1,
-            ]);
-
-            $result = json_decode(trim($response->choices[0]->text), true);
-
-            return $result ?? [];
-        } catch (\Exception $e) {
-            Log::error('Line items extraction failed', ['error' => $e->getMessage()]);
-
-            return [];
-        }
-    }
+    
 
     public function generateSummary(string $content, int $maxLength = 200): string
     {

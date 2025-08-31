@@ -285,13 +285,7 @@ class ReceiptAnalysisService
         return $this->aiService->extractMerchant($content);
     }
 
-    /**
-     * Extract line items from receipt content
-     */
-    public function extractLineItems(string $content): array
-    {
-        return $this->aiService->extractLineItems($content);
-    }
+    
 
     /**
      * Find or create merchant based on extracted data

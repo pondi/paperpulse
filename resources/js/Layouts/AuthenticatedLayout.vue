@@ -1,157 +1,275 @@
-<script setup>
-import { ref } from 'vue';
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link } from '@inertiajs/vue3';
-
-const showingNavigationDropdown = ref(false);
-</script>
-
 <template>
     <div>
-        <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
-            <nav class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
-                <!-- Primary Navigation Menu -->
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="flex justify-between h-16">
-                        <div class="flex">
-                            <!-- Logo -->
-                            <div class="shrink-0 flex items-center">
-                                <Link :href="route('dashboard')">
-                                    <ApplicationLogo
-                                        class="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200"
-                                    />
+      <TransitionRoot as="template" :show="sidebarOpen">
+        <Dialog class="relative z-50 xl:hidden" @close="sidebarOpen = false">
+          <TransitionChild as="template" enter="transition-opacity ease-linear duration-300" enter-from="opacity-0" enter-to="opacity-100" leave="transition-opacity ease-linear duration-300" leave-from="opacity-100" leave-to="opacity-0">
+            <div class="fixed inset-0 bg-gray-900/80" />
+          </TransitionChild>
+
+          <div class="fixed inset-0 flex">
+            <TransitionChild as="template" enter="transition ease-in-out duration-300 transform" enter-from="-translate-x-full" enter-to="translate-x-0" leave="transition ease-in-out duration-300 transform" leave-from="translate-x-0" leave-to="-translate-x-full">
+              <DialogPanel class="relative mr-16 flex w-full max-w-xs flex-1">
+                <TransitionChild as="template" enter="ease-in-out duration-300" enter-from="opacity-0" enter-to="opacity-100" leave="ease-in-out duration-300" leave-from="opacity-100" leave-to="opacity-0">
+                  <div class="absolute left-full top-0 flex w-16 justify-center pt-5">
+                    <button type="button" class="-m-2.5 p-2.5" @click="sidebarOpen = false">
+                      <span class="sr-only">Close sidebar</span>
+                      <XMarkIcon class="size-6 text-white" aria-hidden="true" />
+                    </button>
+                  </div>
+                </TransitionChild>
+                <!-- Sidebar component, swap this element with another sidebar if you like -->
+                <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6 ring-1 ring-white/10">
+                  <div class="flex h-16 shrink-0 items-center">
+                    <Link :href="route('dashboard')">
+                      <ApplicationLogo class="h-8 w-auto fill-current text-gray-200" />
+                    </Link>
+                  </div>
+                  <nav class="flex flex-1 flex-col">
+                    <ul role="list" class="flex flex-1 flex-col gap-y-7">
+                      <li>
+                        <ul role="list" class="-mx-2 space-y-1">
+                          <li v-for="item in navigation" :key="item.name">
+                            <Link :href="item.href" :class="[item.current ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white', 'group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold']">
+                              <component :is="item.icon" class="size-6 shrink-0" aria-hidden="true" />
+                              {{ __(item.name.toLowerCase()) }}
+                            </Link>
+                            <div v-if="item.children" class="space-y-1 mt-1">
+                              <Link
+                                v-for="child in item.children"
+                                :key="child.name"
+                                :href="child.href"
+                                :class="[child.current ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white', 'group flex gap-x-3 rounded-md py-1 pl-11 pr-2 text-sm/6 font-medium']"
+                              >
+                                {{ __(child.name.toLowerCase()) }}
+                              </Link>
+                            </div>
+                          </li>
+                        </ul>
+                      </li>
+                      <li class="-mx-6 mt-auto">
+                        <Menu as="div" class="relative w-full">
+                          <MenuButton class="flex w-full items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-white hover:bg-gray-800">
+                            <span class="sr-only">Open user menu</span>
+                            <span class="flex items-center gap-x-4">
+                              <span class="flex-1">{{ $page.props.auth.user.name }}</span>
+                              <ChevronDownIcon class="size-5 text-gray-400" aria-hidden="true" />
+                            </span>
+                          </MenuButton>
+                          <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
+                            <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-gray-800 py-2 shadow-lg ring-1 ring-gray-700 focus:outline-none">
+                              <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
+                                <Link :href="item.href" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-gray-700 text-gray-100' : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100', 'block px-3 py-1 text-sm/6', item.method ? 'w-full text-left' : '']">
+                                  {{ __(item.name.toLowerCase()) }}
                                 </Link>
-                            </div>
-
-                            <!-- Navigation Links -->
-                            <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
-                                    Dashboard
-                                </NavLink>
-                            </div>
-                            <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink :href="route('file.upload')" :active="route().current('file.upload')">
-                                    Upload files
-                                </NavLink>
-                            </div>
-                        </div>
-
-                        <div class="hidden sm:flex sm:items-center sm:ms-6">
-                            <!-- Settings Dropdown -->
-                            <div class="ms-3 relative">
-                                <Dropdown align="right" width="48">
-                                    <template #trigger>
-                                        <span class="inline-flex rounded-md">
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150"
-                                            >
-                                                {{ $page.props.auth.user.name }}
-
-                                                <svg
-                                                    class="ms-2 -me-0.5 h-4 w-4"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fill-rule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clip-rule="evenodd"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </template>
-
-                                    <template #content>
-                                        <DropdownLink :href="route('profile.edit')"> Profile </DropdownLink>
-                                        <DropdownLink :href="route('logout')" method="post" as="button">
-                                            Log Out
-                                        </DropdownLink>
-                                    </template>
-                                </Dropdown>
-                            </div>
-                        </div>
-
-                        <!-- Hamburger -->
-                        <div class="-me-2 flex items-center sm:hidden">
-                            <button
-                                @click="showingNavigationDropdown = !showingNavigationDropdown"
-                                class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-900 focus:text-gray-500 dark:focus:text-gray-400 transition duration-150 ease-in-out"
-                            >
-                                <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                                    <path
-                                        :class="{
-                                            hidden: showingNavigationDropdown,
-                                            'inline-flex': !showingNavigationDropdown,
-                                        }"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                    <path
-                                        :class="{
-                                            hidden: !showingNavigationDropdown,
-                                            'inline-flex': showingNavigationDropdown,
-                                        }"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
+                              </MenuItem>
+                            </MenuItems>
+                          </transition>
+                        </Menu>
+                      </li>
+                    </ul>
+                  </nav>
                 </div>
+              </DialogPanel>
+            </TransitionChild>
+          </div>
+        </Dialog>
+      </TransitionRoot>
 
-                <!-- Responsive Navigation Menu -->
-                <div
-                    :class="{ block: showingNavigationDropdown, hidden: !showingNavigationDropdown }"
-                    class="sm:hidden"
-                >
-                    <div class="pt-2 pb-3 space-y-1">
-                        <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">
-                            Dashboard
-                        </ResponsiveNavLink>
+      <!-- Static sidebar for desktop -->
+      <div class="hidden xl:fixed xl:inset-y-0 xl:z-50 xl:flex xl:w-72 xl:flex-col">
+        <!-- Sidebar component, swap this element with another sidebar if you like -->
+        <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-black/10 px-6 ring-1 ring-white/5">
+          <div class="flex h-16 shrink-0 items-center">
+            <Link :href="route('dashboard')">
+              <ApplicationLogo class="h-8 w-auto fill-current text-gray-200" />
+            </Link>
+          </div>
+          <nav class="flex flex-1 flex-col">
+            <ul role="list" class="flex flex-1 flex-col gap-y-7">
+              <li>
+                <ul role="list" class="-mx-2 space-y-1">
+                  <li v-for="item in navigation" :key="item.name">
+                    <Link :href="item.href" :class="[item.current ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white', 'group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold']">
+                      <component :is="item.icon" class="size-6 shrink-0" aria-hidden="true" />
+                      {{ __(item.name.toLowerCase()) }}
+                    </Link>
+                    <div v-if="item.children" class="space-y-1 mt-1">
+                      <Link
+                        v-for="child in item.children"
+                        :key="child.name"
+                        :href="child.href"
+                        :class="[child.current ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white', 'group flex gap-x-3 rounded-md py-1 pl-11 pr-2 text-sm/6 font-medium']"
+                      >
+                        {{ __(child.name.toLowerCase()) }}
+                      </Link>
                     </div>
-
-                    <!-- Responsive Settings Options -->
-                    <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
-                        <div class="px-4">
-                            <div class="font-medium text-base text-gray-800 dark:text-gray-200">
-                                {{ $page.props.auth.user.name }}
-                            </div>
-                            <div class="font-medium text-sm text-gray-500">{{ $page.props.auth.user.email }}</div>
-                        </div>
-
-                        <div class="mt-3 space-y-1">
-                            <ResponsiveNavLink :href="route('profile.edit')"> Profile </ResponsiveNavLink>
-                            <ResponsiveNavLink :href="route('logout')" method="post" as="button">
-                                Log Out
-                            </ResponsiveNavLink>
-                        </div>
-                    </div>
-                </div>
-            </nav>
-
-            <!-- Page Heading -->
-            <header class="bg-white dark:bg-gray-800 shadow" v-if="$slots.header">
-                <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                    <slot name="header" />
-                </div>
-            </header>
-
-            <!-- Page Content -->
-            <main>
-                <slot />
-            </main>
+                  </li>
+                </ul>
+              </li>
+              <li class="-mx-6 mt-auto">
+                <Menu as="div" class="relative w-full">
+                  <MenuButton class="flex w-full items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-white hover:bg-gray-800">
+                    <span class="sr-only">Open user menu</span>
+                    <span class="flex items-center gap-x-4">
+                      <span class="flex-1">{{ $page.props.auth.user.name }}</span>
+                      <ChevronDownIcon class="size-5 text-gray-400" aria-hidden="true" />
+                    </span>
+                  </MenuButton>
+                  <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
+                    <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-gray-800 py-2 shadow-lg ring-1 ring-gray-700 focus:outline-none">
+                      <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
+                        <Link :href="item.href" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-gray-700 text-gray-100' : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100', 'block px-3 py-1 text-sm/6', item.method ? 'w-full text-left' : '']">
+                          {{ __(item.name.toLowerCase()) }}
+                        </Link>
+                      </MenuItem>
+                    </MenuItems>
+                  </transition>
+                </Menu>
+              </li>
+            </ul>
+          </nav>
         </div>
+      </div>
+
+      <div class="xl:pl-72 bg-white dark:bg-gray-900">
+        <!-- Sticky search header -->
+        <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-6 border-b border-white/5 bg-gray-900 px-4 shadow-sm sm:px-6 lg:px-8">
+          <button type="button" class="-m-2.5 p-2.5 text-white xl:hidden" @click="sidebarOpen = true">
+            <span class="sr-only">Open sidebar</span>
+            <Bars3Icon class="size-5" aria-hidden="true" />
+          </button>
+
+          <div class="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
+            <div class="flex flex-1 items-center">
+              <SearchBar />
+            </div>
+            <div class="flex items-center gap-x-4 lg:gap-x-6">
+              <NotificationBell />
+              <!-- Profile dropdown -->
+              <Menu as="div" class="relative">
+                <MenuButton class="-m-1.5 flex items-center p-1.5">
+                  <span class="sr-only">Open user menu</span>
+                  <div class="flex items-center">
+                    <span class="hidden lg:flex lg:items-center">
+                      <span class="text-sm font-semibold text-gray-300" aria-hidden="true">{{ $page.props.auth.user.name }}</span>
+                      <ChevronDownIcon class="ml-2 h-5 w-5 text-gray-400" aria-hidden="true" />
+                    </span>
+                    <span class="lg:hidden">
+                      <UserCircleIcon class="h-6 w-6 text-gray-400" aria-hidden="true" />
+                    </span>
+                  </div>
+                </MenuButton>
+                <transition
+                  enter-active-class="transition ease-out duration-100"
+                  enter-from-class="transform opacity-0 scale-95"
+                  enter-to-class="transform opacity-100 scale-100"
+                  leave-active-class="transition ease-in duration-75"
+                  leave-from-class="transform opacity-100 scale-100"
+                  leave-to-class="transform opacity-0 scale-95"
+                >
+                  <MenuItems class="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
+                    <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
+                      <Link
+                        :href="item.href"
+                        :method="item.method"
+                        :as="item.method ? 'button' : 'a'"
+                        :class="[active ? 'bg-gray-50 dark:bg-gray-700' : '', 'block px-3 py-1 text-sm text-gray-900 dark:text-gray-100', item.method ? 'w-full text-left' : '']"
+                      >
+                        {{ __(item.name.toLowerCase()) }}
+                      </Link>
+                    </MenuItem>
+                  </MenuItems>
+                </transition>
+              </Menu>
+            </div>
+          </div>
+        </div>
+
+        <main class="py-10">
+          <!-- Page Heading -->
+          <header v-if="$slots.header" class="mb-8 px-4 sm:px-6 lg:px-8">
+            <slot name="header" />
+          </header>
+          
+          <!-- Page Content -->
+          <div class="px-4 sm:px-6 lg:px-8">
+            <slot />
+          </div>
+        </main>
+      </div>
     </div>
 </template>
+
+<script setup>
+import { ref } from 'vue'
+import {
+  Dialog,
+  DialogPanel,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItems,
+  TransitionChild,
+  TransitionRoot,
+} from '@headlessui/vue'
+import {
+  Bars3Icon,
+  ChartPieIcon,
+  DocumentDuplicateIcon,
+  FolderIcon,
+  HomeIcon,
+  UsersIcon,
+  XMarkIcon,
+  CloudArrowDownIcon,
+  CloudArrowUpIcon,
+  ChartBarIcon,
+  UserCircleIcon,
+  TagIcon,
+} from '@heroicons/vue/24/outline'
+import { ChevronDownIcon } from '@heroicons/vue/20/solid'
+import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import SearchBar from '@/Components/SearchBar.vue';
+import NotificationBell from '@/Components/NotificationBell.vue';
+import { Link, usePage } from '@inertiajs/vue3';
+
+const sidebarOpen = ref(false)
+const page = usePage();
+const __ = (key) => page.props.language.messages[key] || key;
+
+const navigation = [
+  { name: 'dashboard', href: route('dashboard'), icon: HomeIcon, current: route().current('dashboard') },
+  { 
+    name: 'receipts', 
+    href: route('receipts.index'), 
+    icon: DocumentDuplicateIcon, 
+    current: route().current('receipts.*') || route().current('merchants.*') || route().current('vendors.*'),
+    children: [
+      { name: 'all_receipts', href: route('receipts.index'), current: route().current('receipts.index') },
+      { name: 'merchants', href: route('merchants.index'), current: route().current('merchants.*') },
+      { name: 'vendors', href: route('vendors.index'), current: route().current('vendors.index') },
+    ]
+  },
+  { 
+    name: 'documents', 
+    href: route('documents.index'), 
+    icon: FolderIcon, 
+    current: route().current('documents.*') && !route().current('documents.upload'),
+    children: [
+      { name: 'all_documents', href: route('documents.index'), current: route().current('documents.index') },
+      { name: 'shared_with_me', href: route('documents.shared'), current: route().current('documents.shared') },
+      { name: 'categories', href: route('documents.categories'), current: route().current('documents.categories') },
+    ]
+  },
+  { name: 'analytics', href: route('analytics.index'), icon: ChartBarIcon, current: route().current('analytics.*') },
+  { name: 'tags', href: route('tags.index'), icon: TagIcon, current: route().current('tags.*') },
+  { name: 'upload', href: route('documents.upload'), icon: CloudArrowUpIcon, current: route().current('documents.upload') },
+  { name: 'scanner_imports', href: route('pulsedav.index'), icon: CloudArrowDownIcon, current: route().current('pulsedav.*') },
+  { name: 'job_status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index') },
+]
+
+const userNavigation = [
+  { name: 'profile', href: route('profile.edit') },
+  { name: 'preferences', href: route('preferences.index') },
+  { name: 'logout', href: route('logout'), method: 'post' }
+]
+</script>

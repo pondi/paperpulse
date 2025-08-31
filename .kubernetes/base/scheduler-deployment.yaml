@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperpulse-scheduler
+  namespace: paperpulse
+  labels:
+    app.kubernetes.io/name: paperpulse
+    app.kubernetes.io/component: scheduler
+spec:
+  replicas: 1  # Only one scheduler should run
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: paperpulse
+      app.kubernetes.io/component: scheduler
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: paperpulse
+        app.kubernetes.io/component: scheduler
+    spec:
+      containers:
+      - name: scheduler
+        image: paperpulse/scheduler:latest
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: paperpulse-config
+        - secretRef:
+            name: paperpulse-secret
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: storage
+          mountPath: /app/storage
+        livenessProbe:
+          exec:
+            command: ["ps", "aux", "|", "grep", "-v", "grep", "|", "grep", "cron"]
+          initialDelaySeconds: 30
+          periodSeconds: 60
+      volumes:
+      - name: storage
+        emptyDir: {}

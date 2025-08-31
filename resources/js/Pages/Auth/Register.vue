@@ -6,11 +6,16 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
+const props = defineProps({
+    invitation: Object,
+});
+
 const form = useForm({
     name: '',
-    email: '',
+    email: props.invitation?.email || '',
     password: '',
     password_confirmation: '',
+    invitation_token: props.invitation?.token || '',
 });
 
 const submit = () => {
@@ -25,6 +30,18 @@ const submit = () => {
         <Head title="Register" />
 
         <form @submit.prevent="submit">
+            <div v-if="invitation" class="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                <p class="text-sm text-green-800">
+                    You've been invited to register with the email: <strong>{{ invitation.email }}</strong>
+                </p>
+            </div>
+            
+            <div v-if="!invitation" class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                <p class="text-sm text-amber-800">
+                    Registration requires an invitation. Please contact an administrator for an invitation link.
+                </p>
+            </div>
+
             <div>
                 <InputLabel for="name" value="Name" />
 
@@ -49,6 +66,7 @@ const submit = () => {
                     type="email"
                     class="mt-1 block w-full"
                     v-model="form.email"
+                    :disabled="!!invitation"
                     required
                     autocomplete="username"
                 />
@@ -85,6 +103,8 @@ const submit = () => {
 
                 <InputError class="mt-2" :message="form.errors.password_confirmation" />
             </div>
+
+            <InputError class="mt-2" :message="form.errors.invitation_token" />
 
             <div class="flex items-center justify-end mt-4">
                 <Link

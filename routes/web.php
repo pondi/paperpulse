@@ -1,11 +1,29 @@
 <?php
 
+use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\BulkOperationController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\ExportController;
+use App\Http\Controllers\JobController;
+use App\Http\Controllers\MerchantController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PreferencesController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\FileController;
+use App\Http\Controllers\PulseDavController;
+use App\Http\Controllers\ReceiptController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\TagController;
+use App\Http\Controllers\VendorController;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Public routes
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -15,20 +33,185 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Authenticated & Inertia routes
+Route::middleware(['auth', 'verified', 'web'])->group(function () {
+    // Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+    // Analytics
+    Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
+
+    // Categories
+    Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
+    Route::patch('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+    Route::post('/categories/order', [CategoryController::class, 'updateOrder'])->name('categories.order');
+    Route::post('/categories/defaults', [CategoryController::class, 'createDefaults'])->name('categories.defaults');
+    Route::post('/categories/{category}/share', [CategoryController::class, 'share'])->name('categories.share');
+    Route::delete('/categories/{category}/share/{user}', [CategoryController::class, 'unshare'])->name('categories.unshare');
+
+    // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Preferences routes
+    Route::get('/preferences', [PreferencesController::class, 'index'])->name('preferences.index');
+    Route::patch('/preferences', [PreferencesController::class, 'update'])->name('preferences.update');
+    Route::post('/preferences/reset', [PreferencesController::class, 'reset'])->name('preferences.reset');
+
+    // Merchant routes
+    Route::get('/merchants', [MerchantController::class, 'index'])->name('merchants.index');
+    Route::post('/merchants/{merchant}/logo', [MerchantController::class, 'updateLogo'])->name('merchants.updateLogo');
+
+    // Vendor routes
+    Route::get('/vendors', [VendorController::class, 'index'])->name('vendors.index');
+    Route::get('/vendors/{vendor}', [VendorController::class, 'show'])->name('vendors.show');
+    Route::post('/vendors/{vendor}/logo', [VendorController::class, 'updateLogo'])->name('vendors.updateLogo');
+
+    // Document routes
+    Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
+    Route::get('/documents/upload-debug', function () {
+        return Inertia::render('Documents/UploadDebug');
+    })->name('documents.upload-debug');
+    Route::get('/documents/upload', [DocumentController::class, 'upload'])->name('documents.upload');
+    Route::get('/documents/shared', [DocumentController::class, 'shared'])->name('documents.shared');
+    Route::get('/documents/categories', [DocumentController::class, 'categories'])->name('documents.categories');
+    Route::post('/documents/store', [DocumentController::class, 'store'])->name('documents.store');
+    Route::delete('/documents/bulk', [DocumentController::class, 'destroyBulk'])->name('documents.destroy-bulk');
+    Route::get('/documents/bulk/download', [DocumentController::class, 'downloadBulk'])->name('documents.download-bulk');
+    Route::get('/documents/serve', [DocumentController::class, 'serve'])->name('documents.serve');
+
+    // Dynamic document routes - must be after static routes
+    Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
+    Route::patch('/documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
+    Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
+    Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
+    Route::post('/documents/{document}/share', [DocumentController::class, 'share'])->name('documents.share');
+    Route::delete('/documents/{document}/share/{user}', [DocumentController::class, 'unshare'])->name('documents.unshare');
+    Route::post('/documents/{document}/tags', [DocumentController::class, 'addTag'])->name('documents.tags.store');
+    Route::delete('/documents/{document}/tags/{tag}', [DocumentController::class, 'removeTag'])->name('documents.tags.destroy');
+
+    // Receipt routes
+    Route::get('/receipts', [ReceiptController::class, 'index'])->name('receipts.index');
+    Route::get('/receipts/{receipt}', [ReceiptController::class, 'show'])->name('receipts.show');
+    Route::get('/receipts/{receipt}/image', [ReceiptController::class, 'showImage'])->name('receipts.showImage');
+    Route::get('/receipts/{receipt}/pdf', [ReceiptController::class, 'showPdf'])->name('receipts.showPdf');
+    Route::get('/receipts/merchant/{merchant}', [ReceiptController::class, 'byMerchant'])->name('receipts.byMerchant');
+    Route::delete('/receipts/{receipt}', [ReceiptController::class, 'destroy'])->name('receipts.destroy');
+    Route::patch('/receipts/{receipt}', [ReceiptController::class, 'update'])->name('receipts.update');
+    Route::post('/receipts/{receipt}/line-items', [ReceiptController::class, 'addLineItem'])->name('receipts.line-items.store');
+    Route::patch('/receipts/{receipt}/line-items/{lineItem}', [ReceiptController::class, 'updateLineItem'])->name('receipts.line-items.update');
+    Route::delete('/receipts/{receipt}/line-items/{lineItem}', [ReceiptController::class, 'deleteLineItem'])->name('receipts.line-items.destroy');
+    Route::post('/receipts/{receipt}/share', [ReceiptController::class, 'share'])->name('receipts.share');
+    Route::delete('/receipts/{receipt}/share/{user}', [ReceiptController::class, 'unshare'])->name('receipts.unshare');
+    Route::post('/receipts/{receipt}/tags', [ReceiptController::class, 'addTag'])->name('receipts.tags.store');
+    Route::delete('/receipts/{receipt}/tags/{tag}', [ReceiptController::class, 'removeTag'])->name('receipts.tags.destroy');
+
+    // Bulk operations
+    Route::prefix('bulk')->name('bulk.')->group(function () {
+        Route::post('/receipts/delete', [BulkOperationController::class, 'bulkDelete'])->name('receipts.delete');
+        Route::post('/receipts/categorize', [BulkOperationController::class, 'bulkCategorize'])->name('receipts.categorize');
+        Route::post('/receipts/export/csv', [BulkOperationController::class, 'bulkExportCsv'])->name('receipts.export.csv');
+        Route::post('/receipts/export/pdf', [BulkOperationController::class, 'bulkExportPdf'])->name('receipts.export.pdf');
+        Route::post('/receipts/stats', [BulkOperationController::class, 'getStats'])->name('receipts.stats');
+    });
+
+    // Jobs routes
+    Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');
+    Route::get('/jobs/status', [JobController::class, 'getStatus'])->name('jobs.status');
+    Route::get('/jobs/{jobId}', [JobController::class, 'show'])->name('jobs.show');
+    Route::post('/jobs/{jobId}/restart', [JobController::class, 'restart'])->name('jobs.restart');
+    Route::post('/jobs/restart-multiple', [JobController::class, 'restartMultiple'])->name('jobs.restart-multiple');
+
+    // Search routes
+    Route::get('/search', [SearchController::class, 'search'])->name('search');
+
+    // Tag routes
+    Route::get('/tags', [TagController::class, 'index'])->name('tags.index');
+    Route::get('/tags/all', [TagController::class, 'all'])->name('tags.all');
+    Route::post('/tags', [TagController::class, 'store'])->name('tags.store');
+    Route::patch('/tags/{tag}', [TagController::class, 'update'])->name('tags.update');
+    Route::delete('/tags/{tag}', [TagController::class, 'destroy'])->name('tags.destroy');
+    Route::post('/tags/{tag}/merge', [TagController::class, 'merge'])->name('tags.merge');
+
+    // Export routes
+    Route::prefix('export')->name('export.')->group(function () {
+        Route::get('/receipts/csv', [ExportController::class, 'exportCsv'])->name('receipts.csv');
+        Route::get('/receipts/pdf', [ExportController::class, 'exportPdf'])->name('receipts.pdf');
+        Route::get('/receipt/{id}/pdf', [ExportController::class, 'exportReceiptPdf'])->name('receipt.pdf');
+    });
+
+    // PulseDav routes
+    Route::prefix('pulsedav')->name('pulsedav.')->group(function () {
+        Route::get('/', [PulseDavController::class, 'index'])->name('index');
+        Route::post('/sync', [PulseDavController::class, 'sync'])->name('sync');
+        Route::post('/sync-folders', [PulseDavController::class, 'syncWithFolders'])->name('sync-folders');
+        Route::post('/process', [PulseDavController::class, 'process'])->name('process');
+        Route::get('/files/{id}/status', [PulseDavController::class, 'status'])->name('status');
+        Route::delete('/files/{id}', [PulseDavController::class, 'destroy'])->name('destroy');
+
+        // Folder support routes
+        Route::get('/folders', [PulseDavController::class, 'folders'])->name('folders');
+        Route::get('/folder-contents', [PulseDavController::class, 'folderContents'])->name('folder-contents');
+        Route::post('/import', [PulseDavController::class, 'importSelections'])->name('import');
+        Route::post('/folder-tags', [PulseDavController::class, 'updateFolderTags'])->name('folder-tags');
+
+        // Tag routes
+        Route::get('/tags/search', [PulseDavController::class, 'searchTags'])->name('tags.search');
+        Route::post('/tags', [PulseDavController::class, 'createTag'])->name('tags.create');
+    });
+
+    // Notification routes
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::post('/notifications/clear', [NotificationController::class, 'clear'])->name('notifications.clear');
 });
 
-Route::get('/file/upload', function () {
-    return Inertia::render('File/Upload');
-})->middleware(['auth', 'verified'])->name('file.upload');
+// Health check endpoint for Docker/Kubernetes
+Route::get('/up', function () {
+    $status = 'ok';
+    $checks = [];
 
-Route::post('/file/store', [FileController::class, 'store'])->middleware(['auth', 'verified'])->name('file.store');
+    // Check database connection
+    try {
+        DB::connection()->getPdo();
+        $checks['database'] = true;
+    } catch (\Exception $e) {
+        $status = 'error';
+        $checks['database'] = false;
+    }
+
+    // Check Redis connection
+    try {
+        Cache::store('redis')->get('health-check');
+        $checks['redis'] = true;
+    } catch (\Exception $e) {
+        $status = 'error';
+        $checks['redis'] = false;
+    }
+
+    // Check if migrations are up to date
+    try {
+        $pendingMigrations = collect(DB::select('SELECT migration FROM migrations'))
+            ->pluck('migration')
+            ->diff(collect(File::files(database_path('migrations')))
+                ->map(fn ($file) => str_replace('.php', '', $file->getFilename()))
+            )
+            ->isEmpty();
+        $checks['migrations'] = $pendingMigrations;
+    } catch (\Exception $e) {
+        $checks['migrations'] = false;
+    }
+
+    return response()->json([
+        'status' => $status,
+        'timestamp' => now()->toIso8601String(),
+        'checks' => $checks,
+    ], $status === 'ok' ? 200 : 503);
+})->name('health');
 
 require __DIR__.'/auth.php';

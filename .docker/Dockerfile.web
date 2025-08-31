@@ -1,0 +1,39 @@
+# Web server with FrankenPHP and Laravel Octane
+FROM base AS web
+
+# Copy Caddyfile for FrankenPHP
+COPY docker/Caddyfile /etc/caddy/Caddyfile
+
+# Set environment for Octane
+ENV OCTANE_SERVER=frankenphp
+
+# Install Node.js for asset building
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY package.json package-lock.json ./
+
+# Install Node dependencies
+RUN npm ci --only=production
+
+# Build assets
+RUN npm run build
+
+# Copy FrankenPHP configuration
+COPY docker/frankenphp.ini /usr/local/etc/php/conf.d/frankenphp.ini
+
+# Copy startup script
+COPY docker/scripts/start-web.sh /usr/local/bin/start-web
+RUN chmod +x /usr/local/bin/start-web
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/up || exit 1
+
+# Start Octane
+CMD ["/usr/local/bin/start-web"]

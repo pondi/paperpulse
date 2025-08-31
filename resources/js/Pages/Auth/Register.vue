@@ -104,6 +104,8 @@ const submit = () => {
                 <InputError class="mt-2" :message="form.errors.password_confirmation" />
             </div>
 
+            <InputError class="mt-2" :message="form.errors.invitation_token" />
+
             <div class="flex items-center justify-end mt-4">
                 <Link
                     :href="route('login')"

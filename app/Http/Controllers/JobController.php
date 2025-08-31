@@ -34,7 +34,7 @@ class JobController extends Controller
 
         // Get file info for parent jobs
         $fileInfo = null;
-        if (!$isChild) {
+        if (! $isChild) {
             $metadata = Cache::get("job.{$job->uuid}.fileMetaData");
             if ($metadata) {
                 $fileInfo = [
@@ -48,7 +48,7 @@ class JobController extends Controller
 
         // Determine job type from tasks
         $jobType = 'unknown';
-        if (!$isChild) {
+        if (! $isChild) {
             $tasks = $job->tasks;
             if ($tasks && $tasks->count() > 0) {
                 if ($tasks->contains('name', 'Process Receipt')) {
@@ -73,7 +73,7 @@ class JobController extends Controller
             'order' => $job->order_in_chain,
         ];
 
-        if (!$isChild) {
+        if (! $isChild) {
             $data['type'] = $jobType;
             $data['file_info'] = $fileInfo;
             $data['steps'] = $job->tasks()

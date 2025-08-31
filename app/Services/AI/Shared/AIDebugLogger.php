@@ -8,7 +8,7 @@ class AIDebugLogger
 {
     public static function analysisStart(string $provider, string $type, array $context = []): void
     {
-        if (!config('app.debug')) {
+        if (! config('app.debug')) {
             return;
         }
 
@@ -19,7 +19,7 @@ class AIDebugLogger
 
     public static function modelConfiguration(string $provider, array $context = []): void
     {
-        if (!config('app.debug')) {
+        if (! config('app.debug')) {
             return;
         }
 
@@ -28,7 +28,7 @@ class AIDebugLogger
 
     public static function promptData(string $provider, array $promptData): void
     {
-        if (!config('app.debug')) {
+        if (! config('app.debug')) {
             return;
         }
 
@@ -43,7 +43,7 @@ class AIDebugLogger
 
     public static function apiRequest(string $provider, array $payload): void
     {
-        if (!config('app.debug')) {
+        if (! config('app.debug')) {
             return;
         }
 
@@ -64,7 +64,7 @@ class AIDebugLogger
 
     public static function apiResponse(string $provider, $response): void
     {
-        if (!config('app.debug')) {
+        if (! config('app.debug')) {
             return;
         }
 
@@ -86,7 +86,7 @@ class AIDebugLogger
 
     public static function analysisComplete(string $provider, array $result, float $startTime): void
     {
-        if (!config('app.debug')) {
+        if (! config('app.debug')) {
             return;
         }
 

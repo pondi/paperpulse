@@ -34,6 +34,7 @@ class SendInvitation extends Command
         // Check if user already exists
         if (User::where('email', $email)->exists()) {
             $this->error("User with email {$email} already exists.");
+
             return 1;
         }
 
@@ -45,23 +46,24 @@ class SendInvitation extends Command
 
         if ($existingInvitation) {
             $this->error("A valid invitation for {$email} already exists.");
+
             return 1;
         }
 
         // Create invitation
         $invitation = Invitation::createForEmail($email, $invitedByUserId);
-        
+
         // Generate registration URL
         $registrationUrl = route('register', ['token' => $invitation->token]);
-        
-        $this->info("Invitation created successfully!");
+
+        $this->info('Invitation created successfully!');
         $this->line("Email: {$email}");
         $this->line("Registration URL: {$registrationUrl}");
         $this->line("Expires: {$invitation->expires_at->format('Y-m-d H:i:s')}");
-        
+
         // In a real application, you would send an email here
         // Mail::to($email)->send(new InvitationMail($invitation, $registrationUrl));
-        
+
         return 0;
     }
 }

@@ -58,7 +58,7 @@ class AIDataNormalizer
         }
 
         // Fallback for direct structure (non-nested)
-        if (!isset($normalized['receipt_info']) && (isset($data['receipt_info']) || isset($data['date']))) {
+        if (! isset($normalized['receipt_info']) && (isset($data['receipt_info']) || isset($data['date']))) {
             if (isset($data['receipt_info'])) {
                 $normalized['receipt_info'] = $data['receipt_info'];
             } else {
@@ -70,7 +70,7 @@ class AIDataNormalizer
         }
 
         // Fallback for totals (non-nested)
-        if (!isset($normalized['totals'])) {
+        if (! isset($normalized['totals'])) {
             if (isset($data['totals'])) {
                 $normalized['totals'] = $data['totals'];
             } elseif (isset($data['total'])) {
@@ -81,7 +81,7 @@ class AIDataNormalizer
         }
 
         // Fallback for items (non-nested)
-        if (!isset($normalized['items'])) {
+        if (! isset($normalized['items'])) {
             if (isset($data['items'])) {
                 $normalized['items'] = $data['items'];
             } elseif (isset($data['line_items'])) {
@@ -90,27 +90,27 @@ class AIDataNormalizer
         }
 
         // Fallback for payment (non-nested)
-        if (!isset($normalized['payment']) && isset($data['payment'])) {
+        if (! isset($normalized['payment']) && isset($data['payment'])) {
             $normalized['payment'] = $data['payment'];
-        } elseif (!isset($normalized['payment']) && isset($data['payment_method'])) {
+        } elseif (! isset($normalized['payment']) && isset($data['payment_method'])) {
             $normalized['payment'] = ['method' => $data['payment_method']];
         }
 
         // Ensure required structure exists with defaults
-        if (!isset($normalized['merchant'])) {
+        if (! isset($normalized['merchant'])) {
             $normalized['merchant'] = ['name' => 'Unknown Merchant'];
         }
 
-        if (!isset($normalized['totals'])) {
+        if (! isset($normalized['totals'])) {
             $normalized['totals'] = ['total_amount' => 0];
         }
 
-        if (!isset($normalized['receipt_info'])) {
+        if (! isset($normalized['receipt_info'])) {
             $normalized['receipt_info'] = ['date' => date('Y-m-d')];
         }
 
         // Ensure items is always an array
-        if (!isset($normalized['items'])) {
+        if (! isset($normalized['items'])) {
             $normalized['items'] = [];
         }
 

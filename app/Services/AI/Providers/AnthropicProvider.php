@@ -7,9 +7,9 @@ use Anthropic\Client;
 use App\Services\AI\AIService;
 use App\Services\AI\ModelConfiguration;
 use App\Services\AI\PromptTemplateService;
+use App\Services\AI\Shared\AIDataNormalizer;
 use App\Services\AI\Shared\AIDebugLogger;
 use App\Services\AI\Shared\AIFallbackHandler;
-use App\Services\AI\Shared\AIDataNormalizer;
 use Illuminate\Support\Facades\Log;
 
 class AnthropicProvider implements AIService
@@ -79,7 +79,6 @@ class AnthropicProvider implements AIService
                     $userMessage = $message['content'];
                 }
             }
-
 
             $requestPayload = [
                 'model' => $model,
@@ -174,7 +173,7 @@ class AnthropicProvider implements AIService
 
                     if ($result) {
                         $normalizedData = AIDataNormalizer::normalizeReceiptData($result);
-                        
+
                         $fallbackResult = AIFallbackHandler::createSuccessResult('anthropic', $normalizedData, [
                             'model' => 'claude-3-haiku-20240307',
                             'template' => 'fallback',
@@ -331,8 +330,6 @@ class AnthropicProvider implements AIService
             return [];
         }
     }
-
-    
 
     public function generateSummary(string $content, int $maxLength = 200): string
     {
@@ -501,5 +498,4 @@ class AnthropicProvider implements AIService
     {
         return 'anthropic';
     }
-
 }

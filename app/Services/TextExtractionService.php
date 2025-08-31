@@ -48,7 +48,7 @@ class TextExtractionService
             foreach ($allProviders as $providerName) {
                 try {
                     $ocrProvider = OCRServiceFactory::create($providerName);
-                    
+
                     Log::info('[TextExtractionService] Starting OCR extraction', [
                         'file_guid' => $fileGuid,
                         'file_type' => $fileType,
@@ -84,7 +84,7 @@ class TextExtractionService
             }
 
             // If all providers failed, throw an error
-            if (!$result || !$result->success) {
+            if (! $result || ! $result->success) {
                 $errorMessage = $this->formatErrorMessage($lastError ?? 'All OCR providers failed', $primaryProvider);
                 throw new Exception($errorMessage);
             }

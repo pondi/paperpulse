@@ -116,8 +116,6 @@ class ValidatedAIService implements AIService
         return $this->provider->extractMerchant($content);
     }
 
-    
-
     public function generateSummary(string $content, int $maxLength = 200): string
     {
         return $this->provider->generateSummary($content, $maxLength);

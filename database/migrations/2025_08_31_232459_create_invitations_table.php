@@ -19,7 +19,7 @@ return new class extends Migration
             $table->timestamp('used_at')->nullable();
             $table->foreignId('invited_by_user_id')->constrained('users')->onDelete('cascade');
             $table->timestamps();
-            
+
             $table->index('email');
             $table->index('token');
             $table->index('expires_at');

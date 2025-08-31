@@ -232,7 +232,7 @@ class PromptTemplateService
     protected function getReceiptSchema(array $options = []): array
     {
         $strictMode = $options['strict_mode'] ?? true;
-        
+
         return [
             'type' => 'object',
             'properties' => [

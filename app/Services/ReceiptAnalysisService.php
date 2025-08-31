@@ -285,8 +285,6 @@ class ReceiptAnalysisService
         return $this->aiService->extractMerchant($content);
     }
 
-    
-
     /**
      * Find or create merchant based on extracted data
      */

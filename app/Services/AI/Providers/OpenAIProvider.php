@@ -5,9 +5,9 @@ namespace App\Services\AI\Providers;
 use App\Services\AI\AIService;
 use App\Services\AI\ModelConfiguration;
 use App\Services\AI\PromptTemplateService;
+use App\Services\AI\Shared\AIDataNormalizer;
 use App\Services\AI\Shared\AIDebugLogger;
 use App\Services\AI\Shared\AIFallbackHandler;
-use App\Services\AI\Shared\AIDataNormalizer;
 use Illuminate\Support\Facades\Log;
 use OpenAI\Laravel\Facades\OpenAI;
 
@@ -77,7 +77,6 @@ class OpenAIProvider implements AIService
 
             $result = json_decode($response->choices[0]->message->content, true);
 
-
             // Calculate cost if model config available
             $cost = null;
             if ($this->modelConfig && isset($response->usage)) {
@@ -116,7 +115,7 @@ class OpenAIProvider implements AIService
                         $model
                     );
                     // Merge additional params if available
-                    if (!empty($params)) {
+                    if (! empty($params)) {
                         $fallbackPayload = array_merge($fallbackPayload, $params);
                     }
 
@@ -125,7 +124,6 @@ class OpenAIProvider implements AIService
                     AIDebugLogger::apiResponse('OpenAI', $response);
 
                     $result = json_decode($response->choices[0]->message->content, true);
-
 
                     // Normalize the response structure to match validation expectations
                     $normalizedData = AIDataNormalizer::normalizeReceiptData($result);
@@ -229,8 +227,6 @@ class OpenAIProvider implements AIService
             return [];
         }
     }
-
-    
 
     public function generateSummary(string $content, int $maxLength = 200): string
     {
@@ -375,5 +371,4 @@ class OpenAIProvider implements AIService
     {
         return 'openai';
     }
-
 }

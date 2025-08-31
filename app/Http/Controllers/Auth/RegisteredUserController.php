@@ -23,22 +23,22 @@ class RegisteredUserController extends Controller
     {
         $invitation = null;
         $token = $request->get('token');
-        
+
         if ($token) {
             $invitation = Invitation::findValidByToken($token);
-            
-            if (!$invitation) {
+
+            if (! $invitation) {
                 return redirect()->route('login')->withErrors([
-                    'invitation' => 'Invalid or expired invitation link.'
+                    'invitation' => 'Invalid or expired invitation link.',
                 ]);
             }
         }
-        
+
         return Inertia::render('Auth/Register', [
             'invitation' => $invitation ? [
                 'email' => $invitation->email,
-                'token' => $token
-            ] : null
+                'token' => $token,
+            ] : null,
         ]);
     }
 
@@ -54,36 +54,36 @@ class RegisteredUserController extends Controller
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ];
-        
+
         // If there's a token, validate it and ensure email matches
         if ($request->has('invitation_token')) {
             $validationRules['invitation_token'] = 'required|string';
-            
+
             $request->validate($validationRules);
-            
+
             $invitation = Invitation::findValidByToken($request->invitation_token);
-            
-            if (!$invitation) {
+
+            if (! $invitation) {
                 return back()->withErrors([
-                    'invitation_token' => 'Invalid or expired invitation.'
+                    'invitation_token' => 'Invalid or expired invitation.',
                 ]);
             }
-            
+
             if ($invitation->email !== $request->email) {
                 return back()->withErrors([
-                    'email' => 'Email must match the invited email address.'
+                    'email' => 'Email must match the invited email address.',
                 ]);
             }
-            
+
             $invitation->markAsUsed();
         } else {
             // No invitation token provided - check if invitations are required
             // For now, we'll require invitations for all registrations
             return back()->withErrors([
-                'invitation_token' => 'Registration requires an invitation.'
+                'invitation_token' => 'Registration requires an invitation.',
             ]);
         }
-        
+
         $request->validate($validationRules);
 
         $user = User::create([

@@ -2,15 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\Category;
 use App\Models\Document;
-use App\Models\Tag;
 use App\Services\AI\AIService;
 use App\Services\AI\AIServiceFactory;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class DocumentAnalysisService
 {

@@ -10,7 +10,7 @@ class AIFallbackHandler
     public static function shouldAttemptFallback(\Exception $e): bool
     {
         $message = $e->getMessage();
-        
+
         return str_contains($message, 'API') ||
                str_contains($message, 'rate limit') ||
                str_contains($message, 'timeout') ||
@@ -41,7 +41,7 @@ class AIFallbackHandler
     public static function createOpenAIFallbackPayload(array $messages, ?string $model = null): array
     {
         $config = self::getFallbackModel('openai');
-        
+
         return [
             'model' => $model ?? $config['model'],
             'messages' => $messages,
@@ -57,7 +57,7 @@ class AIFallbackHandler
     public static function createAnthropicFallbackPayload(string $content): array
     {
         $config = self::getFallbackModel('anthropic');
-        
+
         return [
             'model' => $config['model'],
             'max_tokens' => $config['max_tokens'],

@@ -2,16 +2,14 @@
 
 namespace App\Models;
 
-use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class Invitation extends Model
 {
-    use HasUuids, BelongsToUser;
+    use HasUuids;
 
     protected $fillable = [
         'email',
@@ -32,7 +30,7 @@ class Invitation extends Model
     public static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($invitation) {
             $invitation->token = Str::random(64);
             $invitation->expires_at = now()->addDays(7);
@@ -56,7 +54,7 @@ class Invitation extends Model
 
     public function isValid(): bool
     {
-        return !$this->isExpired() && !$this->isUsed();
+        return ! $this->isExpired() && ! $this->isUsed();
     }
 
     public function markAsUsed(): void

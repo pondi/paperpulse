@@ -183,17 +183,17 @@ abstract class BaseJob implements ShouldQueue
     {
         // Check if this is the first job in the chain (order = 1)
         $isFirstInChain = $this->getOrderInChain() === 1;
-        
+
         if ($isFirstInChain) {
             // This is the parent job - create it with jobID as uuid and no parent
             // Get metadata directly since we're in the processing context
             $metadata = $this->getMetadata();
             $chainName = 'Processing Job'; // Default fallback
-            
+
             if ($metadata && isset($metadata['jobName'])) {
                 $chainName = $metadata['jobName'];
             } elseif ($metadata && isset($metadata['fileName'])) {
-                $chainName = 'Processing: ' . $metadata['fileName'];
+                $chainName = 'Processing: '.$metadata['fileName'];
             } else {
                 // Fallback based on job type
                 $chainName = match ($this->getOrderInChain()) {
@@ -287,12 +287,12 @@ abstract class BaseJob implements ShouldQueue
     protected function updateParentJobStatus(): void
     {
         $parentJob = JobHistory::where('uuid', $this->jobID)->first();
-        if (!$parentJob) {
+        if (! $parentJob) {
             return;
         }
 
         $childJobs = JobHistory::where('parent_uuid', $this->jobID)->get();
-        
+
         if ($childJobs->isEmpty()) {
             return;
         }

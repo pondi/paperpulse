@@ -1,7 +1,7 @@
 <template>
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
                 Scanner Imports (PulseDav)
             </h2>
         </template>
@@ -9,12 +9,12 @@
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <!-- Sync Section -->
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
                     <div class="p-6">
                         <div class="flex justify-between items-center">
                             <div>
-                                <h3 class="text-lg font-semibold text-gray-900">Sync Scanner Files</h3>
-                                <p class="mt-1 text-sm text-gray-600">
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Sync Scanner Files</h3>
+                                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
                                     Check for new files uploaded by your scanner
                                 </p>
                             </div>
@@ -51,15 +51,15 @@
                 </div>
 
                 <!-- Import Controls -->
-                <div v-if="hasSelections" class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                <div v-if="hasSelections" class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
                     <div class="p-6">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Import Selected Items</h3>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Import Selected Items</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">File Type</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">File Type</label>
                                 <select
                                     v-model="importOptions.fileType"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                    class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                 >
                                     <option value="receipt">Receipt</option>
                                     <option value="document">Document</option>
@@ -67,7 +67,7 @@
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags</label>
                                 <TagSelector
                                     v-model="importOptions.tagIds"
                                     :tags="tags"
@@ -77,17 +77,17 @@
                         </div>
                         
                         <div class="mt-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Notes (optional)</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notes (optional)</label>
                             <textarea
                                 v-model="importOptions.notes"
                                 rows="2"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                 placeholder="Add any notes about this import..."
                             />
                         </div>
                         
                         <div class="mt-4 flex justify-between items-center">
-                            <span class="text-sm text-gray-600">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">
                                 {{ selectedCount }} item{{ selectedCount > 1 ? 's' : '' }} selected
                             </span>
                             <div class="flex space-x-2">
@@ -114,22 +114,22 @@
                 </div>
 
                 <!-- Folder View -->
-                <div v-if="viewMode === 'folder'" class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div v-if="viewMode === 'folder'" class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Folder Structure</h3>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Folder Structure</h3>
                         
                         <!-- Breadcrumb -->
                         <div v-if="currentPath" class="mb-4 flex items-center text-sm">
-                            <button @click="navigateToFolder('')" class="text-indigo-600 hover:text-indigo-800">
+                            <button @click="navigateToFolder('')" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300">
                                 Root
                             </button>
                             <span v-for="(segment, index) in pathSegments" :key="index" class="flex items-center">
-                                <svg class="w-4 h-4 mx-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 mx-2 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                                 </svg>
                                 <button
                                     @click="navigateToFolder(pathSegments.slice(0, index + 1).join('/'))"
-                                    class="text-indigo-600 hover:text-indigo-800"
+                                    class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
                                 >
                                     {{ segment }}
                                 </button>
@@ -141,7 +141,7 @@
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            <p class="mt-2 text-gray-600">Loading folder structure...</p>
+                            <p class="mt-2 text-gray-600 dark:text-gray-400">Loading folder structure...</p>
                         </div>
                         
                         <div v-else class="space-y-2">
@@ -156,23 +156,23 @@
                             />
                         </div>
                         
-                        <div v-if="!loadingFolders && currentFolderContents.length === 0" class="text-center py-8 text-gray-500">
+                        <div v-if="!loadingFolders && currentFolderContents.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
                             No files or folders found in this location.
                         </div>
                     </div>
                 </div>
 
                 <!-- List View (Original Table) -->
-                <div v-else class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div v-else class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-semibold text-gray-900">Scanner Files</h3>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Scanner Files</h3>
                             <div class="flex items-center space-x-4">
                                 <div v-if="selectedFiles.length > 0" class="flex items-center space-x-2">
-                                    <label class="text-sm font-medium text-gray-700">Process as:</label>
+                                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Process as:</label>
                                     <select
                                         v-model="selectedFileType"
-                                        class="rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm"
+                                        class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm"
                                     >
                                         <option value="receipt">Receipt</option>
                                         <option value="document">Document</option>
@@ -189,13 +189,13 @@
                             </div>
                         </div>
 
-                        <div v-if="files.data.length === 0" class="text-center py-8 text-gray-500">
+                        <div v-if="files.data.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
                             No files found. Click "Sync Files" to check for new scanner uploads.
                         </div>
 
                         <div v-else class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                                <thead class="bg-gray-50 dark:bg-gray-700">
                                     <tr>
                                         <th class="px-6 py-3 text-left">
                                             <input
@@ -205,30 +205,30 @@
                                                 class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                             />
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                             Filename
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                             Folder
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                             Size
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                             Uploaded
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                             Type
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                             Status
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                             Actions
                                         </th>
                                     </tr>
                                 </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
+                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
                                     <template v-for="file in files.data" :key="file.id">
                                         <tr v-if="!file.is_folder">
                                         <td class="px-6 py-4 whitespace-nowrap">
@@ -240,20 +240,20 @@
                                                 class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                             />
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                                             {{ file.filename }}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                             {{ file.folder_path || '/' }}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                             {{ formatFileSize(file.size) }}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                             {{ formatDate(file.uploaded_at) }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
                                                 {{ file.file_type || 'receipt' }}
                                             </span>
                                         </td>
@@ -264,7 +264,7 @@
                                             >
                                                 {{ file.status }}
                                             </span>
-                                            <span v-if="file.error_message" class="block text-xs text-red-600 mt-1">
+                                            <span v-if="file.error_message" class="block text-xs text-red-600 dark:text-red-400 mt-1">
                                                 {{ file.error_message }}
                                             </span>
                                         </td>
@@ -272,20 +272,20 @@
                                             <Link
                                                 v-if="file.receipt_id"
                                                 :href="route('receipts.show', file.receipt_id)"
-                                                class="text-indigo-600 hover:text-indigo-900 mr-3"
+                                                class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 mr-3"
                                             >
                                                 View Receipt
                                             </Link>
                                             <Link
                                                 v-if="file.document_id"
                                                 :href="route('documents.show', file.document_id)"
-                                                class="text-indigo-600 hover:text-indigo-900 mr-3"
+                                                class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 mr-3"
                                             >
                                                 View Document
                                             </Link>
                                             <button
                                                 @click="deleteFile(file)"
-                                                class="text-red-600 hover:text-red-900"
+                                                class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
                                             >
                                                 Delete
                                             </button>
@@ -307,7 +307,7 @@
                                         'px-3 py-2 mx-1 text-sm font-medium rounded-md',
                                         link.active
                                             ? 'bg-indigo-600 text-white'
-                                            : 'bg-white text-gray-700 hover:bg-gray-50',
+                                            : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600',
                                         !link.url && 'cursor-not-allowed opacity-50'
                                     ]"
                                     v-html="link.label"
@@ -778,12 +778,12 @@ const formatDate = (dateString) => {
 
 const getStatusClass = (status) => {
     const classes = {
-        pending: 'bg-yellow-100 text-yellow-800',
-        processing: 'bg-blue-100 text-blue-800',
-        completed: 'bg-green-100 text-green-800',
-        failed: 'bg-red-100 text-red-800',
-        folder: 'bg-gray-100 text-gray-800',
+        pending: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200',
+        processing: 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200',
+        completed: 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200',
+        failed: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200',
+        folder: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
     };
-    return classes[status] || 'bg-gray-100 text-gray-800';
+    return classes[status] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
 };
 </script>

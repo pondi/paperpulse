@@ -7,6 +7,9 @@ use Anthropic\Client;
 use App\Services\AI\AIService;
 use App\Services\AI\ModelConfiguration;
 use App\Services\AI\PromptTemplateService;
+use App\Services\AI\Shared\AIDebugLogger;
+use App\Services\AI\Shared\AIFallbackHandler;
+use App\Services\AI\Shared\AIDataNormalizer;
 use Illuminate\Support\Facades\Log;
 
 class AnthropicProvider implements AIService
@@ -39,28 +42,22 @@ class AnthropicProvider implements AIService
 
     public function analyzeReceipt(string $content, array $options = []): array
     {
-        $debugEnabled = config('app.debug');
         $startTime = microtime(true);
 
-        if ($debugEnabled) {
-            Log::debug('[Anthropic] Starting receipt analysis', [
-                'content_length' => strlen($content),
-                'content_preview' => substr($content, 0, 200).'...',
-                'options' => $options,
-                'timestamp' => now()->toISOString(),
-            ]);
-        }
+        AIDebugLogger::analysisStart('Anthropic', 'receipt', [
+            'content_length' => strlen($content),
+            'content_preview' => substr($content, 0, 200).'...',
+            'options' => $options,
+        ]);
 
         try {
             $model = config('ai.models.anthropic_receipt', 'claude-3.7-sonnet');
 
-            if ($debugEnabled) {
-                Log::debug('[Anthropic] Model configuration', [
-                    'model' => $model,
-                    'model_config' => $this->modelConfig?->toArray(),
-                    'default_options' => $this->defaultOptions,
-                ]);
-            }
+            AIDebugLogger::modelConfiguration('Anthropic', [
+                'model' => $model,
+                'model_config' => $this->modelConfig?->toArray(),
+                'default_options' => $this->defaultOptions,
+            ]);
 
             // Use template service
             $promptData = $this->promptService->getPrompt('receipt', [
@@ -69,15 +66,7 @@ class AnthropicProvider implements AIService
                 'extraction_focus' => $options['focus'] ?? null,
             ], array_merge($options, ['provider' => 'anthropic']));
 
-            if ($debugEnabled) {
-                Log::debug('[Anthropic] Prompt data prepared', [
-                    'template_name' => $promptData['template_name'] ?? 'unknown',
-                    'messages_count' => count($promptData['messages'] ?? []),
-                    'schema_structure' => array_keys($promptData['schema']['properties'] ?? []),
-                    'schema_required' => $promptData['schema']['required'] ?? [],
-                    'options' => $promptData['options'] ?? [],
-                ]);
-            }
+            AIDebugLogger::promptData('Anthropic', $promptData);
 
             // Extract system and user messages
             $systemMessage = '';
@@ -91,14 +80,6 @@ class AnthropicProvider implements AIService
                 }
             }
 
-            if ($debugEnabled) {
-                Log::debug('[Anthropic] Message extraction', [
-                    'system_message_length' => strlen($systemMessage),
-                    'user_message_length' => strlen($userMessage),
-                    'system_preview' => substr($systemMessage, 0, 150).'...',
-                    'user_preview' => substr($userMessage, 0, 150).'...',
-                ]);
-            }
 
             $requestPayload = [
                 'model' => $model,
@@ -118,32 +99,11 @@ class AnthropicProvider implements AIService
                 'tool_choice' => ['type' => 'tool', 'name' => 'extract_receipt_data'],
             ];
 
-            if ($debugEnabled) {
-                Log::debug('[Anthropic] API request payload', [
-                    'model' => $requestPayload['model'],
-                    'max_tokens' => $requestPayload['max_tokens'],
-                    'temperature' => $requestPayload['temperature'],
-                    'system_length' => strlen($requestPayload['system']),
-                    'user_messages_count' => count($requestPayload['messages']),
-                    'tools_count' => count($requestPayload['tools']),
-                    'tool_choice' => $requestPayload['tool_choice'],
-                ]);
-            }
+            AIDebugLogger::apiRequest('Anthropic', $requestPayload);
 
             $response = $this->client->messages()->create($requestPayload);
 
-            if ($debugEnabled) {
-                Log::debug('[Anthropic] API response received', [
-                    'response_id' => $response->id ?? 'unknown',
-                    'model_used' => $response->model ?? $model,
-                    'content_count' => count($response->content ?? []),
-                    'usage' => $response->usage ?? null,
-                    'stop_reason' => $response->stopReason ?? 'unknown',
-                    'content_types' => array_map(function ($content) {
-                        return $content->type ?? 'unknown';
-                    }, $response->content ?? []),
-                ]);
-            }
+            AIDebugLogger::apiResponse('Anthropic', $response);
 
             $toolUse = $response->content[0];
             if ($toolUse->type === 'tool_use' && $toolUse->name === 'extract_receipt_data') {
@@ -159,29 +119,13 @@ class AnthropicProvider implements AIService
 
                 $result = $toolUse->input;
 
-                $finalResult = [
-                    'success' => true,
-                    'data' => $result,
-                    'provider' => 'anthropic',
+                $finalResult = AIFallbackHandler::createSuccessResult('anthropic', $result, [
                     'model' => $model,
                     'template' => $promptData['template_name'],
                     'tokens_used' => $response->usage->inputTokens + $response->usage->outputTokens,
-                ];
+                ]);
 
-                if ($debugEnabled) {
-                    $processingTime = microtime(true) - $startTime;
-                    Log::debug('[Anthropic] Receipt analysis completed successfully', [
-                        'processing_time_ms' => round($processingTime * 1000, 2),
-                        'input_tokens' => $response->usage->inputTokens,
-                        'output_tokens' => $response->usage->outputTokens,
-                        'total_tokens' => $response->usage->inputTokens + $response->usage->outputTokens,
-                        'result_summary' => [
-                            'success' => $finalResult['success'],
-                            'data_keys' => is_object($result) || is_array($result) ? array_keys((array) $result) : 'not array/object',
-                            'tokens_used' => $finalResult['tokens_used'],
-                        ],
-                    ]);
-                }
+                AIDebugLogger::analysisComplete('Anthropic', $finalResult, $startTime);
 
                 return $finalResult;
             }
@@ -197,56 +141,23 @@ class AnthropicProvider implements AIService
 
             throw new \Exception('Unexpected response format from Anthropic API');
         } catch (\Exception $e) {
-            $processingTime = microtime(true) - $startTime;
-
-            Log::error('[Anthropic] Receipt analysis failed', [
-                'error' => $e->getMessage(),
-                'error_type' => get_class($e),
+            AIDebugLogger::analysisError('Anthropic', $e, $startTime, [
                 'content_length' => strlen($content),
                 'model' => $model ?? 'unknown',
-                'processing_time_ms' => round($processingTime * 1000, 2),
-                'stack_trace' => $debugEnabled ? $e->getTraceAsString() : 'Enable debug mode for stack trace',
             ]);
 
-            // Try fallback with simpler prompt if it's an API error
-            if (str_contains($e->getMessage(), 'API') || str_contains($e->getMessage(), 'rate limit') || str_contains($e->getMessage(), 'timeout')) {
-                Log::info('[Anthropic] Attempting fallback with simpler prompt', [
-                    'original_error' => $e->getMessage(),
+            // Try fallback with simpler prompt if appropriate
+            if (AIFallbackHandler::shouldAttemptFallback($e)) {
+                AIDebugLogger::fallbackAttempt('Anthropic', $e->getMessage(), [
                     'fallback_model' => 'claude-3-haiku-20240307',
                 ]);
 
-                if ($debugEnabled) {
-                    Log::debug('[Anthropic] Fallback request details', [
-                        'fallback_model' => 'claude-3-haiku-20240307',
-                        'max_tokens' => 1024,
-                        'content_length' => min(strlen($content), 4000),
-                    ]);
-                }
-
                 try {
-                    $fallbackPayload = [
-                        'model' => 'claude-3-haiku-20240307',
-                        'max_tokens' => 1024,
-                        'temperature' => 0.1,
-                        'system' => 'Extract receipt data from the following text. Return JSON with merchant name, total amount, date, and items.',
-                        'messages' => [
-                            [
-                                'role' => 'user',
-                                'content' => substr($content, 0, 4000),
-                            ],
-                        ],
-                    ];
+                    $fallbackPayload = AIFallbackHandler::createAnthropicFallbackPayload($content);
 
                     $fallbackResponse = $this->client->messages()->create($fallbackPayload);
 
-                    if ($debugEnabled) {
-                        Log::debug('[Anthropic] Fallback response received', [
-                            'response_id' => $fallbackResponse->id ?? 'unknown',
-                            'content_count' => count($fallbackResponse->content ?? []),
-                            'usage' => $fallbackResponse->usage ?? null,
-                            'raw_text' => $fallbackResponse->content[0]->text ?? 'no text',
-                        ]);
-                    }
+                    AIDebugLogger::apiResponse('Anthropic', $fallbackResponse);
 
                     // Try to parse the response
                     $text = $fallbackResponse->content[0]->text ?? '';
@@ -262,39 +173,27 @@ class AnthropicProvider implements AIService
                     }
 
                     if ($result) {
-                        $fallbackResult = [
-                            'success' => true,
-                            'data' => $result,
-                            'provider' => 'anthropic',
+                        $normalizedData = AIDataNormalizer::normalizeReceiptData($result);
+                        
+                        $fallbackResult = AIFallbackHandler::createSuccessResult('anthropic', $normalizedData, [
                             'model' => 'claude-3-haiku-20240307',
                             'template' => 'fallback',
                             'tokens_used' => $fallbackResponse->usage->inputTokens + $fallbackResponse->usage->outputTokens,
                             'fallback_used' => true,
-                        ];
-
-                        Log::info('[Anthropic] Fallback successful', [
-                            'processing_time_ms' => round((microtime(true) - $startTime) * 1000, 2),
-                            'tokens_used' => $fallbackResult['tokens_used'],
                         ]);
+
+                        AIDebugLogger::fallbackSuccess('Anthropic', $startTime, $fallbackResult);
 
                         return $fallbackResult;
                     }
                 } catch (\Exception $fallbackError) {
-                    Log::error('[Anthropic] Fallback also failed', [
-                        'fallback_error' => $fallbackError->getMessage(),
-                        'fallback_error_type' => get_class($fallbackError),
-                        'total_processing_time_ms' => round((microtime(true) - $startTime) * 1000, 2),
-                        'fallback_stack_trace' => $debugEnabled ? $fallbackError->getTraceAsString() : 'Enable debug mode for stack trace',
+                    AIDebugLogger::analysisError('Anthropic', $fallbackError, $startTime, [
+                        'error_context' => 'fallback_failed',
                     ]);
                 }
             }
 
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-                'provider' => 'anthropic',
-                'processing_time_ms' => round($processingTime * 1000, 2),
-            ];
+            return AIFallbackHandler::createErrorResult('anthropic', $e, $startTime);
         }
     }
 
@@ -352,14 +251,11 @@ class AnthropicProvider implements AIService
             if ($toolUse->type === 'tool_use' && $toolUse->name === 'extract_document_data') {
                 $result = $toolUse->input;
 
-                return [
-                    'success' => true,
-                    'data' => $result,
-                    'provider' => 'anthropic',
+                return AIFallbackHandler::createSuccessResult('anthropic', $result, [
                     'model' => $model,
                     'template' => $promptData['template_name'],
                     'tokens_used' => $response->usage->inputTokens + $response->usage->outputTokens,
-                ];
+                ]);
             }
 
             throw new \Exception('Unexpected response format from Anthropic API');
@@ -370,11 +266,7 @@ class AnthropicProvider implements AIService
                 'model' => $model ?? 'unknown',
             ]);
 
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-                'provider' => 'anthropic',
-            ];
+            return AIFallbackHandler::createErrorResult('anthropic', $e, 0);
         }
     }
 
@@ -610,382 +502,4 @@ class AnthropicProvider implements AIService
         return 'anthropic';
     }
 
-    private function getReceiptAnalysisSystemPrompt(): string
-    {
-        return 'Du er en ekspert på å analysere kvitteringer fra Norge. Din oppgave er å trekke ut strukturert informasjon fra kvitteringstekst med høy nøyaktighet.
-
-Fokusområder:
-- Identifiser butikk/merchant informasjon nøyaktig
-- Trekk ut alle varer med riktige priser og mengder
-- Beregn totaler, MVA og rabatter korrekt
-- Identifiser betalingsmetode og transaksjonsinformasjon
-- Håndter norske formater for dato, tid og valuta
-
-Returner alltid strukturerte data ved hjelp av extract_receipt_data funksjonen.';
-    }
-
-    private function getReceiptAnalysisUserPrompt(string $content): string
-    {
-        return "Analyser denne norske kvitteringen og trekk ut all relevant strukturert informasjon:
-
-<receipt_content>
-{$content}
-</receipt_content>
-
-Vær spesielt oppmerksom på:
-- Norske formater for dato (dd.mm.åååå eller dd/mm/åååå)
-- Norske valutaformater (kr, NOK, komma som desimalseparator)
-- MVA-satser som brukes i Norge (25%, 15%, 12%, 0%)
-- Norske organisasjonsnummer (9 siffer)";
-    }
-
-    private function getReceiptSchema(): array
-    {
-        return [
-            'type' => 'object',
-            'properties' => [
-                'merchant' => [
-                    'type' => 'object',
-                    'description' => 'Merchant/store information',
-                    'properties' => [
-                        'name' => [
-                            'type' => 'string',
-                            'description' => 'Name of the store or business',
-                        ],
-                        'address' => [
-                            'type' => 'string',
-                            'description' => 'Physical address of the store',
-                        ],
-                        'org_number' => [
-                            'type' => 'string',
-                            'description' => 'Norwegian organization number (9 digits)',
-                        ],
-                        'phone' => [
-                            'type' => 'string',
-                            'description' => 'Phone number',
-                        ],
-                        'website' => [
-                            'type' => 'string',
-                            'description' => 'Website URL if present',
-                        ],
-                        'email' => [
-                            'type' => 'string',
-                            'description' => 'Email address if present',
-                        ],
-                        'category' => [
-                            'type' => 'string',
-                            'description' => 'Business category (grocery, restaurant, retail, etc.)',
-                        ],
-                    ],
-                    'required' => ['name'],
-                ],
-                'items' => [
-                    'type' => 'array',
-                    'description' => 'List of purchased items',
-                    'items' => [
-                        'type' => 'object',
-                        'properties' => [
-                            'name' => [
-                                'type' => 'string',
-                                'description' => 'Item name or description',
-                            ],
-                            'quantity' => [
-                                'type' => 'number',
-                                'description' => 'Quantity purchased',
-                            ],
-                            'unit_price' => [
-                                'type' => 'number',
-                                'description' => 'Price per unit',
-                            ],
-                            'total_price' => [
-                                'type' => 'number',
-                                'description' => 'Total price for this item',
-                            ],
-                            'discount_amount' => [
-                                'type' => 'number',
-                                'description' => 'Discount amount if applicable',
-                            ],
-                            'vat_rate' => [
-                                'type' => 'number',
-                                'description' => 'VAT rate (0.25 for 25%, etc.)',
-                            ],
-                            'category' => [
-                                'type' => 'string',
-                                'description' => 'Item category',
-                            ],
-                            'sku' => [
-                                'type' => 'string',
-                                'description' => 'Product code or SKU if present',
-                            ],
-                        ],
-                        'required' => ['name', 'total_price'],
-                    ],
-                ],
-                'totals' => [
-                    'type' => 'object',
-                    'description' => 'Receipt totals and taxes',
-                    'properties' => [
-                        'subtotal' => [
-                            'type' => 'number',
-                            'description' => 'Subtotal before tax and discounts',
-                        ],
-                        'total_discount' => [
-                            'type' => 'number',
-                            'description' => 'Total discount amount',
-                        ],
-                        'tax_amount' => [
-                            'type' => 'number',
-                            'description' => 'Total VAT/tax amount',
-                        ],
-                        'total_amount' => [
-                            'type' => 'number',
-                            'description' => 'Final total amount paid',
-                        ],
-                        'tip_amount' => [
-                            'type' => 'number',
-                            'description' => 'Tip amount if applicable',
-                        ],
-                    ],
-                    'required' => ['total_amount'],
-                ],
-                'receipt_info' => [
-                    'type' => 'object',
-                    'description' => 'Receipt metadata',
-                    'properties' => [
-                        'date' => [
-                            'type' => 'string',
-                            'description' => 'Receipt date in YYYY-MM-DD format',
-                        ],
-                        'time' => [
-                            'type' => 'string',
-                            'description' => 'Receipt time in HH:MM format',
-                        ],
-                        'receipt_number' => [
-                            'type' => 'string',
-                            'description' => 'Receipt or invoice number',
-                        ],
-                        'transaction_id' => [
-                            'type' => 'string',
-                            'description' => 'Transaction ID',
-                        ],
-                        'cashier' => [
-                            'type' => 'string',
-                            'description' => 'Cashier name or ID',
-                        ],
-                        'terminal_id' => [
-                            'type' => 'string',
-                            'description' => 'Terminal or register ID',
-                        ],
-                    ],
-                ],
-                'payment' => [
-                    'type' => 'object',
-                    'description' => 'Payment information',
-                    'properties' => [
-                        'method' => [
-                            'type' => 'string',
-                            'description' => 'Payment method (cash, card, mobile, etc.)',
-                        ],
-                        'card_type' => [
-                            'type' => 'string',
-                            'description' => 'Card type if applicable (Visa, MasterCard, etc.)',
-                        ],
-                        'card_last_four' => [
-                            'type' => 'string',
-                            'description' => 'Last four digits of card',
-                        ],
-                        'currency' => [
-                            'type' => 'string',
-                            'description' => 'Currency code (NOK, EUR, etc.)',
-                        ],
-                        'change_given' => [
-                            'type' => 'number',
-                            'description' => 'Change given if cash payment',
-                        ],
-                        'amount_paid' => [
-                            'type' => 'number',
-                            'description' => 'Amount paid by customer',
-                        ],
-                    ],
-                ],
-                'loyalty_program' => [
-                    'type' => 'object',
-                    'description' => 'Loyalty program information',
-                    'properties' => [
-                        'program_name' => [
-                            'type' => 'string',
-                            'description' => 'Name of loyalty program',
-                        ],
-                        'member_id' => [
-                            'type' => 'string',
-                            'description' => 'Member ID or number',
-                        ],
-                        'points_earned' => [
-                            'type' => 'number',
-                            'description' => 'Points earned from this purchase',
-                        ],
-                        'points_used' => [
-                            'type' => 'number',
-                            'description' => 'Points used for discounts',
-                        ],
-                    ],
-                ],
-                'metadata' => [
-                    'type' => 'object',
-                    'description' => 'Additional metadata',
-                    'properties' => [
-                        'language' => [
-                            'type' => 'string',
-                            'description' => 'Receipt language (no, en, etc.)',
-                        ],
-                        'confidence_score' => [
-                            'type' => 'number',
-                            'description' => 'Confidence score for extraction (0-1)',
-                        ],
-                        'receipt_type' => [
-                            'type' => 'string',
-                            'description' => 'Type of receipt (sale, return, void, etc.)',
-                        ],
-                        'processing_notes' => [
-                            'type' => 'string',
-                            'description' => 'Any notes about processing challenges',
-                        ],
-                    ],
-                ],
-            ],
-            'required' => ['merchant', 'totals', 'receipt_info'],
-        ];
-    }
-
-    private function getDocumentSchema(): array
-    {
-        return [
-            'type' => 'object',
-            'properties' => [
-                'title' => [
-                    'type' => 'string',
-                    'description' => 'Document title or main heading',
-                ],
-                'document_type' => [
-                    'type' => 'string',
-                    'enum' => ['invoice', 'contract', 'report', 'letter', 'memo', 'presentation', 'spreadsheet', 'email', 'legal', 'financial', 'technical', 'other'],
-                    'description' => 'Classification of document type',
-                ],
-                'summary' => [
-                    'type' => 'string',
-                    'description' => 'Brief summary of document content',
-                ],
-                'entities' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'people' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'string'],
-                            'description' => 'Names of people mentioned',
-                        ],
-                        'organizations' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'string'],
-                            'description' => 'Organizations mentioned',
-                        ],
-                        'locations' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'string'],
-                            'description' => 'Locations mentioned',
-                        ],
-                        'dates' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'string'],
-                            'description' => 'Important dates found',
-                        ],
-                        'amounts' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'string'],
-                            'description' => 'Financial amounts mentioned',
-                        ],
-                        'phone_numbers' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'string'],
-                            'description' => 'Phone numbers found',
-                        ],
-                        'emails' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'string'],
-                            'description' => 'Email addresses found',
-                        ],
-                        'references' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'string'],
-                            'description' => 'Reference numbers, IDs, etc.',
-                        ],
-                    ],
-                ],
-                'tags' => [
-                    'type' => 'array',
-                    'items' => ['type' => 'string'],
-                    'description' => 'Relevant tags for categorization',
-                ],
-                'language' => [
-                    'type' => 'string',
-                    'description' => 'Primary language of document',
-                ],
-                'key_phrases' => [
-                    'type' => 'array',
-                    'items' => ['type' => 'string'],
-                    'description' => 'Important phrases or terms',
-                ],
-                'sentiment' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'overall' => [
-                            'type' => 'string',
-                            'enum' => ['positive', 'negative', 'neutral'],
-                            'description' => 'Overall sentiment',
-                        ],
-                        'confidence' => [
-                            'type' => 'number',
-                            'description' => 'Confidence in sentiment analysis (0-1)',
-                        ],
-                    ],
-                ],
-                'urgency' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'level' => [
-                            'type' => 'string',
-                            'enum' => ['low', 'medium', 'high', 'critical'],
-                            'description' => 'Urgency level of document',
-                        ],
-                        'indicators' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'string'],
-                            'description' => 'Phrases indicating urgency',
-                        ],
-                    ],
-                ],
-                'metadata' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'page_count' => [
-                            'type' => 'number',
-                            'description' => 'Estimated page count',
-                        ],
-                        'word_count' => [
-                            'type' => 'number',
-                            'description' => 'Estimated word count',
-                        ],
-                        'confidence_score' => [
-                            'type' => 'number',
-                            'description' => 'Overall extraction confidence (0-1)',
-                        ],
-                        'processing_notes' => [
-                            'type' => 'string',
-                            'description' => 'Notes about processing challenges or findings',
-                        ],
-                    ],
-                ],
-            ],
-            'required' => ['title', 'document_type', 'summary', 'language'],
-        ];
-    }
 }

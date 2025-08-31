@@ -1,10 +1,20 @@
 # PaperPulse
 
-A document management system that uses OCR and AI to automatically extract and organize receipt data. Built with Laravel 11 and Vue.js 3.
+Say goodbye to paper chaos forever. PaperPulse transforms your receipts and documents into organized, searchable intelligence.
 
-## Overview
+## Why PaperPulse?
 
-PaperPulse processes receipts and documents using AI-powered OCR to extract structured data. It provides full-text search, analytics, and multi-tenant user management.
+Stop losing receipts, missing tax deductions, and spending hours organizing paperwork. PaperPulse turns your document mess into organized, searchable intelligence that saves you time and money.
+
+**Snap and Forget**: Just take a photo of your receipt or document. We'll read everything important and organize it automatically. No more lost paperwork or manual data entry.
+
+**Find Anything Instantly**: Need that warranty from 2022? Or last month's coffee expense? Search by store, amount, date, or even what you bought. Everything is instantly searchable.
+
+**Save Money at Tax Time**: Never miss another deduction. We track your spending patterns and help you spot opportunities to save money. Your accountant will thank you.
+
+## Technical Overview
+
+Built with Laravel 11 and Vue.js 3, PaperPulse uses AI-powered OCR to extract structured data from documents. It provides full-text search, analytics, and multi-tenant user management.
 
 ## Requirements
 

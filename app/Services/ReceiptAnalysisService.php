@@ -37,6 +37,12 @@ class ReceiptAnalysisService
         ]);
 
         try {
+            // Get user's preferences
+            $user = \App\Models\User::find($userId);
+            $defaultCurrency = $user ? $user->preference('currency', 'NOK') : 'NOK';
+            $autoCategorize = $user ? $user->preference('auto_categorize', true) : true;
+            $defaultCategoryId = $user ? $user->preference('default_category_id', null) : null;
+            
             // Analyze receipt using AI
             $analysis = $this->aiService->analyzeReceipt($content);
 
@@ -56,6 +62,28 @@ class ReceiptAnalysisService
                 $data['date'] ?? null,
                 $data['time'] ?? null
             );
+            
+            // Determine category
+            $categoryName = null;
+            $categoryId = null;
+            
+            if ($autoCategorize) {
+                $categoryName = $this->categorizeMerchant($merchant?->name ?? '');
+                // Try to find matching category by name
+                if ($categoryName && $user) {
+                    $category = $user->categories()
+                        ->where('name', 'LIKE', $categoryName)
+                        ->first();
+                    if ($category) {
+                        $categoryId = $category->id;
+                    }
+                }
+            }
+            
+            // Use default category if no category was determined
+            if (!$categoryId && $defaultCategoryId) {
+                $categoryId = $defaultCategoryId;
+            }
 
             // Create receipt
             $receipt = Receipt::create([
@@ -65,9 +93,10 @@ class ReceiptAnalysisService
                 'receipt_date' => $dateTime,
                 'total_amount' => $data['totals']['total'] ?? 0,
                 'tax_amount' => $data['totals']['tax'] ?? 0,
-                'currency' => 'NOK', // Default to NOK for Norwegian receipts
-                'receipt_category' => $this->categorizeMerchant($merchant?->name ?? ''),
-                'receipt_description' => $this->generateDescription($data),
+                'currency' => $data['currency'] ?? $defaultCurrency,
+                'category_id' => $categoryId,
+                'receipt_category' => $categoryName,
+                'receipt_description' => $this->generateDescription($data, $defaultCurrency),
                 'receipt_data' => json_encode($analysis)
             ]);
 
@@ -264,7 +293,7 @@ class ReceiptAnalysisService
      * @param array $data
      * @return string
      */
-    private function generateDescription(array $data): string
+    private function generateDescription(array $data, string $defaultCurrency = 'NOK'): string
     {
         $parts = [];
         
@@ -277,7 +306,7 @@ class ReceiptAnalysisService
         }
         
         if (!empty($data['totals']['total'])) {
-            $parts[] = "Total: " . number_format($data['totals']['total'], 2) . " " . ($data['currency'] ?? 'NOK');
+            $parts[] = "Total: " . number_format($data['totals']['total'], 2) . " " . ($data['currency'] ?? $defaultCurrency);
         }
         
         return implode(', ', $parts) ?: 'Receipt';

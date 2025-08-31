@@ -22,7 +22,7 @@
         "opcodesio/log-viewer": "^3.6",
         "openai-php/laravel": "^0.11.0",
         "smalot/pdfparser": "*",
-        "spatie/pdf-to-image": "^1.2",
+        "spatie/pdf-to-image": "^3.1",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {
@@ -34,7 +34,6 @@
         "laravel/sail": "^1.29",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.0",
-        "nunomaduro/larastan": "^3.4",
         "pestphp/pest": "^2.0",
         "pestphp/pest-plugin-laravel": "^2.0",
         "spatie/laravel-ignition": "^2.4"

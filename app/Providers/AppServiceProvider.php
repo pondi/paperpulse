@@ -74,6 +74,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\SearchService::class, function ($app) {
             return new \App\Services\SearchService();
         });
+        
+        // Register DateFormatterService
+        $this->app->singleton(\App\Services\DateFormatterService::class, function ($app) {
+            return new \App\Services\DateFormatterService();
+        });
     }
 
     /**

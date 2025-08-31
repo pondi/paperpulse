@@ -397,6 +397,7 @@ import {
   TransitionRoot,
   DialogTitle,
 } from '@headlessui/vue';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 const page = usePage();
 const __ = (key) => {
@@ -411,6 +412,7 @@ const __ = (key) => {
   
   return value || key.split('.').pop();
 };
+const { formatDate, formatCurrency } = useDateFormatter();
 
 const props = defineProps({
   receipts: {
@@ -509,22 +511,7 @@ const getCategoryClass = (category) => {
   return classes[category] || classes.default
 }
 
-const formatDate = (date) => {
-  if (!date) return __('no_date')
-  return new Date(date).toLocaleDateString('nb-NO', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
-const formatCurrency = (amount, currency) => {
-  if (!amount) return '0,00'
-  return new Intl.NumberFormat('nb-NO', {
-    style: 'currency',
-    currency: currency || 'NOK'
-  }).format(amount)
-}
+// formatDate and formatCurrency are now imported from useDateFormatter
 
 const openPdf = (url) => {
   window.open(url, '_blank', 'noopener,noreferrer')

@@ -230,6 +230,7 @@
 import { ref, computed, watch } from 'vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 import {
   Dialog,
   DialogPanel,
@@ -296,12 +297,7 @@ const getIcon = (iconName) => {
   return iconMap[iconName] || null;
 };
 
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('nb-NO', {
-    style: 'currency',
-    currency: 'NOK',
-  }).format(amount || 0);
-};
+const { formatCurrency } = useDateFormatter();
 
 const closeModal = () => {
   showModal.value = false;

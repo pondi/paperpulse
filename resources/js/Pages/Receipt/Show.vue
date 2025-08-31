@@ -238,6 +238,7 @@ import {
   ReceiptRefundIcon,
   ExclamationCircleIcon
 } from '@heroicons/vue/24/outline';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 const props = defineProps({
   receipt: {
@@ -248,6 +249,7 @@ const props = defineProps({
 
 const page = usePage();
 const __ = (key) => page.props.language?.messages?.[key] || key;
+const { formatDate, formatCurrency } = useDateFormatter();
 
 const isEditing = ref(false);
 const showAddLineItem = ref(false);
@@ -302,19 +304,7 @@ const handleTagRemoved = (tag) => {
   }
 };
 
-const formatCurrency = (amount, currency) => {
-  if (!amount) return '0,00'
-  return new Intl.NumberFormat('nb-NO', {
-    style: 'currency',
-    currency: currency || 'NOK'
-  }).format(amount)
-}
-
-const formatDate = (date) => {
-  if (!date) return __('no_date')
-  const dateObj = new Date(date)
-  return dateObj.toLocaleDateString('nb-NO')
-}
+// formatDate and formatCurrency are now imported from useDateFormatter
 
 const formatFieldValue = (value, type) => {
   if (value === null || value === undefined) return '-'

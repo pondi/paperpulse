@@ -22,11 +22,45 @@ class ReceiptController extends Controller
 
     public function index()
     {
-        $receipts = Receipt::with(['merchant', 'file', 'lineItems', 'category', 'tags'])
-            ->where('user_id', auth()->id())
-            ->orderBy('receipt_date', 'desc')
-            ->get()
-            ->map(function ($receipt) {
+        $user = auth()->user();
+        $perPage = $user->preference('receipts_per_page', 20);
+        $sortOption = $user->preference('default_sort', 'date_desc');
+        
+        // Build query with sorting
+        $query = Receipt::with(['merchant', 'file', 'lineItems', 'category', 'tags'])
+            ->where('user_id', $user->id);
+            
+        // Apply sorting based on preference
+        switch ($sortOption) {
+            case 'date_asc':
+                $query->orderBy('receipt_date', 'asc');
+                break;
+            case 'amount_desc':
+                $query->orderBy('total_amount', 'desc');
+                break;
+            case 'amount_asc':
+                $query->orderBy('total_amount', 'asc');
+                break;
+            case 'merchant_asc':
+                $query->leftJoin('merchants', 'receipts.merchant_id', '=', 'merchants.id')
+                      ->orderBy('merchants.name', 'asc')
+                      ->select('receipts.*');
+                break;
+            case 'merchant_desc':
+                $query->leftJoin('merchants', 'receipts.merchant_id', '=', 'merchants.id')
+                      ->orderBy('merchants.name', 'desc')
+                      ->select('receipts.*');
+                break;
+            case 'date_desc':
+            default:
+                $query->orderBy('receipt_date', 'desc');
+                break;
+        }
+        
+        $receipts = $query->paginate($perPage);
+        
+        // Transform the items in the paginator
+        $receipts->getCollection()->transform(function ($receipt) {
                 return [
                     'id' => $receipt->id,
                     'merchant' => $receipt->merchant,
@@ -71,8 +105,21 @@ class ReceiptController extends Controller
             ->get();
 
         return Inertia::render('Receipt/Index', [
-            'receipts' => $receipts,
+            'receipts' => $receipts->items(),
             'categories' => $categories,
+            'pagination' => [
+                'current_page' => $receipts->currentPage(),
+                'last_page' => $receipts->lastPage(),
+                'per_page' => $receipts->perPage(),
+                'total' => $receipts->total(),
+                'from' => $receipts->firstItem(),
+                'to' => $receipts->lastItem(),
+            ],
+            'user_preferences' => [
+                'receipts_per_page' => $perPage,
+                'default_sort' => $sortOption,
+                'receipt_list_view' => $user->preference('receipt_list_view', 'grid'),
+            ],
         ]);
     }
 

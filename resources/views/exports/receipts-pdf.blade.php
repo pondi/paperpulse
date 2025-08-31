@@ -73,7 +73,7 @@
             <strong>Total Receipts:</strong> {{ $total_count }}
         </div>
         <div class="summary-item">
-            <strong>Total Amount:</strong> {{ number_format($total_amount, 2) }} NOK
+            <strong>Total Amount:</strong> {{ number_format($total_amount, 2) }} {{ auth()->user()->preference('currency', 'NOK') }}
         </div>
     </div>
 

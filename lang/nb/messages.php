@@ -21,6 +21,14 @@ return [
     'share' => 'Del',
     'tags' => 'Tagger',
 
+    // Dashboard
+    'total_receipts' => 'Totalt antall kvitteringer',
+    'unique_merchants' => 'Unike butikker',
+    'average_receipt_amount' => 'Gjennomsnittlig kvitteringsbeløp',
+    'recent_receipts' => 'Nylige kvitteringer',
+    'merchant' => 'Butikk',
+    'amount' => 'Beløp',
+    
     // Receipt related
     'receipt_details' => 'Kvitteringsdetaljer',
     'receipt_status' => 'Status',

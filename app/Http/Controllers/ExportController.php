@@ -78,7 +78,7 @@ class ExportController extends Controller
                     $receipt->receipt_description ?? '',
                     $receipt->total_amount ?? 0,
                     $receipt->tax_amount ?? 0,
-                    $receipt->currency ?? 'NOK',
+                    $receipt->currency ?? auth()->user()->preference('currency', 'NOK'),
                     $receipt->lineItems->count(),
                     $lineItems,
                 ]);

@@ -120,19 +120,6 @@
               />
             </div>
 
-            <div class="flex items-center justify-between">
-              <label for="ocr_handwritten" class="flex flex-col">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('ocr_handwritten') }}</span>
-                <span class="text-sm text-gray-500">{{ __('ocr_handwritten_description') }}</span>
-              </label>
-              <input
-                id="ocr_handwritten"
-                v-model="form.ocr_handwritten"
-                type="checkbox"
-                class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-            </div>
-
             <div>
               <InputLabel for="default_category_id" :value="__('default_category')" />
               <select
@@ -353,19 +340,6 @@
               </select>
               <InputError class="mt-2" :message="form.errors.default_sort" />
             </div>
-
-            <div class="flex items-center justify-between">
-              <label for="show_receipt_preview" class="flex flex-col">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('show_receipt_preview') }}</span>
-                <span class="text-sm text-gray-500">{{ __('show_receipt_preview_description') }}</span>
-              </label>
-              <input
-                id="show_receipt_preview"
-                v-model="form.show_receipt_preview"
-                type="checkbox"
-                class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-            </div>
           </div>
         </section>
       </div>
@@ -437,47 +411,6 @@
         </section>
       </div>
 
-      <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-        <section>
-          <header>
-            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-              {{ __('privacy_preferences') }}
-            </h2>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              {{ __('privacy_preferences_description') }}
-            </p>
-          </header>
-
-          <div class="mt-6 space-y-4">
-            <div class="flex items-center justify-between">
-              <label for="analytics_enabled" class="flex flex-col">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('analytics_enabled') }}</span>
-                <span class="text-sm text-gray-500">{{ __('analytics_enabled_description') }}</span>
-              </label>
-              <input
-                id="analytics_enabled"
-                v-model="form.analytics_enabled"
-                type="checkbox"
-                class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div class="flex items-center justify-between">
-              <label for="share_usage_data" class="flex flex-col">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('share_usage_data') }}</span>
-                <span class="text-sm text-gray-500">{{ __('share_usage_data_description') }}</span>
-              </label>
-              <input
-                id="share_usage_data"
-                v-model="form.share_usage_data"
-                type="checkbox"
-                class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-        </section>
-      </div>
-
       <div class="flex items-center gap-4 pb-6">
         <PrimaryButton :disabled="form.processing" @click="updatePreferences">
           {{ __('save') }}
@@ -531,7 +464,6 @@ const form = useForm({
   currency: props.preferences.currency || 'NOK',
   auto_categorize: props.preferences.auto_categorize ?? true,
   extract_line_items: props.preferences.extract_line_items ?? true,
-  ocr_handwritten: props.preferences.ocr_handwritten ?? false,
   default_category_id: props.preferences.default_category_id || null,
   notify_processing_complete: props.preferences.notify_processing_complete ?? true,
   notify_processing_failed: props.preferences.notify_processing_failed ?? true,
@@ -548,13 +480,10 @@ const form = useForm({
   receipt_list_view: props.preferences.receipt_list_view || 'grid',
   receipts_per_page: props.preferences.receipts_per_page || 20,
   default_sort: props.preferences.default_sort || 'date_desc',
-  show_receipt_preview: props.preferences.show_receipt_preview ?? true,
   auto_process_scanner_uploads: props.preferences.auto_process_scanner_uploads ?? false,
   delete_after_processing: props.preferences.delete_after_processing ?? false,
   file_retention_days: props.preferences.file_retention_days || 30,
   pulsedav_realtime_sync: props.preferences.pulsedav_realtime_sync ?? false,
-  analytics_enabled: props.preferences.analytics_enabled ?? true,
-  share_usage_data: props.preferences.share_usage_data ?? false,
 });
 
 const updatePreferences = () => {

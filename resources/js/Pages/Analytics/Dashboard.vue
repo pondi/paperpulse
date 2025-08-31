@@ -162,10 +162,11 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import { Link } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Chart from 'chart.js/auto';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 const props = defineProps({
     stats: Object,
@@ -178,14 +179,8 @@ const selectedPeriod = ref(props.current_period);
 const trendChart = ref(null);
 let chartInstance = null;
 
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'NOK',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(amount || 0);
-};
+const page = usePage();
+const { formatCurrency } = useDateFormatter();
 
 const getCategoryPercentage = (amount) => {
     const total = props.charts.spending_by_category.reduce((sum, cat) => sum + cat.total, 0);

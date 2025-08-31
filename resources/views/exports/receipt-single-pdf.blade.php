@@ -112,7 +112,7 @@
         </div>
         <div class="info-row">
             <div class="info-label">Currency:</div>
-            <div class="info-value">{{ $receipt->currency ?: 'NOK' }}</div>
+            <div class="info-value">{{ $receipt->currency ?: $receipt->user->preference('currency', 'NOK') }}</div>
         </div>
     </div>
 

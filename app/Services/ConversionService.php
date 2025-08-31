@@ -32,12 +32,23 @@ class ConversionService
                 return true;
             }
 
+            // Check if Ghostscript is available
+            $gsPath = exec('which gs 2>/dev/null');
+            if (empty($gsPath)) {
+                Log::warning('(ConversionService) [pdfToImage] - Ghostscript not available, skipping PDF to image conversion', [
+                    'file_guid' => $fileGUID,
+                ]);
+                
+                // Skip conversion but continue processing
+                return true;
+            }
+
             $spatiePDF = new Pdf($storedFilePath);
             $outputPath = storage_path('app/uploads/'.$fileGUID.'.jpg');
 
             // Generate the image
             $spatiePDF->quality(85)
-                ->size(400)
+                ->resolution(144)
                 ->save($outputPath);
 
             Log::debug('(ConversionService) [pdfToImage] - PDF converted to image', [

@@ -41,7 +41,6 @@ class PreferencesController extends Controller
             // Receipt processing preferences
             'auto_categorize' => 'boolean',
             'extract_line_items' => 'boolean',
-            'ocr_handwritten' => 'boolean',
             'default_category_id' => 'nullable|exists:categories,id',
 
             // Notification preferences
@@ -54,16 +53,11 @@ class PreferencesController extends Controller
             'receipt_list_view' => 'required|string|in:grid,list',
             'receipts_per_page' => 'required|integer|in:10,20,50,100',
             'default_sort' => 'required|string',
-            'show_receipt_preview' => 'boolean',
 
             // Scanner/Import preferences
             'auto_process_scanner_uploads' => 'boolean',
             'delete_after_processing' => 'boolean',
             'file_retention_days' => 'required|integer|min:1|max:365',
-
-            // Privacy preferences
-            'analytics_enabled' => 'boolean',
-            'share_usage_data' => 'boolean',
         ]);
 
         $user = auth()->user();

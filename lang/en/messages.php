@@ -21,6 +21,14 @@ return [
     'share' => 'Share',
     'tags' => 'Tags',
 
+    // Dashboard
+    'total_receipts' => 'Total Receipts',
+    'unique_merchants' => 'Unique Merchants',
+    'average_receipt_amount' => 'Average Receipt Amount',
+    'recent_receipts' => 'Recent Receipts',
+    'merchant' => 'Merchant',
+    'amount' => 'Amount',
+    
     // Receipt related
     'receipt_details' => 'Receipt Details',
     'receipt_status' => 'Receipt Status',

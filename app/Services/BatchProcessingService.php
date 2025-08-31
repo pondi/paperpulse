@@ -102,8 +102,6 @@ class BatchProcessingService
             'model' => $model,
             'batch_size' => $batchSize,
             'parallel_jobs' => $parallelJobs,
-            // Disable provider batch API path (not implemented) to avoid dead code paths
-            'use_batch_api' => false,
             'cost_optimization' => $itemCount > 20,
         ];
     }
@@ -344,10 +342,7 @@ class BatchProcessingService
         // Calculate delay between job dispatches to prevent rate limiting
         $baseDelay = $options['stagger_delay'] ?? 1; // seconds
 
-        if ($batchConfig['use_batch_api']) {
-            return $baseDelay; // Less delay needed with batch API
-        }
-
+        // Conservative default without batch API
         return $baseDelay * 2;
     }
 

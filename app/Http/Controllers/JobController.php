@@ -328,13 +328,7 @@ class JobController extends Controller
      */
     private function getOrderInChain(string $jobName): int
     {
-        return match (class_basename($jobName)) {
-            'ProcessFile' => 1,
-            'ProcessReceipt' => 2,
-            'MatchMerchant' => 3,
-            'DeleteWorkingFiles' => 4,
-            default => 0,
-        };
+        return \App\Jobs\JobOrder::getOrder($jobName);
     }
 
     /**

@@ -42,6 +42,13 @@ interface Document {
         name: string;
     }>;
     shared_with_count: number;
+    file?: {
+        id: number;
+        url: string;
+        pdfUrl: string | null;
+        extension: string;
+        size?: number;
+    } | null;
 }
 
 interface Props {
@@ -163,6 +170,19 @@ const applyFilter = (filters: any) => {
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <!-- Flash Message -->
+                <div v-if="$page.props.flash?.success" class="mb-6 rounded-md bg-green-50 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 10-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.06l2.5 2.5a.75.75 0 001.137-.089l4.06-5.5z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-green-800">{{ $page.props.flash.success }}</p>
+                        </div>
+                    </div>
+                </div>
                 <!-- Search and Filters -->
                 <div class="mb-6 flex items-center justify-between">
                     <div class="flex items-center space-x-4">
@@ -232,8 +252,24 @@ const applyFilter = (filters: any) => {
 
                 <!-- Documents Grid/List -->
                 <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                    <!-- Empty State -->
+                    <div v-if="documents.data.length === 0" class="p-12 text-center">
+                        <DocumentIcon class="mx-auto h-12 w-12 text-gray-400" />
+                        <h3 class="mt-2 text-lg font-medium text-gray-900 dark:text-white">No documents found</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Upload your first document to get started.
+                        </p>
+                        <div class="mt-6">
+                            <Link
+                                :href="route('documents.upload')"
+                                class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700"
+                            >
+                                Upload Document
+                            </Link>
+                        </div>
+                    </div>
                     <!-- Grid View -->
-                    <div v-if="viewMode === 'grid'" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div v-else-if="viewMode === 'grid'" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div
                             v-for="document in documents.data"
                             :key="document.id"
@@ -293,12 +329,12 @@ const applyFilter = (filters: any) => {
                                     >
                                         <EyeIcon class="h-5 w-5" />
                                     </Link>
-                                    <button
-                                        v-if="document.shared_with_count > 0"
-                                        class="text-green-600 dark:text-green-400"
-                                    >
+                                    <div v-if="document.shared_with_count > 0" class="relative text-green-600 dark:text-green-400">
                                         <ShareIcon class="h-5 w-5" />
-                                    </button>
+                                        <span class="absolute -top-2 -right-2 inline-flex items-center justify-center rounded-full bg-green-600 text-white text-[10px] h-4 min-w-4 px-1">
+                                            {{ document.shared_with_count }}
+                                        </span>
+                                    </div>
                                 </div>
                                 <Dropdown align="right" width="48">
                                     <template #trigger>
@@ -350,6 +386,9 @@ const applyFilter = (filters: any) => {
                                         Tags
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                        Shared
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                         Size
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -377,6 +416,13 @@ const applyFilter = (filters: any) => {
                                                     class="text-sm font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
                                                 >
                                                     {{ document.title }}
+                                                    <span
+                                                        v-if="document.shared_with_count > 0"
+                                                        class="ml-2 inline-flex items-center rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 px-2 py-0.5 text-[10px] font-medium"
+                                                        title="Shared count"
+                                                    >
+                                                        <ShareIcon class="h-3 w-3 mr-1" /> {{ document.shared_with_count }}
+                                                    </span>
                                                 </button>
                                                 <div class="text-sm text-gray-500 dark:text-gray-400">
                                                     {{ document.file_name }}
@@ -412,6 +458,15 @@ const applyFilter = (filters: any) => {
                                                 +{{ document.tags.length - 2 }}
                                             </span>
                                         </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span
+                                            v-if="document.shared_with_count > 0"
+                                            class="inline-flex items-center rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 px-2 py-0.5 text-xs font-medium"
+                                        >
+                                            {{ document.shared_with_count }}
+                                        </span>
+                                        <span v-else class="text-gray-400">0</span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                         {{ formatFileSize(document.size) }}
@@ -523,8 +578,27 @@ const applyFilter = (filters: any) => {
                                 </button>
                             </div>
                             <div class="p-4">
-                                <!-- Document preview content would go here -->
-                                <p class="text-gray-500 dark:text-gray-400">Document preview coming soon...</p>
+                                <div class="aspect-[8.5/11] bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden relative">
+                                    <template v-if="selectedDocument?.file?.url">
+                                        <img
+                                            v-if="selectedDocument.file.extension !== 'pdf'"
+                                            :src="selectedDocument.file.url"
+                                            class="w-full h-auto"
+                                            :alt="selectedDocument.title"
+                                        />
+                                        <div v-else class="text-center">
+                                            <button
+                                                @click="window.open(selectedDocument.file.pdfUrl || selectedDocument.file.url, '_blank', 'noopener')"
+                                                class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700"
+                                            >
+                                                Open PDF
+                                            </button>
+                                        </div>
+                                    </template>
+                                    <template v-else>
+                                        <div class="text-center text-gray-500 dark:text-gray-300">No preview available</div>
+                                    </template>
+                                </div>
                             </div>
                         </div>
                     </div>

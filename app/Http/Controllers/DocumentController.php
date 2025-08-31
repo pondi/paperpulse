@@ -31,7 +31,7 @@ class DocumentController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Document::query()->with(['category', 'tags', 'sharedUsers']);
+        $query = Document::query()->with(['category', 'tags', 'sharedUsers', 'file']);
 
         // Apply search filter
         if ($search = $request->input('search')) {
@@ -66,7 +66,44 @@ class DocumentController extends Controller
         // Order by created_at desc by default
         $query->orderBy('created_at', 'desc');
 
-        $documents = $query->paginate(20);
+        $documents = $query->paginate(20)->through(function (Document $doc) {
+            $fileInfo = null;
+            if ($doc->file) {
+                $extension = $doc->file->fileExtension ?? 'pdf';
+                $typeFolder = 'documents';
+                $fileInfo = [
+                    'id' => $doc->file->id,
+                    'url' => route('documents.serve', [
+                        'guid' => $doc->file->guid,
+                        'type' => $typeFolder,
+                        'extension' => $extension,
+                        'user_id' => $doc->file->user_id,
+                    ]),
+                    'pdfUrl' => $extension === 'pdf' ? route('documents.serve', [
+                        'guid' => $doc->file->guid,
+                        'type' => $typeFolder,
+                        'extension' => 'pdf',
+                        'user_id' => $doc->file->user_id,
+                    ]) : null,
+                    'extension' => $extension,
+                    'size' => $doc->file->fileSize,
+                ];
+            }
+
+            return [
+                'id' => $doc->id,
+                'title' => $doc->title,
+                'file_name' => $doc->file?->fileName,
+                'file_type' => $doc->file?->fileType,
+                'size' => $doc->file?->fileSize ?? 0,
+                'created_at' => $doc->created_at?->toIso8601String(),
+                'updated_at' => $doc->updated_at?->toIso8601String(),
+                'category' => $doc->category?->only(['id', 'name', 'color']),
+                'tags' => $doc->tags?->map(fn ($t) => $t->only(['id', 'name']))->values(),
+                'shared_with_count' => $doc->sharedUsers?->count() ?? 0,
+                'file' => $fileInfo,
+            ];
+        });
 
         // Get user's categories for filters
         $categories = auth()->user()->categories()->orderBy('name')->get();
@@ -93,8 +130,44 @@ class DocumentController extends Controller
         // Get user's categories
         $categories = auth()->user()->categories()->orderBy('name')->get();
 
+        // Build file info similar to receipts, using streaming serve route
+        $fileInfo = null;
+        if ($document->file) {
+            $extension = $document->file->fileExtension ?? 'pdf';
+            $typeFolder = 'documents';
+            $fileInfo = [
+                'id' => $document->file->id,
+                'url' => route('documents.serve', [
+                    'guid' => $document->file->guid,
+                    'type' => $typeFolder,
+                    'extension' => $extension,
+                    'user_id' => $document->file->user_id,
+                ]),
+                'pdfUrl' => $extension === 'pdf' ? route('documents.serve', [
+                    'guid' => $document->file->guid,
+                    'type' => $typeFolder,
+                    'extension' => 'pdf',
+                    'user_id' => $document->file->user_id,
+                ]) : null,
+                'extension' => $extension,
+                'mime_type' => $document->file->mime_type,
+                'size' => $document->file->fileSize,
+                'guid' => $document->file->guid,
+            ];
+        }
+
         return Inertia::render('Documents/Show', [
-            'document' => $document,
+            'document' => [
+                'id' => $document->id,
+                'title' => $document->title,
+                'summary' => $document->summary,
+                'category_id' => $document->category_id,
+                'tags' => $document->tags,
+                'shared_users' => $document->sharedUsers,
+                'created_at' => $document->created_at?->toIso8601String(),
+                'updated_at' => $document->updated_at?->toIso8601String(),
+                'file' => $fileInfo,
+            ],
             'categories' => $categories,
             'available_tags' => $availableTags,
         ]);
@@ -525,36 +598,7 @@ class DocumentController extends Controller
         ]);
     }
 
-    public function getSecureUrl(Request $request, DocumentService $documentService)
-    {
-        $request->validate([
-            'file_id' => 'required|integer',
-        ]);
-
-        $fileId = $request->input('file_id');
-
-        try {
-            $url = $documentService->getSecureUrl($fileId);
-
-            if (! $url) {
-                Log::error('(DocumentController) [getSecureUrl] - Could not generate secure URL', [
-                    'file_id' => $fileId,
-                    'user_id' => $request->user()->id,
-                ]);
-
-                return response()->json(['error' => 'Could not generate secure URL'], 500);
-            }
-
-            return response()->json(['url' => $url]);
-        } catch (\Exception $e) {
-            Log::error('(DocumentController) [getSecureUrl] - Error generating secure URL', [
-                'file_id' => $fileId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json(['error' => 'Error generating secure URL'], 500);
-        }
-    }
+    // Removed getSecureUrl endpoint (unused by frontend)
 
     /**
      * Validate an uploaded file for OCR processing

@@ -86,6 +86,19 @@ const applyFilter = (filters: any) => {
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <!-- Flash Message -->
+                <div v-if="$page.props.flash?.success" class="mb-6 rounded-md bg-green-50 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 10-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.06l2.5 2.5a.75.75 0 001.137-.089l4.06-5.5z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-green-800">{{ $page.props.flash.success }}</p>
+                        </div>
+                    </div>
+                </div>
                 <!-- Search -->
                 <div class="mb-6">
                     <SearchBar 
@@ -98,11 +111,9 @@ const applyFilter = (filters: any) => {
                 <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                     <div v-if="documents.data.length === 0" class="p-6 text-center">
                         <DocumentIcon class="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-                            No shared documents
-                        </h3>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No shared documents yet</h3>
                         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            Documents shared with you will appear here.
+                            When someone shares a document with you, it will appear here.
                         </p>
                     </div>
 

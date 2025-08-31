@@ -82,7 +82,6 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::delete('/documents/bulk', [DocumentController::class, 'destroyBulk'])->name('documents.destroy-bulk');
     Route::get('/documents/bulk/download', [DocumentController::class, 'downloadBulk'])->name('documents.download-bulk');
     Route::get('/documents/serve', [DocumentController::class, 'serve'])->name('documents.serve');
-    Route::get('/documents/url', [DocumentController::class, 'getSecureUrl'])->name('documents.url');
 
     // Dynamic document routes - must be after static routes
     Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');

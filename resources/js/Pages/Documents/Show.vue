@@ -44,20 +44,26 @@ interface SharedUser {
     shared_at: string;
 }
 
+interface FileInfo {
+    id: number;
+    url: string;
+    pdfUrl: string | null;
+    extension: string;
+    mime_type?: string;
+    size?: number;
+    guid?: string;
+}
+
 interface Document {
     id: number;
     title: string;
-    content: string;
-    summary: string;
-    file_name: string;
-    file_type: string;
-    file_url: string;
-    size: number;
+    summary: string | null;
     category_id: number | null;
     tags: Tag[];
     shared_users: SharedUser[];
-    created_at: string;
-    updated_at: string;
+    created_at: string | null;
+    updated_at: string | null;
+    file: FileInfo | null;
 }
 
 interface Props {
@@ -123,6 +129,15 @@ const deleteDocument = () => {
 
 const downloadDocument = () => {
     window.location.href = route('documents.download', props.document.id);
+};
+
+const imageError = ref(false);
+const handleImageError = () => {
+    imageError.value = true;
+};
+
+const openPdf = (url: string) => {
+    window.open(url, '_blank', 'noopener');
 };
 
 const handleTagAdded = (tag: Tag) => {
@@ -221,24 +236,46 @@ const handleSharesUpdated = (shares: any[]) => {
                     <div class="lg:col-span-2">
                         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                             <div class="p-6">
-                                <!-- This is where the document viewer would go -->
-                                <!-- For now, showing a placeholder -->
-                                <div class="aspect-[8.5/11] bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                                    <div class="text-center">
-                                        <component :is="getFileIcon(document.file_type)" class="h-24 w-24 text-gray-400 mx-auto mb-4" />
-                                        <p class="text-gray-500 dark:text-gray-400">
-                                            {{ document.file_name }}
-                                        </p>
-                                        <p class="text-sm text-gray-400 dark:text-gray-500 mt-2">
-                                            {{ formatFileSize(document.size) }}
-                                        </p>
-                                        <a
-                                            :href="document.file_url"
-                                            target="_blank"
-                                            class="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700"
+                                <div class="aspect-[8.5/11] bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden relative">
+                                    <template v-if="document.file?.url">
+                                        <!-- Show image if not PDF -->
+                                        <img
+                                            v-if="document.file.extension !== 'pdf'"
+                                            :src="document.file.url"
+                                            class="w-full h-auto"
+                                            :alt="document.title"
+                                            @error="handleImageError"
+                                            :class="{ 'hidden': imageError }"
+                                        />
+                                        <div v-if="imageError && document.file.extension !== 'pdf'" class="text-center text-gray-500 dark:text-gray-300">
+                                            Unable to load image
+                                        </div>
+
+                                        <!-- For PDFs, open in new tab -->
+                                        <div v-if="document.file.extension === 'pdf'" class="text-center">
+                                            <button
+                                                @click="openPdf(document.file.pdfUrl || document.file.url)"
+                                                class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700"
+                                            >
+                                                Open PDF
+                                            </button>
+                                        </div>
+                                    </template>
+                                    <template v-else>
+                                        <div class="text-center">
+                                            <component :is="getFileIcon('document')" class="h-24 w-24 text-gray-400 mx-auto mb-4" />
+                                            <p class="text-gray-500 dark:text-gray-400">No file available</p>
+                                        </div>
+                                    </template>
+
+                                    <!-- Quick PDF button -->
+                                    <div v-if="document.file?.pdfUrl" class="absolute bottom-4 right-4">
+                                        <button
+                                            @click="openPdf(document.file.pdfUrl)"
+                                            class="inline-flex items-center gap-x-2 px-3 py-2 bg-gray-800 rounded-md text-sm font-semibold text-white hover:bg-gray-700"
                                         >
-                                            Open Document
-                                        </a>
+                                            <DocumentIcon class="h-4 w-4" /> View PDF
+                                        </button>
                                     </div>
                                 </div>
                             </div>

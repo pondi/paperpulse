@@ -81,19 +81,8 @@ class JobServiceProvider extends ServiceProvider
             // Get metadata from cache
             $metadata = Cache::get("job.{$jobID}.fileMetaData");
 
-            // Set order in chain based on job type
-            $orderInChain = match (class_basename($command)) {
-                'ProcessPulseDavFile' => 0, // Parent job
-                'ProcessFile' => 1,
-                'ProcessReceipt' => 2,
-                'ProcessDocument' => 2, // Same level as ProcessReceipt
-                'AnalyzeDocument' => 3,
-                'MatchMerchant' => 3,
-                'ApplyTags' => 4,
-                'DeleteWorkingFiles' => 5,
-                'UpdatePulseDavFileStatus' => 6,
-                default => null,
-            };
+            // Set order in chain based on job type using centralized helper
+            $orderInChain = \App\Jobs\JobOrder::getOrder($commandName ?? class_basename($command));
 
             return [
                 'name' => $commandName,

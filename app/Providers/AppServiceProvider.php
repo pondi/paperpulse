@@ -75,10 +75,7 @@ class AppServiceProvider extends ServiceProvider
             return new \App\Services\SearchService;
         });
 
-        // Register DateFormatterService
-        $this->app->singleton(\App\Services\DateFormatterService::class, function ($app) {
-            return new \App\Services\DateFormatterService;
-        });
+        // Removed DateFormatterService binding (unused)
 
         // Register AI template service
         $this->app->singleton(\App\Services\AI\PromptTemplateService::class);

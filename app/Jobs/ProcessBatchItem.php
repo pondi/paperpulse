@@ -66,14 +66,8 @@ class ProcessBatchItem implements ShouldQueue
                 'model' => $this->batchConfig['model']->name,
             ]);
 
-            // Process items in this chunk
-            $results = [];
-
-            if ($this->batchConfig['use_batch_api']) {
-                $results = $this->processBatchWithAPI($batchItems, $batchJob);
-            } else {
-                $results = $this->processItemsSequentially($batchItems, $batchJob);
-            }
+            // Process items in this chunk (sequential processing)
+            $results = $this->processItemsSequentially($batchItems, $batchJob);
 
             // Update batch progress
             $batchService = app(BatchProcessingService::class);
@@ -90,54 +84,6 @@ class ProcessBatchItem implements ShouldQueue
             $this->markChunkAsFailed($e->getMessage());
 
             throw $e;
-        }
-    }
-
-    /**
-     * Process items using batch API (when available)
-     */
-    protected function processBatchWithAPI(Collection $batchItems, BatchJob $batchJob): array
-    {
-        try {
-            // Prepare batch request
-            $batchRequests = [];
-            foreach ($batchItems as $item) {
-                $batchRequests[] = $this->prepareBatchRequest($item, $batchJob);
-            }
-
-            // Execute batch request
-            $aiService = AIServiceFactory::create($this->batchConfig['model']->provider);
-            $batchResults = $this->executeBatchRequest($aiService, $batchRequests);
-
-            // Process results
-            $results = [];
-            foreach ($batchItems as $index => $item) {
-                $result = $batchResults[$index] ?? null;
-
-                if ($result && $result['success']) {
-                    $item->markAsCompleted(
-                        $result['data'],
-                        $result['cost'] ?? 0,
-                        $result['processing_time'] ?? 0
-                    );
-                    $results[] = $result;
-                } else {
-                    $error = $result['error'] ?? 'Batch processing failed';
-                    $item->markAsFailed($error);
-                    $results[] = ['success' => false, 'error' => $error];
-                }
-            }
-
-            return $results;
-
-        } catch (Exception $e) {
-            Log::error('[ProcessBatchItem] Batch API processing failed', [
-                'error' => $e->getMessage(),
-                'items_count' => $batchItems->count(),
-            ]);
-
-            // Fallback to sequential processing
-            return $this->processItemsSequentially($batchItems, $batchJob);
         }
     }
 
@@ -234,43 +180,7 @@ class ProcessBatchItem implements ShouldQueue
         return $result;
     }
 
-    protected function prepareBatchRequest(BatchItem $item, BatchJob $batchJob): array
-    {
-        // Prepare request for batch API
-        return [
-            'custom_id' => "item_{$item->id}",
-            'method' => 'POST',
-            'url' => $this->getBatchEndpoint($batchJob->type),
-            'body' => $this->getBatchRequestBody($item, $batchJob),
-        ];
-    }
-
-    protected function executeBatchRequest($aiService, array $requests): array
-    {
-        // This would use provider-specific batch APIs
-        // Implementation depends on provider capabilities
-        throw new Exception('Batch API not yet implemented');
-    }
-
-    protected function getBatchEndpoint(string $type): string
-    {
-        return match ($type) {
-            'receipt' => '/v1/chat/completions',
-            'document' => '/v1/chat/completions',
-            default => '/v1/chat/completions'
-        };
-    }
-
-    protected function getBatchRequestBody(BatchItem $item, BatchJob $batchJob): array
-    {
-        // This would prepare the request body based on the item and job type
-        return [
-            'model' => $this->batchConfig['model']->name,
-            'messages' => [
-                ['role' => 'user', 'content' => $item->source],
-            ],
-        ];
-    }
+    // Removed unused batch API placeholder methods to simplify implementation
 
     protected function markChunkAsFailed(string $error): void
     {

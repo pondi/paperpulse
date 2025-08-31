@@ -43,32 +43,7 @@ abstract class BaseJob implements ShouldQueue
         $this->jobName = class_basename($this);
     }
 
-    /**
-     * Get the job's payload.
-     */
-    public function payload(): array
-    {
-        if (! $this->uuid) {
-            $this->uuid = (string) Str::uuid();
-        }
-
-        if (empty($this->jobID)) {
-            Log::error('JobID is empty in payload', [
-                'class' => static::class,
-                'uuid' => $this->uuid,
-            ]);
-            throw new \RuntimeException('JobID cannot be empty');
-        }
-
-        return [
-            'uuid' => $this->uuid,
-            'data' => [
-                'commandName' => $this->jobName,
-                'jobID' => $this->jobID,
-                'command' => serialize($this),
-            ],
-        ];
-    }
+    // Removed custom payload(): Laravel queue uses its own payload structure.
 
     /**
      * Get the job ID.
@@ -268,16 +243,7 @@ abstract class BaseJob implements ShouldQueue
      */
     protected function getOrderInChain(): int
     {
-        return match ($this->jobName) {
-            'Process File', 'ProcessFile' => 1,
-            'Process Receipt', 'ProcessReceipt' => 2,
-            'Process Document', 'ProcessDocument' => 2,
-            'Match Merchant', 'MatchMerchant' => 3,
-            'Analyze Document', 'AnalyzeDocument' => 3,
-            'Apply Tags', 'ApplyTags' => 4,
-            'Delete Working Files', 'DeleteWorkingFiles' => 5,
-            default => 0,
-        };
+        return \App\Jobs\JobOrder::getOrder($this->jobName);
     }
 
     /**

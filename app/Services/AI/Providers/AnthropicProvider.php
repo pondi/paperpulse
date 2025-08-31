@@ -39,8 +39,28 @@ class AnthropicProvider implements AIService
 
     public function analyzeReceipt(string $content, array $options = []): array
     {
+        $debugEnabled = config('app.debug');
+        $startTime = microtime(true);
+
+        if ($debugEnabled) {
+            Log::debug('[Anthropic] Starting receipt analysis', [
+                'content_length' => strlen($content),
+                'content_preview' => substr($content, 0, 200).'...',
+                'options' => $options,
+                'timestamp' => now()->toISOString(),
+            ]);
+        }
+
         try {
             $model = config('ai.models.anthropic_receipt', 'claude-3.7-sonnet');
+
+            if ($debugEnabled) {
+                Log::debug('[Anthropic] Model configuration', [
+                    'model' => $model,
+                    'model_config' => $this->modelConfig?->toArray(),
+                    'default_options' => $this->defaultOptions,
+                ]);
+            }
 
             // Use template service
             $promptData = $this->promptService->getPrompt('receipt', [
@@ -48,6 +68,16 @@ class AnthropicProvider implements AIService
                 'merchant_hint' => $options['merchant_hint'] ?? null,
                 'extraction_focus' => $options['focus'] ?? null,
             ], array_merge($options, ['provider' => 'anthropic']));
+
+            if ($debugEnabled) {
+                Log::debug('[Anthropic] Prompt data prepared', [
+                    'template_name' => $promptData['template_name'] ?? 'unknown',
+                    'messages_count' => count($promptData['messages'] ?? []),
+                    'schema_structure' => array_keys($promptData['schema']['properties'] ?? []),
+                    'schema_required' => $promptData['schema']['required'] ?? [],
+                    'options' => $promptData['options'] ?? [],
+                ]);
+            }
 
             // Extract system and user messages
             $systemMessage = '';
@@ -61,7 +91,16 @@ class AnthropicProvider implements AIService
                 }
             }
 
-            $response = $this->client->messages()->create([
+            if ($debugEnabled) {
+                Log::debug('[Anthropic] Message extraction', [
+                    'system_message_length' => strlen($systemMessage),
+                    'user_message_length' => strlen($userMessage),
+                    'system_preview' => substr($systemMessage, 0, 150).'...',
+                    'user_preview' => substr($userMessage, 0, 150).'...',
+                ]);
+            }
+
+            $requestPayload = [
                 'model' => $model,
                 'max_tokens' => $promptData['options']['max_tokens'] ?? 2048,
                 'temperature' => $promptData['options']['temperature'] ?? 0.1,
@@ -77,13 +116,50 @@ class AnthropicProvider implements AIService
                     ],
                 ],
                 'tool_choice' => ['type' => 'tool', 'name' => 'extract_receipt_data'],
-            ]);
+            ];
+
+            if ($debugEnabled) {
+                Log::debug('[Anthropic] API request payload', [
+                    'model' => $requestPayload['model'],
+                    'max_tokens' => $requestPayload['max_tokens'],
+                    'temperature' => $requestPayload['temperature'],
+                    'system_length' => strlen($requestPayload['system']),
+                    'user_messages_count' => count($requestPayload['messages']),
+                    'tools_count' => count($requestPayload['tools']),
+                    'tool_choice' => $requestPayload['tool_choice'],
+                ]);
+            }
+
+            $response = $this->client->messages()->create($requestPayload);
+
+            if ($debugEnabled) {
+                Log::debug('[Anthropic] API response received', [
+                    'response_id' => $response->id ?? 'unknown',
+                    'model_used' => $response->model ?? $model,
+                    'content_count' => count($response->content ?? []),
+                    'usage' => $response->usage ?? null,
+                    'stop_reason' => $response->stopReason ?? 'unknown',
+                    'content_types' => array_map(function ($content) {
+                        return $content->type ?? 'unknown';
+                    }, $response->content ?? []),
+                ]);
+            }
 
             $toolUse = $response->content[0];
             if ($toolUse->type === 'tool_use' && $toolUse->name === 'extract_receipt_data') {
+                if ($debugEnabled) {
+                    Log::debug('[Anthropic] Tool use response processing', [
+                        'tool_name' => $toolUse->name,
+                        'tool_id' => $toolUse->id ?? 'unknown',
+                        'input_data' => $toolUse->input,
+                        'input_keys' => is_object($toolUse->input) || is_array($toolUse->input) ?
+                            array_keys((array) $toolUse->input) : 'not array/object',
+                    ]);
+                }
+
                 $result = $toolUse->input;
 
-                return [
+                $finalResult = [
                     'success' => true,
                     'data' => $result,
                     'provider' => 'anthropic',
@@ -91,20 +167,133 @@ class AnthropicProvider implements AIService
                     'template' => $promptData['template_name'],
                     'tokens_used' => $response->usage->inputTokens + $response->usage->outputTokens,
                 ];
+
+                if ($debugEnabled) {
+                    $processingTime = microtime(true) - $startTime;
+                    Log::debug('[Anthropic] Receipt analysis completed successfully', [
+                        'processing_time_ms' => round($processingTime * 1000, 2),
+                        'input_tokens' => $response->usage->inputTokens,
+                        'output_tokens' => $response->usage->outputTokens,
+                        'total_tokens' => $response->usage->inputTokens + $response->usage->outputTokens,
+                        'result_summary' => [
+                            'success' => $finalResult['success'],
+                            'data_keys' => is_object($result) || is_array($result) ? array_keys((array) $result) : 'not array/object',
+                            'tokens_used' => $finalResult['tokens_used'],
+                        ],
+                    ]);
+                }
+
+                return $finalResult;
+            }
+
+            if ($debugEnabled) {
+                Log::debug('[Anthropic] Unexpected response format', [
+                    'content_type' => $toolUse->type ?? 'unknown',
+                    'tool_name' => $toolUse->name ?? 'unknown',
+                    'expected_name' => 'extract_receipt_data',
+                    'full_response' => $response,
+                ]);
             }
 
             throw new \Exception('Unexpected response format from Anthropic API');
         } catch (\Exception $e) {
-            Log::error('Anthropic receipt analysis failed', [
+            $processingTime = microtime(true) - $startTime;
+
+            Log::error('[Anthropic] Receipt analysis failed', [
                 'error' => $e->getMessage(),
+                'error_type' => get_class($e),
                 'content_length' => strlen($content),
                 'model' => $model ?? 'unknown',
+                'processing_time_ms' => round($processingTime * 1000, 2),
+                'stack_trace' => $debugEnabled ? $e->getTraceAsString() : 'Enable debug mode for stack trace',
             ]);
+
+            // Try fallback with simpler prompt if it's an API error
+            if (str_contains($e->getMessage(), 'API') || str_contains($e->getMessage(), 'rate limit') || str_contains($e->getMessage(), 'timeout')) {
+                Log::info('[Anthropic] Attempting fallback with simpler prompt', [
+                    'original_error' => $e->getMessage(),
+                    'fallback_model' => 'claude-3-haiku-20240307',
+                ]);
+
+                if ($debugEnabled) {
+                    Log::debug('[Anthropic] Fallback request details', [
+                        'fallback_model' => 'claude-3-haiku-20240307',
+                        'max_tokens' => 1024,
+                        'content_length' => min(strlen($content), 4000),
+                    ]);
+                }
+
+                try {
+                    $fallbackPayload = [
+                        'model' => 'claude-3-haiku-20240307',
+                        'max_tokens' => 1024,
+                        'temperature' => 0.1,
+                        'system' => 'Extract receipt data from the following text. Return JSON with merchant name, total amount, date, and items.',
+                        'messages' => [
+                            [
+                                'role' => 'user',
+                                'content' => substr($content, 0, 4000),
+                            ],
+                        ],
+                    ];
+
+                    $fallbackResponse = $this->client->messages()->create($fallbackPayload);
+
+                    if ($debugEnabled) {
+                        Log::debug('[Anthropic] Fallback response received', [
+                            'response_id' => $fallbackResponse->id ?? 'unknown',
+                            'content_count' => count($fallbackResponse->content ?? []),
+                            'usage' => $fallbackResponse->usage ?? null,
+                            'raw_text' => $fallbackResponse->content[0]->text ?? 'no text',
+                        ]);
+                    }
+
+                    // Try to parse the response
+                    $text = $fallbackResponse->content[0]->text ?? '';
+                    $result = json_decode($text, true);
+
+                    if ($debugEnabled) {
+                        Log::debug('[Anthropic] Fallback JSON parsing', [
+                            'text_length' => strlen($text),
+                            'json_valid' => json_last_error() === JSON_ERROR_NONE,
+                            'json_error' => json_last_error() !== JSON_ERROR_NONE ? json_last_error_msg() : null,
+                            'parsed_data' => $result,
+                        ]);
+                    }
+
+                    if ($result) {
+                        $fallbackResult = [
+                            'success' => true,
+                            'data' => $result,
+                            'provider' => 'anthropic',
+                            'model' => 'claude-3-haiku-20240307',
+                            'template' => 'fallback',
+                            'tokens_used' => $fallbackResponse->usage->inputTokens + $fallbackResponse->usage->outputTokens,
+                            'fallback_used' => true,
+                        ];
+
+                        Log::info('[Anthropic] Fallback successful', [
+                            'processing_time_ms' => round((microtime(true) - $startTime) * 1000, 2),
+                            'tokens_used' => $fallbackResult['tokens_used'],
+                        ]);
+
+                        return $fallbackResult;
+                    }
+                } catch (\Exception $fallbackError) {
+                    Log::error('[Anthropic] Fallback also failed', [
+                        'fallback_error' => $fallbackError->getMessage(),
+                        'fallback_error_type' => get_class($fallbackError),
+                        'total_processing_time_ms' => round((microtime(true) - $startTime) * 1000, 2),
+                        'fallback_stack_trace' => $debugEnabled ? $fallbackError->getTraceAsString() : 'Enable debug mode for stack trace',
+                    ]);
+                }
+            }
 
             return [
                 'success' => false,
                 'error' => $e->getMessage(),
                 'provider' => 'anthropic',
+                'processing_time_ms' => round($processingTime * 1000, 2),
             ];
         }
     }

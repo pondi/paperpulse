@@ -86,8 +86,10 @@ class FileProcessingService
             $fileMetadata = [
                 'fileId' => $file->id,
                 'fileGuid' => $fileGuid,
+                'fileName' => $fileData['fileName'],
                 'filePath' => $workingPath,
                 'fileExtension' => $fileData['extension'],
+                'fileSize' => $fileData['size'],
                 'fileType' => $fileType,
                 'userId' => $userId,
                 's3OriginalPath' => $s3Path,
@@ -276,7 +278,7 @@ class FileProcessingService
             $jobs = [
                 (new ProcessFile($jobId))->onQueue($queue),
                 (new ProcessReceipt($jobId))->onQueue($queue),
-                (new MatchMerchant($jobId))->onQueue($queue),
+                (new MatchMerchant($jobId))->onQueue($queue), // Uses cached data from ProcessReceipt
             ];
         } else {
             $jobs = [

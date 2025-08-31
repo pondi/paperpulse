@@ -12,7 +12,7 @@ class ReceiptProcessed extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    protected $receipt;
+    protected $receiptData;
 
     protected $success;
 
@@ -23,7 +23,13 @@ class ReceiptProcessed extends Notification implements ShouldQueue
      */
     public function __construct(Receipt $receipt, bool $success = true, ?string $errorMessage = null)
     {
-        $this->receipt = $receipt;
+        // Store only the data we need, not the full model
+        $this->receiptData = [
+            'id' => $receipt->id,
+            'merchant_name' => $receipt->merchant?->name ?? 'Unknown',
+            'total_amount' => $receipt->total_amount ?? 0,
+            'currency' => $receipt->currency ?? 'NOK',
+        ];
         $this->success = $success;
         $this->errorMessage = $errorMessage;
     }
@@ -53,9 +59,9 @@ class ReceiptProcessed extends Notification implements ShouldQueue
             return (new MailMessage)
                 ->subject('Receipt Processed Successfully')
                 ->line('Your receipt has been processed successfully.')
-                ->line('Merchant: '.($this->receipt->merchant?->name ?? 'Unknown'))
-                ->line('Amount: '.number_format($this->receipt->total_amount, 2).' '.$this->receipt->currency)
-                ->action('View Receipt', route('receipts.show', $this->receipt->id))
+                ->line('Merchant: '.$this->receiptData['merchant_name'])
+                ->line('Amount: '.number_format($this->receiptData['total_amount'], 2).' '.$this->receiptData['currency'])
+                ->action('View Receipt', route('receipts.show', $this->receiptData['id']))
                 ->line('Thank you for using PaperPulse!');
         } else {
             return (new MailMessage)
@@ -75,10 +81,10 @@ class ReceiptProcessed extends Notification implements ShouldQueue
     {
         return [
             'type' => $this->success ? 'receipt_processed' : 'receipt_failed',
-            'receipt_id' => $this->receipt->id,
-            'merchant_name' => $this->receipt->merchant?->name ?? 'Unknown',
-            'amount' => $this->receipt->total_amount,
-            'currency' => $this->receipt->currency,
+            'receipt_id' => $this->receiptData['id'],
+            'merchant_name' => $this->receiptData['merchant_name'],
+            'amount' => $this->receiptData['total_amount'],
+            'currency' => $this->receiptData['currency'],
             'success' => $this->success,
             'error_message' => $this->errorMessage,
             'created_at' => now()->toISOString(),

@@ -122,6 +122,9 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     // Jobs routes
     Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');
     Route::get('/jobs/status', [JobController::class, 'getStatus'])->name('jobs.status');
+    Route::get('/jobs/{jobId}', [JobController::class, 'show'])->name('jobs.show');
+    Route::post('/jobs/{jobId}/restart', [JobController::class, 'restart'])->name('jobs.restart');
+    Route::post('/jobs/restart-multiple', [JobController::class, 'restartMultiple'])->name('jobs.restart-multiple');
 
     // Search routes
     Route::get('/search', [SearchController::class, 'search'])->name('search');

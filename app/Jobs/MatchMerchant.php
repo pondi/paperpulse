@@ -19,16 +19,39 @@ class MatchMerchant extends BaseJob
 
     protected $merchantVatNumber;
 
+    protected $useDirectData = false;
+
     public $timeout = 3600;
 
     public $tries = 5;
 
     public $backoff = 10;
 
-    public function __construct(string $jobID)
-    {
+    public function __construct(
+        string $jobID,
+        ?int $receiptId = null,
+        ?string $merchantName = null,
+        ?string $merchantAddress = null,
+        ?string $merchantVatNumber = null
+    ) {
         parent::__construct($jobID);
         $this->jobName = 'Match Merchant';
+
+        // If data is provided directly, use it instead of cache
+        if ($receiptId !== null) {
+            $this->useDirectData = true;
+            $this->receiptId = $receiptId;
+            $this->merchantName = $merchantName ?? '';
+            $this->merchantAddress = $merchantAddress;
+            $this->merchantVatNumber = $merchantVatNumber;
+
+            Log::debug('(MatchMerchant) Direct data provided', [
+                'jobID' => $this->jobID,
+                'receiptId' => $this->receiptId,
+                'merchantName' => $this->merchantName,
+                'useDirectData' => $this->useDirectData,
+            ]);
+        }
     }
 
     /**
@@ -37,8 +60,33 @@ class MatchMerchant extends BaseJob
     protected function handleJob(): void
     {
         try {
-            $this->fetchDataFromCache();
+            // Use direct data if available, otherwise fall back to cache
+            if (! $this->useDirectData) {
+                $this->fetchDataFromCache();
+            } else {
+                // Get fileId from cache for direct data usage
+                $fileMetaData = Cache::get("job.{$this->jobID}.fileMetaData");
+                if ($fileMetaData && isset($fileMetaData['fileId'])) {
+                    $this->fileId = $fileMetaData['fileId'];
+                } else {
+                    Log::warning('(MatchMerchant) Could not get fileId from cache, continuing without it', [
+                        'jobID' => $this->jobID,
+                    ]);
+                }
+            }
+
             $this->updateProgress(25);
+
+            // Handle empty merchant name gracefully
+            if (empty($this->merchantName) || trim($this->merchantName) === '') {
+                Log::info("(MatchMerchant) [{$this->jobName}] - Empty merchant name, skipping merchant matching", [
+                    'job_id' => $this->jobID,
+                    'receipt_id' => $this->receiptId,
+                ]);
+                $this->updateProgress(100);
+
+                return;
+            }
 
             $merchants = $this->fetchAllMerchants();
             $this->updateProgress(50);
@@ -73,6 +121,8 @@ class MatchMerchant extends BaseJob
                 'job_id' => $this->jobID,
                 'task_id' => $this->uuid,
                 'error' => $e->getMessage(),
+                'use_direct_data' => $this->useDirectData,
+                'merchant_name' => $this->merchantName ?? 'null',
             ]);
             throw $e;
         }
@@ -86,8 +136,8 @@ class MatchMerchant extends BaseJob
         if (! $fileMetaData || ! $receiptMetaData) {
             Log::error('(MatchMerchant) - Required cache data missing', [
                 'jobID' => $this->jobID,
-                'fileMetaData' => $fileMetaData,
-                'receiptMetaData' => $receiptMetaData,
+                'fileMetaData_exists' => $fileMetaData !== null,
+                'receiptMetaData_exists' => $receiptMetaData !== null,
             ]);
             throw new \RuntimeException("Required cache data missing for job {$this->jobID}");
         }
@@ -101,7 +151,6 @@ class MatchMerchant extends BaseJob
                 Log::error('(MatchMerchant) - Required file metadata field missing', [
                     'jobID' => $this->jobID,
                     'missing_field' => $field,
-                    'fileMetaData' => $fileMetaData,
                 ]);
                 throw new \RuntimeException("Required file metadata field {$field} missing for job {$this->jobID}");
             }
@@ -112,13 +161,12 @@ class MatchMerchant extends BaseJob
                 Log::error('(MatchMerchant) - Required receipt metadata field missing', [
                     'jobID' => $this->jobID,
                     'missing_field' => $field,
-                    'receiptMetaData' => $receiptMetaData,
                 ]);
                 throw new \RuntimeException("Required receipt metadata field {$field} missing for job {$this->jobID}");
             }
         }
 
-        // Assign values with null coalescing for optional fields
+        // Assign values
         $this->fileId = $fileMetaData['fileId'];
         $this->jobName = $fileMetaData['jobName'];
         $this->receiptId = $receiptMetaData['receiptId'];
@@ -126,7 +174,7 @@ class MatchMerchant extends BaseJob
         $this->merchantAddress = $receiptMetaData['merchantAddress'] ?? null;
         $this->merchantVatNumber = $receiptMetaData['merchantVatID'] ?? null;
 
-        Log::debug("(MatchMerchant) [{$this->jobName}] - Cache data fetched successfully", [
+        Log::debug('(MatchMerchant) Cache data fetched successfully', [
             'jobID' => $this->jobID,
             'fileId' => $this->fileId,
             'receiptId' => $this->receiptId,
@@ -243,10 +291,22 @@ class MatchMerchant extends BaseJob
 
     private function createMerchant()
     {
-        $newMerchant = Merchant::create(['name' => $this->merchantName, 'address' => $this->merchantAddress, 'vat_number' => $this->merchantVatNumber]);
+        // Only create merchant if we have a name
+        if (! empty($this->merchantName) && trim($this->merchantName) !== '') {
+            $newMerchant = Merchant::create([
+                'name' => $this->merchantName,
+                'address' => $this->merchantAddress,
+                'vat_number' => $this->merchantVatNumber,
+            ]);
 
-        $this->updateReceipt($newMerchant->id);
+            $this->updateReceipt($newMerchant->id);
 
-        Log::info("(MatchMerchant) [{$this->jobName}] - New merchant created (receipt: {$this->receiptId})");
+            Log::info("(MatchMerchant) [{$this->jobName}] - New merchant created (receipt: {$this->receiptId})", [
+                'merchant_id' => $newMerchant->id,
+                'merchant_name' => $this->merchantName,
+            ]);
+        } else {
+            Log::info("(MatchMerchant) [{$this->jobName}] - Skipping merchant creation due to empty name (receipt: {$this->receiptId})");
+        }
     }
 }

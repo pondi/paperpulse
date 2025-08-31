@@ -43,6 +43,12 @@ class TextractProvider implements OCRService
         $startTime = microtime(true);
 
         try {
+            // Validate file before processing
+            $validationResult = $this->validateFile($filePath);
+            if (! $validationResult['valid']) {
+                return OCRResult::failure($validationResult['error'], $this->getProviderName());
+            }
+
             // Read file content
             $fileContent = file_get_contents($filePath);
 
@@ -53,6 +59,17 @@ class TextractProvider implements OCRService
             // Upload to Textract bucket temporarily
             $textractPath = "temp/{$fileGuid}/".basename($filePath);
             $textractDisk = Storage::disk('textract');
+
+            // Log file details before uploading to Textract
+            Log::info('[TextractProvider] Uploading file to Textract', [
+                'file_guid' => $fileGuid,
+                'file_path' => $filePath,
+                'textract_path' => $textractPath,
+                'file_size' => strlen($fileContent),
+                'file_type' => $fileType,
+                'bucket' => $this->bucket,
+            ]);
+
             $textractDisk->put($textractPath, $fileContent);
 
             try {
@@ -115,17 +132,59 @@ class TextractProvider implements OCRService
     {
         $featureTypes = $options['feature_types'] ?? ['LAYOUT', 'TABLES', 'FORMS'];
 
-        $result = $this->client->analyzeDocument([
-            'Document' => [
-                'S3Object' => [
-                    'Bucket' => $this->bucket,
-                    'Name' => $s3Path,
-                ],
-            ],
-            'FeatureTypes' => $featureTypes,
+        // Additional validation before calling Textract
+        $textractDisk = Storage::disk('textract');
+        if (! $textractDisk->exists($s3Path)) {
+            throw new Exception("File not found in Textract bucket: {$s3Path}");
+        }
+
+        $fileSize = $textractDisk->size($s3Path);
+        Log::info('[TextractProvider] Calling Textract AnalyzeDocument', [
+            's3_path' => $s3Path,
+            'bucket' => $this->bucket,
+            'file_size' => $fileSize,
+            'feature_types' => $featureTypes,
         ]);
 
-        return $this->parseTextractDocumentResponse($result->toArray());
+        // Check if file size is within Textract limits
+        if ($fileSize > 10 * 1024 * 1024) { // 10MB limit
+            throw new Exception("File size ({$fileSize} bytes) exceeds Textract limit of 10MB");
+        }
+
+        if ($fileSize === 0) {
+            throw new Exception('File is empty in S3 bucket');
+        }
+
+        try {
+            $result = $this->client->analyzeDocument([
+                'Document' => [
+                    'S3Object' => [
+                        'Bucket' => $this->bucket,
+                        'Name' => $s3Path,
+                    ],
+                ],
+                'FeatureTypes' => $featureTypes,
+            ]);
+
+            return $this->parseTextractDocumentResponse($result->toArray());
+        } catch (\Aws\Exception\AwsException $e) {
+            Log::error('[TextractProvider] AWS Textract error details', [
+                's3_path' => $s3Path,
+                'bucket' => $this->bucket,
+                'file_size' => $fileSize,
+                'aws_error_code' => $e->getAwsErrorCode(),
+                'aws_error_type' => $e->getAwsErrorType(),
+                'aws_error_message' => $e->getAwsErrorMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+
+            // If this is an UnsupportedDocumentException, provide more specific error
+            if ($e->getAwsErrorCode() === 'UnsupportedDocumentException') {
+                throw new Exception('PDF format is not supported by Textract. The PDF might be encrypted, corrupted, or in an unsupported format. Try converting it to a standard PDF or using a different file.');
+            }
+
+            throw $e;
+        }
     }
 
     protected function parseTextractResponse(array $result, string $type = 'basic'): array
@@ -223,6 +282,142 @@ class TextractProvider implements OCRService
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
         return in_array($extension, $this->getSupportedExtensions());
+    }
+
+    protected function validateFile(string $filePath): array
+    {
+        // Check if file exists
+        if (! file_exists($filePath)) {
+            return ['valid' => false, 'error' => 'File does not exist'];
+        }
+
+        // Check file size (Textract limit is 10MB for single-page, 512MB for multi-page)
+        $fileSize = filesize($filePath);
+        $maxSize = 10 * 1024 * 1024; // 10MB in bytes
+
+        if ($fileSize > $maxSize) {
+            return ['valid' => false, 'error' => 'File size exceeds 10MB limit for Textract'];
+        }
+
+        if ($fileSize === 0) {
+            return ['valid' => false, 'error' => 'File is empty'];
+        }
+
+        // Check file extension
+        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        $supportedExtensions = $this->getSupportedExtensions();
+
+        if (! in_array($extension, $supportedExtensions)) {
+            return [
+                'valid' => false,
+                'error' => "Unsupported file format '{$extension}'. Supported formats: ".implode(', ', $supportedExtensions),
+            ];
+        }
+
+        // Validate MIME type to prevent files with wrong extensions
+        $mimeType = mime_content_type($filePath);
+        $expectedMimeTypes = [
+            'pdf' => ['application/pdf'],
+            'png' => ['image/png'],
+            'jpg' => ['image/jpeg', 'image/jpg'],
+            'jpeg' => ['image/jpeg', 'image/jpg'],
+            'tiff' => ['image/tiff', 'image/tif'],
+            'tif' => ['image/tiff', 'image/tif'],
+        ];
+
+        if (isset($expectedMimeTypes[$extension]) && ! in_array($mimeType, $expectedMimeTypes[$extension])) {
+            return [
+                'valid' => false,
+                'error' => "File MIME type '{$mimeType}' doesn't match extension '{$extension}'. File may be corrupted or have wrong extension.",
+            ];
+        }
+
+        // Basic file integrity check
+        if ($extension === 'pdf') {
+            $pdfValidation = $this->validatePdfFile($filePath);
+            if (! $pdfValidation['valid']) {
+                return $pdfValidation;
+            }
+        } elseif (in_array($extension, ['png', 'jpg', 'jpeg', 'tiff', 'tif'])) {
+            // Try to get image info to validate image files
+            $imageInfo = @getimagesize($filePath);
+            if ($imageInfo === false) {
+                return ['valid' => false, 'error' => 'Invalid or corrupted image file'];
+            }
+        }
+
+        return ['valid' => true, 'error' => null];
+    }
+
+    protected function validatePdfFile(string $filePath): array
+    {
+        $handle = fopen($filePath, 'rb');
+        if (! $handle) {
+            return ['valid' => false, 'error' => 'Cannot open PDF file'];
+        }
+
+        // Read first 1024 bytes for analysis
+        $header = fread($handle, 1024);
+        $fileSize = filesize($filePath);
+
+        // Basic PDF header check
+        if (substr($header, 0, 4) !== '%PDF') {
+            fclose($handle);
+
+            return ['valid' => false, 'error' => 'Invalid PDF file - missing PDF header'];
+        }
+
+        // Extract PDF version
+        if (preg_match('/%PDF-(\d+\.\d+)/', $header, $matches)) {
+            $pdfVersion = $matches[1];
+            Log::info('[TextractProvider] PDF validation details', [
+                'file_path' => basename($filePath),
+                'pdf_version' => $pdfVersion,
+                'file_size' => $fileSize,
+            ]);
+        }
+
+        // Check for encryption
+        if (strpos($header, '/Encrypt') !== false) {
+            fclose($handle);
+
+            return ['valid' => false, 'error' => 'PDF file is encrypted - Textract cannot process encrypted PDFs'];
+        }
+
+        // Read trailer to check for corruption
+        fseek($handle, max(0, $fileSize - 1024));
+        $trailer = fread($handle, 1024);
+        fclose($handle);
+
+        // Check for proper PDF ending
+        if (strpos($trailer, '%%EOF') === false) {
+            Log::warning('[TextractProvider] PDF may be corrupted - missing %%EOF marker', [
+                'file_path' => basename($filePath),
+                'trailer_sample' => substr($trailer, -100),
+            ]);
+            // Don't fail for this as some PDFs might still work
+        }
+
+        // Check for potential issues that Textract might reject
+        $issues = [];
+
+        // Check for forms/annotations that might cause issues
+        if (strpos($header, '/AcroForm') !== false) {
+            $issues[] = 'Contains AcroForms (interactive forms)';
+        }
+
+        if (strpos($header, '/Annot') !== false) {
+            $issues[] = 'Contains annotations';
+        }
+
+        if (! empty($issues)) {
+            Log::info('[TextractProvider] PDF contains potentially problematic features', [
+                'file_path' => basename($filePath),
+                'issues' => $issues,
+            ]);
+        }
+
+        return ['valid' => true, 'error' => null];
     }
 
     public function getProviderName(): string

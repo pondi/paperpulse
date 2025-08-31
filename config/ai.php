@@ -31,18 +31,21 @@ return [
         'summary' => 'auto',
         'classification' => 'auto',
         'entity_extraction' => 'auto',
+        'general' => 'auto', // Add general task support
 
         // Provider-specific overrides
         'openai' => [
-            'receipt' => 'gpt-4.1-mini',
-            'document' => 'gpt-4.1',
-            'premium' => 'gpt-5',
+            'receipt' => 'gpt-4o-mini',
+            'document' => 'gpt-4o',
+            'general' => 'gpt-4o-mini',
+            'premium' => 'gpt-4o',
         ],
 
         'anthropic' => [
-            'receipt' => 'claude-3.7-sonnet',
-            'document' => 'claude-4-sonnet',
-            'premium' => 'claude-4-opus',
+            'receipt' => 'claude-3-5-sonnet-20241022',
+            'document' => 'claude-3-5-sonnet-20241022',
+            'general' => 'claude-3-haiku-20240307',
+            'premium' => 'claude-3-5-sonnet-20241022',
         ],
     ],
 
@@ -181,6 +184,7 @@ return [
         'classification' => explode(',', 'openai,anthropic'),
         'entities' => explode(',', 'anthropic,openai'),
         'tags' => explode(',', 'openai,anthropic'),
+        'general' => explode(',', 'openai,anthropic'),
     ],
 
     'health_monitoring' => [

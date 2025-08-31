@@ -233,66 +233,66 @@ class PromptTemplateService
     {
         return [
             'type' => 'object',
-            'additionalProperties' => false,
             'properties' => [
                 'merchant' => [
                     'type' => 'object',
-                    'additionalProperties' => false,
                     'properties' => [
                         'name' => ['type' => 'string'],
-                        'address' => ['type' => 'string'],
-                        'org_number' => ['type' => 'string'],
-                        'phone' => ['type' => 'string'],
-                        'category' => ['type' => 'string'],
+                        'address' => ['type' => ['string', 'null']],
+                        'org_number' => ['type' => ['string', 'null']],
+                        'phone' => ['type' => ['string', 'null']],
+                        'category' => ['type' => ['string', 'null']],
                     ],
                     'required' => ['name', 'address', 'org_number', 'phone', 'category'],
+                    'additionalProperties' => false,
                 ],
                 'items' => [
                     'type' => 'array',
                     'items' => [
                         'type' => 'object',
-                        'additionalProperties' => false,
                         'properties' => [
                             'name' => ['type' => 'string'],
-                            'quantity' => ['type' => 'number'],
-                            'unit_price' => ['type' => 'number'],
+                            'quantity' => ['type' => ['number', 'null']],
+                            'unit_price' => ['type' => ['number', 'null']],
                             'total_price' => ['type' => 'number'],
-                            'vat_rate' => ['type' => 'number'],
+                            'vat_rate' => ['type' => ['number', 'null']],
                         ],
                         'required' => ['name', 'quantity', 'unit_price', 'total_price', 'vat_rate'],
+                        'additionalProperties' => false,
                     ],
                 ],
                 'totals' => [
                     'type' => 'object',
-                    'additionalProperties' => false,
                     'properties' => [
-                        'subtotal' => ['type' => 'number'],
-                        'tax_amount' => ['type' => 'number'],
+                        'subtotal' => ['type' => ['number', 'null']],
+                        'tax_amount' => ['type' => ['number', 'null']],
                         'total_amount' => ['type' => 'number'],
                     ],
                     'required' => ['subtotal', 'tax_amount', 'total_amount'],
+                    'additionalProperties' => false,
                 ],
                 'receipt_info' => [
                     'type' => 'object',
-                    'additionalProperties' => false,
                     'properties' => [
                         'date' => ['type' => 'string'],
-                        'time' => ['type' => 'string'],
-                        'receipt_number' => ['type' => 'string'],
+                        'time' => ['type' => ['string', 'null']],
+                        'receipt_number' => ['type' => ['string', 'null']],
                     ],
                     'required' => ['date', 'time', 'receipt_number'],
+                    'additionalProperties' => false,
                 ],
                 'payment' => [
                     'type' => 'object',
-                    'additionalProperties' => false,
                     'properties' => [
-                        'method' => ['type' => 'string'],
-                        'currency' => ['type' => 'string'],
+                        'method' => ['type' => ['string', 'null']],
+                        'currency' => ['type' => ['string', 'null']],
                     ],
                     'required' => ['method', 'currency'],
+                    'additionalProperties' => false,
                 ],
             ],
             'required' => ['merchant', 'items', 'totals', 'receipt_info', 'payment'],
+            'additionalProperties' => false,
         ];
     }
 
@@ -300,7 +300,6 @@ class PromptTemplateService
     {
         return [
             'type' => 'object',
-            'additionalProperties' => false,
             'properties' => [
                 'title' => ['type' => 'string'],
                 'document_type' => [
@@ -310,7 +309,6 @@ class PromptTemplateService
                 'summary' => ['type' => 'string'],
                 'entities' => [
                     'type' => 'object',
-                    'additionalProperties' => false,
                     'properties' => [
                         'people' => ['type' => 'array', 'items' => ['type' => 'string']],
                         'organizations' => ['type' => 'array', 'items' => ['type' => 'string']],
@@ -319,11 +317,13 @@ class PromptTemplateService
                         'amounts' => ['type' => 'array', 'items' => ['type' => 'string']],
                     ],
                     'required' => ['people', 'organizations', 'locations', 'dates', 'amounts'],
+                    'additionalProperties' => false,
                 ],
                 'tags' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'language' => ['type' => 'string'],
             ],
             'required' => ['title', 'document_type', 'summary', 'entities', 'tags', 'language'],
+            'additionalProperties' => false,
         ];
     }
 
@@ -331,11 +331,11 @@ class PromptTemplateService
     {
         return [
             'type' => 'object',
-            'additionalProperties' => false,
             'properties' => [
                 'result' => ['type' => 'string'],
             ],
             'required' => ['result'],
+            'additionalProperties' => false,
         ];
     }
 }

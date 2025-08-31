@@ -212,7 +212,7 @@ class ModelConfigurationService
                 'outputCostPerMToken' => 15.0, // $15 per million tokens
                 'maxTokens' => 128000,
                 'contextWindow' => 128000,
-                'supportedTasks' => ['receipt', 'document', 'summary', 'classification', 'entities', 'tags'],
+                'supportedTasks' => ['receipt', 'document', 'summary', 'classification', 'entities', 'tags', 'general'],
                 'capabilities' => ['structured_outputs', 'function_calling', 'json_mode'],
                 'qualityRating' => 9.5,
                 'speedRating' => 8.0,
@@ -235,7 +235,7 @@ class ModelConfigurationService
                 'outputCostPerMToken' => 0.60, // $0.60 per million tokens
                 'maxTokens' => 16384,
                 'contextWindow' => 128000,
-                'supportedTasks' => ['receipt', 'document', 'summary', 'classification', 'entities', 'tags'],
+                'supportedTasks' => ['receipt', 'document', 'summary', 'classification', 'entities', 'tags', 'general'],
                 'capabilities' => ['structured_outputs', 'function_calling', 'json_mode'],
                 'qualityRating' => 8.5,
                 'speedRating' => 9.5,
@@ -285,7 +285,7 @@ class ModelConfigurationService
                 'outputCostPerMToken' => 15.0, // $15 per million tokens
                 'maxTokens' => 4096,
                 'contextWindow' => 200000,
-                'supportedTasks' => ['receipt', 'document', 'summary', 'classification', 'entities', 'tags'],
+                'supportedTasks' => ['receipt', 'document', 'summary', 'classification', 'entities', 'tags', 'general'],
                 'capabilities' => ['tool_use', 'structured_outputs'],
                 'qualityRating' => 9.2,
                 'speedRating' => 8.5,

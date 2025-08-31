@@ -21,7 +21,7 @@
             
             <!-- Jobs List -->
             <div v-if="jobs?.length" class="space-y-4">
-              <JobCard v-for="job in jobs" :key="job.id" :job="job" />
+              <JobCard v-for="job in jobs" :key="job.id" :job="job" @restart="handleJobRestart" />
             </div>
 
             <!-- Empty State -->
@@ -53,19 +53,37 @@ import JobFilters from '@/Pages/Jobs/Components/JobFilters.vue';
 import JobCard from '@/Pages/Jobs/Components/JobCard.vue';
 import Pagination from '@/Pages/Jobs/Components/Pagination.vue';
 
-interface Job {
+interface JobStep {
   id: string;
   name: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress: number;
+  started_at: string | null;
+  finished_at: string | null;
+  duration: number | null;
+  attempt: number;
+  exception: string | null;
+  order: number;
+}
+
+interface FileInfo {
+  name: string;
+  extension?: string;
+  size?: number;
+  job_name: string;
+}
+
+interface JobChain {
+  id: string;
+  type: 'receipt' | 'document' | 'unknown';
+  file_info: FileInfo | null;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress: number;
   queue: string;
   started_at: string | null;
   finished_at: string | null;
-  progress: number;
-  attempt: number;
-  exception: string | null;
   duration: number | null;
-  order: number;
-  tasks?: Job[];
+  steps: JobStep[];
 }
 
 interface Stats {
@@ -101,7 +119,7 @@ interface PulseDavStats {
 }
 
 interface Props {
-  jobs: Job[];
+  jobs: JobChain[];
   stats: Stats;
   pulseDavStats?: PulseDavStats;
   recentPulseDavFiles?: PulseDavFile[];
@@ -153,6 +171,12 @@ const form = reactive({
 
 const updateForm = (newForm: typeof form) => {
   Object.assign(form, newForm);
+};
+
+const handleJobRestart = (jobId: string) => {
+  console.log('Job restart initiated for:', jobId);
+  // The JobCard component handles the actual restart request
+  // This is just for parent component awareness if needed
 };
 
 watch(form, (newForm) => {

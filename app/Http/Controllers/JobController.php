@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\RestartJobChain;
 use App\Models\JobHistory;
 use App\Models\PulseDavFile;
+use App\Services\JobChainService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -28,6 +32,33 @@ class JobController extends Controller
             $duration = abs($job->finished_at->diffInSeconds($job->started_at));
         }
 
+        // Get file info for parent jobs
+        $fileInfo = null;
+        if (!$isChild) {
+            $metadata = Cache::get("job.{$job->uuid}.fileMetaData");
+            if ($metadata) {
+                $fileInfo = [
+                    'name' => $metadata['fileName'] ?? 'Unknown File',
+                    'extension' => $metadata['fileExtension'] ?? null,
+                    'size' => $metadata['fileSize'] ?? null,
+                    'job_name' => $metadata['jobName'] ?? 'Processing Job',
+                ];
+            }
+        }
+
+        // Determine job type from tasks
+        $jobType = 'unknown';
+        if (!$isChild) {
+            $tasks = $job->tasks;
+            if ($tasks && $tasks->count() > 0) {
+                if ($tasks->contains('name', 'Process Receipt')) {
+                    $jobType = 'receipt';
+                } elseif ($tasks->contains('name', 'Process Document')) {
+                    $jobType = 'document';
+                }
+            }
+        }
+
         $data = [
             'id' => $job->uuid,
             'name' => $job->name,
@@ -42,8 +73,10 @@ class JobController extends Controller
             'order' => $job->order_in_chain,
         ];
 
-        if (! $isChild) {
-            $data['tasks'] = $job->tasks()
+        if (!$isChild) {
+            $data['type'] = $jobType;
+            $data['file_info'] = $fileInfo;
+            $data['steps'] = $job->tasks()
                 ->orderBy('order_in_chain')
                 ->get()
                 ->map(fn (JobHistory $child): array => $this->transformJob($child, true))
@@ -257,9 +290,9 @@ class JobController extends Controller
 
                     if (isset($pendingJobs[$job->uuid])) {
                         $pendingTasks = $pendingJobs[$job->uuid]->values();
-                        $jobData['tasks'] = collect($jobData['tasks'])
+                        $jobData['steps'] = collect($jobData['steps'])
                             ->concat($pendingTasks)
-                            ->sortBy('order_in_chain')
+                            ->sortBy('order')
                             ->values()
                             ->all();
                     }
@@ -302,5 +335,190 @@ class JobController extends Controller
             'DeleteWorkingFiles' => 4,
             default => 0,
         };
+    }
+
+    /**
+     * Restart a failed job chain
+     */
+    public function restart(Request $request, string $jobId): JsonResponse
+    {
+        try {
+            // Validate that the job exists and can be restarted
+            $jobChainService = app(JobChainService::class);
+            $status = $jobChainService->getJobChainStatus($jobId);
+
+            if (! $status['found']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Job chain not found',
+                ], 404);
+            }
+
+            if (! $status['can_restart']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Job chain cannot be restarted - no failed tasks found',
+                ], 400);
+            }
+
+            // Generate a new job ID for the restart operation
+            $restartJobId = (string) Str::uuid();
+
+            // Dispatch the restart job
+            Bus::dispatch(new RestartJobChain($restartJobId, $jobId));
+
+            Log::info('Job chain restart requested', [
+                'original_job_id' => $jobId,
+                'restart_job_id' => $restartJobId,
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Job chain restart initiated',
+                'restart_job_id' => $restartJobId,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to restart job chain', [
+                'job_id' => $jobId,
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to restart job chain: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Restart multiple job chains
+     */
+    public function restartMultiple(Request $request): JsonResponse
+    {
+        $request->validate([
+            'job_ids' => 'required|array|min:1|max:10',
+            'job_ids.*' => 'required|string|uuid',
+        ]);
+
+        try {
+            $jobChainService = app(JobChainService::class);
+            $results = [];
+            $successCount = 0;
+            $failureCount = 0;
+
+            foreach ($request->job_ids as $jobId) {
+                try {
+                    // Check if job can be restarted
+                    $status = $jobChainService->getJobChainStatus($jobId);
+
+                    if (! $status['found']) {
+                        $results[$jobId] = [
+                            'success' => false,
+                            'message' => 'Job chain not found',
+                        ];
+                        $failureCount++;
+
+                        continue;
+                    }
+
+                    if (! $status['can_restart']) {
+                        $results[$jobId] = [
+                            'success' => false,
+                            'message' => 'Job chain cannot be restarted - no failed tasks found',
+                        ];
+                        $failureCount++;
+
+                        continue;
+                    }
+
+                    // Generate a new job ID for the restart operation
+                    $restartJobId = (string) Str::uuid();
+
+                    // Dispatch the restart job
+                    Bus::dispatch(new RestartJobChain($restartJobId, $jobId));
+
+                    $results[$jobId] = [
+                        'success' => true,
+                        'message' => 'Job chain restart initiated',
+                        'restart_job_id' => $restartJobId,
+                    ];
+                    $successCount++;
+
+                } catch (\Exception $e) {
+                    $results[$jobId] = [
+                        'success' => false,
+                        'message' => $e->getMessage(),
+                    ];
+                    $failureCount++;
+                }
+            }
+
+            Log::info('Bulk job chain restart requested', [
+                'job_ids' => $request->job_ids,
+                'success_count' => $successCount,
+                'failure_count' => $failureCount,
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => $failureCount === 0,
+                'message' => "Restarted {$successCount} job chains, {$failureCount} failed",
+                'results' => $results,
+                'summary' => [
+                    'success_count' => $successCount,
+                    'failure_count' => $failureCount,
+                    'total_count' => count($request->job_ids),
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to restart multiple job chains', [
+                'job_ids' => $request->job_ids ?? [],
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to restart job chains: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get detailed status for a specific job chain
+     */
+    public function show(string $jobId): JsonResponse
+    {
+        try {
+            $jobChainService = app(JobChainService::class);
+            $status = $jobChainService->getJobChainStatus($jobId);
+
+            if (! $status['found']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Job chain not found',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $status,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get job chain status', [
+                'job_id' => $jobId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get job chain status: '.$e->getMessage(),
+            ], 500);
+        }
     }
 }

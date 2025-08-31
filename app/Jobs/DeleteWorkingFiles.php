@@ -25,7 +25,27 @@ class DeleteWorkingFiles extends BaseJob
         try {
             $metadata = $this->getMetadata();
             if (! $metadata) {
-                throw new \Exception('No metadata found for job');
+                // Try to get metadata from alternate cache keys as fallback
+                $receiptMetadata = Cache::get("job.{$this->jobID}.receiptMetaData");
+                if ($receiptMetadata) {
+                    Log::warning('Using receipt metadata as fallback for file cleanup', [
+                        'job_id' => $this->jobID,
+                    ]);
+                    // We can still clean up working files using the job ID pattern
+                    $metadata = ['fileGuid' => null, 'jobName' => 'Receipt Processing'];
+                } else {
+                    // If no metadata exists, the files were likely already cleaned up
+                    // This can happen if DeleteWorkingFiles runs multiple times due to race conditions
+                    Log::info('No metadata found - files likely already cleaned up', [
+                        'job_id' => $this->jobID,
+                        'task_id' => $this->uuid,
+                    ]);
+
+                    // Still do a safe cleanup of any old temporary files
+                    $this->performFallbackCleanup();
+
+                    return;
+                }
             }
 
             $fileGuid = $metadata['fileGuid'];
@@ -38,22 +58,53 @@ class DeleteWorkingFiles extends BaseJob
 
             $this->updateProgress(25);
 
-            $fileExtensions = ['.jpg', '.pdf'];
             $deletedCount = 0;
 
-            foreach ($fileExtensions as $extension) {
-                $filePath = 'uploads/'.$fileGuid.$extension;
+            if ($fileGuid) {
+                // Standard cleanup with known GUID
+                $fileExtensions = ['.jpg', '.pdf'];
 
-                if (Storage::disk('local')->exists($filePath)) {
-                    Storage::disk('local')->delete($filePath);
-                    $deletedCount++;
+                foreach ($fileExtensions as $extension) {
+                    $filePath = 'uploads/'.$fileGuid.$extension;
 
-                    Log::debug('Working file deleted', [
-                        'job_id' => $this->jobID,
-                        'file_path' => $filePath,
-                        'file_guid' => $fileGuid,
-                    ]);
+                    if (Storage::disk('local')->exists($filePath)) {
+                        Storage::disk('local')->delete($filePath);
+                        $deletedCount++;
+
+                        Log::debug('Working file deleted', [
+                            'job_id' => $this->jobID,
+                            'file_path' => $filePath,
+                            'file_guid' => $fileGuid,
+                        ]);
+                    }
                 }
+            } else {
+                // Fallback: Clean up any working files that might be related to this job
+                // This is less precise but ensures cleanup happens
+                $uploadFiles = Storage::disk('local')->files('uploads');
+                $now = time();
+
+                foreach ($uploadFiles as $file) {
+                    $fileTime = Storage::disk('local')->lastModified($file);
+
+                    // Clean up files older than 1 hour (safety margin for any processing)
+                    if ($now - $fileTime > 3600 &&
+                        (str_ends_with($file, '.jpg') || str_ends_with($file, '.pdf'))) {
+                        Storage::disk('local')->delete($file);
+                        $deletedCount++;
+
+                        Log::debug('Old working file cleaned up', [
+                            'job_id' => $this->jobID,
+                            'file_path' => $file,
+                            'age_hours' => round(($now - $fileTime) / 3600, 2),
+                        ]);
+                    }
+                }
+
+                Log::info('Fallback cleanup completed', [
+                    'job_id' => $this->jobID,
+                    'files_cleaned' => $deletedCount,
+                ]);
             }
 
             $this->updateProgress(75);
@@ -78,5 +129,45 @@ class DeleteWorkingFiles extends BaseJob
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Perform safe fallback cleanup when no metadata exists
+     */
+    protected function performFallbackCleanup(): void
+    {
+        Log::info('Performing fallback cleanup of old working files', [
+            'job_id' => $this->jobID,
+        ]);
+
+        $deletedCount = 0;
+        $uploadFiles = Storage::disk('local')->files('uploads');
+        $now = time();
+
+        foreach ($uploadFiles as $file) {
+            $fileTime = Storage::disk('local')->lastModified($file);
+
+            // Clean up files older than 1 hour (safety margin)
+            if ($now - $fileTime > 3600 &&
+                (str_ends_with($file, '.jpg') || str_ends_with($file, '.JPG') || str_ends_with($file, '.pdf'))) {
+                Storage::disk('local')->delete($file);
+                $deletedCount++;
+
+                Log::debug('Old working file cleaned up in fallback', [
+                    'job_id' => $this->jobID,
+                    'file_path' => $file,
+                    'age_hours' => round(($now - $fileTime) / 3600, 2),
+                ]);
+            }
+        }
+
+        Log::info('Fallback cleanup completed', [
+            'job_id' => $this->jobID,
+            'files_cleaned' => $deletedCount,
+        ]);
+
+        // Clean up any remaining cache entries
+        Cache::forget("job.{$this->jobID}.fileMetaData");
+        Cache::forget("job.{$this->jobID}.receiptMetaData");
     }
 }

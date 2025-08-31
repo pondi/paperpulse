@@ -387,13 +387,13 @@ class DocumentController extends Controller
         if ($fileType === 'document') {
             $request->validate([
                 'files' => 'required',
-                'files.*' => 'required|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,csv|max:51200', // 50MB
+                'files.*' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif|max:10240', // 10MB - Textract supported formats only
                 'file_type' => 'required|in:receipt,document',
             ]);
         } else {
             $request->validate([
                 'files' => 'required',
-                'files.*' => 'required|file|mimes:jpeg,png,jpg,gif,pdf|max:10240', // 10MB
+                'files.*' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif|max:10240', // 10MB - Textract supported formats only
                 'file_type' => 'required|in:receipt,document',
             ]);
         }
@@ -429,6 +429,17 @@ class DocumentController extends Controller
                     'size' => $uploadedFile->getSize(),
                     'mime' => $uploadedFile->getMimeType(),
                 ]);
+
+                // Additional file validation before processing
+                $fileValidation = $this->validateUploadedFile($uploadedFile);
+                if (! $fileValidation['valid']) {
+                    Log::error('(DocumentController) [store] - File validation failed', [
+                        'filename' => $uploadedFile->getClientOriginalName(),
+                        'error' => $fileValidation['error'],
+                    ]);
+
+                    return back()->with('error', 'File validation failed for "'.$uploadedFile->getClientOriginalName().'": '.$fileValidation['error']);
+                }
 
                 // Process the upload based on file type
                 $result = $documentService->processUpload($uploadedFile, $fileType);
@@ -543,5 +554,75 @@ class DocumentController extends Controller
 
             return response()->json(['error' => 'Error generating secure URL'], 500);
         }
+    }
+
+    /**
+     * Validate an uploaded file for OCR processing
+     */
+    protected function validateUploadedFile($uploadedFile): array
+    {
+        // Check file size (10MB for Textract)
+        $maxSize = 10 * 1024 * 1024; // 10MB in bytes
+        if ($uploadedFile->getSize() > $maxSize) {
+            return ['valid' => false, 'error' => 'File size exceeds 10MB limit'];
+        }
+
+        if ($uploadedFile->getSize() === 0) {
+            return ['valid' => false, 'error' => 'File is empty'];
+        }
+
+        // Check file extension
+        $extension = strtolower($uploadedFile->getClientOriginalExtension());
+        $supportedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'tiff', 'tif'];
+
+        if (! in_array($extension, $supportedExtensions)) {
+            return [
+                'valid' => false,
+                'error' => "Unsupported file format '{$extension}'. Supported formats: ".implode(', ', $supportedExtensions),
+            ];
+        }
+
+        // Validate MIME type to prevent files with wrong extensions
+        $mimeType = $uploadedFile->getMimeType();
+        $expectedMimeTypes = [
+            'pdf' => ['application/pdf'],
+            'png' => ['image/png'],
+            'jpg' => ['image/jpeg', 'image/pjpeg'],
+            'jpeg' => ['image/jpeg', 'image/pjpeg'],
+            'tiff' => ['image/tiff'],
+            'tif' => ['image/tiff'],
+        ];
+
+        if (isset($expectedMimeTypes[$extension]) && ! in_array($mimeType, $expectedMimeTypes[$extension])) {
+            return [
+                'valid' => false,
+                'error' => "File MIME type '{$mimeType}' doesn't match extension '{$extension}'. File may be corrupted or have wrong extension.",
+            ];
+        }
+
+        // Try to get temporary file path for deeper validation
+        $tempPath = $uploadedFile->getPathname();
+
+        // Basic file integrity check
+        if ($extension === 'pdf') {
+            // Check PDF header
+            $handle = fopen($tempPath, 'rb');
+            if ($handle) {
+                $header = fread($handle, 5);
+                fclose($handle);
+
+                if (substr($header, 0, 4) !== '%PDF') {
+                    return ['valid' => false, 'error' => 'Invalid PDF file - missing PDF header'];
+                }
+            }
+        } elseif (in_array($extension, ['png', 'jpg', 'jpeg', 'tiff', 'tif'])) {
+            // Try to get image info to validate image files
+            $imageInfo = @getimagesize($tempPath);
+            if ($imageInfo === false) {
+                return ['valid' => false, 'error' => 'Invalid or corrupted image file'];
+            }
+        }
+
+        return ['valid' => true, 'error' => null];
     }
 }

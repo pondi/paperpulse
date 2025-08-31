@@ -1,6 +1,8 @@
 <?php
 
 use App\Jobs\CleanupPulseDavFiles;
+use App\Jobs\CleanupRetainedFiles;
+use App\Jobs\SendWeeklySummary;
 use App\Jobs\SyncPulseDavFiles;
 use App\Jobs\SyncPulseDavFilesRealtime;
 use Illuminate\Foundation\Inspiring;
@@ -24,4 +26,14 @@ Schedule::job(new SyncPulseDavFilesRealtime)->everyFiveMinutes()
 // Schedule PulseDav cleanup daily at 2am
 Schedule::job(new CleanupPulseDavFiles(30))->dailyAt('02:00')
     ->name('cleanup-pulsedav-files')
+    ->withoutOverlapping();
+
+// Schedule user file retention cleanup daily at 3am
+Schedule::job(new CleanupRetainedFiles)->dailyAt('03:00')
+    ->name('cleanup-retained-files')
+    ->withoutOverlapping();
+
+// Schedule weekly summary emails daily at 9am (will check if it's the right day for each user)
+Schedule::job(new SendWeeklySummary)->dailyAt('09:00')
+    ->name('send-weekly-summaries')
     ->withoutOverlapping();

@@ -22,7 +22,7 @@ class SyncPulseDavFilesRealtime implements ShouldQueue
     public function handle(PulseDavService $pulseDavService)
     {
         // Only sync for users who have enabled real-time sync
-        $users = User::whereHas('preference', function ($query) {
+        $users = User::whereHas('preferences', function ($query) {
             $query->where('pulsedav_realtime_sync', true);
         })->get();
 
@@ -43,6 +43,22 @@ class SyncPulseDavFilesRealtime implements ShouldQueue
                         'user_id' => $user->id,
                         'synced_count' => $synced,
                     ]);
+
+                    // Auto-process scanner uploads if user preference is enabled
+                    if ($user->preference('auto_process_scanner_uploads', false)) {
+                        $unprocessedFiles = $user->pulseDavFiles()
+                            ->where('status', 'pending')
+                            ->get();
+
+                        foreach ($unprocessedFiles as $file) {
+                            ProcessPulseDavFile::dispatch($file);
+                        }
+
+                        Log::info('Auto-processing queued for real-time scanner files', [
+                            'user_id' => $user->id,
+                            'files_queued' => $unprocessedFiles->count(),
+                        ]);
+                    }
 
                     // Notify user immediately
                     if ($user->preference('notify_scanner_imports')) {

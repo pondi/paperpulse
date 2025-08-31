@@ -44,8 +44,16 @@ class PreferencesController extends Controller
             'default_category_id' => 'nullable|exists:categories,id',
 
             // Notification preferences
-            'email_processing_complete' => 'boolean',
-            'email_processing_failed' => 'boolean',
+            'notify_processing_complete' => 'boolean',
+            'notify_processing_failed' => 'boolean',
+            'notify_bulk_complete' => 'boolean',
+            'notify_scanner_import' => 'boolean',
+            'notify_weekly_summary_ready' => 'boolean',
+            'email_notify_processing_complete' => 'boolean',
+            'email_notify_processing_failed' => 'boolean',
+            'email_notify_bulk_complete' => 'boolean',
+            'email_notify_scanner_import' => 'boolean',
+            'email_notify_weekly_summary' => 'boolean',
             'email_weekly_summary' => 'boolean',
             'weekly_summary_day' => 'required|string|in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
 
@@ -58,6 +66,7 @@ class PreferencesController extends Controller
             'auto_process_scanner_uploads' => 'boolean',
             'delete_after_processing' => 'boolean',
             'file_retention_days' => 'required|integer|min:1|max:365',
+            'pulsedav_realtime_sync' => 'boolean',
         ]);
 
         $user = auth()->user();

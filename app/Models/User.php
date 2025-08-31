@@ -101,7 +101,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Alias for getPreference to match usage in jobs and notifications
+     * Get user preference value with fallback to default (alias for getPreference)
      */
     public function preference($key, $default = null)
     {

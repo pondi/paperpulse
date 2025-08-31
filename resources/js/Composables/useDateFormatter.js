@@ -7,7 +7,7 @@ export function useDateFormatter() {
         if (!date) return '';
         
         const user = page.props.auth?.user;
-        const timezone = user?.timezone || 'UTC';
+        const timezone = user?.preferences?.timezone || user?.timezone || 'UTC';
         const dateFormat = user?.preferences?.date_format || 'Y-m-d';
         
         // Convert date string to Date object

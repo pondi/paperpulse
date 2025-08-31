@@ -4,21 +4,11 @@ namespace App\Jobs;
 
 use App\Models\Merchant;
 use App\Models\Receipt;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use OpenAI\Laravel\Facades\OpenAI;
 
-class MatchMerchant implements ShouldQueue
+class MatchMerchant extends BaseJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    protected $jobID;
-
     protected $fileId;
 
     protected $receiptId;
@@ -29,55 +19,63 @@ class MatchMerchant implements ShouldQueue
 
     protected $merchantVatNumber;
 
-    protected $jobName;
-
     public $timeout = 3600;
 
-    /**
-     * The number of times the job may be attempted.
-     *
-     * @var int
-     */
     public $tries = 5;
 
-    /**
-     * The number of seconds to wait before retrying the job.
-     *
-     * @var int
-     */
     public $backoff = 10;
 
-    public function __construct($jobID)
+    public function __construct(string $jobID)
     {
-        $this->jobID = $jobID;
-
+        parent::__construct($jobID);
+        $this->jobName = 'Match Merchant';
     }
 
-    public function handle()
+    /**
+     * Execute the job's logic.
+     */
+    protected function handleJob(): void
     {
-        $this->fetchDataFromCache();
-        $merchants = $this->fetchAllMerchants();
-        $bestMatch = $this->getBestMatchFromOpenAI($merchants);
+        try {
+            $this->fetchDataFromCache();
+            $this->updateProgress(25);
 
-        if (! $bestMatch || ! isset($bestMatch['name'])) {
-            $this->createMerchant();
+            $merchants = $this->fetchAllMerchants();
+            $this->updateProgress(50);
 
-            return;
+            $bestMatch = $this->getBestMatchFromAI($merchants);
+            $this->updateProgress(75);
+
+            if (! $bestMatch || ! isset($bestMatch['name'])) {
+                $this->createMerchant();
+                $this->updateProgress(100);
+
+                return;
+            }
+
+            $matchedMerchantName = $bestMatch['name'];
+            $merchantIds = array_column($merchants, 'id', 'name');
+
+            if (! isset($merchantIds[$matchedMerchantName])) {
+                $this->createMerchant();
+                $this->updateProgress(100);
+
+                return;
+            }
+
+            $matchedMerchantId = $merchantIds[$matchedMerchantName];
+            $this->updateReceipt($matchedMerchantId);
+            $this->updateMerchant($matchedMerchantId);
+            $this->updateProgress(100);
+
+        } catch (\Exception $e) {
+            Log::error('Merchant matching failed', [
+                'job_id' => $this->jobID,
+                'task_id' => $this->uuid,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
         }
-
-        $matchedMerchantName = $bestMatch['name'];
-        $merchantIds = array_column($merchants, 'id', 'name');
-
-        if (! isset($merchantIds[$matchedMerchantName])) {
-            $this->createMerchant();
-
-            return;
-        }
-
-        $matchedMerchantId = $merchantIds[$matchedMerchantName];
-        $this->updateReceipt($matchedMerchantId);
-        $this->updateMerchant($matchedMerchantId);
-
     }
 
     private function fetchDataFromCache()
@@ -143,35 +141,75 @@ class MatchMerchant implements ShouldQueue
         })->toArray();
     }
 
-    private function getBestMatchFromOpenAI($merchants)
+    private function getBestMatchFromAI($merchants)
     {
-        $response = OpenAI::completions()->create([
-            'model' => 'gpt-3.5-turbo-instruct',
-            'prompt' => 'We have a list of merchant names: '.json_encode($merchants).'. Find the closest match to the input, but if you do not finde a close match then return an emtpy string. It needs to be really close. Here is the merchant you need to find in the list: '.$this->merchantName.
-                        'You have to respond with a JSON object with the merchant name and id. If the merchant name is not found, respond with an empty string. Reply ONLY with JSON object or empty string and nothing else.',
-            'max_tokens' => 500,
-        ]);
+        try {
+            // Use simple string matching for merchant matching since AI service doesn't have a completion method
+            $bestMatch = $this->findBestMerchantMatch($merchants, $this->merchantName);
 
-        Log::debug("(MatchMerchant) [{$this->jobName}] - OpenAI response received (receipt: {$this->receiptId})", [
-            'response' => $response->toArray(),
-        ]);
+            Log::debug("(MatchMerchant) [{$this->jobName}] - Merchant match found (receipt: {$this->receiptId})", [
+                'merchant_name' => $this->merchantName,
+                'match' => $bestMatch,
+            ]);
 
-        $text = trim($response['choices'][0]['text']);
+            return $bestMatch;
 
-        // If response is empty or just whitespace, return null
-        if (empty($text)) {
+        } catch (\Exception $e) {
+            Log::error("(MatchMerchant) [{$this->jobName}] - Merchant matching failed", [
+                'merchant_name' => $this->merchantName,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Find best merchant match using string similarity
+     */
+    private function findBestMerchantMatch($merchants, $targetName)
+    {
+        if (empty($merchants) || empty($targetName)) {
             return null;
         }
 
-        // Try to decode JSON response
-        $decoded = json_decode(stripslashes($text), true);
+        $bestMatch = null;
+        $bestScore = 0;
+        $threshold = 0.8; // 80% similarity required
 
-        // If JSON decode failed or result is empty, return null
-        if ($decoded === null || empty($decoded)) {
-            return null;
+        foreach ($merchants as $merchant) {
+            // Calculate similarity using levenshtein distance
+            $name = strtolower(trim($merchant['name']));
+            $target = strtolower(trim($targetName));
+
+            // Exact match
+            if ($name === $target) {
+                return $merchant;
+            }
+
+            // Substring match
+            if (str_contains($name, $target) || str_contains($target, $name)) {
+                $score = max(strlen($target) / strlen($name), strlen($name) / strlen($target));
+                if ($score > $bestScore && $score >= $threshold) {
+                    $bestScore = $score;
+                    $bestMatch = $merchant;
+                }
+            }
+
+            // Levenshtein similarity
+            $maxLen = max(strlen($name), strlen($target));
+            if ($maxLen > 0) {
+                $distance = levenshtein($name, $target);
+                $score = 1 - ($distance / $maxLen);
+
+                if ($score > $bestScore && $score >= $threshold) {
+                    $bestScore = $score;
+                    $bestMatch = $merchant;
+                }
+            }
         }
 
-        return $decoded;
+        return $bestMatch;
     }
 
     private function updateReceipt($merchantId)

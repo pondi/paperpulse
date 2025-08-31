@@ -287,23 +287,21 @@ class DiagnoseFileProcessing extends Command
             
             $this->line('Processing upload...');
             $result = $fileProcessingService->processUpload(
-                [$file],
-                $user->id,
-                'receipt'
+                $file,
+                'receipt',
+                $user->id
             );
 
             $this->info('✅ Upload successful!');
-            $this->line("Job ID: {$result['job_id']}");
-            
-            foreach ($result['files'] as $fileInfo) {
-                $this->line("File ID: {$fileInfo['id']} - {$fileInfo['name']}");
-            }
+            $this->line("Job ID: {$result['jobId']}");
+            $this->line("File ID: {$result['fileId']}");
+            $this->line("File GUID: {$result['fileGuid']}");
 
             // Step 2: Check cache data
             $this->newLine();
             $this->line('🔍 Checking cache data...');
             
-            $cacheKey = "job.{$result['job_id']}.fileMetaData";
+            $cacheKey = "job.{$result['jobId']}.fileMetaData";
             $cacheData = Cache::get($cacheKey);
             
             if ($cacheData) {
@@ -318,7 +316,7 @@ class DiagnoseFileProcessing extends Command
             $this->newLine();
             $this->line('🔍 Checking database record...');
             
-            $fileRecord = File::find($result['files'][0]['id']);
+            $fileRecord = File::find($result['fileId']);
             if ($fileRecord) {
                 $this->info('✅ File record found');
                 $this->table(
@@ -339,7 +337,7 @@ class DiagnoseFileProcessing extends Command
             $this->newLine();
             $this->line('🔍 Checking job queue...');
             
-            $jobs = \DB::table('jobs')->where('payload', 'like', "%{$result['job_id']}%")->get();
+            $jobs = \DB::table('jobs')->where('payload', 'like', "%{$result['jobId']}%")->get();
             
             if ($jobs->count() > 0) {
                 $this->info("✅ Found {$jobs->count()} jobs in queue");
@@ -359,7 +357,9 @@ class DiagnoseFileProcessing extends Command
             $this->newLine();
             $this->line('🔍 Checking job history...');
             
-            $histories = JobHistory::where('job_id', $result['job_id'])->get();
+            $histories = JobHistory::where('uuid', $result['jobId'])
+                ->orWhere('parent_uuid', $result['jobId'])
+                ->get();
             
             if ($histories->count() > 0) {
                 $this->info("✅ Found {$histories->count()} job history records");
@@ -367,9 +367,9 @@ class DiagnoseFileProcessing extends Command
                     ['Job Name', 'Status', 'Error'],
                     $histories->map(function ($h) {
                         return [
-                            $h->job_name,
+                            $h->name,
                             $h->status,
-                            $h->error ? substr($h->error, 0, 50) . '...' : '-'
+                            $h->exception ? substr($h->exception, 0, 50) . '...' : '-'
                         ];
                     })->toArray()
                 );

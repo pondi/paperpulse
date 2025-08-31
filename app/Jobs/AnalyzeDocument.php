@@ -2,52 +2,68 @@
 
 namespace App\Jobs;
 
-use App\Models\Document;
 use App\Models\Category;
+use App\Models\Document;
+use App\Models\File;
 use App\Models\Tag;
 use App\Services\DocumentAnalysisService;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
-class AnalyzeDocument extends BaseJob implements ShouldQueue
+class AnalyzeDocument extends BaseJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    public $timeout = 3600;
+
+    public $tries = 3;
+
+    public $backoff = 30;
 
     /**
-     * Execute the job.
+     * Create a new job instance.
      */
-    public function handle(DocumentAnalysisService $analysisService): void
+    public function __construct(string $jobID)
+    {
+        parent::__construct($jobID);
+        $this->jobName = 'Analyze Document';
+    }
+
+    /**
+     * Execute the job's logic.
+     */
+    protected function handleJob(): void
     {
         try {
-            $startTime = microtime(true);
-            
-            // Find the document associated with this file
-            $document = Document::where('file_id', $this->file->id)->first();
-            
-            if (!$document) {
-                Log::error('Document not found for file', [
-                    'file_id' => $this->file->id,
-                ]);
-                $this->updateStatus('failed', 'Document not found');
-                return;
+            $metadata = $this->getMetadata();
+            if (! $metadata) {
+                throw new \Exception('No metadata found for job');
             }
 
-            $this->updateStatus('processing', 'Analyzing document with AI');
+            $fileId = $metadata['fileId'];
+            $this->updateProgress(10);
+
+            Log::info('Analyzing document', [
+                'job_id' => $this->jobID,
+                'file_id' => $fileId,
+            ]);
+
+            // Find the document associated with this file
+            $document = Document::where('file_id', $fileId)->first();
+
+            if (! $document) {
+                throw new \Exception("Document not found for file ID: {$fileId}");
+            }
+
+            $this->updateProgress(25);
+
+            // Get document analysis service
+            $analysisService = app(DocumentAnalysisService::class);
 
             // Analyze the document using AI
             $analysis = $analysisService->analyze($document);
+            $this->updateProgress(50);
 
-            if (!$analysis) {
-                Log::error('Document analysis failed', [
-                    'document_id' => $document->id,
-                ]);
-                $this->updateStatus('failed', 'AI analysis failed');
-                return;
+            if (! $analysis) {
+                throw new \Exception('Document analysis failed - no response from AI service');
             }
 
             DB::transaction(function () use ($document, $analysis) {
@@ -64,7 +80,7 @@ class AnalyzeDocument extends BaseJob implements ShouldQueue
                 ]);
 
                 // Handle category suggestion
-                if (!empty($analysis['suggested_category'])) {
+                if (! empty($analysis['suggested_category'])) {
                     $category = $this->findOrCreateCategory($analysis['suggested_category'], $document->user_id);
                     if ($category) {
                         $document->update(['category_id' => $category->id]);
@@ -72,7 +88,7 @@ class AnalyzeDocument extends BaseJob implements ShouldQueue
                 }
 
                 // Handle tags
-                if (!empty($analysis['tags']) && is_array($analysis['tags'])) {
+                if (! empty($analysis['tags']) && is_array($analysis['tags'])) {
                     $tagIds = [];
                     foreach ($analysis['tags'] as $tagName) {
                         $tag = $this->findOrCreateTag($tagName, $document->user_id);
@@ -80,40 +96,40 @@ class AnalyzeDocument extends BaseJob implements ShouldQueue
                             $tagIds[] = $tag->id;
                         }
                     }
-                    
+
                     // Sync tags with the document
                     $document->tags()->sync($tagIds);
                 }
 
                 // Handle entities extraction
-                if (!empty($analysis['entities'])) {
+                if (! empty($analysis['entities'])) {
                     $metadata = $document->metadata ?? [];
                     $metadata['entities'] = $analysis['entities'];
                     $document->update(['metadata' => $metadata]);
                 }
             });
 
+            $this->updateProgress(90);
+
             // Log successful analysis
-            $processingTime = round(microtime(true) - $startTime, 2);
             Log::info('Document analysis completed', [
+                'job_id' => $this->jobID,
                 'document_id' => $document->id,
-                'file_id' => $this->file->id,
-                'processing_time' => $processingTime,
+                'file_id' => $fileId,
                 'title' => $document->title,
                 'tags_count' => count($analysis['tags'] ?? []),
             ]);
 
-            $this->updateStatus('completed', 'Document analysis completed successfully');
+            $this->updateProgress(100);
 
         } catch (\Exception $e) {
             Log::error('Document analysis job failed', [
-                'file_id' => $this->file->id,
+                'job_id' => $this->jobID,
+                'task_id' => $this->uuid,
+                'file_id' => $metadata['fileId'] ?? 'unknown',
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
-            $this->updateStatus('failed', 'Analysis failed: ' . $e->getMessage());
-            
             throw $e;
         }
     }
@@ -129,7 +145,7 @@ class AnalyzeDocument extends BaseJob implements ShouldQueue
                 ->where('name', 'like', $categoryName)
                 ->first();
 
-            if (!$category) {
+            if (! $category) {
                 // Create a new category with a default color
                 $colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
                 $color = $colors[array_rand($colors)];
@@ -154,6 +170,7 @@ class AnalyzeDocument extends BaseJob implements ShouldQueue
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -166,7 +183,7 @@ class AnalyzeDocument extends BaseJob implements ShouldQueue
         try {
             // Normalize tag name
             $tagName = trim(strtolower($tagName));
-            
+
             if (empty($tagName)) {
                 return null;
             }
@@ -176,7 +193,7 @@ class AnalyzeDocument extends BaseJob implements ShouldQueue
                 ->where('name', $tagName)
                 ->first();
 
-            if (!$tag) {
+            if (! $tag) {
                 // Create a new tag
                 $tag = Tag::create([
                     'user_id' => $userId,
@@ -197,6 +214,7 @@ class AnalyzeDocument extends BaseJob implements ShouldQueue
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -206,6 +224,9 @@ class AnalyzeDocument extends BaseJob implements ShouldQueue
      */
     public function tags(): array
     {
-        return ['document-analysis', 'file:' . $this->file->id];
+        $metadata = $this->getMetadata();
+        $fileId = $metadata['fileId'] ?? 'unknown';
+
+        return ['document-analysis', 'file:'.$fileId];
     }
 }

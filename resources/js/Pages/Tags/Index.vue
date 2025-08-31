@@ -132,7 +132,12 @@
 
                         <!-- Pagination -->
                         <div v-if="tags.last_page > 1" class="mt-6">
-                            <Pagination :links="tags.links" />
+                            <Pagination 
+                                :links="tags.links" 
+                                :from="tags.from" 
+                                :to="tags.to" 
+                                :total="tags.total" 
+                            />
                         </div>
                     </div>
                 </div>
@@ -262,7 +267,7 @@ import InputError from '@/Components/InputError.vue';
 import Modal from '@/Components/Modal.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
-import Pagination from '@/Pages/Jobs/Components/Pagination.vue';
+import Pagination from '@/Components/Pagination.vue';
 
 const props = defineProps({
     tags: Object,

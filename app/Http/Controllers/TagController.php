@@ -19,10 +19,27 @@ class TagController extends Controller
             $query->search($request->search);
         }
 
-        $tags = $query->withCount(['documents', 'receipts'])
-            ->orderByUsage($request->get('sort', 'desc'))
-            ->paginate(20)
-            ->withQueryString();
+        $sort = $request->get('sort', 'desc');
+
+        $tags = $query->withCount(['documents', 'receipts']);
+
+        switch ($sort) {
+            case 'name':
+                $tags->orderBy('name', 'asc');
+                break;
+            case '-name':
+                $tags->orderBy('name', 'desc');
+                break;
+            case 'asc':
+                $tags->orderByUsage('asc');
+                break;
+            case 'desc':
+            default:
+                $tags->orderByUsage('desc');
+                break;
+        }
+
+        $tags = $tags->paginate(20)->withQueryString();
 
         return Inertia::render('Tags/Index', [
             'tags' => $tags,
@@ -91,7 +108,7 @@ class TagController extends Controller
         // Detach tag from all documents and receipts
         $tag->documents()->detach();
         $tag->receipts()->detach();
-        
+
         $tag->delete();
 
         return back()->with('success', __('Tag deleted successfully.'));
@@ -118,13 +135,13 @@ class TagController extends Controller
 
         // Move all documents and receipts to the target tag
         foreach ($tag->documents as $document) {
-            if (!$targetTag->documents->contains($document->id)) {
+            if (! $targetTag->documents->contains($document->id)) {
                 $targetTag->documents()->attach($document->id, ['file_type' => 'document']);
             }
         }
 
         foreach ($tag->receipts as $receipt) {
-            if (!$targetTag->receipts->contains($receipt->id)) {
+            if (! $targetTag->receipts->contains($receipt->id)) {
                 $targetTag->receipts()->attach($receipt->id, ['file_type' => 'receipt']);
             }
         }

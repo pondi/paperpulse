@@ -17,7 +17,6 @@ use Illuminate\Support\Str;
  * @property string|null $color
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
- *
  * @property-read \App\Models\User $user
  * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Document[] $documents
  * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Receipt[] $receipts
@@ -87,7 +86,7 @@ class Tag extends Model
      */
     public function scopeSearch($query, $search)
     {
-        return $query->where('name', 'like', '%' . $search . '%');
+        return $query->where('name', 'like', '%'.$search.'%');
     }
 
     /**
@@ -99,8 +98,10 @@ class Tag extends Model
      */
     public function scopeOrderByUsage($query, $direction = 'desc')
     {
-        return $query->withCount(['documents', 'receipts'])
-            ->orderByRaw('(documents_count + receipts_count) ' . $direction);
+        $documentsSubquery = '(select count(*) from "documents" inner join "file_tags" on "documents"."id" = "file_tags"."file_id" where "tags"."id" = "file_tags"."tag_id" and "file_tags"."file_type" = \'document\' and "documents"."user_id" = '.auth()->id().')';
+        $receiptsSubquery = '(select count(*) from "receipts" inner join "file_tags" on "receipts"."id" = "file_tags"."file_id" where "tags"."id" = "file_tags"."tag_id" and "file_tags"."file_type" = \'receipt\' and "receipts"."user_id" = '.auth()->id().')';
+
+        return $query->orderByRaw('('.$documentsSubquery.' + '.$receiptsSubquery.') '.$direction);
     }
 
     /**
@@ -124,11 +125,11 @@ class Tag extends Model
                 $query->where('id', '!=', $excludeId);
             }
 
-            if (!$query->exists()) {
+            if (! $query->exists()) {
                 break;
             }
 
-            $slug = $originalSlug . '-' . $count;
+            $slug = $originalSlug.'-'.$count;
             $count++;
         }
 
@@ -149,7 +150,7 @@ class Tag extends Model
             ->where('name', $name)
             ->first();
 
-        if (!$tag) {
+        if (! $tag) {
             $tag = static::create([
                 'user_id' => $userId,
                 'name' => $name,

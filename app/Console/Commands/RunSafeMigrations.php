@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class RunSafeMigrations extends Command
 {
@@ -35,8 +34,9 @@ class RunSafeMigrations extends Command
      */
     public function handle()
     {
-        if ($this->getLaravel()->environment('production') && !$this->option('force')) {
+        if ($this->getLaravel()->environment('production') && ! $this->option('force')) {
             $this->error('Running migrations in production requires --force flag');
+
             return 1;
         }
 
@@ -45,15 +45,15 @@ class RunSafeMigrations extends Command
 
         try {
             // Try to acquire lock
-            $lockAcquired = Cache::add(self::LOCK_KEY, gethostname() . '-' . getmypid(), $lockTimeout);
+            $lockAcquired = Cache::add(self::LOCK_KEY, gethostname().'-'.getmypid(), $lockTimeout);
 
-            if (!$lockAcquired) {
+            if (! $lockAcquired) {
                 $this->warn('Another migration process is running. Waiting...');
-                
+
                 // Wait for lock to be released
                 $maxWait = 60; // 5 minutes
                 $waited = 0;
-                
+
                 while (Cache::has(self::LOCK_KEY) && $waited < $maxWait) {
                     sleep(5);
                     $waited++;
@@ -62,14 +62,16 @@ class RunSafeMigrations extends Command
 
                 if ($waited >= $maxWait) {
                     $this->error('Migration lock timeout. Consider checking for stuck migrations.');
+
                     return 1;
                 }
-                
+
                 // Try to acquire lock again
-                $lockAcquired = Cache::add(self::LOCK_KEY, gethostname() . '-' . getmypid(), $lockTimeout);
-                
-                if (!$lockAcquired) {
+                $lockAcquired = Cache::add(self::LOCK_KEY, gethostname().'-'.getmypid(), $lockTimeout);
+
+                if (! $lockAcquired) {
                     $this->error('Failed to acquire migration lock after waiting.');
+
                     return 1;
                 }
             }
@@ -81,7 +83,8 @@ class RunSafeMigrations extends Command
                 DB::connection()->getPdo();
                 $this->info('Database connection verified.');
             } catch (\Exception $e) {
-                $this->error('Database connection failed: ' . $e->getMessage());
+                $this->error('Database connection failed: '.$e->getMessage());
+
                 return 1;
             }
 
@@ -92,6 +95,7 @@ class RunSafeMigrations extends Command
 
             if ($exitCode !== 0) {
                 $this->error('Migrations failed.');
+
                 return $exitCode;
             }
 
@@ -118,18 +122,21 @@ class RunSafeMigrations extends Command
                 $exitCode = $this->call('db:seed', [
                     '--force' => $this->option('force'),
                 ]);
-                
+
                 if ($exitCode !== 0) {
                     $this->error('Seeders failed.');
+
                     return $exitCode;
                 }
             }
 
             $this->info('All migration tasks completed successfully.');
+
             return 0;
 
         } catch (\Exception $e) {
-            $this->error('Migration error: ' . $e->getMessage());
+            $this->error('Migration error: '.$e->getMessage());
+
             return 1;
         } finally {
             // Always release lock if we acquired it

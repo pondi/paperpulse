@@ -15,7 +15,9 @@ class ReceiptSharedNotification extends Notification implements ShouldQueue
     use Queueable;
 
     protected Receipt $receipt;
+
     protected User $sharedBy;
+
     protected FileShare $share;
 
     /**
@@ -41,22 +43,22 @@ class ReceiptSharedNotification extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
-        $receiptTitle = $this->receipt->merchant?->name ?? 'Receipt #' . $this->receipt->id;
-        
+        $receiptTitle = $this->receipt->merchant?->name ?? 'Receipt #'.$this->receipt->id;
+
         return (new MailMessage)
-            ->subject('Receipt Shared: ' . $receiptTitle)
-            ->greeting('Hello ' . $notifiable->name . '!')
-            ->line($this->sharedBy->name . ' has shared a receipt with you.')
-            ->line('Receipt: ' . $receiptTitle)
+            ->subject('Receipt Shared: '.$receiptTitle)
+            ->greeting('Hello '.$notifiable->name.'!')
+            ->line($this->sharedBy->name.' has shared a receipt with you.')
+            ->line('Receipt: '.$receiptTitle)
             ->when($this->receipt->total_amount, function ($message) {
-                return $message->line('Amount: ' . number_format($this->receipt->total_amount, 2) . ' ' . $this->receipt->currency);
+                return $message->line('Amount: '.number_format($this->receipt->total_amount, 2).' '.$this->receipt->currency);
             })
             ->when($this->receipt->receipt_date, function ($message) {
-                return $message->line('Date: ' . $this->receipt->receipt_date->format('Y-m-d'));
+                return $message->line('Date: '.$this->receipt->receipt_date->format('Y-m-d'));
             })
-            ->line('Permission: ' . ucfirst($this->share->permission))
+            ->line('Permission: '.ucfirst($this->share->permission))
             ->when($this->share->expires_at, function ($message) {
-                return $message->line('Expires: ' . $this->share->expires_at->format('Y-m-d H:i'));
+                return $message->line('Expires: '.$this->share->expires_at->format('Y-m-d H:i'));
             })
             ->action('View Receipt', route('receipts.show', $this->receipt))
             ->line('Thank you for using PaperPulse!');
@@ -70,7 +72,7 @@ class ReceiptSharedNotification extends Notification implements ShouldQueue
         return [
             'type' => 'receipt_shared',
             'receipt_id' => $this->receipt->id,
-            'receipt_title' => $this->receipt->merchant?->name ?? 'Receipt #' . $this->receipt->id,
+            'receipt_title' => $this->receipt->merchant?->name ?? 'Receipt #'.$this->receipt->id,
             'total_amount' => $this->receipt->total_amount,
             'currency' => $this->receipt->currency,
             'receipt_date' => $this->receipt->receipt_date?->toISOString(),

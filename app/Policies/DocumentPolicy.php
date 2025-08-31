@@ -9,12 +9,12 @@ use App\Services\SharingService;
 class DocumentPolicy
 {
     protected SharingService $sharingService;
-    
+
     public function __construct(SharingService $sharingService)
     {
         $this->sharingService = $sharingService;
     }
-    
+
     /**
      * Determine whether the user can view any documents.
      */
@@ -64,7 +64,7 @@ class DocumentPolicy
         // Only owner can share
         return $user->id === $document->user_id;
     }
-    
+
     /**
      * Determine whether the user can download the document.
      */

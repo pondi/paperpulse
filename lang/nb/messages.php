@@ -28,7 +28,7 @@ return [
     'recent_receipts' => 'Nylige kvitteringer',
     'merchant' => 'Butikk',
     'amount' => 'Beløp',
-    
+
     // Receipt related
     'receipt_details' => 'Kvitteringsdetaljer',
     'receipt_status' => 'Status',

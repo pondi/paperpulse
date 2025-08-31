@@ -6,17 +6,17 @@ use App\Models\Category;
 use App\Models\User;
 use App\Services\SharingService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class CategoryController extends Controller
 {
     protected $sharingService;
-    
+
     public function __construct(SharingService $sharingService)
     {
         $this->sharingService = $sharingService;
     }
+
     /**
      * Display a listing of the categories.
      */
@@ -170,48 +170,48 @@ class CategoryController extends Controller
 
         return redirect()->back()->with('success', 'Default categories created successfully.');
     }
-    
+
     /**
      * Share category with another user
      */
     public function share(Request $request, Category $category)
     {
         $this->authorize('share', $category);
-        
+
         $validated = $request->validate([
             'email' => 'required|email|exists:users,email',
             'permission' => 'required|in:view,edit',
         ]);
-        
+
         try {
             $user = User::where('email', $validated['email'])->first();
-            
+
             if ($user->id === auth()->id()) {
                 return back()->with('error', 'You cannot share with yourself');
             }
-            
+
             $share = $this->sharingService->shareCategory(
                 $category,
                 $validated['email'],
                 $validated['permission']
             );
-            
+
             return back()->with('success', 'Category shared successfully');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
     }
-    
+
     /**
      * Remove category share
      */
     public function unshare(Category $category, int $userId)
     {
         $this->authorize('share', $category);
-        
+
         try {
             $this->sharingService->unshareCategory($category, $userId);
-            
+
             return back()->with('success', 'Share removed successfully');
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to remove share');

@@ -14,8 +14,6 @@ import {
     PlusIcon,
     TrashIcon,
     PencilIcon,
-    ShareIcon,
-    UserPlusIcon,
     XMarkIcon
 } from '@heroicons/vue/24/outline';
 
@@ -24,8 +22,6 @@ interface Category {
     name: string;
     color: string;
     document_count: number;
-    shared_with_count: number;
-    is_shared: boolean;
     can_edit: boolean;
 }
 
@@ -38,7 +34,6 @@ const props = defineProps<Props>();
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const showDeleteModal = ref(false);
-const showShareModal = ref(false);
 const selectedCategory = ref<Category | null>(null);
 
 const createForm = useForm({
@@ -52,10 +47,6 @@ const editForm = useForm({
     color: '',
 });
 
-const shareForm = useForm({
-    email: '',
-    permission: 'view' as 'view' | 'edit',
-});
 
 const colors = [
     '#EF4444', // red
@@ -99,16 +90,6 @@ const deleteCategory = () => {
     });
 };
 
-const shareCategory = () => {
-    if (!selectedCategory.value) return;
-    
-    shareForm.post(route('categories.share', selectedCategory.value.id), {
-        onSuccess: () => {
-            shareForm.reset();
-            showShareModal.value = false;
-        }
-    });
-};
 
 const openEditModal = (category: Category) => {
     selectedCategory.value = category;
@@ -123,10 +104,6 @@ const openDeleteModal = (category: Category) => {
     showDeleteModal.value = true;
 };
 
-const openShareModal = (category: Category) => {
-    selectedCategory.value = category;
-    showShareModal.value = true;
-};
 </script>
 
 <template>
@@ -196,19 +173,6 @@ const openShareModal = (category: Category) => {
                                         </div>
                                     </div>
                                     
-                                    <div class="flex items-center space-x-1">
-                                        <ShareIcon 
-                                            v-if="category.shared_with_count > 0"
-                                            class="h-4 w-4 text-green-600 dark:text-green-400"
-                                            :title="`Shared with ${category.shared_with_count} user(s)`"
-                                        />
-                                        <span 
-                                            v-if="category.is_shared"
-                                            class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"
-                                        >
-                                            Shared
-                                        </span>
-                                    </div>
                                 </div>
 
                                 <div class="mt-4 flex items-center justify-between">
@@ -225,12 +189,6 @@ const openShareModal = (category: Category) => {
                                             class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                                         >
                                             <PencilIcon class="h-5 w-5" />
-                                        </button>
-                                        <button
-                                            @click="openShareModal(category)"
-                                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                                        >
-                                            <ShareIcon class="h-5 w-5" />
                                         </button>
                                         <button
                                             @click="openDeleteModal(category)"
@@ -346,51 +304,6 @@ const openShareModal = (category: Category) => {
             </div>
         </Modal>
 
-        <!-- Share Category Modal -->
-        <Modal :show="showShareModal" @close="showShareModal = false">
-            <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                    Share Category
-                </h2>
-                
-                <div class="space-y-4">
-                    <div>
-                        <InputLabel for="share-email" value="Email address" />
-                        <TextInput
-                            id="share-email"
-                            v-model="shareForm.email"
-                            type="email"
-                            class="mt-1 block w-full"
-                            placeholder="user@example.com"
-                        />
-                        <InputError :message="shareForm.errors.email" class="mt-2" />
-                    </div>
-
-                    <div>
-                        <InputLabel for="share-permission" value="Permission" />
-                        <select
-                            id="share-permission"
-                            v-model="shareForm.permission"
-                            class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
-                        >
-                            <option value="view">View only</option>
-                            <option value="edit">Can edit</option>
-                        </select>
-                        <InputError :message="shareForm.errors.permission" class="mt-2" />
-                    </div>
-                </div>
-
-                <div class="mt-6 flex justify-end space-x-3">
-                    <SecondaryButton @click="showShareModal = false">
-                        Cancel
-                    </SecondaryButton>
-                    <PrimaryButton @click="shareCategory" :disabled="shareForm.processing">
-                        <UserPlusIcon class="h-4 w-4 mr-2" />
-                        Share
-                    </PrimaryButton>
-                </div>
-            </div>
-        </Modal>
 
         <!-- Delete Confirmation Modal -->
         <Modal :show="showDeleteModal" @close="showDeleteModal = false">

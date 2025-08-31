@@ -28,7 +28,7 @@ return [
     'recent_receipts' => 'Recent Receipts',
     'merchant' => 'Merchant',
     'amount' => 'Amount',
-    
+
     // Receipt related
     'receipt_details' => 'Receipt Details',
     'receipt_status' => 'Receipt Status',

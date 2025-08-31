@@ -6,10 +6,10 @@ use App\Models\Document;
 use App\Models\File;
 use App\Services\StorageService;
 use App\Services\TextExtractionService;
+use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class ProcessDocument extends BaseJob
 {
@@ -29,7 +29,7 @@ class ProcessDocument extends BaseJob
     {
         try {
             $metadata = $this->getMetadata();
-            if (!$metadata) {
+            if (! $metadata) {
                 throw new Exception('No metadata found for job');
             }
 
@@ -50,16 +50,16 @@ class ProcessDocument extends BaseJob
 
             // Get the file record
             $file = File::find($metadata['fileId']);
-            if (!$file) {
+            if (! $file) {
                 throw new Exception("File not found: {$metadata['fileId']}");
             }
 
             // Extract text from document
             $extractedText = $metadata['extractedText'] ?? null;
-            
-            if (!$extractedText) {
+
+            if (! $extractedText) {
                 Log::debug("[ProcessDocument] [{$jobName}] Extracting text from document");
-                
+
                 $extractedText = $textExtractionService->extract(
                     $metadata['filePath'],
                     'document',
@@ -91,7 +91,7 @@ class ProcessDocument extends BaseJob
             DB::beginTransaction();
 
             try {
-                $document = new Document();
+                $document = new Document;
                 $document->file_id = $file->id;
                 $document->user_id = $file->user_id;
                 $document->title = $this->extractTitle($extractedText, $file->fileName);
@@ -124,7 +124,7 @@ class ProcessDocument extends BaseJob
                     'extractedText' => $extractedText,
                     'documentType' => $document->document_type,
                 ];
-                
+
                 Cache::put("job.{$this->jobID}.documentMetaData", $documentData, now()->addHours(1));
 
                 Log::debug("[ProcessDocument] [{$jobName}] Document created", [
@@ -191,11 +191,11 @@ class ProcessDocument extends BaseJob
         // Simple heuristic: First line or filename without extension
         $lines = explode("\n", trim($text));
         $firstLine = isset($lines[0]) ? trim($lines[0]) : '';
-        
+
         if (strlen($firstLine) > 10 && strlen($firstLine) < 200) {
             return $firstLine;
         }
-        
+
         // Fallback to filename
         return pathinfo($filename, PATHINFO_FILENAME);
     }
@@ -207,11 +207,11 @@ class ProcessDocument extends BaseJob
     {
         // Take first 500 characters as description
         $description = substr($text, 0, 500);
-        
+
         if (strlen($description) > 50) {
-            return $description . '...';
+            return $description.'...';
         }
-        
+
         return null;
     }
 
@@ -222,7 +222,7 @@ class ProcessDocument extends BaseJob
     {
         $lowerText = strtolower($text);
         $lowerFilename = strtolower($filename);
-        
+
         // Simple keyword-based detection
         if (str_contains($lowerText, 'invoice') || str_contains($lowerFilename, 'invoice')) {
             return 'invoice';
@@ -239,7 +239,7 @@ class ProcessDocument extends BaseJob
         if (str_contains($lowerText, 'letter') || str_contains($lowerFilename, 'letter')) {
             return 'letter';
         }
-        
+
         return 'other';
     }
 
@@ -251,23 +251,23 @@ class ProcessDocument extends BaseJob
         // Split into chunks for better search performance
         $chunks = [];
         $chunkSize = 1000; // Characters per chunk
-        
+
         $paragraphs = explode("\n\n", $text);
         $currentChunk = '';
-        
+
         foreach ($paragraphs as $paragraph) {
-            if (strlen($currentChunk . $paragraph) > $chunkSize && !empty($currentChunk)) {
+            if (strlen($currentChunk.$paragraph) > $chunkSize && ! empty($currentChunk)) {
                 $chunks[] = trim($currentChunk);
                 $currentChunk = $paragraph;
             } else {
-                $currentChunk .= "\n\n" . $paragraph;
+                $currentChunk .= "\n\n".$paragraph;
             }
         }
-        
-        if (!empty(trim($currentChunk))) {
+
+        if (! empty(trim($currentChunk))) {
             $chunks[] = trim($currentChunk);
         }
-        
+
         return $chunks;
     }
 
@@ -278,26 +278,26 @@ class ProcessDocument extends BaseJob
     {
         // Simple detection based on common words
         // In production, use a proper language detection library
-        
+
         $norwegianWords = ['og', 'er', 'som', 'på', 'det', 'med', 'for', 'av', 'til', 'ikke'];
         $englishWords = ['the', 'and', 'is', 'in', 'it', 'with', 'for', 'of', 'to', 'not'];
-        
+
         $lowerText = strtolower($text);
         $norwegianCount = 0;
         $englishCount = 0;
-        
+
         foreach ($norwegianWords as $word) {
-            $norwegianCount += substr_count($lowerText, ' ' . $word . ' ');
+            $norwegianCount += substr_count($lowerText, ' '.$word.' ');
         }
-        
+
         foreach ($englishWords as $word) {
-            $englishCount += substr_count($lowerText, ' ' . $word . ' ');
+            $englishCount += substr_count($lowerText, ' '.$word.' ');
         }
-        
+
         if ($norwegianCount > $englishCount * 2) {
             return 'nb'; // Norwegian Bokmål
         }
-        
+
         return 'en'; // Default to English
     }
 
@@ -313,7 +313,7 @@ class ProcessDocument extends BaseJob
             '/(\d{2})\.(\d{2})\.(\d{4})/' => 'd.m.Y',
             '/(\d{2})\/(\d{2})\/(\d{4})/' => 'd/m/Y',
         ];
-        
+
         foreach ($patterns as $pattern => $format) {
             if (preg_match($pattern, $text, $matches)) {
                 try {
@@ -323,7 +323,7 @@ class ProcessDocument extends BaseJob
                 }
             }
         }
-        
+
         return null;
     }
 
@@ -335,7 +335,7 @@ class ProcessDocument extends BaseJob
         // Rough estimate: 3000 characters per page
         $charCount = strlen($text);
         $pageCount = max(1, ceil($charCount / 3000));
-        
+
         return $pageCount;
     }
 }

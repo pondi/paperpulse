@@ -2,10 +2,10 @@
 
 namespace App\Jobs;
 
+use App\Models\Document;
 use App\Models\File;
 use App\Models\PulseDavFile;
 use App\Models\Receipt;
-use App\Models\Document;
 use Illuminate\Support\Facades\Log;
 
 class UpdatePulseDavFileStatus extends BaseJob
@@ -13,7 +13,7 @@ class UpdatePulseDavFileStatus extends BaseJob
     protected $file;
 
     protected $pulseDavFileId;
-    
+
     protected $type;
 
     /**

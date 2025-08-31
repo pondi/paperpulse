@@ -25,11 +25,11 @@ class ReceiptController extends Controller
         $user = auth()->user();
         $perPage = $user->preference('receipts_per_page', 20);
         $sortOption = $user->preference('default_sort', 'date_desc');
-        
+
         // Build query with sorting
         $query = Receipt::with(['merchant', 'file', 'lineItems', 'category', 'tags'])
             ->where('user_id', $user->id);
-            
+
         // Apply sorting based on preference
         switch ($sortOption) {
             case 'date_asc':
@@ -43,61 +43,61 @@ class ReceiptController extends Controller
                 break;
             case 'merchant_asc':
                 $query->leftJoin('merchants', 'receipts.merchant_id', '=', 'merchants.id')
-                      ->orderBy('merchants.name', 'asc')
-                      ->select('receipts.*');
+                    ->orderBy('merchants.name', 'asc')
+                    ->select('receipts.*');
                 break;
             case 'merchant_desc':
                 $query->leftJoin('merchants', 'receipts.merchant_id', '=', 'merchants.id')
-                      ->orderBy('merchants.name', 'desc')
-                      ->select('receipts.*');
+                    ->orderBy('merchants.name', 'desc')
+                    ->select('receipts.*');
                 break;
             case 'date_desc':
             default:
                 $query->orderBy('receipt_date', 'desc');
                 break;
         }
-        
+
         $receipts = $query->paginate($perPage);
-        
+
         // Transform the items in the paginator
         $receipts->getCollection()->transform(function ($receipt) {
-                return [
-                    'id' => $receipt->id,
-                    'merchant' => $receipt->merchant,
-                    'category' => $receipt->category,
-                    'category_id' => $receipt->category_id,
-                    'receipt_date' => $receipt->receipt_date,
-                    'tax_amount' => $receipt->tax_amount,
-                    'total_amount' => $receipt->total_amount,
-                    'currency' => $receipt->currency,
-                    'receipt_category' => $receipt->receipt_category,
-                    'receipt_description' => $receipt->receipt_description,
-                    'file' => $receipt->file ? [
-                        'id' => $receipt->file->id,
-                        'url' => route('receipts.showImage', $receipt->id),
-                        'pdfUrl' => $receipt->file->guid ? route('receipts.showPdf', $receipt->id) : null,
-                        'extension' => $receipt->file->fileExtension ?? 'jpg',
-                        'mime_type' => $receipt->file->mime_type,
-                    ] : null,
-                    'lineItems' => $receipt->lineItems ? $receipt->lineItems->map(function ($item) {
-                        return [
-                            'id' => $item->id,
-                            'description' => $item->text,
-                            'sku' => $item->sku,
-                            'quantity' => $item->qty,
-                            'unit_price' => $item->price,
-                            'total_amount' => $item->total,
-                        ];
-                    }) : [],
-                    'tags' => $receipt->tags ? $receipt->tags->map(function ($tag) {
-                        return [
-                            'id' => $tag->id,
-                            'name' => $tag->name,
-                            'color' => $tag->color,
-                        ];
-                    }) : [],
-                ];
-            });
+            return [
+                'id' => $receipt->id,
+                'merchant' => $receipt->merchant,
+                'category' => $receipt->category,
+                'category_id' => $receipt->category_id,
+                'receipt_date' => $receipt->receipt_date,
+                'tax_amount' => $receipt->tax_amount,
+                'total_amount' => $receipt->total_amount,
+                'currency' => $receipt->currency,
+                'receipt_category' => $receipt->receipt_category,
+                'receipt_description' => $receipt->receipt_description,
+                'file' => $receipt->file ? [
+                    'id' => $receipt->file->id,
+                    'url' => route('receipts.showImage', $receipt->id),
+                    'pdfUrl' => $receipt->file->guid ? route('receipts.showPdf', $receipt->id) : null,
+                    'extension' => $receipt->file->fileExtension ?? 'jpg',
+                    'mime_type' => $receipt->file->mime_type,
+                ] : null,
+                'lineItems' => $receipt->lineItems ? $receipt->lineItems->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'description' => $item->text,
+                        'sku' => $item->sku,
+                        'quantity' => $item->qty,
+                        'unit_price' => $item->price,
+                        'total_amount' => $item->total,
+                    ];
+                }) : [],
+                'tags' => $receipt->tags ? $receipt->tags->map(function ($tag) {
+                    return [
+                        'id' => $tag->id,
+                        'name' => $tag->name,
+                        'color' => $tag->color,
+                    ];
+                }) : [],
+            ];
+        });
 
         $categories = auth()->user()->categories()
             ->active()
@@ -197,7 +197,7 @@ class ReceiptController extends Controller
         // For now, just serve the original file format
         // TODO: Implement PDF conversion for non-PDF receipts
         $extension = $receipt->file->fileExtension ?? 'jpg';
-        
+
         // If it's already a PDF, serve it directly
         // Otherwise, we would need to convert it to PDF first
         if ($extension !== 'pdf') {
@@ -302,7 +302,7 @@ class ReceiptController extends Controller
 
         // Update receipt
         $receipt->update(array_diff_key($validated, ['tags' => '']));
-        
+
         // Sync tags if provided
         if (isset($validated['tags'])) {
             $receipt->tags()->sync($validated['tags']);
@@ -371,23 +371,23 @@ class ReceiptController extends Controller
     public function addTag(Request $request, Receipt $receipt)
     {
         $this->authorize('update', $receipt);
-        
+
         $validated = $request->validate([
             'name' => 'required|string|max:50',
         ]);
-        
+
         $tag = \App\Models\Tag::findOrCreateByName(
             $validated['name'],
             auth()->id()
         );
-        
-        if (!$receipt->tags->contains($tag->id)) {
+
+        if (! $receipt->tags->contains($tag->id)) {
             $receipt->tags()->attach($tag->id, ['file_type' => 'receipt']);
         }
-        
+
         return back()->with('success', 'Tag added successfully');
     }
-    
+
     /**
      * Remove tag from receipt
      */
@@ -395,68 +395,68 @@ class ReceiptController extends Controller
     {
         $this->authorize('update', $receipt);
         $this->authorize('view', $tag);
-        
+
         $receipt->tags()->detach($tag->id);
-        
+
         return back()->with('success', 'Tag removed successfully');
     }
-    
+
     /**
      * Get shares for a receipt (API)
      */
     public function getShares(Receipt $receipt)
     {
         $this->authorize('view', $receipt);
-        
+
         $shares = \App\Models\FileShare::where('file_id', $receipt->file_id)
             ->where('file_type', 'receipt')
             ->with('sharedWithUser:id,name,email')
             ->get();
-            
+
         return response()->json($shares);
     }
-    
+
     /**
      * Share receipt with another user
      */
     public function share(Request $request, Receipt $receipt)
     {
         $this->authorize('share', $receipt);
-        
+
         $validated = $request->validate([
             'email' => 'required|email|exists:users,email',
             'permission' => 'required|in:view,edit',
         ]);
-        
+
         $user = \App\Models\User::where('email', $validated['email'])->first();
-        
+
         if ($user->id === auth()->id()) {
             return back()->withErrors(['email' => 'You cannot share with yourself']);
         }
-        
+
         try {
             app(\App\Services\SharingService::class)->shareFile(
                 $receipt->file,
                 [$user->id],
                 $validated['permission']
             );
-            
+
             return back()->with('success', 'Receipt shared successfully');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
     }
-    
+
     /**
      * Remove receipt share
      */
     public function unshare(Receipt $receipt, int $userId)
     {
         $this->authorize('share', $receipt);
-        
+
         try {
             app(\App\Services\SharingService::class)->unshareFile($receipt->file, $userId);
-            
+
             return back()->with('success', 'Share removed successfully');
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to remove share');

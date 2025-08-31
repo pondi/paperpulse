@@ -27,23 +27,25 @@ class PromoteUserToAdmin extends Command
     public function handle()
     {
         $email = $this->argument('email');
-        
+
         $user = User::where('email', $email)->first();
-        
-        if (!$user) {
+
+        if (! $user) {
             $this->error("User with email {$email} not found.");
+
             return 1;
         }
-        
+
         if ($user->is_admin) {
             $this->info("User {$email} is already an administrator.");
+
             return 0;
         }
-        
+
         $user->update(['is_admin' => true]);
-        
+
         $this->info("User {$email} has been promoted to administrator.");
-        
+
         return 0;
     }
 }

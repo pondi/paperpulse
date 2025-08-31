@@ -72,7 +72,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
 
     // Document routes
     Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
-    Route::get('/documents/upload-debug', function() {
+    Route::get('/documents/upload-debug', function () {
         return Inertia::render('Documents/UploadDebug');
     })->name('documents.upload-debug');
     Route::get('/documents/upload', [DocumentController::class, 'upload'])->name('documents.upload');
@@ -83,7 +83,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::get('/documents/bulk/download', [DocumentController::class, 'downloadBulk'])->name('documents.download-bulk');
     Route::get('/documents/serve', [DocumentController::class, 'serve'])->name('documents.serve');
     Route::get('/documents/url', [DocumentController::class, 'getSecureUrl'])->name('documents.url');
-    
+
     // Dynamic document routes - must be after static routes
     Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
     Route::patch('/documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
@@ -149,13 +149,13 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::post('/process', [PulseDavController::class, 'process'])->name('process');
         Route::get('/files/{id}/status', [PulseDavController::class, 'status'])->name('status');
         Route::delete('/files/{id}', [PulseDavController::class, 'destroy'])->name('destroy');
-        
+
         // Folder support routes
         Route::get('/folders', [PulseDavController::class, 'folders'])->name('folders');
         Route::get('/folder-contents', [PulseDavController::class, 'folderContents'])->name('folder-contents');
         Route::post('/import', [PulseDavController::class, 'importSelections'])->name('import');
         Route::post('/folder-tags', [PulseDavController::class, 'updateFolderTags'])->name('folder-tags');
-        
+
         // Tag routes
         Route::get('/tags/search', [PulseDavController::class, 'searchTags'])->name('tags.search');
         Route::post('/tags', [PulseDavController::class, 'createTag'])->name('tags.create');
@@ -173,7 +173,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
 Route::get('/up', function () {
     $status = 'ok';
     $checks = [];
-    
+
     // Check database connection
     try {
         DB::connection()->getPdo();
@@ -182,7 +182,7 @@ Route::get('/up', function () {
         $status = 'error';
         $checks['database'] = false;
     }
-    
+
     // Check Redis connection
     try {
         Cache::store('redis')->get('health-check');
@@ -191,20 +191,20 @@ Route::get('/up', function () {
         $status = 'error';
         $checks['redis'] = false;
     }
-    
+
     // Check if migrations are up to date
     try {
         $pendingMigrations = collect(DB::select('SELECT migration FROM migrations'))
             ->pluck('migration')
             ->diff(collect(File::files(database_path('migrations')))
-                ->map(fn($file) => str_replace('.php', '', $file->getFilename()))
+                ->map(fn ($file) => str_replace('.php', '', $file->getFilename()))
             )
             ->isEmpty();
         $checks['migrations'] = $pendingMigrations;
     } catch (\Exception $e) {
         $checks['migrations'] = false;
     }
-    
+
     return response()->json([
         'status' => $status,
         'timestamp' => now()->toIso8601String(),

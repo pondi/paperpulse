@@ -2,23 +2,19 @@
 
 namespace App\Services;
 
-use App\Jobs\DeleteWorkingFiles;
-use App\Jobs\MatchMerchant;
-use App\Jobs\ProcessFile;
-use App\Jobs\ProcessReceipt;
 use App\Models\File;
-use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Str;
 
 class DocumentService
 {
     protected $disk;
+
     protected $isS3;
+
     protected FileProcessingService $fileProcessingService;
+
     protected StorageService $storageService;
 
     public function __construct(FileProcessingService $fileProcessingService, StorageService $storageService)
@@ -31,23 +27,24 @@ class DocumentService
 
     /**
      * Process an uploaded file
+     *
      * @deprecated Use FileProcessingService::processUpload() instead
      */
     public function processUpload($incomingFile, $fileType = 'receipt')
     {
         // Delegate to the new FileProcessingService
         $userId = auth()->id();
-        
-        if (!$userId) {
+
+        if (! $userId) {
             throw new \Exception('User not authenticated');
         }
-        
+
         $result = $this->fileProcessingService->processUpload(
             $incomingFile,
             $fileType,
             $userId
         );
-        
+
         return $result;
     }
 
@@ -92,10 +89,10 @@ class DocumentService
             $path = $this->getPath($guid, $type, $extension);
 
             if (! $this->disk->exists($path)) {
-                Log::error("(DocumentService) - Document not found for retrieval", [
+                Log::error('(DocumentService) - Document not found for retrieval', [
                     'guid' => $guid,
                     'type' => $type,
-                    'extension' => $extension
+                    'extension' => $extension,
                 ]);
 
                 return null;

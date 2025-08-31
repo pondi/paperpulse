@@ -115,13 +115,13 @@ class PulseDavFile extends Model
             'processed_at' => now(),
             'error_message' => null,
         ];
-        
+
         if ($type === 'receipt') {
             $updateData['receipt_id'] = $relatedId;
         } else {
             $updateData['document_id'] = $relatedId;
         }
-        
+
         $this->update($updateData);
     }
 
@@ -149,10 +149,10 @@ class PulseDavFile extends Model
      */
     public function getFolderTagsAttribute()
     {
-        if (!$this->folder_tag_ids) {
+        if (! $this->folder_tag_ids) {
             return collect();
         }
-        
+
         return Tag::whereIn('id', $this->folder_tag_ids)->get();
     }
 
@@ -162,12 +162,12 @@ class PulseDavFile extends Model
     public function getInheritedTagsAttribute()
     {
         $tags = collect();
-        
+
         // Add direct folder tags
         if ($this->folder_tag_ids) {
             $tags = $tags->concat(Tag::whereIn('id', $this->folder_tag_ids)->get());
         }
-        
+
         // Get parent folder tags
         if ($this->parent_folder && $this->folder_path) {
             $parentPath = dirname($this->folder_path);
@@ -176,13 +176,13 @@ class PulseDavFile extends Model
                     ->where('folder_path', $parentPath)
                     ->where('is_folder', true)
                     ->first();
-                    
+
                 if ($parent) {
                     $tags = $tags->concat($parent->inherited_tags);
                 }
             }
         }
-        
+
         return $tags->unique('id');
     }
 
@@ -195,7 +195,7 @@ class PulseDavFile extends Model
             // Root folder - items with no parent folder
             return $query->whereNull('parent_folder')->orWhere('parent_folder', '');
         }
-        
+
         return $query->where('parent_folder', $folderPath);
     }
 
@@ -231,10 +231,10 @@ class PulseDavFile extends Model
     {
         // Remove user prefix (e.g., "incoming/123/")
         $relativePath = str_replace($userPrefix, '', $s3Path);
-        
+
         // Remove trailing slash for folders
         $relativePath = rtrim($relativePath, '/');
-        
+
         // Get directory path
         $folderPath = dirname($relativePath);
         if ($folderPath === '.') {
@@ -245,14 +245,14 @@ class PulseDavFile extends Model
             $parentFolder = basename(dirname($folderPath)) !== '.' ? basename(dirname($folderPath)) : null;
             $depth = substr_count($folderPath, '/') + 1;
         }
-        
+
         // For folder entries, the folder path is the relative path itself
         if (substr($s3Path, -1) === '/') {
             $folderPath = $relativePath;
             $parentFolder = dirname($relativePath) !== '.' ? dirname($relativePath) : null;
             $depth = substr_count($relativePath, '/');
         }
-        
+
         return [
             'folder_path' => $folderPath,
             'parent_folder' => $parentFolder,

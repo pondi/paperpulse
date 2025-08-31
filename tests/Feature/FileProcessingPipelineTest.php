@@ -7,31 +7,20 @@ use App\Jobs\MatchMerchant;
 use App\Jobs\ProcessFile;
 use App\Jobs\ProcessReceipt;
 use App\Models\File;
-use App\Models\JobHistory;
-use App\Models\LineItem;
 use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Models\User;
 use App\Services\AIService;
-use App\Services\FileProcessingService;
 use App\Services\StorageService;
 use App\Services\TextExtractionService;
-use Aws\CommandInterface;
 use Aws\MockHandler;
-use Aws\Result;
-use Aws\S3\S3Client;
-use Aws\Textract\TextractClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
-use OpenAI\Client as OpenAIClient;
-use OpenAI\Responses\Chat\CreateResponse;
 use Tests\TestCase;
 
 class FileProcessingPipelineTest extends TestCase
@@ -39,7 +28,9 @@ class FileProcessingPipelineTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected MockHandler $s3MockHandler;
+
     protected MockHandler $textractMockHandler;
 
     protected function setUp(): void
@@ -48,22 +39,22 @@ class FileProcessingPipelineTest extends TestCase
 
         // Create test user
         $this->user = User::factory()->create();
-        
+
         // Configure test storage
         Storage::fake('local');
         Storage::fake('s3');
-        
+
         // Setup AWS mock handlers
-        $this->s3MockHandler = new MockHandler();
-        $this->textractMockHandler = new MockHandler();
-        
+        $this->s3MockHandler = new MockHandler;
+        $this->textractMockHandler = new MockHandler;
+
         // Configure queue for testing
         Queue::fake();
-        
+
         // Configure test environment
         Config::set('filesystems.disks.s3.bucket', 'test-storage-bucket');
-        Config::set('receipt-scanner.incoming_bucket', 'test-incoming-bucket');
-        Config::set('receipt-scanner.storage_bucket', 'test-storage-bucket');
+        Config::set('paperpulse.incoming_bucket', 'test-incoming-bucket');
+        Config::set('paperpulse.storage_bucket', 'test-storage-bucket');
     }
 
     protected function tearDown(): void
@@ -77,7 +68,7 @@ class FileProcessingPipelineTest extends TestCase
     {
         // Arrange
         $file = UploadedFile::fake()->image('receipt.jpg', 100, 200)->size(500);
-        
+
         // Mock S3 upload
         $this->mockS3Upload();
 
@@ -85,7 +76,7 @@ class FileProcessingPipelineTest extends TestCase
         $response = $this->actingAs($this->user)
             ->postJson('/documents', [
                 'files' => [$file],
-                'file_type' => 'receipt'
+                'file_type' => 'receipt',
             ]);
 
         // Assert
@@ -97,16 +88,16 @@ class FileProcessingPipelineTest extends TestCase
                 '*' => [
                     'id',
                     'name',
-                    'status'
-                ]
-            ]
+                    'status',
+                ],
+            ],
         ]);
 
         // Verify file record created
         $this->assertDatabaseHas('files', [
             'user_id' => $this->user->id,
             'original_name' => 'receipt.jpg',
-            'status' => 'pending'
+            'status' => 'pending',
         ]);
 
         // Verify job chain dispatched
@@ -123,12 +114,12 @@ class FileProcessingPipelineTest extends TestCase
             ProcessFile::class,
             ProcessReceipt::class,
             MatchMerchant::class,
-            DeleteWorkingFiles::class
+            DeleteWorkingFiles::class,
         ]);
 
         // Arrange
         $file = UploadedFile::fake()->image('receipt.jpg')->size(500);
-        
+
         // Mock external services
         $this->mockS3Upload();
         $this->mockS3Download();
@@ -140,7 +131,7 @@ class FileProcessingPipelineTest extends TestCase
         $response = $this->actingAs($this->user)
             ->postJson('/documents', [
                 'files' => [$file],
-                'file_type' => 'receipt'
+                'file_type' => 'receipt',
             ]);
 
         $jobId = $response->json('job_id');
@@ -148,7 +139,7 @@ class FileProcessingPipelineTest extends TestCase
         // Process the job chain
         $this->artisan('queue:work', [
             '--stop-when-empty' => true,
-            '--max-jobs' => 4
+            '--max-jobs' => 4,
         ]);
 
         // Assert
@@ -177,7 +168,7 @@ class FileProcessingPipelineTest extends TestCase
         // Check job history
         $this->assertDatabaseHas('job_histories', [
             'job_id' => $jobId,
-            'status' => 'completed'
+            'status' => 'completed',
         ]);
     }
 
@@ -188,7 +179,7 @@ class FileProcessingPipelineTest extends TestCase
 
         // Arrange
         $file = UploadedFile::fake()->create('receipt.pdf', 1000, 'application/pdf');
-        
+
         $this->mockS3Upload();
         $this->mockS3Download();
         $this->mockPdfConversion();
@@ -199,18 +190,18 @@ class FileProcessingPipelineTest extends TestCase
         $response = $this->actingAs($this->user)
             ->postJson('/documents', [
                 'files' => [$file],
-                'file_type' => 'receipt'
+                'file_type' => 'receipt',
             ]);
 
         $this->artisan('queue:work', [
             '--stop-when-empty' => true,
-            '--max-jobs' => 2
+            '--max-jobs' => 2,
         ]);
 
         // Assert
         $receipt = Receipt::where('user_id', $this->user->id)->first();
         $this->assertNotNull($receipt);
-        
+
         // Verify converted image was uploaded to S3
         $file = File::where('user_id', $this->user->id)->first();
         $this->assertStringContainsString('converted.jpg', $file->s3_paths['converted'] ?? '');
@@ -223,7 +214,7 @@ class FileProcessingPipelineTest extends TestCase
 
         // Arrange
         $file = UploadedFile::fake()->image('receipt.jpg')->size(500);
-        
+
         $this->mockS3Upload();
         $this->mockS3Download();
         $this->mockTextractFailure();
@@ -233,12 +224,12 @@ class FileProcessingPipelineTest extends TestCase
         $response = $this->actingAs($this->user)
             ->postJson('/documents', [
                 'files' => [$file],
-                'file_type' => 'receipt'
+                'file_type' => 'receipt',
             ]);
 
         $this->artisan('queue:work', [
             '--stop-when-empty' => true,
-            '--max-jobs' => 2
+            '--max-jobs' => 2,
         ]);
 
         // Assert - should still create receipt with fallback
@@ -254,7 +245,7 @@ class FileProcessingPipelineTest extends TestCase
 
         // Arrange
         $file = UploadedFile::fake()->image('receipt.jpg')->size(500);
-        
+
         $this->mockS3Upload();
         $this->mockS3Download();
         $this->mockTextractOCR();
@@ -264,7 +255,7 @@ class FileProcessingPipelineTest extends TestCase
         $response = $this->actingAs($this->user)
             ->postJson('/documents', [
                 'files' => [$file],
-                'file_type' => 'receipt'
+                'file_type' => 'receipt',
             ]);
 
         $jobId = $response->json('job_id');
@@ -272,14 +263,14 @@ class FileProcessingPipelineTest extends TestCase
         // Process jobs - ProcessReceipt should fail
         $this->artisan('queue:work', [
             '--stop-when-empty' => true,
-            '--max-jobs' => 2
+            '--max-jobs' => 2,
         ]);
 
         // Assert
         $this->assertDatabaseHas('job_histories', [
             'job_id' => $jobId,
             'job_name' => 'ProcessReceipt',
-            'status' => 'failed'
+            'status' => 'failed',
         ]);
 
         // File should still be in processing state
@@ -292,11 +283,11 @@ class FileProcessingPipelineTest extends TestCase
     {
         // Test invalid file type
         $file = UploadedFile::fake()->create('document.exe', 100);
-        
+
         $response = $this->actingAs($this->user)
             ->postJson('/documents', [
                 'files' => [$file],
-                'file_type' => 'receipt'
+                'file_type' => 'receipt',
             ]);
 
         $response->assertStatus(422);
@@ -304,11 +295,11 @@ class FileProcessingPipelineTest extends TestCase
 
         // Test oversized file
         $file = UploadedFile::fake()->image('receipt.jpg')->size(11000); // 11MB
-        
+
         $response = $this->actingAs($this->user)
             ->postJson('/documents', [
                 'files' => [$file],
-                'file_type' => 'receipt'
+                'file_type' => 'receipt',
             ]);
 
         $response->assertStatus(422);
@@ -322,25 +313,25 @@ class FileProcessingPipelineTest extends TestCase
         $files = [
             UploadedFile::fake()->image('receipt1.jpg')->size(500),
             UploadedFile::fake()->image('receipt2.jpg')->size(500),
-            UploadedFile::fake()->image('receipt3.jpg')->size(500)
+            UploadedFile::fake()->image('receipt3.jpg')->size(500),
         ];
-        
+
         $this->mockS3Upload(3);
 
         // Act
         $response = $this->actingAs($this->user)
             ->postJson('/documents', [
                 'files' => $files,
-                'file_type' => 'receipt'
+                'file_type' => 'receipt',
             ]);
 
         // Assert
         $response->assertOk();
         $this->assertCount(3, $response->json('files'));
-        
+
         // Verify 3 files created
         $this->assertEquals(3, File::where('user_id', $this->user->id)->count());
-        
+
         // Verify 3 jobs dispatched
         Queue::assertPushed(ProcessFile::class, 3);
     }
@@ -352,12 +343,12 @@ class FileProcessingPipelineTest extends TestCase
             ProcessFile::class,
             ProcessReceipt::class,
             MatchMerchant::class,
-            DeleteWorkingFiles::class
+            DeleteWorkingFiles::class,
         ]);
 
         // Arrange
         $file = UploadedFile::fake()->image('receipt.jpg')->size(500);
-        
+
         $this->mockS3Upload();
         $this->mockS3Download();
         $this->mockTextractOCR();
@@ -368,7 +359,7 @@ class FileProcessingPipelineTest extends TestCase
         $response = $this->actingAs($this->user)
             ->postJson('/documents', [
                 'files' => [$file],
-                'file_type' => 'receipt'
+                'file_type' => 'receipt',
             ]);
 
         $jobId = $response->json('job_id');
@@ -376,14 +367,14 @@ class FileProcessingPipelineTest extends TestCase
         // Process entire job chain
         $this->artisan('queue:work', [
             '--stop-when-empty' => true,
-            '--max-jobs' => 4
+            '--max-jobs' => 4,
         ]);
 
         // Assert
         // Cache should be cleared
         $this->assertNull(Cache::get("job.{$jobId}.fileMetaData"));
         $this->assertNull(Cache::get("job.{$jobId}.receiptMetaData"));
-        
+
         // Local files should be deleted
         $fileRecord = File::where('user_id', $this->user->id)->first();
         Storage::disk('local')->assertMissing("uploads/{$fileRecord->file_guid}");
@@ -394,20 +385,20 @@ class FileProcessingPipelineTest extends TestCase
     {
         // Arrange
         $otherUser = User::factory()->create();
-        
+
         // Create receipt for first user
         $file = UploadedFile::fake()->image('receipt.jpg')->size(500);
         $this->mockS3Upload();
-        
+
         $this->actingAs($this->user)
             ->postJson('/documents', [
                 'files' => [$file],
-                'file_type' => 'receipt'
+                'file_type' => 'receipt',
             ]);
 
         // Act - try to access as different user
         $fileRecord = File::where('user_id', $this->user->id)->first();
-        
+
         $response = $this->actingAs($otherUser)
             ->get("/receipts/{$fileRecord->id}");
 
@@ -423,7 +414,7 @@ class FileProcessingPipelineTest extends TestCase
         $storageService->shouldReceive('upload')
             ->times($times)
             ->andReturn('receipts/1/test-guid/original.jpg');
-        
+
         $this->app->instance(StorageService::class, $storageService);
     }
 
@@ -434,7 +425,7 @@ class FileProcessingPipelineTest extends TestCase
             ->andReturn(UploadedFile::fake()->image('receipt.jpg')->size(500));
         $storageService->shouldReceive('upload')
             ->andReturn('receipts/1/test-guid/original.jpg');
-        
+
         $this->app->instance(StorageService::class, $storageService);
     }
 
@@ -444,9 +435,9 @@ class FileProcessingPipelineTest extends TestCase
         $textExtractionService->shouldReceive('extractTextFromImage')
             ->andReturn([
                 'text' => "Test Store\n123 Main St\nReceipt #12345\n\nProduct 1 $12.99\nProduct 2 $13.00\n\nTotal: $25.99\nDate: 01/15/2024",
-                'raw_response' => ['Blocks' => []]
+                'raw_response' => ['Blocks' => []],
             ]);
-        
+
         $this->app->instance(TextExtractionService::class, $textExtractionService);
     }
 
@@ -455,7 +446,7 @@ class FileProcessingPipelineTest extends TestCase
         $textExtractionService = Mockery::mock(TextExtractionService::class);
         $textExtractionService->shouldReceive('extractTextFromImage')
             ->andThrow(new \Exception('Textract service unavailable'));
-        
+
         $this->app->instance(TextExtractionService::class, $textExtractionService);
     }
 
@@ -467,7 +458,7 @@ class FileProcessingPipelineTest extends TestCase
                 'merchant' => [
                     'name' => 'Test Store',
                     'address' => '123 Main St',
-                    'vat_number' => null
+                    'vat_number' => null,
                 ],
                 'line_items' => [
                     [
@@ -475,24 +466,24 @@ class FileProcessingPipelineTest extends TestCase
                         'sku' => null,
                         'quantity' => 1,
                         'unit_price' => 12.99,
-                        'total' => 12.99
+                        'total' => 12.99,
                     ],
                     [
                         'name' => 'Product 2',
                         'sku' => null,
                         'quantity' => 1,
                         'unit_price' => 13.00,
-                        'total' => 13.00
-                    ]
+                        'total' => 13.00,
+                    ],
                 ],
                 'subtotal' => 25.99,
                 'tax' => 0,
                 'total' => 25.99,
                 'date' => '2024-01-15',
                 'time' => null,
-                'receipt_number' => '12345'
+                'receipt_number' => '12345',
             ]);
-        
+
         $this->app->instance(AIService::class, $aiService);
     }
 
@@ -504,7 +495,7 @@ class FileProcessingPipelineTest extends TestCase
                 'merchant' => [
                     'name' => 'Unknown Store',
                     'address' => null,
-                    'vat_number' => null
+                    'vat_number' => null,
                 ],
                 'line_items' => [],
                 'subtotal' => 0,
@@ -513,9 +504,9 @@ class FileProcessingPipelineTest extends TestCase
                 'date' => null,
                 'time' => null,
                 'receipt_number' => null,
-                'notes' => 'Processed with fallback due to OCR failure'
+                'notes' => 'Processed with fallback due to OCR failure',
             ]);
-        
+
         $this->app->instance(AIService::class, $aiService);
     }
 
@@ -524,19 +515,19 @@ class FileProcessingPipelineTest extends TestCase
         $aiService = Mockery::mock(AIService::class);
         $aiService->shouldReceive('analyzeReceipt')
             ->andThrow(new \Exception('OpenAI API error'));
-        
+
         $this->app->instance(AIService::class, $aiService);
     }
 
     protected function mockOpenAIMerchantMatch()
     {
         $aiService = Mockery::mock(AIService::class);
-        $aiService->shouldReceive('analyzeReceipt')->andReturnUsing(function() {
+        $aiService->shouldReceive('analyzeReceipt')->andReturnUsing(function () {
             return [
                 'merchant' => [
                     'name' => 'Test Store',
                     'address' => '123 Main St',
-                    'vat_number' => null
+                    'vat_number' => null,
                 ],
                 'line_items' => [
                     [
@@ -544,32 +535,32 @@ class FileProcessingPipelineTest extends TestCase
                         'sku' => null,
                         'quantity' => 1,
                         'unit_price' => 12.99,
-                        'total' => 12.99
+                        'total' => 12.99,
                     ],
                     [
                         'name' => 'Product 2',
                         'sku' => null,
                         'quantity' => 1,
                         'unit_price' => 13.00,
-                        'total' => 13.00
-                    ]
+                        'total' => 13.00,
+                    ],
                 ],
                 'subtotal' => 25.99,
                 'tax' => 0,
                 'total' => 25.99,
                 'date' => '2024-01-15',
                 'time' => null,
-                'receipt_number' => '12345'
+                'receipt_number' => '12345',
             ];
         });
-        
+
         $aiService->shouldReceive('matchMerchant')
             ->andReturn([
                 'merchant_name' => 'Test Store',
                 'confidence' => 0.95,
-                'is_new' => true
+                'is_new' => true,
             ]);
-        
+
         $this->app->instance(AIService::class, $aiService);
     }
 

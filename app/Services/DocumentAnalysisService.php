@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Category;
 use App\Models\Document;
 use App\Models\Tag;
-use App\Models\Category;
 use App\Services\AI\AIService;
 use App\Services\AI\AIServiceFactory;
 use Carbon\Carbon;
@@ -24,25 +24,24 @@ class DocumentAnalysisService
     /**
      * Analyze document content and create document with metadata
      *
-     * @param string $content Document text content
-     * @param int $fileId Associated file ID
-     * @param int $userId User ID
-     * @param array $options Additional options
-     * @return Document
+     * @param  string  $content  Document text content
+     * @param  int  $fileId  Associated file ID
+     * @param  int  $userId  User ID
+     * @param  array  $options  Additional options
      */
     public function analyzeAndCreateDocument(string $content, int $fileId, int $userId, array $options = []): Document
     {
         Log::info('Starting document analysis', [
             'file_id' => $fileId,
             'user_id' => $userId,
-            'content_length' => strlen($content)
+            'content_length' => strlen($content),
         ]);
 
         try {
             // Analyze document using AI
             $analysis = $this->aiService->analyzeDocument($content, $options);
 
-            if (!$analysis['success']) {
+            if (! $analysis['success']) {
                 throw new \Exception($analysis['error'] ?? 'Document analysis failed');
             }
 
@@ -66,7 +65,7 @@ class DocumentAnalysisService
                 'entities' => $data['entities'] ?? [],
                 'metadata' => array_merge($analysis, $options['metadata'] ?? []),
                 'status' => 'processed',
-                'processed_at' => Carbon::now()
+                'processed_at' => Carbon::now(),
             ]);
 
             // Create and attach tags
@@ -80,7 +79,7 @@ class DocumentAnalysisService
             Log::info('Document analysis completed', [
                 'document_id' => $document->id,
                 'category_id' => $category?->id,
-                'tag_count' => count($data['tags'] ?? [])
+                'tag_count' => count($data['tags'] ?? []),
             ]);
 
             return $document;
@@ -89,7 +88,7 @@ class DocumentAnalysisService
             DB::rollBack();
             Log::error('Document analysis failed', [
                 'error' => $e->getMessage(),
-                'file_id' => $fileId
+                'file_id' => $fileId,
             ]);
             throw $e;
         }
@@ -97,10 +96,6 @@ class DocumentAnalysisService
 
     /**
      * Generate document summary
-     *
-     * @param string $content
-     * @param int $maxLength
-     * @return string
      */
     public function generateSummary(string $content, int $maxLength = 200): string
     {
@@ -109,10 +104,6 @@ class DocumentAnalysisService
 
     /**
      * Suggest tags for document
-     *
-     * @param string $content
-     * @param int $maxTags
-     * @return array
      */
     public function suggestTags(string $content, int $maxTags = 5): array
     {
@@ -121,9 +112,6 @@ class DocumentAnalysisService
 
     /**
      * Classify document type
-     *
-     * @param string $content
-     * @return string
      */
     public function classifyDocument(string $content): string
     {
@@ -132,10 +120,6 @@ class DocumentAnalysisService
 
     /**
      * Extract entities from document
-     *
-     * @param string $content
-     * @param array $types
-     * @return array
      */
     public function extractEntities(string $content, array $types = []): array
     {
@@ -144,10 +128,6 @@ class DocumentAnalysisService
 
     /**
      * Determine or create category based on document type
-     *
-     * @param string $documentType
-     * @param int $userId
-     * @return Category|null
      */
     private function determineCategory(string $documentType, int $userId): ?Category
     {
@@ -163,7 +143,7 @@ class DocumentAnalysisService
             'email' => 'Emails',
             'legal' => 'Legal Documents',
             'financial' => 'Financial Documents',
-            'technical' => 'Technical Documents'
+            'technical' => 'Technical Documents',
         ];
 
         $categoryName = $categoryMap[$documentType] ?? 'General';
@@ -172,21 +152,17 @@ class DocumentAnalysisService
         return Category::firstOrCreate(
             [
                 'name' => $categoryName,
-                'user_id' => $userId
+                'user_id' => $userId,
             ],
             [
                 'description' => "Auto-created category for {$documentType} documents",
-                'color' => $this->generateCategoryColor($categoryName)
+                'color' => $this->generateCategoryColor($categoryName),
             ]
         );
     }
 
     /**
      * Attach tags to document
-     *
-     * @param Document $document
-     * @param array $tagNames
-     * @param int $userId
      */
     private function attachTags(Document $document, array $tagNames, int $userId): void
     {
@@ -196,10 +172,10 @@ class DocumentAnalysisService
             $tag = Tag::firstOrCreate(
                 [
                     'name' => Str::slug($tagName),
-                    'user_id' => $userId
+                    'user_id' => $userId,
                 ],
                 [
-                    'display_name' => $tagName
+                    'display_name' => $tagName,
                 ]
             );
 
@@ -211,9 +187,6 @@ class DocumentAnalysisService
 
     /**
      * Extract and store important dates from document
-     *
-     * @param Document $document
-     * @param array $dates
      */
     private function extractAndStoreDates(Document $document, array $dates): void
     {
@@ -226,18 +199,18 @@ class DocumentAnalysisService
                 $parsedDates[] = [
                     'original' => $dateStr,
                     'parsed' => $date->toDateString(),
-                    'timestamp' => $date->timestamp
+                    'timestamp' => $date->timestamp,
                 ];
             } catch (\Exception $e) {
                 Log::debug('Failed to parse date', ['date' => $dateStr]);
             }
         }
 
-        if (!empty($parsedDates)) {
+        if (! empty($parsedDates)) {
             $metadata['extracted_dates'] = $parsedDates;
-            
+
             // Set document date to the earliest extracted date
-            usort($parsedDates, fn($a, $b) => $a['timestamp'] <=> $b['timestamp']);
+            usort($parsedDates, fn ($a, $b) => $a['timestamp'] <=> $b['timestamp']);
             $document->document_date = $parsedDates[0]['parsed'];
         }
 
@@ -247,9 +220,6 @@ class DocumentAnalysisService
 
     /**
      * Generate title from content if not provided
-     *
-     * @param string $content
-     * @return string
      */
     private function generateTitle(string $content): string
     {
@@ -266,31 +236,26 @@ class DocumentAnalysisService
 
     /**
      * Generate color for category
-     *
-     * @param string $name
-     * @return string
      */
     private function generateCategoryColor(string $name): string
     {
         $colors = [
             '#EF4444', '#F59E0B', '#10B981', '#3B82F6',
-            '#6366F1', '#8B5CF6', '#EC4899', '#14B8A6'
+            '#6366F1', '#8B5CF6', '#EC4899', '#14B8A6',
         ];
 
         // Use name hash to consistently assign same color
         $hash = crc32($name);
+
         return $colors[$hash % count($colors)];
     }
 
     /**
      * Reanalyze an existing document
-     *
-     * @param Document $document
-     * @return Document
      */
     public function reanalyzeDocument(Document $document): Document
     {
-        if (!$document->content) {
+        if (! $document->content) {
             throw new \Exception('No content available for reanalysis');
         }
 
@@ -309,8 +274,7 @@ class DocumentAnalysisService
     /**
      * Batch analyze multiple documents
      *
-     * @param array $documents Array of [content, fileId, userId]
-     * @return array
+     * @param  array  $documents  Array of [content, fileId, userId]
      */
     public function batchAnalyze(array $documents): array
     {
@@ -325,13 +289,13 @@ class DocumentAnalysisService
                         $doc['fileId'],
                         $doc['userId'],
                         $doc['options'] ?? []
-                    )
+                    ),
                 ];
             } catch (\Exception $e) {
                 $results[] = [
                     'success' => false,
                     'error' => $e->getMessage(),
-                    'fileId' => $doc['fileId']
+                    'fileId' => $doc['fileId'],
                 ];
             }
         }

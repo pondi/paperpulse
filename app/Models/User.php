@@ -89,6 +89,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the batch jobs for the user.
+     */
+    public function batchJobs()
+    {
+        return $this->hasMany(BatchJob::class);
+    }
+
+    /**
      * Get user preference value with fallback to default
      */
     public function getPreference($key, $default = null)

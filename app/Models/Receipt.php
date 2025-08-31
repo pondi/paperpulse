@@ -24,7 +24,6 @@ use Laravel\Scout\Searchable;
  * @property array|null $receipt_data
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
- *
  * @property-read \App\Models\File $file
  * @property-read \App\Models\User $user
  * @property-read \App\Models\Merchant|null $merchant

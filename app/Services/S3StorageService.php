@@ -24,23 +24,23 @@ class S3StorageService
                 'disk' => $disk,
                 'path' => $path,
             ]);
-            
+
             // Check if it's the chunked encoding error
             $errorMessage = $e->getMessage();
             if ($e->getPrevious()) {
-                $errorMessage .= ' ' . $e->getPrevious()->getMessage();
+                $errorMessage .= ' '.$e->getPrevious()->getMessage();
             }
-            
-            if (str_contains($errorMessage, 'Unrecognized content encoding type') || 
+
+            if (str_contains($errorMessage, 'Unrecognized content encoding type') ||
                 str_contains($errorMessage, 'cURL error 61')) {
                 Log::warning('[S3StorageService] Detected aws-chunked encoding, using fallback', [
                     'disk' => $disk,
                     'path' => $path,
                 ]);
-                
+
                 return self::getWithChunkedFallback($disk, $path);
             }
-            
+
             throw $e;
         }
     }
@@ -51,7 +51,7 @@ class S3StorageService
     private static function getWithChunkedFallback(string $disk, string $path): string
     {
         $config = config("filesystems.disks.{$disk}");
-        
+
         $s3Client = new S3Client([
             'version' => 'latest',
             'region' => $config['region'],
@@ -75,14 +75,14 @@ class S3StorageService
                 'ContentType' => $headResult['ContentType'] ?? 'unknown',
             ]);
 
-            if (isset($headResult['ContentEncoding']) && 
-                (str_contains($headResult['ContentEncoding'], 'aws-chunked') || 
+            if (isset($headResult['ContentEncoding']) &&
+                (str_contains($headResult['ContentEncoding'], 'aws-chunked') ||
                  $headResult['ContentEncoding'] === 'aws-chunked')) {
-                
+
                 Log::info('[S3StorageService] Fixing aws-chunked encoding', [
                     'current_encoding' => $headResult['ContentEncoding'],
                 ]);
-                
+
                 // Copy the object to itself without the encoding
                 $s3Client->copyObject([
                     'Bucket' => $config['bucket'],
@@ -92,7 +92,7 @@ class S3StorageService
                     'ContentType' => $headResult['ContentType'] ?? 'application/octet-stream',
                     'Metadata' => $headResult['Metadata'] ?? [],
                 ]);
-                
+
                 Log::info('[S3StorageService] Fixed aws-chunked encoding on file', [
                     'disk' => $disk,
                     'path' => $path,
@@ -101,14 +101,14 @@ class S3StorageService
 
             // Now read the file normally
             return Storage::disk($disk)->get($path);
-            
+
         } catch (\Exception $e) {
             Log::error('[S3StorageService] Failed to handle chunked encoding', [
                 'error' => $e->getMessage(),
                 'disk' => $disk,
                 'path' => $path,
             ]);
-            
+
             throw new UnableToReadFile("Unable to read file: {$path}", 0, $e);
         }
     }

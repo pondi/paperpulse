@@ -10,9 +10,9 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 class ReceiptPolicy
 {
     use HandlesAuthorization;
-    
+
     protected SharingService $sharingService;
-    
+
     public function __construct(SharingService $sharingService)
     {
         $this->sharingService = $sharingService;
@@ -74,7 +74,7 @@ class ReceiptPolicy
     {
         return $user->id === $receipt->user_id;
     }
-    
+
     /**
      * Determine whether the user can share the receipt.
      */

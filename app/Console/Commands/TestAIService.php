@@ -27,40 +27,41 @@ class TestAIService extends Command
     public function handle()
     {
         $provider = $this->argument('provider');
-        
+
         $this->info("Testing AI provider: {$provider}");
-        
+
         try {
             $aiService = AIServiceFactory::create($provider);
-            
-            $this->info("✓ AI service created successfully");
-            $this->info("Provider: " . $aiService->getProviderName());
-            
+
+            $this->info('✓ AI service created successfully');
+            $this->info('Provider: '.$aiService->getProviderName());
+
             if ($this->option('receipt')) {
                 $this->testReceiptAnalysis($aiService);
             }
-            
+
             if ($this->option('document')) {
                 $this->testDocumentAnalysis($aiService);
             }
-            
-            if (!$this->option('receipt') && !$this->option('document')) {
-                $this->info("Use --receipt or --document to test specific functionality");
+
+            if (! $this->option('receipt') && ! $this->option('document')) {
+                $this->info('Use --receipt or --document to test specific functionality');
             }
-            
+
         } catch (\Exception $e) {
-            $this->error("Failed to create AI service: " . $e->getMessage());
+            $this->error('Failed to create AI service: '.$e->getMessage());
+
             return 1;
         }
-        
+
         return 0;
     }
-    
+
     private function testReceiptAnalysis($aiService)
     {
         $this->info("\nTesting receipt analysis...");
-        
-        $sampleReceipt = "REMA 1000 OSLO
+
+        $sampleReceipt = 'REMA 1000 OSLO
 Grensen 5-7
 0159 OSLO
 Org.nr: 987654321
@@ -82,13 +83,13 @@ Tilbake          49.70
 Dato: 08.01.2025 14:32
 Kvitt.nr: 12345
 
-Takk for handelen!";
+Takk for handelen!';
 
         try {
             $result = $aiService->analyzeReceipt($sampleReceipt);
-            
+
             if ($result['success']) {
-                $this->info("✓ Receipt analysis successful");
+                $this->info('✓ Receipt analysis successful');
                 $this->table(
                     ['Field', 'Value'],
                     [
@@ -99,22 +100,22 @@ Takk for handelen!";
                     ]
                 );
             } else {
-                $this->error("Receipt analysis failed: " . $result['error']);
+                $this->error('Receipt analysis failed: '.$result['error']);
             }
         } catch (\Exception $e) {
-            $this->error("Receipt analysis error: " . $e->getMessage());
+            $this->error('Receipt analysis error: '.$e->getMessage());
         }
     }
-    
+
     private function testDocumentAnalysis($aiService)
     {
         $this->info("\nTesting document analysis...");
-        
-        $sampleDocument = "Software License Agreement
 
-This Software License Agreement (\"Agreement\") is entered into as of January 8, 2025 
-between TechCorp Inc., a Delaware corporation (\"Licensor\") and ClientCo Ltd., 
-a Norwegian company (\"Licensee\").
+        $sampleDocument = 'Software License Agreement
+
+This Software License Agreement ("Agreement") is entered into as of January 8, 2025 
+between TechCorp Inc., a Delaware corporation ("Licensor") and ClientCo Ltd., 
+a Norwegian company ("Licensee").
 
 1. Grant of License
 Licensor hereby grants to Licensee a non-exclusive, non-transferable license to use 
@@ -128,13 +129,13 @@ This Agreement may be terminated by either party with 30 days written notice.
 
 Signed by:
 John Smith, CEO TechCorp Inc.
-Date: January 8, 2025";
+Date: January 8, 2025';
 
         try {
             $result = $aiService->analyzeDocument($sampleDocument);
-            
+
             if ($result['success']) {
-                $this->info("✓ Document analysis successful");
+                $this->info('✓ Document analysis successful');
                 $this->table(
                     ['Field', 'Value'],
                     [
@@ -144,20 +145,20 @@ Date: January 8, 2025";
                         ['Tags', implode(', ', $result['data']['tags'] ?? [])],
                     ]
                 );
-                
-                if (!empty($result['data']['entities'])) {
+
+                if (! empty($result['data']['entities'])) {
                     $this->info("\nExtracted Entities:");
                     foreach ($result['data']['entities'] as $type => $values) {
-                        if (!empty($values)) {
-                            $this->info("  {$type}: " . implode(', ', $values));
+                        if (! empty($values)) {
+                            $this->info("  {$type}: ".implode(', ', $values));
                         }
                     }
                 }
             } else {
-                $this->error("Document analysis failed: " . $result['error']);
+                $this->error('Document analysis failed: '.$result['error']);
             }
         } catch (\Exception $e) {
-            $this->error("Document analysis error: " . $e->getMessage());
+            $this->error('Document analysis error: '.$e->getMessage());
         }
     }
 }

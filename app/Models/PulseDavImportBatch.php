@@ -46,10 +46,10 @@ class PulseDavImportBatch extends Model
      */
     public function getTagsAttribute()
     {
-        if (!$this->tag_ids) {
+        if (! $this->tag_ids) {
             return collect();
         }
-        
+
         return Tag::whereIn('id', $this->tag_ids)->get();
     }
 

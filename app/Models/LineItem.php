@@ -17,7 +17,6 @@ use Laravel\Scout\Searchable;
  * @property float|null $price
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
- *
  * @property-read \App\Models\Receipt $receipt
  */
 class LineItem extends Model

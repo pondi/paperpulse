@@ -37,7 +37,7 @@ class SecurityHeaders
         if (app()->environment('local') && file_exists(public_path('hot'))) {
             // In development with Vite running, allow the dev server
             $viteUrl = trim(file_get_contents(public_path('hot')));
-            $viteServer = ' ' . $viteUrl;
+            $viteServer = ' '.$viteUrl;
         }
 
         $csp = "default-src 'self'{$viteServer}; ".

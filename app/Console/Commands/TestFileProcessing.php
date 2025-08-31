@@ -6,25 +6,22 @@ use App\Jobs\ProcessFile;
 use App\Jobs\ProcessReceipt;
 use App\Models\File;
 use App\Models\User;
-use App\Services\FileProcessingService;
-use App\Services\StorageService;
 use Illuminate\Console\Command;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class TestFileProcessing extends Command
 {
     protected $signature = 'test:file-processing {--user-id=1} {--mock-services}';
+
     protected $description = 'Test the complete file processing pipeline';
 
     public function handle()
     {
         $this->info('🧪 Testing File Processing Pipeline...');
         $this->newLine();
-        
+
         // Configure for testing - use array cache to avoid Redis issues
         config(['cache.default' => 'array']);
         config(['queue.default' => 'sync']);
@@ -32,17 +29,17 @@ class TestFileProcessing extends Command
         // Check if we have a user
         $userId = $this->option('user-id');
         $user = User::find($userId);
-        
-        if (!$user) {
+
+        if (! $user) {
             $this->error("User with ID {$userId} not found!");
-            $this->info("Creating a test user...");
-            
+            $this->info('Creating a test user...');
+
             $user = User::create([
                 'name' => 'Test User',
                 'email' => 'test@example.com',
                 'password' => bcrypt('password'),
             ]);
-            
+
             $this->info("Created user: {$user->email} (ID: {$user->id})");
         } else {
             $this->info("Using user: {$user->email} (ID: {$user->id})");
@@ -51,44 +48,46 @@ class TestFileProcessing extends Command
         // Create a test receipt image
         $this->info('Creating test receipt image...');
         $imagePath = $this->createTestReceiptImage();
-        
+
         try {
             // Test 1: File Upload and Initial Processing
             $this->info('📤 Testing file upload...');
             $result = $this->testFileUpload($imagePath, $user);
-            
-            if (!$result) {
+
+            if (! $result) {
                 $this->error('File upload failed!');
+
                 return 1;
             }
-            
+
             $jobId = $result['job_id'];
             $fileId = $result['file_id'];
-            
+
             // Test 2: ProcessFile Job
             $this->info('⚙️ Testing ProcessFile job...');
             $this->testProcessFileJob($jobId, $fileId);
-            
+
             // Test 3: ProcessReceipt Job
             $this->info('🧾 Testing ProcessReceipt job...');
             $this->testProcessReceiptJob($jobId, $fileId);
-            
+
             // Test 4: Check Results
             $this->info('📊 Checking results...');
             $this->checkResults($fileId);
-            
+
             $this->newLine();
             $this->info('✅ File processing pipeline test completed!');
-            
+
         } catch (\Exception $e) {
-            $this->error('❌ Test failed: ' . $e->getMessage());
+            $this->error('❌ Test failed: '.$e->getMessage());
             $this->line($e->getTraceAsString());
+
             return 1;
         } finally {
             // Clean up
             @unlink($imagePath);
         }
-        
+
         return 0;
     }
 
@@ -97,50 +96,50 @@ class TestFileProcessing extends Command
         $image = imagecreatetruecolor(800, 600);
         $bgColor = imagecolorallocate($image, 255, 255, 255);
         $textColor = imagecolorallocate($image, 0, 0, 0);
-        
+
         imagefill($image, 0, 0, $bgColor);
-        
+
         // Add receipt-like text
         $y = 50;
-        imagestring($image, 5, 100, $y, "REMA 1000", $textColor);
+        imagestring($image, 5, 100, $y, 'REMA 1000', $textColor);
         $y += 30;
-        imagestring($image, 4, 100, $y, "Storgata 123", $textColor);
+        imagestring($image, 4, 100, $y, 'Storgata 123', $textColor);
         $y += 20;
-        imagestring($image, 4, 100, $y, "0123 OSLO", $textColor);
+        imagestring($image, 4, 100, $y, '0123 OSLO', $textColor);
         $y += 20;
-        imagestring($image, 4, 100, $y, "Org.nr: 123456789", $textColor);
+        imagestring($image, 4, 100, $y, 'Org.nr: 123456789', $textColor);
         $y += 40;
-        
-        imagestring($image, 3, 100, $y, "------------------------", $textColor);
+
+        imagestring($image, 3, 100, $y, '------------------------', $textColor);
         $y += 20;
-        
+
         // Add items
-        imagestring($image, 4, 100, $y, "Melk 1L                   25.90", $textColor);
+        imagestring($image, 4, 100, $y, 'Melk 1L                   25.90', $textColor);
         $y += 20;
-        imagestring($image, 4, 100, $y, "Brod                      32.50", $textColor);
+        imagestring($image, 4, 100, $y, 'Brod                      32.50', $textColor);
         $y += 20;
-        imagestring($image, 4, 100, $y, "Ost                       89.90", $textColor);
+        imagestring($image, 4, 100, $y, 'Ost                       89.90', $textColor);
         $y += 20;
-        
-        imagestring($image, 3, 100, $y, "------------------------", $textColor);
+
+        imagestring($image, 3, 100, $y, '------------------------', $textColor);
         $y += 20;
-        
-        imagestring($image, 5, 100, $y, "TOTAL:                   148.30", $textColor);
+
+        imagestring($image, 5, 100, $y, 'TOTAL:                   148.30', $textColor);
         $y += 30;
-        
-        imagestring($image, 3, 100, $y, "MVA 25%:                  29.66", $textColor);
+
+        imagestring($image, 3, 100, $y, 'MVA 25%:                  29.66', $textColor);
         $y += 30;
-        
-        imagestring($image, 3, 100, $y, "Dato: " . date('d.m.Y H:i'), $textColor);
+
+        imagestring($image, 3, 100, $y, 'Dato: '.date('d.m.Y H:i'), $textColor);
         $y += 20;
-        imagestring($image, 3, 100, $y, "Kvittering: 12345", $textColor);
-        
-        $tempPath = storage_path('app/test-receipt-' . uniqid() . '.jpg');
+        imagestring($image, 3, 100, $y, 'Kvittering: 12345', $textColor);
+
+        $tempPath = storage_path('app/test-receipt-'.uniqid().'.jpg');
         imagejpeg($image, $tempPath, 90);
         imagedestroy($image);
-        
+
         $this->info("Test receipt created at: {$tempPath}");
-        
+
         return $tempPath;
     }
 
@@ -154,16 +153,16 @@ class TestFileProcessing extends Command
                 null,
                 true
             );
-            
+
             // Authenticate as the user for this test
             auth()->login($user);
-            
+
             $documentService = app(\App\Services\DocumentService::class);
-            
+
             $result = $documentService->processUpload($uploadedFile, 'receipt');
-            
+
             $this->info('✅ File upload successful');
-            
+
             // Check if result has the expected structure
             if (isset($result['job_id']) && isset($result['files'])) {
                 $this->table(
@@ -175,33 +174,34 @@ class TestFileProcessing extends Command
                         ['Status', $result['files'][0]['status']],
                     ]
                 );
-                
+
                 return [
                     'job_id' => $result['job_id'],
                     'file_id' => $result['files'][0]['id'],
                 ];
             } else {
                 // Handle different result format
-                $this->line('Result: ' . json_encode($result));
-                
+                $this->line('Result: '.json_encode($result));
+
                 // Try to extract job_id and file_id from different formats
                 $jobId = $result['job_id'] ?? $result['jobId'] ?? null;
-                $fileId = $result['file_id'] ?? $result['fileId'] ?? 
+                $fileId = $result['file_id'] ?? $result['fileId'] ??
                          (isset($result['files'][0]['id']) ? $result['files'][0]['id'] : null) ??
                          $result['id'] ?? null;
-                
+
                 if ($jobId && $fileId) {
                     return [
                         'job_id' => $jobId,
                         'file_id' => $fileId,
                     ];
                 }
-                
+
                 throw new \Exception('Unexpected result format from processUpload');
             }
-            
+
         } catch (\Exception $e) {
-            $this->error('File upload failed: ' . $e->getMessage());
+            $this->error('File upload failed: '.$e->getMessage());
+
             return null;
         }
     }
@@ -211,27 +211,27 @@ class TestFileProcessing extends Command
         try {
             // Check cache data
             $metadata = Cache::get("job.{$jobId}.fileMetaData");
-            
-            if (!$metadata) {
+
+            if (! $metadata) {
                 throw new \Exception('No metadata found in cache');
             }
-            
+
             $this->info('Cache metadata found:');
             $this->line(json_encode($metadata, JSON_PRETTY_PRINT));
-            
+
             // Run ProcessFile job
             $job = new ProcessFile($jobId);
-            
+
             if ($this->option('mock-services')) {
                 $this->info('(Using mock services)');
             } else {
                 $job->handle();
             }
-            
+
             $this->info('✅ ProcessFile job completed');
-            
+
         } catch (\Exception $e) {
-            $this->error('ProcessFile job failed: ' . $e->getMessage());
+            $this->error('ProcessFile job failed: '.$e->getMessage());
             throw $e;
         }
     }
@@ -241,15 +241,16 @@ class TestFileProcessing extends Command
         try {
             if ($this->option('mock-services')) {
                 $this->info('Skipping ProcessReceipt job (mock mode)');
+
                 return;
             }
-            
+
             // Run ProcessReceipt job
             $job = new ProcessReceipt($jobId);
             $job->handle();
-            
+
             $this->info('✅ ProcessReceipt job completed');
-            
+
             // Check receipt data
             $receiptData = Cache::get("job.{$jobId}.receiptMetaData");
             if ($receiptData) {
@@ -263,17 +264,17 @@ class TestFileProcessing extends Command
                     ]
                 );
             }
-            
+
         } catch (\Exception $e) {
-            $this->error('ProcessReceipt job failed: ' . $e->getMessage());
-            
+            $this->error('ProcessReceipt job failed: '.$e->getMessage());
+
             // Check specific error types
             if (str_contains($e->getMessage(), 'Textract')) {
                 $this->error('💡 Textract error - check AWS credentials and configuration');
             } elseif (str_contains($e->getMessage(), 'AI') || str_contains($e->getMessage(), 'OpenAI')) {
                 $this->error('💡 AI service error - check OpenAI API key and configuration');
             }
-            
+
             throw $e;
         }
     }
@@ -282,13 +283,14 @@ class TestFileProcessing extends Command
     {
         // Check file status
         $file = File::find($fileId);
-        if (!$file) {
+        if (! $file) {
             $this->error('File record not found!');
+
             return;
         }
-        
-        $this->info('File status: ' . $file->status);
-        
+
+        $this->info('File status: '.$file->status);
+
         // Check if receipt was created
         if ($file->fileable_type === 'App\\Models\\Receipt') {
             $receipt = $file->fileable;
@@ -310,12 +312,12 @@ class TestFileProcessing extends Command
         } else {
             $this->warn('⚠️ File not linked to receipt');
         }
-        
+
         // Check job history
         $histories = DB::table('job_histories')
-            ->where('job_id', 'like', '%' . substr($file->file_guid, 0, 8) . '%')
+            ->where('job_id', 'like', '%'.substr($file->file_guid, 0, 8).'%')
             ->get();
-            
+
         if ($histories->count() > 0) {
             $this->info('Job History:');
             $this->table(
@@ -324,7 +326,7 @@ class TestFileProcessing extends Command
                     return [
                         $h->job_name,
                         $h->status,
-                        $h->error ? substr($h->error, 0, 50) . '...' : '-'
+                        $h->error ? substr($h->error, 0, 50).'...' : '-',
                     ];
                 })->toArray()
             );

@@ -99,10 +99,12 @@ trait SanitizesInput
 
         if ($allowDecimal) {
             $result = filter_var($number, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
+
             return $result !== false ? (float) $result : null;
         }
 
         $result = filter_var($number, FILTER_SANITIZE_NUMBER_INT);
+
         return $result !== false ? (int) $result : null;
     }
 }

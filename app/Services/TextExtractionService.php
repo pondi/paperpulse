@@ -2,48 +2,22 @@
 
 namespace App\Services;
 
-use Aws\Textract\TextractClient;
+use App\Services\OCR\OCRServiceFactory;
+use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Exception;
 
 class TextExtractionService
 {
-    protected $textractClient;
-    protected $textractBucket;
-    protected $storageService;
-    
+    protected StorageService $storageService;
+
     public function __construct(StorageService $storageService)
     {
         $this->storageService = $storageService;
-        $this->initializeTextract();
     }
-    
+
     /**
-     * Initialize AWS Textract client
-     */
-    protected function initializeTextract(): void
-    {
-        $this->textractClient = new TextractClient([
-            'version' => 'latest',
-            'region' => config('receipt-scanner.textract_region', 'eu-central-1'),
-            'credentials' => [
-                'key' => config('receipt-scanner.textract_key'),
-                'secret' => config('receipt-scanner.textract_secret'),
-            ],
-        ]);
-        
-        $this->textractBucket = config('filesystems.disks.textract.bucket');
-    }
-    
-    /**
-     * Extract text from a file
-     * 
-     * @param string $filePath Path to the file
-     * @param string $fileType 'receipt' or 'document'
-     * @param string $fileGuid Unique file identifier
-     * @return string Extracted text
+     * Extract text from a file using OCR providers
      */
     public function extract(string $filePath, string $fileType, string $fileGuid): string
     {
@@ -51,31 +25,68 @@ class TextExtractionService
             // Check cache first
             $cacheKey = "text_extraction.{$fileGuid}";
             $cachedText = Cache::get($cacheKey);
-            
-            if ($cachedText !== null) {
+
+            if ($cachedText !== null && config('ocr.options.cache_results', true)) {
                 Log::debug('[TextExtractionService] Using cached text', [
                     'file_guid' => $fileGuid,
                 ]);
+
                 return $cachedText;
             }
-            
-            // Determine extraction method based on file type
-            $text = match($fileType) {
-                'receipt' => $this->extractReceiptText($filePath, $fileGuid),
-                'document' => $this->extractDocumentText($filePath, $fileGuid),
-                default => throw new Exception("Unknown file type: {$fileType}"),
-            };
-            
+
+            // Get the appropriate OCR provider for this file
+            $ocrProvider = OCRServiceFactory::createForFile($filePath);
+
+            Log::info('[TextExtractionService] Starting OCR extraction', [
+                'file_guid' => $fileGuid,
+                'file_type' => $fileType,
+                'provider' => $ocrProvider->getProviderName(),
+            ]);
+
+            // Extract text using the OCR provider
+            $result = $ocrProvider->extractText($filePath, $fileType, $fileGuid);
+
+            if (! $result->success) {
+                throw new Exception("OCR extraction failed: {$result->error}");
+            }
+
+            $text = $result->text;
+
+            // Apply confidence filtering if needed
+            $minConfidence = config('ocr.options.min_confidence', 0.8);
+            if ($result->confidence < $minConfidence) {
+                Log::warning('[TextExtractionService] Low confidence OCR result', [
+                    'file_guid' => $fileGuid,
+                    'confidence' => $result->confidence,
+                    'min_confidence' => $minConfidence,
+                ]);
+
+                // Try fallback with PDF parser if available
+                if (pathinfo($filePath, PATHINFO_EXTENSION) === 'pdf') {
+                    $fallbackText = $this->extractPdfTextFallback($filePath);
+                    if (! empty($fallbackText)) {
+                        $text = $fallbackText;
+                    }
+                }
+            }
+
             // Cache the extracted text
-            Cache::put($cacheKey, $text, now()->addDays(7));
-            
+            if (config('ocr.options.cache_results', true)) {
+                $cacheDuration = now()->addDays(config('ocr.options.cache_duration', 7));
+                Cache::put($cacheKey, $text, $cacheDuration);
+            }
+
             Log::info('[TextExtractionService] Text extracted successfully', [
                 'file_guid' => $fileGuid,
                 'file_type' => $fileType,
+                'provider' => $result->provider,
+                'confidence' => $result->confidence,
                 'text_length' => strlen($text),
+                'processing_time' => $result->processingTime,
             ]);
-            
+
             return $text;
+
         } catch (Exception $e) {
             Log::error('[TextExtractionService] Text extraction failed', [
                 'error' => $e->getMessage(),
@@ -85,275 +96,76 @@ class TextExtractionService
             throw $e;
         }
     }
-    
-    /**
-     * Extract text from a receipt using single-page dense text mode
-     * 
-     * @param string $filePath Path to the file
-     * @param string $fileGuid Unique file identifier
-     * @return string Extracted text
-     */
-    protected function extractReceiptText(string $filePath, string $fileGuid): string
-    {
-        try {
-            // Read file content
-            $fileContent = file_get_contents($filePath);
-            
-            if (!$fileContent) {
-                throw new Exception('Could not read file content');
-            }
-            
-            // Upload to Textract bucket temporarily
-            $textractPath = "temp/{$fileGuid}/" . basename($filePath);
-            $textractDisk = Storage::disk('textract');
-            $textractDisk->put($textractPath, $fileContent);
-            
-            try {
-                // Use DetectDocumentText for receipts (optimized for dense text)
-                $result = $this->textractClient->detectDocumentText([
-                    'Document' => [
-                        'S3Object' => [
-                            'Bucket' => $this->textractBucket,
-                            'Name' => $textractPath,
-                        ],
-                    ],
-                ]);
-                
-                // Extract text from Textract response
-                $text = $this->parseTextractResponse($result->toArray());
-                
-                return $text;
-            } finally {
-                // Clean up temporary file
-                try {
-                    $textractDisk->delete($textractPath);
-                } catch (\Exception $e) {
-                    Log::warning('[TextExtractionService] Could not delete temporary file from S3', [
-                        'path' => $textractPath,
-                        'error' => $e->getMessage(),
-                        'bucket' => $this->textractBucket
-                    ]);
-                    // Continue processing - don't fail the entire job
-                }
-            }
-        } catch (Exception $e) {
-            Log::error('[TextExtractionService] Receipt text extraction failed', [
-                'error' => $e->getMessage(),
-                'file_guid' => $fileGuid,
-            ]);
-            
-            // Fallback to basic PDF text extraction if available
-            if (pathinfo($filePath, PATHINFO_EXTENSION) === 'pdf') {
-                return $this->extractPdfTextFallback($filePath);
-            }
-            
-            throw $e;
-        }
-    }
-    
-    /**
-     * Extract text from a document using multi-page layout analysis
-     * 
-     * @param string $filePath Path to the file
-     * @param string $fileGuid Unique file identifier
-     * @return string Extracted text
-     */
-    protected function extractDocumentText(string $filePath, string $fileGuid): string
-    {
-        try {
-            // For PDFs, try native extraction first
-            if (pathinfo($filePath, PATHINFO_EXTENSION) === 'pdf') {
-                $text = $this->extractPdfTextFallback($filePath);
-                if (!empty(trim($text))) {
-                    Log::debug('[TextExtractionService] Using native PDF text extraction', [
-                        'file_guid' => $fileGuid,
-                    ]);
-                    return $text;
-                }
-            }
-            
-            // Read file content
-            $fileContent = file_get_contents($filePath);
-            
-            if (!$fileContent) {
-                throw new Exception('Could not read file content');
-            }
-            
-            // Upload to Textract bucket temporarily
-            $textractPath = "temp/{$fileGuid}/" . basename($filePath);
-            $textractDisk = Storage::disk('textract');
-            $textractDisk->put($textractPath, $fileContent);
-            
-            try {
-                // Use AnalyzeDocument for documents (preserves layout)
-                $result = $this->textractClient->analyzeDocument([
-                    'Document' => [
-                        'S3Object' => [
-                            'Bucket' => $this->textractBucket,
-                            'Name' => $textractPath,
-                        ],
-                    ],
-                    'FeatureTypes' => ['LAYOUT', 'TABLES', 'FORMS'],
-                ]);
-                
-                // Extract text with layout preservation
-                $text = $this->parseTextractDocumentResponse($result->toArray());
-                
-                return $text;
-            } finally {
-                // Clean up temporary file
-                try {
-                    $textractDisk->delete($textractPath);
-                } catch (\Exception $e) {
-                    Log::warning('[TextExtractionService] Could not delete temporary file from S3', [
-                        'path' => $textractPath,
-                        'error' => $e->getMessage(),
-                        'bucket' => $this->textractBucket
-                    ]);
-                    // Continue processing - don't fail the entire job
-                }
-            }
-        } catch (Exception $e) {
-            Log::error('[TextExtractionService] Document text extraction failed', [
-                'error' => $e->getMessage(),
-                'file_guid' => $fileGuid,
-            ]);
-            
-            // Fallback to basic extraction
-            if (pathinfo($filePath, PATHINFO_EXTENSION) === 'pdf') {
-                return $this->extractPdfTextFallback($filePath);
-            }
-            
-            throw $e;
-        }
-    }
-    
-    /**
-     * Parse Textract response for basic text extraction
-     * 
-     * @param array $result Textract response
-     * @return string Extracted text
-     */
-    protected function parseTextractResponse(array $result): string
-    {
-        $text = '';
-        $blocks = $result['Blocks'] ?? [];
-        
-        foreach ($blocks as $block) {
-            if ($block['BlockType'] === 'LINE' && isset($block['Text'])) {
-                $text .= $block['Text'] . "\n";
-            }
-        }
-        
-        return trim($text);
-    }
-    
-    /**
-     * Parse Textract response for document with layout preservation
-     * 
-     * @param array $result Textract response
-     * @return string Extracted text with layout
-     */
-    protected function parseTextractDocumentResponse(array $result): string
-    {
-        $text = '';
-        $blocks = $result['Blocks'] ?? [];
-        $pages = [];
-        
-        // Group blocks by page
-        foreach ($blocks as $block) {
-            $page = $block['Page'] ?? 1;
-            if (!isset($pages[$page])) {
-                $pages[$page] = [];
-            }
-            $pages[$page][] = $block;
-        }
-        
-        // Process each page
-        foreach ($pages as $pageNum => $pageBlocks) {
-            if ($pageNum > 1) {
-                $text .= "\n\n--- Page {$pageNum} ---\n\n";
-            }
-            
-            // Sort blocks by vertical position
-            usort($pageBlocks, function($a, $b) {
-                $aTop = $a['Geometry']['BoundingBox']['Top'] ?? 0;
-                $bTop = $b['Geometry']['BoundingBox']['Top'] ?? 0;
-                return $aTop <=> $bTop;
-            });
-            
-            foreach ($pageBlocks as $block) {
-                if ($block['BlockType'] === 'LINE' && isset($block['Text'])) {
-                    $text .= $block['Text'] . "\n";
-                } elseif ($block['BlockType'] === 'TABLE') {
-                    $text .= $this->parseTable($block, $blocks) . "\n";
-                }
-            }
-        }
-        
-        return trim($text);
-    }
-    
-    /**
-     * Parse table from Textract blocks
-     * 
-     * @param array $tableBlock Table block
-     * @param array $allBlocks All blocks for reference
-     * @return string Table as text
-     */
-    protected function parseTable(array $tableBlock, array $allBlocks): string
-    {
-        // This is a simplified table parser
-        // In production, you would build the full table structure
-        return "[TABLE CONTENT]\n";
-    }
-    
+
     /**
      * Fallback PDF text extraction using PHP
-     * 
-     * @param string $filePath Path to PDF file
-     * @return string Extracted text
      */
     protected function extractPdfTextFallback(string $filePath): string
     {
         try {
-            // Use smalot/pdfparser if available
             if (class_exists(\Smalot\PdfParser\Parser::class)) {
-                $parser = new \Smalot\PdfParser\Parser();
+                $parser = new \Smalot\PdfParser\Parser;
                 $pdf = $parser->parseFile($filePath);
                 $text = $pdf->getText();
-                
+
                 Log::debug('[TextExtractionService] Used PDF parser fallback', [
                     'file_path' => $filePath,
                 ]);
-                
+
                 return $text;
             }
-            
+
             Log::warning('[TextExtractionService] No PDF parser available for fallback');
+
             return '';
         } catch (Exception $e) {
             Log::error('[TextExtractionService] PDF fallback extraction failed', [
                 'error' => $e->getMessage(),
                 'file_path' => $filePath,
             ]);
+
             return '';
         }
     }
-    
+
     /**
      * Clear cached text for a file
-     * 
-     * @param string $fileGuid File GUID
-     * @return void
      */
     public function clearCache(string $fileGuid): void
     {
         $cacheKey = "text_extraction.{$fileGuid}";
         Cache::forget($cacheKey);
-        
+
         Log::debug('[TextExtractionService] Cache cleared', [
             'file_guid' => $fileGuid,
         ]);
+    }
+
+    /**
+     * Get available OCR providers and their capabilities
+     */
+    public function getAvailableProviders(): array
+    {
+        $providers = [];
+
+        foreach (OCRServiceFactory::getAvailableProviders() as $providerName) {
+            try {
+                $provider = OCRServiceFactory::create($providerName);
+                $providers[$providerName] = [
+                    'name' => $provider->getProviderName(),
+                    'capabilities' => $provider->getCapabilities(),
+                    'supported_extensions' => $provider->getSupportedExtensions(),
+                    'available' => OCRServiceFactory::isProviderAvailable($providerName),
+                ];
+            } catch (Exception $e) {
+                $providers[$providerName] = [
+                    'name' => $providerName,
+                    'available' => false,
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return $providers;
     }
 }

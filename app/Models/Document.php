@@ -26,7 +26,6 @@ use Laravel\Scout\Searchable;
  * @property \Carbon\Carbon|null $document_date
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
- *
  * @property-read \App\Models\File $file
  * @property-read \App\Models\User $user
  * @property-read \App\Models\Category|null $category
@@ -126,7 +125,8 @@ class Document extends Model
      */
     public function shares()
     {
-        return $this->hasMany(FileShare::class, 'file_id', 'file_id');
+        return $this->hasMany(FileShare::class, 'file_id', 'file_id')
+            ->where('file_type', 'document');
     }
 
     /**
@@ -134,20 +134,16 @@ class Document extends Model
      */
     public function sharedUsers()
     {
-        return $this->hasManyThrough(
-            User::class,
-            FileShare::class,
-            'file_id', // Foreign key on file_shares table
-            'id', // Foreign key on users table
-            'file_id', // Local key on documents table
-            'shared_with_user_id' // Local key on file_shares table
-        );
+        return $this->belongsToMany(User::class, 'file_shares', 'file_id', 'shared_with_user_id')
+            ->where('file_shares.file_type', 'document')
+            ->withPivot('permission', 'shared_at', 'expires_at')
+            ->wherePivot('expires_at', '>', now()->toDateTimeString())
+            ->orWherePivot('expires_at', null);
     }
 
     /**
      * Check if the document can be viewed by a given user.
      *
-     * @param  \App\Models\User  $user
      * @return bool
      */
     public function canBeViewedBy(User $user)
@@ -170,7 +166,6 @@ class Document extends Model
     /**
      * Check if the document can be edited by a given user.
      *
-     * @param  \App\Models\User  $user
      * @return bool
      */
     public function canBeEditedBy(User $user)

@@ -24,7 +24,7 @@ class ProcessFile extends BaseJob
     protected function handleJob(): void
     {
         try {
-            Log::info("[ProcessFile] Starting job execution", [
+            Log::info('[ProcessFile] Starting job execution', [
                 'job_id' => $this->jobID,
                 'uuid' => $this->uuid,
             ]);
@@ -57,7 +57,7 @@ class ProcessFile extends BaseJob
                 // For receipts, convert to image if PDF (existing behavior)
                 if ($metadata['fileExtension'] === 'pdf') {
                     Log::debug("[ProcessFile] [{$jobName}] Converting PDF to image for receipt processing");
-                    
+
                     // This will be handled by ProcessReceipt job
                     // Just ensure the file is ready
                 }
@@ -68,7 +68,7 @@ class ProcessFile extends BaseJob
                 Log::debug("[ProcessFile] [{$jobName}] Document file ready for processing", [
                     's3_path' => $metadata['s3OriginalPath'] ?? 'not set',
                 ]);
-                
+
                 // Pre-extract text and cache it for document processing
                 try {
                     $text = $textExtractionService->extract(
@@ -76,11 +76,11 @@ class ProcessFile extends BaseJob
                         $fileType,
                         $metadata['fileGuid']
                     );
-                    
+
                     $metadata['extractedText'] = $text;
                     $metadata['textLength'] = strlen($text);
                     $this->storeMetadata($metadata);
-                    
+
                     Log::debug("[ProcessFile] [{$jobName}] Text pre-extracted for document", [
                         'text_length' => strlen($text),
                     ]);
@@ -89,14 +89,14 @@ class ProcessFile extends BaseJob
                         'error' => $e->getMessage(),
                     ]);
                 }
-                
+
                 $this->updateProgress(50);
             }
 
             // Validate S3 storage
             if (isset($metadata['s3OriginalPath'])) {
                 $exists = $storageService->getFile($metadata['s3OriginalPath']) !== null;
-                if (!$exists) {
+                if (! $exists) {
                     throw new \Exception('File not found in S3 storage');
                 }
                 Log::debug("[ProcessFile] [{$jobName}] S3 storage validated", [

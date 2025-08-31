@@ -32,53 +32,56 @@ class AppServiceProvider extends ServiceProvider
     {
         // Register services as singletons for better performance
         $this->app->singleton(\App\Services\StorageService::class, function ($app) {
-            return new \App\Services\StorageService();
+            return new \App\Services\StorageService;
         });
-        
+
         $this->app->singleton(\App\Services\TextExtractionService::class, function ($app) {
             return new \App\Services\TextExtractionService(
                 $app->make(\App\Services\StorageService::class)
             );
         });
-        
+
         $this->app->singleton(\App\Services\FileProcessingService::class, function ($app) {
             return new \App\Services\FileProcessingService(
                 $app->make(\App\Services\StorageService::class),
                 $app->make(\App\Services\TextExtractionService::class)
             );
         });
-        
+
         // Register AI services
         $this->app->bind(AIService::class, function ($app) {
             return AIServiceFactory::create();
         });
-        
+
         $this->app->singleton(\App\Services\ReceiptAnalysisService::class, function ($app) {
             return new \App\Services\ReceiptAnalysisService(
                 $app->make(AIService::class)
             );
         });
-        
+
         $this->app->singleton(\App\Services\DocumentAnalysisService::class, function ($app) {
             return new \App\Services\DocumentAnalysisService(
                 $app->make(AIService::class)
             );
         });
-        
+
         // Register SharingService
         $this->app->singleton(\App\Services\SharingService::class, function ($app) {
-            return new \App\Services\SharingService();
+            return new \App\Services\SharingService;
         });
-        
+
         // Register SearchService
         $this->app->singleton(\App\Services\SearchService::class, function ($app) {
-            return new \App\Services\SearchService();
+            return new \App\Services\SearchService;
         });
-        
+
         // Register DateFormatterService
         $this->app->singleton(\App\Services\DateFormatterService::class, function ($app) {
-            return new \App\Services\DateFormatterService();
+            return new \App\Services\DateFormatterService;
         });
+
+        // Register AI template service
+        $this->app->singleton(\App\Services\AI\PromptTemplateService::class);
     }
 
     /**

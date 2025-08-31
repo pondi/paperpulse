@@ -25,7 +25,7 @@ class PulseDavController extends Controller
         $files = PulseDavFile::where('user_id', auth()->id())
             ->orderBy('uploaded_at', 'desc')
             ->paginate(20);
-            
+
         // Get user's tags for the tag selector
         $tags = auth()->user()->tags()->orderBy('name')->get();
 
@@ -153,7 +153,7 @@ class PulseDavController extends Controller
             'user_id' => auth()->id(),
             'request_data' => $request->all(),
         ]);
-        
+
         try {
             $validator = \Validator::make($request->all(), [
                 'selections' => 'required|array',
@@ -182,10 +182,10 @@ class PulseDavController extends Controller
             }
 
             // Verify tags belong to user
-            if ($request->has('tag_ids') && !empty($request->tag_ids)) {
+            if ($request->has('tag_ids') && ! empty($request->tag_ids)) {
                 $userTagIds = auth()->user()->tags()->pluck('id')->toArray();
                 $invalidTags = array_diff($request->tag_ids, $userTagIds);
-                if (!empty($invalidTags)) {
+                if (! empty($invalidTags)) {
                     $response = [
                         'error' => 'Invalid tags selected',
                         'invalid_tag_ids' => array_values($invalidTags),
@@ -267,7 +267,7 @@ class PulseDavController extends Controller
         if ($request->has('tag_ids')) {
             $userTagIds = auth()->user()->tags()->pluck('id')->toArray();
             $invalidTags = array_diff($request->tag_ids, $userTagIds);
-            if (!empty($invalidTags)) {
+            if (! empty($invalidTags)) {
                 return response()->json([
                     'error' => 'Invalid tags selected',
                 ], 422);
@@ -294,7 +294,7 @@ class PulseDavController extends Controller
         \Log::info('[PulseDavController] Starting sync with folders', [
             'user_id' => $request->user()->id,
         ]);
-        
+
         $synced = $this->pulseDavService->syncS3FilesWithFolders($request->user());
 
         \Log::info('[PulseDavController] Sync completed', [
@@ -317,7 +317,7 @@ class PulseDavController extends Controller
         ]);
 
         $query = $request->input('query', '');
-        
+
         $tags = auth()->user()->tags()
             ->when($query, function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%");
@@ -343,7 +343,7 @@ class PulseDavController extends Controller
 
         $tag = auth()->user()->tags()->firstOrCreate(
             ['name' => strtolower(trim($request->name))],
-            ['color' => $request->color ?? '#' . substr(md5($request->name), 0, 6)]
+            ['color' => $request->color ?? '#'.substr(md5($request->name), 0, 6)]
         );
 
         return response()->json([

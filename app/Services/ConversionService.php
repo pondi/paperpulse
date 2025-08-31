@@ -3,18 +3,18 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Log;
-use Spatie\PdfToImage\Pdf;
 use Illuminate\Support\Facades\Storage;
+use Spatie\PdfToImage\Pdf;
 
 class ConversionService
 {
     protected StorageService $storageService;
-    
+
     public function __construct(StorageService $storageService)
     {
         $this->storageService = $storageService;
     }
-    
+
     /**
      * Convert PDF to JPG image for receipt processing
      */
@@ -22,11 +22,11 @@ class ConversionService
     {
         try {
             // Check if imagick extension is available
-            if (!extension_loaded('imagick')) {
+            if (! extension_loaded('imagick')) {
                 Log::warning('(ConversionService) [pdfToImage] - Imagick extension not available, skipping PDF to image conversion', [
                     'file_guid' => $fileGUID,
                 ]);
-                
+
                 // For now, we'll skip the conversion but still return true to continue processing
                 // The OCR service should be able to handle PDFs directly
                 return true;
@@ -38,7 +38,7 @@ class ConversionService
                 Log::warning('(ConversionService) [pdfToImage] - Ghostscript not available, skipping PDF to image conversion', [
                     'file_guid' => $fileGUID,
                 ]);
-                
+
                 // Skip conversion but continue processing
                 return true;
             }

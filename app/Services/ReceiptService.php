@@ -2,9 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\LineItem;
 use App\Models\Receipt;
-use App\Services\ReceiptAnalysisService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -12,7 +10,9 @@ use Illuminate\Support\Facades\Storage;
 class ReceiptService
 {
     protected $documentService;
+
     protected $receiptAnalysisService;
+
     protected $textExtractionService;
 
     public function __construct(
@@ -38,10 +38,10 @@ class ReceiptService
 
             // Get the file model to get user ID
             $file = \App\Models\File::findOrFail($fileId);
-            
+
             // Extract text from the file using TextExtractionService
             $ocrText = $this->textExtractionService->extract($filePath, 'receipt', $fileGuid);
-            
+
             if (empty($ocrText)) {
                 throw new \Exception('No text could be extracted from the file');
             }

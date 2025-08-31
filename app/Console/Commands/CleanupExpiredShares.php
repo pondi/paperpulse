@@ -38,11 +38,11 @@ class CleanupExpiredShares extends Command
     public function handle()
     {
         $this->info('Cleaning up expired shares...');
-        
+
         $deletedCount = $this->sharingService->cleanupExpiredShares();
-        
+
         $this->info("Deleted {$deletedCount} expired shares.");
-        
+
         return Command::SUCCESS;
     }
 }

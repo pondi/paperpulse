@@ -12,11 +12,11 @@ use App\Services\TextExtractionService;
 use Illuminate\Console\Command;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
 
 class DiagnoseFileProcessing extends Command
 {
     protected $signature = 'diagnose:file-processing {--user-id=1} {--test-file=}';
+
     protected $description = 'Diagnose issues with the file processing pipeline';
 
     public function handle()
@@ -76,7 +76,7 @@ class DiagnoseFileProcessing extends Command
             }
         }
 
-        if (!empty($missing)) {
+        if (! empty($missing)) {
             $this->error('❌ Missing required environment variables:');
             foreach ($missing as $var) {
                 $this->line("   - {$var}");
@@ -96,21 +96,21 @@ class DiagnoseFileProcessing extends Command
         $this->line('Testing S3 connection...');
         try {
             $storageService = app(StorageService::class);
-            
+
             // Test if we can write a test file
-            $testContent = 'test-' . uniqid();
+            $testContent = 'test-'.uniqid();
             $testPath = $storageService->storeFile(
                 $testContent,
                 1, // test user ID
-                'test-' . uniqid(),
+                'test-'.uniqid(),
                 'receipt',
                 'test',
                 'txt'
             );
-            
+
             // Try to read it back
             $readContent = $storageService->getFile($testPath);
-            
+
             if ($readContent === $testContent) {
                 $this->info('   ✅ S3 connection successful');
                 // Clean up
@@ -119,22 +119,22 @@ class DiagnoseFileProcessing extends Command
                 $this->error('   ❌ S3 read/write test failed');
             }
         } catch (\Exception $e) {
-            $this->error("   ❌ S3 connection failed: " . $e->getMessage());
+            $this->error('   ❌ S3 connection failed: '.$e->getMessage());
         }
 
         // Test Textract Connection
         $this->line('Testing AWS Textract connection...');
         try {
             $textExtractionService = app(TextExtractionService::class);
-            
+
             // Check if service was initialized properly
             if ($textExtractionService) {
                 // Try to check configuration
                 $textractKey = env('TEXTRACT_KEY');
                 $textractRegion = env('TEXTRACT_REGION');
-                
-                if (!empty($textractKey) && !empty($textractRegion)) {
-                    $this->info('   ✅ Textract configured with region: ' . $textractRegion);
+
+                if (! empty($textractKey) && ! empty($textractRegion)) {
+                    $this->info('   ✅ Textract configured with region: '.$textractRegion);
                 } else {
                     $this->error('   ❌ Textract configuration missing');
                 }
@@ -142,7 +142,7 @@ class DiagnoseFileProcessing extends Command
                 $this->error('   ❌ Textract service initialization failed');
             }
         } catch (\Exception $e) {
-            $this->error("   ❌ Textract connection failed: " . $e->getMessage());
+            $this->error('   ❌ Textract connection failed: '.$e->getMessage());
         }
 
         // Test AI Service
@@ -150,40 +150,40 @@ class DiagnoseFileProcessing extends Command
         try {
             $aiService = app(AIService::class);
             $result = $aiService->analyzeReceipt("Test Store\nTotal: $10.00");
-            
+
             if (is_array($result) && isset($result['success'])) {
                 if ($result['success']) {
-                    $this->info('   ✅ AI Service working (Provider: ' . ($result['provider'] ?? 'unknown') . ')');
+                    $this->info('   ✅ AI Service working (Provider: '.($result['provider'] ?? 'unknown').')');
                 } else {
-                    $this->error('   ❌ AI Service analysis failed: ' . ($result['error'] ?? 'Unknown error'));
+                    $this->error('   ❌ AI Service analysis failed: '.($result['error'] ?? 'Unknown error'));
                 }
             } else {
                 $this->error('   ❌ AI Service returned unexpected format');
-                $this->line('     Response: ' . json_encode($result));
+                $this->line('     Response: '.json_encode($result));
             }
         } catch (\Exception $e) {
-            $this->error("   ❌ AI Service failed: " . $e->getMessage());
+            $this->error('   ❌ AI Service failed: '.$e->getMessage());
         }
 
         // Test Redis/Cache
         $this->line('Testing Redis/Cache connection...');
         try {
             // Check if Redis extension is loaded
-            if (!extension_loaded('redis')) {
+            if (! extension_loaded('redis')) {
                 $this->warn('   ⚠️ PHP Redis extension not installed - using fallback');
             }
-            
+
             Cache::put('diagnose-test', 'value', 60);
             $value = Cache::get('diagnose-test');
             Cache::forget('diagnose-test');
-            
+
             if ($value === 'value') {
                 $this->info('   ✅ Cache connection successful');
             } else {
                 $this->error('   ❌ Cache test failed');
             }
         } catch (\Exception $e) {
-            $this->error("   ❌ Cache connection failed: " . $e->getMessage());
+            $this->error('   ❌ Cache connection failed: '.$e->getMessage());
             if (str_contains($e->getMessage(), 'Redis')) {
                 $this->line('     💡 Install PHP Redis extension: pecl install redis');
             }
@@ -196,14 +196,16 @@ class DiagnoseFileProcessing extends Command
     {
         $this->info('3️⃣ Testing File Upload Process...');
 
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             $this->error("File not found: {$filePath}");
+
             return;
         }
 
         $user = User::find($this->option('user-id'));
-        if (!$user) {
-            $this->error("User not found with ID: " . $this->option('user-id'));
+        if (! $user) {
+            $this->error('User not found with ID: '.$this->option('user-id'));
+
             return;
         }
 
@@ -221,7 +223,7 @@ class DiagnoseFileProcessing extends Command
 
             $this->processFileUpload($uploadedFile, $user);
         } catch (\Exception $e) {
-            $this->error("Upload failed: " . $e->getMessage());
+            $this->error('Upload failed: '.$e->getMessage());
             $this->line($e->getTraceAsString());
         }
     }
@@ -231,12 +233,13 @@ class DiagnoseFileProcessing extends Command
         $this->info('3️⃣ Testing File Upload Process with Fake File...');
 
         $user = User::find($this->option('user-id'));
-        if (!$user) {
-            $this->error("User not found with ID: " . $this->option('user-id'));
+        if (! $user) {
+            $this->error('User not found with ID: '.$this->option('user-id'));
+
             return;
         }
 
-        $this->line("Creating test image...");
+        $this->line('Creating test image...');
         $this->line("User: {$user->email} (ID: {$user->id})");
 
         try {
@@ -244,15 +247,15 @@ class DiagnoseFileProcessing extends Command
             $image = imagecreatetruecolor(640, 480);
             $bgColor = imagecolorallocate($image, 255, 255, 255);
             $textColor = imagecolorallocate($image, 0, 0, 0);
-            
+
             imagefill($image, 0, 0, $bgColor);
-            imagestring($image, 5, 50, 50, "Test Receipt", $textColor);
-            imagestring($image, 4, 50, 100, "Store: Test Store", $textColor);
-            imagestring($image, 4, 50, 130, "Item 1: $10.00", $textColor);
-            imagestring($image, 4, 50, 160, "Item 2: $15.00", $textColor);
-            imagestring($image, 4, 50, 200, "Total: $25.00", $textColor);
-            imagestring($image, 3, 50, 250, "Date: " . date('Y-m-d'), $textColor);
-            
+            imagestring($image, 5, 50, 50, 'Test Receipt', $textColor);
+            imagestring($image, 4, 50, 100, 'Store: Test Store', $textColor);
+            imagestring($image, 4, 50, 130, 'Item 1: $10.00', $textColor);
+            imagestring($image, 4, 50, 160, 'Item 2: $15.00', $textColor);
+            imagestring($image, 4, 50, 200, 'Total: $25.00', $textColor);
+            imagestring($image, 3, 50, 250, 'Date: '.date('Y-m-d'), $textColor);
+
             $tempPath = storage_path('app/test-receipt.jpg');
             imagejpeg($image, $tempPath, 90);
             imagedestroy($image);
@@ -266,12 +269,12 @@ class DiagnoseFileProcessing extends Command
             );
 
             $this->processFileUpload($uploadedFile, $user);
-            
+
             // Clean up
             @unlink($tempPath);
-            
+
         } catch (\Exception $e) {
-            $this->error("Test file creation failed: " . $e->getMessage());
+            $this->error('Test file creation failed: '.$e->getMessage());
             $this->line($e->getTraceAsString());
         }
     }
@@ -284,7 +287,7 @@ class DiagnoseFileProcessing extends Command
         try {
             // Step 1: Process upload
             $fileProcessingService = app(FileProcessingService::class);
-            
+
             $this->line('Processing upload...');
             $result = $fileProcessingService->processUpload(
                 $file,
@@ -300,10 +303,10 @@ class DiagnoseFileProcessing extends Command
             // Step 2: Check cache data
             $this->newLine();
             $this->line('🔍 Checking cache data...');
-            
+
             $cacheKey = "job.{$result['jobId']}.fileMetaData";
             $cacheData = Cache::get($cacheKey);
-            
+
             if ($cacheData) {
                 $this->info('✅ Cache data found');
                 $this->line('Cache contents:');
@@ -315,7 +318,7 @@ class DiagnoseFileProcessing extends Command
             // Step 3: Check file record
             $this->newLine();
             $this->line('🔍 Checking database record...');
-            
+
             $fileRecord = File::find($result['fileId']);
             if ($fileRecord) {
                 $this->info('✅ File record found');
@@ -336,9 +339,9 @@ class DiagnoseFileProcessing extends Command
             // Step 4: Check job queue
             $this->newLine();
             $this->line('🔍 Checking job queue...');
-            
+
             $jobs = \DB::table('jobs')->where('payload', 'like', "%{$result['jobId']}%")->get();
-            
+
             if ($jobs->count() > 0) {
                 $this->info("✅ Found {$jobs->count()} jobs in queue");
                 foreach ($jobs as $job) {
@@ -356,11 +359,11 @@ class DiagnoseFileProcessing extends Command
             // Step 5: Check job history
             $this->newLine();
             $this->line('🔍 Checking job history...');
-            
+
             $histories = JobHistory::where('uuid', $result['jobId'])
                 ->orWhere('parent_uuid', $result['jobId'])
                 ->get();
-            
+
             if ($histories->count() > 0) {
                 $this->info("✅ Found {$histories->count()} job history records");
                 $this->table(
@@ -369,7 +372,7 @@ class DiagnoseFileProcessing extends Command
                         return [
                             $h->name,
                             $h->status,
-                            $h->exception ? substr($h->exception, 0, 50) . '...' : '-'
+                            $h->exception ? substr($h->exception, 0, 50).'...' : '-',
                         ];
                     })->toArray()
                 );
@@ -378,7 +381,7 @@ class DiagnoseFileProcessing extends Command
             }
 
         } catch (\Exception $e) {
-            $this->error('❌ Upload process failed: ' . $e->getMessage());
+            $this->error('❌ Upload process failed: '.$e->getMessage());
             $this->line($e->getTraceAsString());
         }
     }

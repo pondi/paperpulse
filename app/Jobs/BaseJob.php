@@ -196,7 +196,7 @@ abstract class BaseJob implements ShouldQueue
     protected function createOrUpdateJobHistory(): void
     {
         $parentJob = JobHistory::where('uuid', $this->jobID)->first();
-        
+
         $data = [
             'uuid' => $this->uuid,
             'parent_uuid' => $parentJob ? $this->jobID : null,

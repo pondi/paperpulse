@@ -65,7 +65,7 @@ return [
                 ],
             ],
         ],
-        
+
         // PaperPulse permanent storage bucket
         'paperpulse' => [
             'driver' => 's3',
@@ -114,7 +114,7 @@ return [
     'links' => [
         public_path('storage') => storage_path('app/public'),
     ],
-    
+
     /*
     |--------------------------------------------------------------------------
     | S3 Bucket Configuration
@@ -123,7 +123,7 @@ return [
     | Configuration for dual S3 bucket setup for document processing
     |
     */
-    
+
     'incoming_prefix' => env('AWS_S3_INCOMING_PREFIX', 'incoming/'),
 
 ];

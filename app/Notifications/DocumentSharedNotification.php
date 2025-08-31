@@ -15,7 +15,9 @@ class DocumentSharedNotification extends Notification implements ShouldQueue
     use Queueable;
 
     protected Document $document;
+
     protected User $sharedBy;
+
     protected FileShare $share;
 
     /**
@@ -42,13 +44,13 @@ class DocumentSharedNotification extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Document Shared: ' . $this->document->title)
-            ->greeting('Hello ' . $notifiable->name . '!')
-            ->line($this->sharedBy->name . ' has shared a document with you.')
-            ->line('Document: ' . $this->document->title)
-            ->line('Permission: ' . ucfirst($this->share->permission))
+            ->subject('Document Shared: '.$this->document->title)
+            ->greeting('Hello '.$notifiable->name.'!')
+            ->line($this->sharedBy->name.' has shared a document with you.')
+            ->line('Document: '.$this->document->title)
+            ->line('Permission: '.ucfirst($this->share->permission))
             ->when($this->share->expires_at, function ($message) {
-                return $message->line('Expires: ' . $this->share->expires_at->format('Y-m-d H:i'));
+                return $message->line('Expires: '.$this->share->expires_at->format('Y-m-d H:i'));
             })
             ->action('View Document', route('documents.show', $this->document))
             ->line('Thank you for using PaperPulse!');

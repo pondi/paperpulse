@@ -19,7 +19,6 @@ use Illuminate\Support\Str;
  * @property \Carbon\Carbon|null $accessed_at
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
- *
  * @property-read \App\Models\File $file
  * @property-read \App\Models\User $user
  * @property-read \App\Models\User $sharedWithUser
@@ -35,12 +34,12 @@ class FileShare extends Model
      */
     protected $fillable = [
         'file_id',
-        'user_id',
+        'file_type',
+        'shared_by_user_id',
         'shared_with_user_id',
         'permission',
-        'share_token',
+        'shared_at',
         'expires_at',
-        'accessed_at',
     ];
 
     /**
@@ -49,14 +48,15 @@ class FileShare extends Model
      * @var array<string, string>
      */
     protected $casts = [
+        'shared_at' => 'datetime',
         'expires_at' => 'datetime',
-        'accessed_at' => 'datetime',
     ];
 
     /**
      * Permission constants.
      */
     const PERMISSION_VIEW = 'view';
+
     const PERMISSION_EDIT = 'edit';
 
     /**
@@ -70,9 +70,9 @@ class FileShare extends Model
     /**
      * Get the user who created the share.
      */
-    public function user()
+    public function sharedBy()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'shared_by_user_id');
     }
 
     /**
@@ -81,6 +81,21 @@ class FileShare extends Model
     public function sharedWithUser()
     {
         return $this->belongsTo(User::class, 'shared_with_user_id');
+    }
+
+    /**
+     * Get the shareable item (Document or Receipt).
+     */
+    public function shareable()
+    {
+        // Use file_type to determine the model
+        if ($this->file_type === 'document') {
+            return $this->belongsTo(\App\Models\Document::class, 'file_id', 'file_id');
+        } elseif ($this->file_type === 'receipt') {
+            return $this->belongsTo(\App\Models\Receipt::class, 'file_id', 'file_id');
+        }
+
+        return null;
     }
 
     /**
@@ -150,7 +165,7 @@ class FileShare extends Model
      */
     public function hasExpired()
     {
-        return !is_null($this->expires_at) && $this->expires_at->isPast();
+        return ! is_null($this->expires_at) && $this->expires_at->isPast();
     }
 
     /**

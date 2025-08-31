@@ -27,3 +27,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/documents/{document}/shares', [\App\Http\Controllers\DocumentController::class, 'getShares']);
     Route::get('/receipts/{receipt}/shares', [\App\Http\Controllers\ReceiptController::class, 'getShares']);
 });
+
+// Batch Processing API
+Route::middleware('auth:sanctum')->group(function () {
+    Route::prefix('batch')->group(function () {
+        Route::post('/', [\App\Http\Controllers\BatchProcessingController::class, 'create']);
+        Route::get('/', [\App\Http\Controllers\BatchProcessingController::class, 'list']);
+        Route::get('/{batchJob}/status', [\App\Http\Controllers\BatchProcessingController::class, 'status']);
+        Route::post('/{batchJob}/cancel', [\App\Http\Controllers\BatchProcessingController::class, 'cancel']);
+    });
+});

@@ -2,14 +2,15 @@
 
 namespace App\Jobs;
 
+use App\Models\Document;
 use App\Models\File;
 use App\Models\Receipt;
-use App\Models\Document;
 use Illuminate\Support\Facades\Log;
 
 class ApplyTags extends BaseJob
 {
     protected $file;
+
     protected $tagIds;
 
     /**
@@ -29,6 +30,7 @@ class ApplyTags extends BaseJob
     {
         if (empty($this->tagIds)) {
             Log::info('No tags to apply', ['file_id' => $this->file->id]);
+
             return;
         }
 
@@ -36,11 +38,11 @@ class ApplyTags extends BaseJob
             // Find the receipt or document associated with this file
             if ($this->file->file_type === 'document') {
                 $document = Document::where('file_id', $this->file->id)->first();
-                
+
                 if ($document) {
                     // Sync tags to document
                     $document->tags()->syncWithoutDetaching($this->tagIds);
-                    
+
                     Log::info('Tags applied to document', [
                         'document_id' => $document->id,
                         'tag_ids' => $this->tagIds,
@@ -49,11 +51,11 @@ class ApplyTags extends BaseJob
             } else {
                 // Receipt type
                 $receipt = Receipt::where('file_id', $this->file->id)->first();
-                
+
                 if ($receipt) {
                     // Sync tags to receipt
                     $receipt->tags()->syncWithoutDetaching($this->tagIds);
-                    
+
                     Log::info('Tags applied to receipt', [
                         'receipt_id' => $receipt->id,
                         'tag_ids' => $this->tagIds,
@@ -66,7 +68,7 @@ class ApplyTags extends BaseJob
                 'tag_ids' => $this->tagIds,
                 'error' => $e->getMessage(),
             ]);
-            
+
             throw $e;
         }
     }

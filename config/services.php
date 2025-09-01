@@ -19,15 +19,15 @@ return [
     ],
 
     'ses' => [
-        'key' => env('AWS_SES_ACCESS_KEY_ID'),
-        'secret' => env('AWS_SES_SECRET_ACCESS_KEY'),
-        'region' => env('AWS_SES_DEFAULT_REGION', 'us-east-1'),
+        'key' => env('SES_KEY'),
+        'secret' => env('SES_SECRET'),
+        'region' => env('SES_REGION', 'us-east-1'),
     ],
 
     'textract' => [
-        'key' => env('AWS_TEXTRACT_ACCESS_KEY_ID'),
-        'secret' => env('AWS_TEXTRACT_SECRET_ACCESS_KEY'),
-        'region' => env('AWS_TEXTRACT_DEFAULT_REGION', 'us-east-1'),
+        'key' => env('TEXTRACT_KEY'),
+        'secret' => env('TEXTRACT_SECRET'),
+        'region' => env('TEXTRACT_REGION', 'us-east-1'),
         'version' => env('TEXTRACT_VERSION', '2018-06-27'),
         'timeout' => env('TEXTRACT_TIMEOUT', 120),
         'polling_interval' => env('TEXTRACT_POLLING_INTERVAL', 10),

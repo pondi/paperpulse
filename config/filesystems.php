@@ -47,13 +47,13 @@ return [
         // PulseDav incoming bucket for WebDAV uploads
         'pulsedav' => [
             'driver' => 's3',
-            'key' => env('AWS_S3_ACCESS_KEY_ID'),
-            'secret' => env('AWS_S3_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_S3_DEFAULT_REGION'),
+            'key' => env('S3_KEY'),
+            'secret' => env('S3_SECRET'),
+            'region' => env('S3_REGION'),
             'bucket' => env('AWS_INCOMING_BUCKET'),
-            'url' => env('AWS_S3_URL'),
-            'endpoint' => env('AWS_S3_ENDPOINT'),
-            'use_path_style_endpoint' => env('AWS_S3_USE_PATH_STYLE_ENDPOINT', false),
+            'url' => env('S3_URL'),
+            'endpoint' => env('S3_ENDPOINT'),
+            'use_path_style_endpoint' => env('S3_USE_PATH_STYLE_ENDPOINT', false),
             'visibility' => 'private',
             'throw' => true,
             'options' => [
@@ -69,13 +69,13 @@ return [
         // PaperPulse permanent storage bucket
         'paperpulse' => [
             'driver' => 's3',
-            'key' => env('AWS_S3_ACCESS_KEY_ID'),
-            'secret' => env('AWS_S3_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_S3_DEFAULT_REGION'),
+            'key' => env('S3_KEY'),
+            'secret' => env('S3_SECRET'),
+            'region' => env('S3_REGION'),
             'bucket' => env('AWS_BUCKET'),
-            'url' => env('AWS_S3_URL'),
-            'endpoint' => env('AWS_S3_ENDPOINT'),
-            'use_path_style_endpoint' => env('AWS_S3_USE_PATH_STYLE_ENDPOINT', false),
+            'url' => env('S3_URL'),
+            'endpoint' => env('S3_ENDPOINT'),
+            'use_path_style_endpoint' => env('S3_USE_PATH_STYLE_ENDPOINT', false),
             'visibility' => 'private',
             'throw' => true,
             'options' => [
@@ -91,9 +91,9 @@ return [
         // Textract temporary storage
         'textract' => [
             'driver' => 's3',
-            'key' => env('AWS_TEXTRACT_ACCESS_KEY_ID'),
-            'secret' => env('AWS_TEXTRACT_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_TEXTRACT_DEFAULT_REGION'),
+            'key' => env('TEXTRACT_KEY'),
+            'secret' => env('TEXTRACT_SECRET'),
+            'region' => env('TEXTRACT_REGION'),
             'bucket' => env('TEXTRACT_BUCKET'),
             'throw' => true,
         ],

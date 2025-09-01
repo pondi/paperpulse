@@ -3,7 +3,6 @@
 namespace App\Services\AI;
 
 use App\Services\AI\Providers\OpenAIProvider;
-use Illuminate\Support\Facades\Log;
 
 class AIServiceFactory
 {

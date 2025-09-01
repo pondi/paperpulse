@@ -21,16 +21,17 @@ class EmailService
     ): bool {
         try {
             $template = EmailTemplate::getByKey($templateKey);
-            
-            if (!$template) {
+
+            if (! $template) {
                 Log::error("Email template not found: {$templateKey}");
+
                 return false;
             }
 
             // Validate variables
             $missing = $template->validateVariables($variables);
-            if (!empty($missing)) {
-                Log::warning("Missing email template variables", [
+            if (! empty($missing)) {
+                Log::warning('Missing email template variables', [
                     'template' => $templateKey,
                     'missing' => $missing,
                 ]);
@@ -38,21 +39,21 @@ class EmailService
 
             // Create a generic mailable
             $mailable = new \App\Mail\TemplatedMail($templateKey, $variables);
-            
+
             if ($mailer) {
                 Mail::mailer($mailer)->to($to)->send($mailable);
             } else {
                 Mail::to($to)->send($mailable);
             }
 
-            Log::info("Email sent successfully", [
+            Log::info('Email sent successfully', [
                 'template' => $templateKey,
                 'to' => $to,
             ]);
 
             return true;
         } catch (\Exception $e) {
-            Log::error("Failed to send email", [
+            Log::error('Failed to send email', [
                 'template' => $templateKey,
                 'to' => $to,
                 'error' => $e->getMessage(),
@@ -93,7 +94,7 @@ class EmailService
 
         foreach ($recipients as $recipient) {
             $email = is_array($recipient) ? $recipient['email'] : (is_string($recipient) ? $recipient : $recipient->email);
-            $variables = is_array($recipient) && isset($recipient['variables']) 
+            $variables = is_array($recipient) && isset($recipient['variables'])
                 ? array_merge($baseVariables, $recipient['variables'])
                 : $baseVariables;
 
@@ -109,8 +110,8 @@ class EmailService
     public function previewTemplate(string $templateKey, array $variables = []): ?array
     {
         $template = EmailTemplate::getByKey($templateKey);
-        
-        if (!$template) {
+
+        if (! $template) {
             return null;
         }
 
@@ -171,12 +172,13 @@ class EmailService
     public function disableTemplate(string $key): bool
     {
         $template = EmailTemplate::where('key', $key)->first();
-        
-        if (!$template) {
+
+        if (! $template) {
             return false;
         }
 
         $template->update(['is_active' => false]);
+
         return true;
     }
 
@@ -186,12 +188,13 @@ class EmailService
     public function enableTemplate(string $key): bool
     {
         $template = EmailTemplate::where('key', $key)->first();
-        
-        if (!$template) {
+
+        if (! $template) {
             return false;
         }
 
         $template->update(['is_active' => true]);
+
         return true;
     }
 

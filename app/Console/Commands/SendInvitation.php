@@ -31,12 +31,13 @@ class SendInvitation extends Command
     {
         $email = $this->argument('email');
         $invitedByUserId = $this->option('invited-by');
-        
+
         // If no invited-by is provided and no users exist, allow creating first user
-        if (!$invitedByUserId && User::count() === 0) {
+        if (! $invitedByUserId && User::count() === 0) {
             $invitedByUserId = null;
-        } elseif (!$invitedByUserId) {
+        } elseif (! $invitedByUserId) {
             $this->error('The --invited-by option is required when users already exist.');
+
             return 1;
         }
 
@@ -70,7 +71,7 @@ class SendInvitation extends Command
             Mail::to($email)->send(new InvitationMail($invitation, $inviter));
             $this->info('Invitation email sent successfully!');
         } catch (\Exception $e) {
-            $this->error('Failed to send invitation email: ' . $e->getMessage());
+            $this->error('Failed to send invitation email: '.$e->getMessage());
             $this->warn('However, the invitation record has been created.');
         }
 
@@ -81,7 +82,7 @@ class SendInvitation extends Command
         $this->line("Email: {$email}");
         $this->line("Registration URL: {$registrationUrl}");
         $this->line("Expires: {$invitation->expires_at->format('Y-m-d H:i:s')}");
-        
+
         if ($inviter) {
             $this->line("Invited by: {$inviter->name}");
         }

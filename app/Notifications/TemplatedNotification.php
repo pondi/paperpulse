@@ -2,7 +2,6 @@
 
 namespace App\Notifications;
 
-use App\Mail\TemplatedMail;
 use App\Models\EmailTemplate;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -28,13 +27,14 @@ abstract class TemplatedNotification extends Notification implements ShouldQueue
         if ($template) {
             // Render using template
             $rendered = $template->render($this->getAllVariables($variables, $notifiable));
-            
+
             return (new MailMessage)
                 ->subject($rendered['subject'])
                 ->line($rendered['body']);
         } else {
             // Fall back to original method if template doesn't exist
             Log::warning("Email template not found for notification: {$templateKey}");
+
             return $this->getFallbackMail($notifiable);
         }
     }

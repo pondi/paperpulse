@@ -9,7 +9,7 @@ class TemplatedMail extends BaseMail
      */
     protected function getFallbackSubject(): string
     {
-        return 'Notification from ' . config('app.name');
+        return 'Notification from '.config('app.name');
     }
 
     /**
@@ -17,6 +17,6 @@ class TemplatedMail extends BaseMail
      */
     protected function getFallbackBody(): string
     {
-        return '<h1>Notification</h1><p>This is a notification from ' . config('app.name') . '.</p><p>The email template could not be loaded.</p>';
+        return '<h1>Notification</h1><p>This is a notification from '.config('app.name').'.</p><p>The email template could not be loaded.</p>';
     }
 }

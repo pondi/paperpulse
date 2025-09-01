@@ -55,7 +55,7 @@ class EmailTemplate extends Model
     protected function renderString(string $template, array $variables = []): string
     {
         $rendered = $template;
-        
+
         foreach ($variables as $key => $value) {
             $placeholder = "{{ $key }}";
             $rendered = str_replace($placeholder, (string) $value, $rendered);
@@ -81,7 +81,7 @@ class EmailTemplate extends Model
         $missing = [];
 
         foreach ($required as $variable) {
-            if (!array_key_exists($variable, $variables)) {
+            if (! array_key_exists($variable, $variables)) {
                 $missing[] = $variable;
             }
         }

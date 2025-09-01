@@ -3,12 +3,10 @@
 namespace App\Notifications;
 
 use App\Models\Receipt;
-use App\Notifications\TemplatedNotification;
 use Illuminate\Notifications\Messages\MailMessage;
 
 class ReceiptProcessed extends TemplatedNotification
 {
-
     protected $receiptData;
 
     protected $success;
@@ -67,7 +65,7 @@ class ReceiptProcessed extends TemplatedNotification
             'receipt_url' => route('receipts.show', $this->receiptData['id']),
         ];
 
-        if (!$this->success) {
+        if (! $this->success) {
             $variables['error_message'] = $this->errorMessage ?? 'Unknown error';
         }
 

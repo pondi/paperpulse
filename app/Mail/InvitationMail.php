@@ -8,6 +8,7 @@ use App\Models\User;
 class InvitationMail extends BaseMail
 {
     protected Invitation $invitation;
+
     protected ?User $inviter;
 
     /**
@@ -33,7 +34,7 @@ class InvitationMail extends BaseMail
      */
     protected function getFallbackSubject(): string
     {
-        return 'You\'re invited to join ' . config('app.name');
+        return 'You\'re invited to join '.config('app.name');
     }
 
     /**
@@ -45,9 +46,9 @@ class InvitationMail extends BaseMail
         $registrationUrl = route('register', ['token' => $this->invitation->token]);
         $expiresAt = $this->invitation->expires_at->format('F j, Y \a\t g:i A');
 
-        return "
-            <h1>Welcome to " . config('app.name') . "!</h1>
-            <p>{$inviterName} has invited you to join " . config('app.name') . ".</p>
+        return '
+            <h1>Welcome to '.config('app.name')."!</h1>
+            <p>{$inviterName} has invited you to join ".config('app.name').".</p>
             <p>
                 <a href=\"{$registrationUrl}\" class=\"btn\">Accept Invitation</a>
             </p>

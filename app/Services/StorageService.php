@@ -167,7 +167,7 @@ class StorageService
             Log::error('[StorageService] Store file failed', [
                 'error' => $e->getMessage(),
                 'user_id' => $userId,
-                'file_id' => $fileId,
+                'guid' => $guid,
             ]);
             throw $e;
         }

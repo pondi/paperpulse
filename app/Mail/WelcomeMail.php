@@ -29,7 +29,7 @@ class WelcomeMail extends BaseMail
      */
     protected function getFallbackSubject(): string
     {
-        return 'Welcome to ' . config('app.name') . '!';
+        return 'Welcome to '.config('app.name').'!';
     }
 
     /**
@@ -39,17 +39,17 @@ class WelcomeMail extends BaseMail
     {
         $dashboardUrl = route('dashboard');
 
-        return "
-            <h1>Welcome to " . config('app.name') . ", {$this->user->name}!</h1>
+        return '
+            <h1>Welcome to '.config('app.name').", {$this->user->name}!</h1>
             <p>Thank you for joining us. We're excited to have you on board!</p>
             <p>
-                Get started by uploading your first receipt or document to see how " . config('app.name') . " 
+                Get started by uploading your first receipt or document to see how ".config('app.name')." 
                 can help you organize and manage your documents with AI-powered processing.
             </p>
             <p>
                 <a href=\"{$dashboardUrl}\" class=\"btn\">Go to Dashboard</a>
             </p>
-            <h2>What you can do with " . config('app.name') . ":</h2>
+            <h2>What you can do with ".config('app.name').":</h2>
             <ul>
                 <li><strong>Upload Receipts:</strong> Automatically extract key information like merchant, amount, and date</li>
                 <li><strong>Manage Documents:</strong> Store and organize all your important documents</li>

@@ -12,9 +12,7 @@ use Illuminate\Support\Facades\Queue;
 
 class BatchProcessingService
 {
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     /**
      * Process multiple documents in batch

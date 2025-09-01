@@ -5,8 +5,8 @@ namespace App\Listeners;
 use App\Mail\WelcomeMail;
 use App\Models\UserPreference;
 use Illuminate\Auth\Events\Registered;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class CreateUserPreferences
 {
@@ -16,7 +16,7 @@ class CreateUserPreferences
     public function handle(Registered $event): void
     {
         // Create default preferences for the new user if they don't already exist
-        if (!$event->user->preferences()->exists()) {
+        if (! $event->user->preferences()->exists()) {
             $event->user->preferences()->create(UserPreference::defaultPreferences());
         }
 

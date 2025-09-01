@@ -16,7 +16,9 @@ abstract class BaseMail extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     protected string $templateKey;
+
     protected array $templateVariables = [];
+
     protected ?EmailTemplate $emailTemplate = null;
 
     /**
@@ -26,11 +28,11 @@ abstract class BaseMail extends Mailable implements ShouldQueue
     {
         $this->templateKey = $templateKey;
         $this->templateVariables = $variables;
-        
+
         // Load the email template
         $this->emailTemplate = EmailTemplate::getByKey($templateKey);
-        
-        if (!$this->emailTemplate) {
+
+        if (! $this->emailTemplate) {
             Log::warning("Email template not found: {$templateKey}");
         }
     }
@@ -41,7 +43,7 @@ abstract class BaseMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         $subject = $this->getRenderedSubject();
-        
+
         return new Envelope(
             subject: $subject,
         );
@@ -70,11 +72,12 @@ abstract class BaseMail extends Mailable implements ShouldQueue
      */
     protected function getRenderedSubject(): string
     {
-        if (!$this->emailTemplate) {
+        if (! $this->emailTemplate) {
             return $this->getFallbackSubject();
         }
 
         $rendered = $this->emailTemplate->render($this->getAllVariables());
+
         return $rendered['subject'];
     }
 
@@ -83,11 +86,12 @@ abstract class BaseMail extends Mailable implements ShouldQueue
      */
     protected function getRenderedBody(): string
     {
-        if (!$this->emailTemplate) {
+        if (! $this->emailTemplate) {
             return $this->getFallbackBody();
         }
 
         $rendered = $this->emailTemplate->render($this->getAllVariables());
+
         return $this->wrapInLayout($rendered['body']);
     }
 
@@ -144,6 +148,7 @@ abstract class BaseMail extends Mailable implements ShouldQueue
     public function with(array $variables): self
     {
         $this->templateVariables = array_merge($this->templateVariables, $variables);
+
         return $this;
     }
 

@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Jobs\ProcessBatchItem;
 use App\Models\BatchJob;
 use App\Models\User;
-use App\Services\AI\ModelConfigurationService;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,11 +12,8 @@ use Illuminate\Support\Facades\Queue;
 
 class BatchProcessingService
 {
-    protected ModelConfigurationService $modelService;
-
-    public function __construct(ModelConfigurationService $modelService)
+    public function __construct()
     {
-        $this->modelService = $modelService;
     }
 
     /**
@@ -41,19 +37,21 @@ class BatchProcessingService
                 'failed_items' => 0,
                 'status' => 'queued',
                 'options' => $options,
-                'estimated_cost' => $this->estimateBatchCost($items, $type, $options),
+                'estimated_cost' => 0.0,
                 'started_at' => now(),
             ]);
 
-            // Optimize model selection for batch processing
-            $batchConfig = $this->optimizeBatchConfiguration($items, $type, $options);
+            // Simplified batch configuration
+            $batchConfig = [
+                'batch_size' => $this->calculateOptimalBatchSize(count($items), null, $options),
+                'parallel_jobs' => $this->calculateOptimalParallelism(count($items), $options),
+            ];
 
             Log::info('[BatchProcessingService] Starting batch processing', [
                 'batch_id' => $batchJob->id,
                 'user_id' => $user->id,
                 'type' => $type,
                 'total_items' => count($items),
-                'model_config' => $batchConfig['model']->name,
                 'estimated_cost' => $batchJob->estimated_cost,
             ]);
 
@@ -80,31 +78,7 @@ class BatchProcessingService
     /**
      * Optimize configuration for batch processing
      */
-    protected function optimizeBatchConfiguration(array $items, string $type, array $options): array
-    {
-        $itemCount = count($items);
-
-        // Determine optimal model based on batch size and requirements
-        $requirements = [
-            'task' => $type,
-            'budget' => $this->determineBatchBudget($itemCount, $options),
-            'quality' => $options['quality'] ?? 'standard',
-            'priority' => $itemCount > 100 ? 'cost' : 'balanced',
-        ];
-
-        $model = $this->modelService->getOptimalModel($type, $requirements);
-
-        // Determine batch size and parallelism
-        $batchSize = $this->calculateOptimalBatchSize($itemCount, $model, $options);
-        $parallelJobs = $this->calculateOptimalParallelism($itemCount, $options);
-
-        return [
-            'model' => $model,
-            'batch_size' => $batchSize,
-            'parallel_jobs' => $parallelJobs,
-            'cost_optimization' => $itemCount > 20,
-        ];
-    }
+    // Removed model optimization; core uses fixed OpenAI provider
 
     /**
      * Create batch items and dispatch processing jobs
@@ -285,11 +259,6 @@ class BatchProcessingService
     ): int {
         $baseBatchSize = $options['batch_size'] ?? 10;
 
-        // Adjust based on model capabilities
-        if ($model->hasFeature('batch_api')) {
-            $baseBatchSize = min(100, $baseBatchSize * 5);
-        }
-
         // Adjust based on item count
         if ($itemCount > 1000) {
             $baseBatchSize = min(50, $baseBatchSize * 2);
@@ -311,20 +280,7 @@ class BatchProcessingService
         }
     }
 
-    protected function estimateBatchCost(array $items, string $type, array $options): float
-    {
-        $avgInputTokens = $options['avg_input_tokens'] ?? 1000;
-        $avgOutputTokens = $options['avg_output_tokens'] ?? 500;
-
-        $model = $this->modelService->getOptimalModel($type, [
-            'task' => $type,
-            'budget' => $this->determineBatchBudget(count($items), $options),
-        ]);
-
-        $costPerItem = $model->estimateCost($avgInputTokens, $avgOutputTokens);
-
-        return $costPerItem * count($items);
-    }
+    // Removed batch cost estimation to avoid model registry dependency
 
     protected function getQueueForBatch(BatchJob $batchJob, array $options): string
     {

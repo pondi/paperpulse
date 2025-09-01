@@ -63,7 +63,6 @@ class ProcessBatchItem implements ShouldQueue
                 'batch_id' => $this->batchJobId,
                 'chunk_index' => $this->chunkIndex,
                 'items_count' => $batchItems->count(),
-                'model' => $this->batchConfig['model']->name,
             ]);
 
             // Process items in this chunk (sequential processing)
@@ -158,7 +157,7 @@ class ProcessBatchItem implements ShouldQueue
 
     protected function processReceiptItem(string $text, BatchItem $item, BatchJob $batchJob): array
     {
-        $aiService = AIServiceFactory::create($this->batchConfig['model']->provider);
+        $aiService = AIServiceFactory::create();
         $result = $aiService->analyzeReceipt($text, $item->options);
 
         if (! $result['success']) {
@@ -170,7 +169,7 @@ class ProcessBatchItem implements ShouldQueue
 
     protected function processDocumentItem(string $text, BatchItem $item, BatchJob $batchJob): array
     {
-        $aiService = AIServiceFactory::create($this->batchConfig['model']->provider);
+        $aiService = AIServiceFactory::create();
         $result = $aiService->analyzeDocument($text, $item->options);
 
         if (! $result['success']) {

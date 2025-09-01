@@ -3,7 +3,6 @@
 namespace App\Services\AI\Providers;
 
 use App\Services\AI\AIService;
-use App\Services\AI\ModelConfiguration;
 use App\Services\AI\PromptTemplateService;
 use App\Services\AI\Shared\AIDataNormalizer;
 use App\Services\AI\Shared\AIDebugLogger;
@@ -15,11 +14,11 @@ class OpenAIProvider implements AIService
 {
     protected PromptTemplateService $promptService;
 
-    protected ?ModelConfiguration $modelConfig;
+    protected ?array $modelConfig;
 
-    public function __construct(?ModelConfiguration $modelConfig = null)
+    public function __construct(?array $modelConfig = null)
     {
-        $this->modelConfig = $modelConfig;
+        $this->modelConfig = $modelConfig; // unused in simplified core
         $this->promptService = app(PromptTemplateService::class);
     }
 
@@ -34,8 +33,11 @@ class OpenAIProvider implements AIService
         ]);
 
         try {
-            $model = $this->modelConfig?->name ?? config('ai.models.receipt', 'gpt-4.1-mini');
-            $params = $this->modelConfig?->getOptimalParameters('receipt', $options) ?? [];
+            $model = config('ai.models.receipt', 'gpt-4o-mini');
+            $params = [
+                'max_tokens' => config('ai.options.max_tokens.receipt', 1024),
+                'temperature' => config('ai.options.temperature.receipt', 0.1),
+            ];
 
             AIDebugLogger::modelConfiguration('OpenAI', [
                 'model' => $model,
@@ -78,20 +80,14 @@ class OpenAIProvider implements AIService
             $result = json_decode($response->choices[0]->message->content, true);
 
             // Calculate cost if model config available
-            $cost = null;
-            if ($this->modelConfig && isset($response->usage)) {
-                $cost = $this->modelConfig->estimateCost(
-                    $response->usage->promptTokens,
-                    $response->usage->completionTokens
-                );
-            }
+            $cost = null; // cost estimation removed in simplified core
 
             $finalResult = AIFallbackHandler::createSuccessResult('openai', $result, [
                 'model' => $model,
                 'template' => $promptData['template_name'],
                 'tokens_used' => $response->usage->totalTokens ?? 0,
                 'cost_estimate' => $cost,
-                'model_config' => $this->modelConfig?->toArray(),
+                'model_config' => null,
             ]);
 
             AIDebugLogger::analysisComplete('OpenAI', $finalResult, $startTime);
@@ -115,9 +111,7 @@ class OpenAIProvider implements AIService
                         $model
                     );
                     // Merge additional params if available
-                    if (! empty($params)) {
-                        $fallbackPayload = array_merge($fallbackPayload, $params);
-                    }
+                    $fallbackPayload = array_merge($fallbackPayload, $params);
 
                     $response = OpenAI::chat()->create($fallbackPayload);
 
@@ -154,7 +148,7 @@ class OpenAIProvider implements AIService
     public function analyzeDocument(string $content, array $options = []): array
     {
         try {
-            $model = config('ai.models.document', 'gpt-4.1');
+            $model = config('ai.models.document', 'gpt-4o');
 
             // Use template service to get structured prompt
             $promptData = $this->promptService->getPrompt('document', [
@@ -237,7 +231,7 @@ class OpenAIProvider implements AIService
             ]);
 
             $response = OpenAI::chat()->create([
-                'model' => 'gpt-3.5-turbo',
+                'model' => config('ai.models.summary', 'gpt-4o-mini'),
                 'messages' => $promptData['messages'],
                 'temperature' => $promptData['options']['temperature'] ?? 0.3,
                 'max_tokens' => $promptData['options']['max_tokens'] ?? (int) ($maxLength / 4),
@@ -267,7 +261,7 @@ class OpenAIProvider implements AIService
             ];
 
             $response = OpenAI::chat()->create([
-                'model' => 'gpt-4.1-mini',
+                'model' => config('ai.models.entities', 'gpt-4o-mini'),
                 'messages' => [
                     [
                         'role' => 'system',
@@ -310,7 +304,7 @@ class OpenAIProvider implements AIService
             ];
 
             $response = OpenAI::chat()->create([
-                'model' => 'gpt-3.5-turbo',
+                'model' => config('ai.models.classification', 'gpt-4o-mini'),
                 'messages' => [
                     [
                         'role' => 'system',

@@ -3,7 +3,6 @@
 namespace Tests\Unit;
 
 use App\Services\AI\AIServiceFactory;
-use App\Services\AI\Providers\AnthropicProvider;
 use App\Services\AI\Providers\OpenAIProvider;
 use App\Services\DocumentAnalysisService;
 use App\Services\ReceiptAnalysisService;
@@ -21,16 +20,6 @@ class AIServiceTest extends TestCase
         $this->assertEquals('openai', $service->getProviderName());
     }
 
-    public function test_ai_factory_creates_anthropic_provider()
-    {
-        config(['ai.provider' => 'anthropic']);
-
-        $service = AIServiceFactory::create();
-
-        $this->assertInstanceOf(AnthropicProvider::class, $service);
-        $this->assertEquals('anthropic', $service->getProviderName());
-    }
-
     public function test_ai_factory_throws_exception_for_invalid_provider()
     {
         config(['ai.provider' => 'invalid']);
@@ -38,14 +27,6 @@ class AIServiceTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         AIServiceFactory::create();
-    }
-
-    public function test_ai_factory_with_fallback()
-    {
-        $service = AIServiceFactory::createWithFallback(['openai', 'anthropic']);
-
-        $this->assertNotNull($service);
-        $this->assertContains($service->getProviderName(), ['openai', 'anthropic']);
     }
 
     public function test_receipt_analysis_service_creation()

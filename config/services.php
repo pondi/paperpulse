@@ -45,8 +45,4 @@ return [
         's3_incoming_prefix' => env('S3_INCOMING_PREFIX', 'incoming/'),
     ],
 
-    'anthropic' => [
-        'api_key' => env('ANTHROPIC_API_KEY'),
-    ],
-
 ];

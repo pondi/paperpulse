@@ -34,12 +34,9 @@ class TextExtractionService
                 return $cachedText;
             }
 
-            // Get the list of providers to try (primary + fallbacks)
+            // Simplified: single provider flow
             $primaryProvider = config('ocr.provider', 'textract');
-            $fallbackProviders = explode(',', config('ocr.fallback_providers', ''));
-            $fallbackProviders = array_map('trim', $fallbackProviders);
-            $allProviders = array_merge([$primaryProvider], $fallbackProviders);
-            $allProviders = array_unique(array_filter($allProviders));
+            $allProviders = [$primaryProvider];
 
             $lastError = null;
             $result = null;

@@ -124,6 +124,6 @@ return [
     |
     */
 
-    'incoming_prefix' => env('AWS_S3_INCOMING_PREFIX', 'incoming/'),
+    'incoming_prefix' => env('S3_INCOMING_PREFIX', 'incoming/'),
 
 ];

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Mail\InvitationMail;
 use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Console\Command;
@@ -61,6 +62,18 @@ class SendInvitation extends Command
         // Create invitation
         $invitation = Invitation::createForEmail($email, $invitedByUserId);
 
+        // Get inviter user if provided
+        $inviter = $invitedByUserId ? User::find($invitedByUserId) : null;
+
+        // Send invitation email
+        try {
+            Mail::to($email)->send(new InvitationMail($invitation, $inviter));
+            $this->info('Invitation email sent successfully!');
+        } catch (\Exception $e) {
+            $this->error('Failed to send invitation email: ' . $e->getMessage());
+            $this->warn('However, the invitation record has been created.');
+        }
+
         // Generate registration URL
         $registrationUrl = route('register', ['token' => $invitation->token]);
 
@@ -68,9 +81,10 @@ class SendInvitation extends Command
         $this->line("Email: {$email}");
         $this->line("Registration URL: {$registrationUrl}");
         $this->line("Expires: {$invitation->expires_at->format('Y-m-d H:i:s')}");
-
-        // In a real application, you would send an email here
-        // Mail::to($email)->send(new InvitationMail($invitation, $registrationUrl));
+        
+        if ($inviter) {
+            $this->line("Invited by: {$inviter->name}");
+        }
 
         return 0;
     }

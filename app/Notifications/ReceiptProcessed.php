@@ -3,14 +3,11 @@
 namespace App\Notifications;
 
 use App\Models\Receipt;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Notifications\TemplatedNotification;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
-class ReceiptProcessed extends Notification implements ShouldQueue
+class ReceiptProcessed extends TemplatedNotification
 {
-    use Queueable;
 
     protected $receiptData;
 
@@ -51,9 +48,36 @@ class ReceiptProcessed extends Notification implements ShouldQueue
     }
 
     /**
-     * Get the mail representation of the notification.
+     * Get the email template key for this notification
      */
-    public function toMail($notifiable): MailMessage
+    protected function getEmailTemplateKey(): string
+    {
+        return $this->success ? 'receipt_processed_success' : 'receipt_processed_failed';
+    }
+
+    /**
+     * Get the variables to pass to the email template
+     */
+    protected function getEmailVariables($notifiable): array
+    {
+        $variables = [
+            'merchant_name' => $this->receiptData['merchant_name'],
+            'amount' => number_format($this->receiptData['total_amount'], 2),
+            'currency' => $this->receiptData['currency'],
+            'receipt_url' => route('receipts.show', $this->receiptData['id']),
+        ];
+
+        if (!$this->success) {
+            $variables['error_message'] = $this->errorMessage ?? 'Unknown error';
+        }
+
+        return $variables;
+    }
+
+    /**
+     * Get fallback mail message if template is not found
+     */
+    protected function getFallbackMail($notifiable): MailMessage
     {
         if ($this->success) {
             return (new MailMessage)

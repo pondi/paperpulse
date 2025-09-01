@@ -2,123 +2,86 @@
 
 namespace App\Http\Controllers\Documents;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\BaseResourceController;
 use App\Models\Document;
 use App\Models\Tag;
-use App\Services\ConversionService;
 use App\Services\DocumentService;
+use App\Services\ConversionService;
+use App\Traits\ShareableController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
-class DocumentController extends Controller
+class DocumentController extends BaseResourceController
 {
+    use ShareableController;
+
+    protected string $model = Document::class;
+    protected string $resource = 'Documents';
+
+    protected array $indexWith = ['category', 'tags', 'sharedUsers', 'file'];
+    protected array $showWith = ['category', 'tags', 'sharedUsers', 'file'];
+
+    protected array $searchableFields = ['title', 'content', 'summary'];
+    protected array $filterableFields = ['category_id', 'tag'];
+
+    protected array $validationRules = [
+        'title' => 'sometimes|string|max:255',
+        'summary' => 'nullable|string|max:1000',
+        'category_id' => 'nullable|exists:categories,id',
+        'tags' => 'sometimes|array',
+        'tags.*' => 'integer|exists:tags,id',
+    ];
+
     /**
-     * Display a listing of documents
+     * Transform item for index display.
      */
-    public function index(Request $request)
+    protected function transformForIndex($document): array
     {
-        $query = Document::query()->with(['category', 'tags', 'sharedUsers', 'file']);
-
-        // Apply search filter
-        if ($search = $request->input('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                    ->orWhere('content', 'like', "%{$search}%")
-                    ->orWhere('summary', 'like', "%{$search}%");
-            });
-        }
-
-        // Apply category filter
-        if ($categoryId = $request->input('category')) {
-            $query->where('category_id', $categoryId);
-        }
-
-        // Apply tag filter
-        if ($tag = $request->input('tag')) {
-            $query->whereHas('tags', function ($q) use ($tag) {
-                $q->where('name', $tag);
-            });
-        }
-
-        // Apply date filters
-        if ($dateFrom = $request->input('date_from')) {
-            $query->whereDate('created_at', '>=', $dateFrom);
-        }
-
-        if ($dateTo = $request->input('date_to')) {
-            $query->whereDate('created_at', '<=', $dateTo);
-        }
-
-        // Order by created_at desc by default
-        $query->orderBy('created_at', 'desc');
-
-        $documents = $query->paginate(20)->through(function (Document $doc) {
-            $fileInfo = null;
-            if ($doc->file) {
-                $extension = $doc->file->fileExtension ?? 'pdf';
-                $typeFolder = 'documents';
-                $fileInfo = [
-                    'id' => $doc->file->id,
-                    'url' => route('documents.serve', [
-                        'guid' => $doc->file->guid,
-                        'type' => $typeFolder,
-                        'extension' => $extension,
-                        'user_id' => $doc->file->user_id,
-                    ]),
-                    'pdfUrl' => $extension === 'pdf' ? route('documents.serve', [
-                        'guid' => $doc->file->guid,
-                        'type' => $typeFolder,
-                        'extension' => 'pdf',
-                        'user_id' => $doc->file->user_id,
-                    ]) : null,
+        $fileInfo = null;
+        if ($document->file) {
+            $extension = $document->file->fileExtension ?? 'pdf';
+            $typeFolder = 'documents';
+            $fileInfo = [
+                'id' => $document->file->id,
+                'url' => route('documents.serve', [
+                    'guid' => $document->file->guid,
+                    'type' => $typeFolder,
                     'extension' => $extension,
-                    'size' => $doc->file->fileSize,
-                ];
-            }
-
-            return [
-                'id' => $doc->id,
-                'title' => $doc->title,
-                'file_name' => $doc->file?->fileName,
-                'file_type' => $doc->file?->fileType,
-                'size' => $doc->file?->fileSize ?? 0,
-                'created_at' => $doc->created_at?->toIso8601String(),
-                'updated_at' => $doc->updated_at?->toIso8601String(),
-                'category' => $doc->category?->only(['id', 'name', 'color']),
-                'tags' => $doc->tags?->map(fn ($t) => $t->only(['id', 'name']))->values(),
-                'shared_with_count' => $doc->sharedUsers?->count() ?? 0,
-                'file' => $fileInfo,
+                    'user_id' => $document->file->user_id,
+                ]),
+                'pdfUrl' => $extension === 'pdf' ? route('documents.serve', [
+                    'guid' => $document->file->guid,
+                    'type' => $typeFolder,
+                    'extension' => 'pdf',
+                    'user_id' => $document->file->user_id,
+                ]) : null,
+                'extension' => $extension,
+                'size' => $document->file->fileSize,
             ];
-        });
+        }
 
-        // Get user's categories for filters
-        $categories = auth()->user()->categories()->orderBy('name')->get();
-
-        return Inertia::render('Documents/Index', [
-            'documents' => $documents,
-            'categories' => $categories,
-            'filters' => $request->only(['search', 'category', 'tag', 'date_from', 'date_to']),
-        ]);
+        return [
+            'id' => $document->id,
+            'title' => $document->title,
+            'file_name' => $document->file?->fileName,
+            'file_type' => $document->file?->fileType,
+            'size' => $document->file?->fileSize ?? 0,
+            'created_at' => $document->created_at?->toIso8601String(),
+            'updated_at' => $document->updated_at?->toIso8601String(),
+            'category' => $document->category?->only(['id', 'name', 'color']),
+            'tags' => $document->tags?->map(fn ($t) => $t->only(['id', 'name']))->values(),
+            'shared_with_count' => $document->sharedUsers?->count() ?? 0,
+            'file' => $fileInfo,
+        ];
     }
 
     /**
-     * Display the specified document
+     * Transform item for show display.
      */
-    public function show(Document $document)
+    protected function transformForShow($document): array
     {
-        $this->authorize('view', $document);
-
-        $document->load(['category', 'tags', 'sharedUsers', 'file']);
-
-        // Get available tags for suggestions
-        $availableTags = auth()->user()->tags()->orderBy('name')->get();
-
-        // Get user's categories
-        $categories = auth()->user()->categories()->orderBy('name')->get();
-
-        // Build file info similar to receipts, using streaming serve route
         $fileInfo = null;
         if ($document->file) {
             $extension = $document->file->fileExtension ?? 'pdf';
@@ -144,85 +107,100 @@ class DocumentController extends Controller
             ];
         }
 
-        return Inertia::render('Documents/Show', [
-            'document' => [
-                'id' => $document->id,
-                'title' => $document->title,
-                'summary' => $document->summary,
-                'category_id' => $document->category_id,
-                'tags' => $document->tags,
-                'shared_users' => $document->sharedUsers,
-                'created_at' => $document->created_at?->toIso8601String(),
-                'updated_at' => $document->updated_at?->toIso8601String(),
-                'file' => $fileInfo,
-            ],
-            'categories' => $categories,
-            'available_tags' => $availableTags,
-        ]);
+        return [
+            'id' => $document->id,
+            'title' => $document->title,
+            'summary' => $document->summary,
+            'category_id' => $document->category_id,
+            'tags' => $document->tags,
+            'shared_users' => $document->sharedUsers,
+            'created_at' => $document->created_at?->toIso8601String(),
+            'updated_at' => $document->updated_at?->toIso8601String(),
+            'file' => $fileInfo,
+        ];
     }
 
     /**
-     * Update the specified document
+     * Get meta data for the show page.
      */
-    public function update(Request $request, Document $document)
+    protected function getShowMeta(): array
     {
-        $this->authorize('update', $document);
+        return [
+            'categories' => auth()->user()->categories()->orderBy('name')->get(),
+            'available_tags' => auth()->user()->tags()->orderBy('name')->get(),
+        ];
+    }
 
-        $validated = $request->validate([
-            'title' => 'sometimes|string|max:255',
-            'summary' => 'nullable|string|max:1000',
-            'category_id' => 'nullable|exists:categories,id',
-            'tags' => 'sometimes|array',
-            'tags.*' => 'integer|exists:tags,id',
-        ]);
-
-        // Update document
-        $document->update($validated);
-
-        // Sync tags if provided
-        if (isset($validated['tags'])) {
-            $document->tags()->sync($validated['tags']);
+    /**
+     * Apply filter to query.
+     */
+    protected function applyFilter($query, string $field, $value)
+    {
+        if ($field === 'tag') {
+            return $query->whereHas('tags', function ($q) use ($value) {
+                $q->where('name', $value);
+            });
         }
 
-        return back()->with('success', 'Document updated successfully');
+        return parent::applyFilter($query, $field, $value);
     }
 
     /**
-     * Remove the specified document
+     * Prepare data for update.
      */
-    public function destroy(Document $document)
+    protected function prepareForUpdate(array $validated, $document): array
     {
-        $this->authorize('delete', $document);
+        // Handle tags separately
+        if (isset($validated['tags'])) {
+            $document->tags()->sync($validated['tags']);
+            unset($validated['tags']);
+        }
 
+        return $validated;
+    }
+
+    /**
+     * Hook called before destroy.
+     */
+    protected function beforeDestroy($document): void
+    {
         try {
             // Delete from S3
             if ($document->file && $document->file->s3_path) {
                 Storage::disk('paperpulse')->delete($document->file->s3_path);
             }
-
-            // Delete document (will cascade to relationships)
-            $document->delete();
-
-            return redirect()->route('documents.index')
-                ->with('success', 'Document deleted successfully');
         } catch (\Exception $e) {
-            Log::error('Failed to delete document', [
+            Log::error('Failed to delete document file from S3', [
                 'document_id' => $document->id,
                 'error' => $e->getMessage(),
             ]);
-
-            return back()->with('error', 'Failed to delete document');
         }
     }
 
     /**
-     * Download the original document file
+     * Get shareable type for ShareableController trait.
+     */
+    protected function getShareableType(): string
+    {
+        return 'document';
+    }
+
+    /**
+     * Get route name prefix.
+     */
+    protected function getRouteName(): string
+    {
+        return 'documents';
+    }
+
+    /**
+     * Download the original document file.
      */
     public function download(Document $document)
     {
         $this->authorize('view', $document);
 
-        if (! $document->file || ! $document->file->s3_path) {
+        if (!$document->file || !$document->file->s3_path) {
             abort(404, 'Document file not found');
         }
 
@@ -231,7 +209,7 @@ class DocumentController extends Controller
 
             return response($file)
                 ->header('Content-Type', $document->file->mime_type)
-                ->header('Content-Disposition', 'attachment; filename="'.$document->file_name.'"');
+                ->header('Content-Disposition', 'attachment; filename="' . $document->file_name . '"');
         } catch (\Exception $e) {
             Log::error('Failed to download document', [
                 'document_id' => $document->id,
@@ -243,7 +221,62 @@ class DocumentController extends Controller
     }
 
     /**
-     * Display shared documents
+     * Attach tag to document.
+     */
+    public function attachTag(Request $request, Document $document)
+    {
+        $this->authorize('update', $document);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:50',
+        ]);
+
+        $tag = $document->addTagByName($validated['name']);
+
+        return back()->with('success', 'Tag added successfully');
+    }
+
+    /**
+     * Detach tag from document.
+     */
+    public function detachTag(Document $document, Tag $tag)
+    {
+        $this->authorize('update', $document);
+
+        $document->removeTag($tag);
+
+        return back()->with('success', 'Tag removed successfully');
+    }
+
+    /**
+     * Display document upload page.
+     */
+    public function upload()
+    {
+        return Inertia::render('Documents/Upload');
+    }
+
+    /**
+     * Display categories page.
+     */
+    public function categories()
+    {
+        $categories = auth()->user()->categories()
+            ->withCount('documents')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($category) {
+                $category->can_edit = $category->user_id === auth()->id();
+                return $category;
+            });
+
+        return Inertia::render('Documents/Categories', [
+            'categories' => $categories,
+        ]);
+    }
+
+    /**
+     * Display shared documents.
      */
     public function shared(Request $request)
     {
@@ -273,159 +306,55 @@ class DocumentController extends Controller
     }
 
     /**
-     * Display document upload page
-     */
-    public function upload()
-    {
-        return Inertia::render('Documents/Upload');
-    }
-
-    /**
-     * Display categories page
-     */
-    public function categories()
-    {
-        $categories = auth()->user()->categories()
-            ->withCount('documents')
-            ->orderBy('name')
-            ->get()
-            ->map(function ($category) {
-                $category->can_edit = $category->user_id === auth()->id();
-
-                return $category;
-            });
-
-        return Inertia::render('Documents/Categories', [
-            'categories' => $categories,
-        ]);
-    }
-
-    /**
-     * Attach tag to document
-     */
-    public function attachTag(Request $request, Document $document)
-    {
-        $this->authorize('update', $document);
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:50',
-        ]);
-
-        // Find or create tag
-        $tag = auth()->user()->tags()->firstOrCreate([
-            'name' => strtolower(trim($validated['name'])),
-        ]);
-
-        // Attach tag to document
-        $document->tags()->syncWithoutDetaching([$tag->id]);
-
-        return back()->with('success', 'Tag added successfully');
-    }
-
-    /**
-     * Detach tag from document
-     */
-    public function detachTag(Document $document, Tag $tag)
-    {
-        $this->authorize('update', $document);
-
-        $document->tags()->detach($tag->id);
-
-        return back()->with('success', 'Tag removed successfully');
-    }
-
-    /**
-     * Store uploaded documents
+     * Store uploaded documents.
      */
     public function store(Request $request, DocumentService $documentService, ConversionService $conversionService)
     {
-        // Apply rate limiting middleware to store method
-        $this->middleware('throttle:file-uploads')->only('store');
+        $fileType = $request->input('file_type', 'document');
 
-        $fileType = $request->input('file_type', 'receipt');
-
-        // Different validation rules based on file type
-        if ($fileType === 'document') {
-            $request->validate([
-                'files' => 'required',
-                'files.*' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif|max:10240', // 10MB - Textract supported formats only
-                'file_type' => 'required|in:receipt,document',
-            ]);
-        } else {
-            $request->validate([
-                'files' => 'required',
-                'files.*' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif|max:10240', // 10MB - Textract supported formats only
-                'file_type' => 'required|in:receipt,document',
-            ]);
-        }
+        $request->validate([
+            'files' => 'required',
+            'files.*' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif|max:10240',
+            'file_type' => 'required|in:receipt,document',
+        ]);
 
         try {
             $uploadedFiles = $request->file('files');
             $processedFiles = [];
 
-            // Debug logging
-            Log::info('(DocumentController) [store] - Files received', [
-                'has_files' => $request->hasFile('files'),
-                'files_count' => is_array($uploadedFiles) ? count($uploadedFiles) : 'not_array',
-                'file_type' => $fileType,
-                'all_files' => $request->allFiles(),
-            ]);
-
-            // Ensure we have files
-            if (! $uploadedFiles) {
-                Log::error('(DocumentController) [store] - No files found in request');
-
-                return back()->with('error', 'No files were uploaded. Please select files and try again.');
-            }
-
-            // Ensure we have an array of files
-            if (! is_array($uploadedFiles)) {
+            if (!is_array($uploadedFiles)) {
                 $uploadedFiles = [$uploadedFiles];
             }
 
-            foreach ($uploadedFiles as $index => $uploadedFile) {
-                Log::info('(DocumentController) [store] - Processing file', [
-                    'index' => $index,
-                    'filename' => $uploadedFile->getClientOriginalName(),
-                    'size' => $uploadedFile->getSize(),
-                    'mime' => $uploadedFile->getMimeType(),
-                ]);
-
+            foreach ($uploadedFiles as $uploadedFile) {
                 // Additional file validation before processing
                 $fileValidation = $this->validateUploadedFile($uploadedFile);
-                if (! $fileValidation['valid']) {
-                    Log::error('(DocumentController) [store] - File validation failed', [
+                if (!$fileValidation['valid']) {
+                    Log::error('File validation failed', [
                         'filename' => $uploadedFile->getClientOriginalName(),
                         'error' => $fileValidation['error'],
                     ]);
-
                     return back()->with('error', 'File validation failed for "'.$uploadedFile->getClientOriginalName().'": '.$fileValidation['error']);
                 }
 
-                // Process the upload based on file type
                 $result = $documentService->processUpload($uploadedFile, $fileType);
                 $processedFiles[] = $result;
-
-                Log::info('(DocumentController) [store] - File processed', [
-                    'index' => $index,
-                    'result' => $result,
-                ]);
             }
 
             return redirect()->route($fileType === 'document' ? 'documents.index' : 'receipts.index')
-                ->with('success', count($processedFiles).' file(s) uploaded successfully');
+                ->with('success', count($processedFiles) . ' file(s) uploaded successfully');
         } catch (\Exception $e) {
-            Log::error('(DocumentController) [store] - Failed to upload document', [
+            Log::error('Failed to upload document', [
                 'error' => $e->getMessage(),
                 'file_type' => $fileType,
             ]);
 
-            return back()->with('error', 'Failed to upload file: '.$e->getMessage());
+            return back()->with('error', 'Failed to upload file: ' . $e->getMessage());
         }
     }
 
     /**
-     * Validate an uploaded file for OCR processing
+     * Validate an uploaded file for OCR processing.
      */
     protected function validateUploadedFile($uploadedFile): array
     {
@@ -443,7 +372,7 @@ class DocumentController extends Controller
         $extension = strtolower($uploadedFile->getClientOriginalExtension());
         $supportedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'tiff', 'tif'];
 
-        if (! in_array($extension, $supportedExtensions)) {
+        if (!in_array($extension, $supportedExtensions)) {
             return [
                 'valid' => false,
                 'error' => "Unsupported file format '{$extension}'. Supported formats: ".implode(', ', $supportedExtensions),
@@ -461,7 +390,7 @@ class DocumentController extends Controller
             'tif' => ['image/tiff'],
         ];
 
-        if (isset($expectedMimeTypes[$extension]) && ! in_array($mimeType, $expectedMimeTypes[$extension])) {
+        if (isset($expectedMimeTypes[$extension]) && !in_array($mimeType, $expectedMimeTypes[$extension])) {
             return [
                 'valid' => false,
                 'error' => "File MIME type '{$mimeType}' doesn't match extension '{$extension}'. File may be corrupted or have wrong extension.",

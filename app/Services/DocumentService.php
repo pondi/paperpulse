@@ -25,28 +25,6 @@ class DocumentService
         $this->storageService = $storageService;
     }
 
-    /**
-     * Process an uploaded file
-     *
-     * @deprecated Use FileProcessingService::processUpload() instead
-     */
-    public function processUpload($incomingFile, $fileType = 'receipt')
-    {
-        // Delegate to the new FileProcessingService
-        $userId = auth()->id();
-
-        if (! $userId) {
-            throw new \Exception('User not authenticated');
-        }
-
-        $result = $this->fileProcessingService->processUpload(
-            $incomingFile,
-            $fileType,
-            $userId
-        );
-
-        return $result;
-    }
 
     /**
      * Store a document in the storage system
@@ -210,68 +188,4 @@ class DocumentService
         return trim("{$type}/{$guid}.{$extension}", '/');
     }
 
-    /**
-     * Store a working file for processing
-     */
-    private function storeWorkingFile($incomingFile, string $fileGUID): string
-    {
-        try {
-            $fileName = $fileGUID.'.'.$incomingFile->getClientOriginalExtension();
-            $storedFile = $incomingFile->storeAs('uploads', $fileName, 'local');
-            Log::debug('[DocumentService] Working file stored', [
-                'file_path' => $storedFile,
-                'file_guid' => $fileGUID,
-            ]);
-
-            return Storage::disk('local')->path($storedFile);
-        } catch (\Exception $e) {
-            Log::error('[DocumentService] Working file storage error', [
-                'error' => $e->getMessage(),
-                'file_guid' => $fileGUID,
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e;
-        }
-    }
-
-    /**
-     * Create a file model in the database
-     */
-    private function createFileModel($incomingFile, $fileGUID, $jobName): array
-    {
-        $filePath = $this->storeWorkingFile($incomingFile, $fileGUID);
-        $fileExtension = $incomingFile->getClientOriginalExtension();
-        $fileName = $incomingFile->getClientOriginalName();
-        $fileType = $incomingFile->getClientMimeType();
-        $fileSize = $incomingFile->getSize();
-
-        $fileModel = new File;
-        $fileModel->fileName = $fileName;
-        $fileModel->fileExtension = $fileExtension;
-        $fileModel->fileType = $fileType;
-        $fileModel->fileSize = $fileSize;
-        $fileModel->guid = $fileGUID;
-        $fileModel->uploaded_at = now();
-        $fileModel->save();
-
-        Log::debug("(DocumentService) [{$jobName}] - File record details", $fileModel->toArray());
-
-        return [
-            'fileID' => $fileModel->id,
-            'fileGUID' => $fileGUID,
-            'filePath' => $filePath,
-            'fileExtension' => $fileExtension,
-        ];
-    }
-
-    private function generateJobName(): string
-    {
-        $adjectives = ['purple', 'blue', 'green', 'yellow', 'red', 'awesome', 'shiny', 'glorious', 'mighty', 'cosmic'];
-        $nouns = ['vortex', 'planet', 'star', 'pulsar', 'quasar', 'blackhole', 'wormhole', 'asteroid', 'comet', 'galaxy'];
-
-        $adjective = $adjectives[array_rand($adjectives)];
-        $noun = $nouns[array_rand($nouns)];
-
-        return "{$adjective}-{$noun}-".substr(md5(microtime()), rand(0, 26), 5);
-    }
 }

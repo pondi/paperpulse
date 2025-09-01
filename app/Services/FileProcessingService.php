@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Contracts\Services\FileMetadataContract;
+use App\Contracts\Services\FileStorageContract;
+use App\Contracts\Services\FileValidationContract;
 use App\Jobs\Documents\AnalyzeDocument;
 use App\Jobs\Documents\ProcessDocument;
 use App\Jobs\Files\ProcessFile;
@@ -16,60 +19,67 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class FileProcessingService
 {
-    protected StorageService $storageService;
+    protected FileStorageContract $fileStorage;
+
+    protected FileMetadataContract $fileMetadata;
+
+    protected FileValidationContract $fileValidation;
 
     protected TextExtractionService $textExtractionService;
 
     public function __construct(
-        StorageService $storageService,
+        FileStorageContract $fileStorage,
+        FileMetadataContract $fileMetadata,
+        FileValidationContract $fileValidation,
         TextExtractionService $textExtractionService
     ) {
-        $this->storageService = $storageService;
+        $this->fileStorage = $fileStorage;
+        $this->fileMetadata = $fileMetadata;
+        $this->fileValidation = $fileValidation;
         $this->textExtractionService = $textExtractionService;
     }
 
     /**
      * Process a file from any source (upload, PulseDav, etc.)
      * This is the unified method that all file processing should use
-     *
-     * @param  array  $fileData  Array containing file information
-     * @param  string  $fileType  'receipt' or 'document'
-     * @param  int  $userId  User ID
-     * @param  array  $metadata  Additional metadata
-     * @return array File processing information
      */
     public function processFile(array $fileData, string $fileType, int $userId, array $metadata = []): array
     {
         try {
             // Generate unique identifiers
             $jobId = $metadata['jobId'] ?? (string) Str::uuid();
-            $fileGuid = (string) Str::uuid();
-            $jobName = $metadata['jobName'] ?? $this->generateJobName();
+            $fileGuid = $this->fileStorage->generateFileGuid();
+            $jobName = $metadata['jobName'] ?? $this->fileMetadata->generateJobName();
 
-            Log::info("[FileProcessingService] [{$jobName}] Processing file", [
+            Log::info("[FileProcessing] [{$jobName}] Processing file", [
                 'file_name' => $fileData['fileName'],
                 'file_type' => $fileType,
                 'user_id' => $userId,
                 'source' => $fileData['source'] ?? 'unknown',
             ]);
 
+            // Validate file data
+            $validation = $this->fileValidation->validateFileData($fileData, $fileType);
+            if (! $validation['valid']) {
+                throw new Exception('File validation failed: '.implode(', ', $validation['errors']));
+            }
+
             // Store working file locally
-            $workingPath = $this->storeWorkingContent(
+            $workingPath = $this->fileStorage->storeWorkingContent(
                 $fileData['content'],
                 $fileGuid,
                 $fileData['extension']
             );
 
             // Create file record in database
-            $file = $this->createFileRecordFromData($fileData, $fileGuid, $fileType, $userId);
+            $file = $this->fileMetadata->createFileRecordFromData($fileData, $fileGuid, $fileType, $userId);
 
             // Store original file to S3 storage bucket
-            $s3Path = $this->storageService->storeFile(
+            $s3Path = $this->fileStorage->storeToS3(
                 $fileData['content'],
                 $userId,
                 $fileGuid,
@@ -79,23 +89,18 @@ class FileProcessingService
             );
 
             // Update file record with S3 path
-            $file->s3_original_path = $s3Path;
-            $file->save();
+            $this->fileMetadata->updateFileWithS3Path($file, $s3Path);
 
             // Prepare metadata for job chain
-            $fileMetadata = [
-                'fileId' => $file->id,
-                'fileGuid' => $fileGuid,
-                'fileName' => $fileData['fileName'],
-                'filePath' => $workingPath,
-                'fileExtension' => $fileData['extension'],
-                'fileSize' => $fileData['size'],
-                'fileType' => $fileType,
-                'userId' => $userId,
-                's3OriginalPath' => $s3Path,
-                'jobName' => $jobName,
-                'metadata' => $metadata,
-            ];
+            $fileMetadata = $this->fileMetadata->prepareFileMetadata(
+                $file,
+                $fileGuid,
+                $fileData,
+                $workingPath,
+                $s3Path,
+                $jobName,
+                $metadata
+            );
 
             // Cache metadata for job chain
             Cache::put("job.{$jobId}.fileMetaData", $fileMetadata, now()->addHours(2));
@@ -103,7 +108,7 @@ class FileProcessingService
             // Dispatch appropriate job chain based on file type
             $this->dispatchJobChain($jobId, $fileType);
 
-            Log::info("[FileProcessingService] [{$jobName}] File processing initiated", [
+            Log::info("[FileProcessing] [{$jobName}] File processing initiated", [
                 'job_id' => $jobId,
                 'file_id' => $file->id,
                 'file_guid' => $fileGuid,
@@ -117,7 +122,7 @@ class FileProcessingService
                 'jobName' => $jobName,
             ];
         } catch (Exception $e) {
-            Log::error('[FileProcessingService] File processing failed', [
+            Log::error('[FileProcessing] File processing failed', [
                 'error' => $e->getMessage(),
                 'file_name' => $fileData['fileName'] ?? 'unknown',
                 'user_id' => $userId,
@@ -129,34 +134,24 @@ class FileProcessingService
     /**
      * Process an uploaded file (receipt or document)
      * This method now delegates to the unified processFile method
-     *
-     * @param  UploadedFile  $uploadedFile  The uploaded file
-     * @param  string  $fileType  'receipt' or 'document'
-     * @param  int  $userId  User ID
-     * @param  array  $metadata  Additional metadata
-     * @return array File processing information
      */
     public function processUpload(UploadedFile $uploadedFile, string $fileType, int $userId, array $metadata = []): array
     {
         try {
-            // Read file content
-            $content = file_get_contents($uploadedFile->getRealPath());
+            // Validate uploaded file
+            $validation = $this->fileValidation->validateUploadedFile($uploadedFile, $fileType);
+            if (! $validation['valid']) {
+                throw new Exception('File validation failed: '.implode(', ', $validation['errors']));
+            }
 
-            // Prepare file data for unified processing
-            $fileData = [
-                'fileName' => $uploadedFile->getClientOriginalName(),
-                'extension' => $uploadedFile->getClientOriginalExtension(),
-                'mimeType' => $uploadedFile->getClientMimeType(),
-                'size' => $uploadedFile->getSize(),
-                'content' => $content,
-                'source' => 'upload',
-            ];
+            // Extract file data
+            $fileData = $this->fileMetadata->extractFileDataFromUpload($uploadedFile, 'upload');
 
             // Use the unified processFile method
             return $this->processFile($fileData, $fileType, $userId, $metadata);
 
         } catch (Exception $e) {
-            Log::error('[FileProcessingService] Upload processing failed', [
+            Log::error('[FileProcessing] Upload processing failed', [
                 'error' => $e->getMessage(),
                 'file_name' => $uploadedFile->getClientOriginalName(),
                 'user_id' => $userId,
@@ -168,20 +163,11 @@ class FileProcessingService
     /**
      * Process a PulseDav file
      * This method now delegates to the unified processFile method
-     *
-     * @param  string  $incomingPath  Path in incoming S3 bucket
-     * @param  string  $fileType  'receipt' or 'document'
-     * @param  int  $userId  User ID
-     * @param  array  $metadata  Additional metadata
-     * @return array File processing information
      */
     public function processPulseDavFile(string $incomingPath, string $fileType, int $userId, array $metadata = []): array
     {
         try {
-            $filename = basename($incomingPath);
-            $extension = pathinfo($filename, PATHINFO_EXTENSION);
-
-            Log::info('[FileProcessingService] Processing PulseDav file', [
+            Log::info('[FileProcessing] Processing PulseDav file', [
                 'incoming_path' => $incomingPath,
                 'file_type' => $fileType,
                 'user_id' => $userId,
@@ -189,28 +175,20 @@ class FileProcessingService
             ]);
 
             // Check if file exists in PulseDav bucket
-            if (! S3StorageService::exists('pulsedav', $incomingPath)) {
-                Log::error('[FileProcessingService] File not found in PulseDav bucket', [
+            if (! $this->fileStorage->existsInS3('pulsedav', $incomingPath)) {
+                Log::error('[FileProcessing] File not found in PulseDav bucket', [
                     'incoming_path' => $incomingPath,
                     'disk' => 'pulsedav',
                 ]);
                 throw new \Exception("File not found in PulseDav bucket: {$incomingPath}");
             }
 
-            // Download file content from incoming bucket using our wrapper
-            $fileContent = S3StorageService::get('pulsedav', $incomingPath);
-            $fileSize = S3StorageService::size('pulsedav', $incomingPath);
+            // Download file content from incoming bucket
+            $fileContent = $this->fileStorage->getFromS3('pulsedav', $incomingPath);
+            $fileSize = $this->fileStorage->getSizeFromS3('pulsedav', $incomingPath);
 
-            // Prepare file data for unified processing
-            $fileData = [
-                'fileName' => $filename,
-                'extension' => $extension,
-                'mimeType' => null, // Will be determined later
-                'size' => $fileSize,
-                'content' => $fileContent,
-                'source' => 'pulsedav',
-                'incomingPath' => $incomingPath, // Store for deletion after processing
-            ];
+            // Extract file data
+            $fileData = $this->fileMetadata->extractFileDataFromPulseDav($incomingPath, $fileContent, $fileSize);
 
             // Add PulseDav-specific metadata
             $metadata['source'] = 'pulsedav';
@@ -222,12 +200,12 @@ class FileProcessingService
             // Delete file from incoming bucket after successful processing
             if ($result['success']) {
                 try {
-                    S3StorageService::delete('pulsedav', $incomingPath);
-                    Log::info('[FileProcessingService] Deleted file from incoming bucket', [
+                    $this->fileStorage->deleteFromS3('pulsedav', $incomingPath);
+                    Log::info('[FileProcessing] Deleted file from incoming bucket', [
                         'incoming_path' => $incomingPath,
                     ]);
                 } catch (Exception $e) {
-                    Log::warning('[FileProcessingService] Failed to delete file from incoming bucket', [
+                    Log::warning('[FileProcessing] Failed to delete file from incoming bucket', [
                         'incoming_path' => $incomingPath,
                         'error' => $e->getMessage(),
                     ]);
@@ -236,7 +214,7 @@ class FileProcessingService
 
             return $result;
         } catch (Exception $e) {
-            Log::error('[FileProcessingService] PulseDav processing failed', [
+            Log::error('[FileProcessing] PulseDav processing failed', [
                 'error' => $e->getMessage(),
                 'incoming_path' => $incomingPath,
                 'user_id' => $userId,
@@ -247,9 +225,6 @@ class FileProcessingService
 
     /**
      * Dispatch the appropriate job chain based on file type
-     *
-     * @param  string  $jobId  Job ID
-     * @param  string  $fileType  'receipt' or 'document'
      */
     protected function dispatchJobChain(string $jobId, string $fileType): void
     {
@@ -278,7 +253,7 @@ class FileProcessingService
             $jobs = [
                 (new ProcessFile($jobId))->onQueue($queue),
                 (new ProcessReceipt($jobId))->onQueue($queue),
-                (new MatchMerchant($jobId))->onQueue($queue), // Uses cached data from ProcessReceipt
+                (new MatchMerchant($jobId))->onQueue($queue),
             ];
         } else {
             $jobs = [
@@ -311,174 +286,18 @@ class FileProcessingService
     }
 
     /**
-     * Store uploaded file locally for processing
-     *
-     * @return string Local file path
-     */
-    protected function storeWorkingFile(UploadedFile $uploadedFile, string $fileGuid): string
-    {
-        try {
-            $fileName = $fileGuid.'.'.$uploadedFile->getClientOriginalExtension();
-            $storedFile = $uploadedFile->storeAs('uploads', $fileName, 'local');
-
-            Log::debug('[FileProcessingService] Working file stored', [
-                'file_path' => $storedFile,
-                'file_guid' => $fileGuid,
-            ]);
-
-            return Storage::disk('local')->path($storedFile);
-        } catch (Exception $e) {
-            Log::error('[FileProcessingService] Working file storage failed', [
-                'error' => $e->getMessage(),
-                'file_guid' => $fileGuid,
-            ]);
-            throw $e;
-        }
-    }
-
-    /**
-     * Store file content locally for processing
-     *
-     * @param  string  $content  File content
-     * @return string Local file path
-     */
-    protected function storeWorkingContent(string $content, string $fileGuid, string $extension): string
-    {
-        try {
-            $fileName = $fileGuid.'.'.$extension;
-            $path = 'uploads/'.$fileName;
-
-            Storage::disk('local')->put($path, $content);
-
-            Log::debug('[FileProcessingService] Working content stored', [
-                'file_path' => $path,
-                'file_guid' => $fileGuid,
-            ]);
-
-            return Storage::disk('local')->path($path);
-        } catch (Exception $e) {
-            Log::error('[FileProcessingService] Working content storage failed', [
-                'error' => $e->getMessage(),
-                'file_guid' => $fileGuid,
-            ]);
-            throw $e;
-        }
-    }
-
-    /**
-     * Create file record in database from file data
-     */
-    protected function createFileRecordFromData(array $fileData, string $fileGuid, string $fileType, int $userId): File
-    {
-        $file = new File;
-        $file->user_id = $userId;
-        $file->fileName = $fileData['fileName'];
-        $file->fileExtension = $fileData['extension'];
-        $file->fileType = $fileData['mimeType'] ?? $this->getMimeType($fileData['extension']);
-        $file->fileSize = $fileData['size'];
-        $file->guid = $fileGuid;
-        $file->file_type = $fileType;
-        $file->processing_type = $fileType;
-        $file->uploaded_at = now();
-        $file->save();
-
-        Log::debug('[FileProcessingService] File record created', [
-            'file_id' => $file->id,
-            'file_guid' => $fileGuid,
-            'file_type' => $fileType,
-            'source' => $fileData['source'] ?? 'unknown',
-        ]);
-
-        return $file;
-    }
-
-    /**
-     * Create file record in database (legacy method for UploadedFile)
-     */
-    protected function createFileRecord(UploadedFile $uploadedFile, string $fileGuid, string $fileType, int $userId): File
-    {
-        $fileData = [
-            'fileName' => $uploadedFile->getClientOriginalName(),
-            'extension' => $uploadedFile->getClientOriginalExtension(),
-            'mimeType' => $uploadedFile->getClientMimeType(),
-            'size' => $uploadedFile->getSize(),
-        ];
-
-        return $this->createFileRecordFromData($fileData, $fileGuid, $fileType, $userId);
-    }
-
-    /**
-     * Generate a friendly job name
-     */
-    protected function generateJobName(): string
-    {
-        $adjectives = ['swift', 'bright', 'stellar', 'cosmic', 'quantum', 'digital', 'cyber', 'turbo', 'mega', 'ultra'];
-        $nouns = ['pulse', 'wave', 'stream', 'flow', 'burst', 'beam', 'spark', 'flash', 'surge', 'blast'];
-
-        $adjective = $adjectives[array_rand($adjectives)];
-        $noun = $nouns[array_rand($nouns)];
-
-        return "{$adjective}-{$noun}-".substr(md5(microtime()), rand(0, 26), 5);
-    }
-
-    /**
      * Validate file type is supported
-     *
-     * @param  string  $extension  File extension
-     * @param  string  $fileType  'receipt' or 'document'
      */
     public function isSupported(string $extension, string $fileType): bool
     {
-        $extension = strtolower($extension);
-
-        if ($fileType === 'receipt') {
-            $supported = config('processing.documents.supported_formats.receipts');
-        } else {
-            $supported = config('processing.documents.supported_formats.documents');
-        }
-
-        return in_array($extension, $supported);
+        return $this->fileValidation->isSupported($extension, $fileType);
     }
 
     /**
      * Get maximum file size for a file type
-     *
-     * @param  string  $fileType  'receipt' or 'document'
-     * @return int Size in bytes
      */
     public function getMaxFileSize(string $fileType): int
     {
-        if ($fileType === 'receipt') {
-            return config('processing.documents.max_file_size.receipts') * 1024 * 1024; // MB to bytes
-        } else {
-            return config('processing.documents.max_file_size.documents') * 1024 * 1024; // MB to bytes
-        }
-    }
-
-    /**
-     * Get MIME type from file extension
-     *
-     * @param  string  $extension  File extension
-     * @return string MIME type
-     */
-    protected function getMimeType(string $extension): string
-    {
-        $mimeTypes = [
-            'jpg' => 'image/jpeg',
-            'jpeg' => 'image/jpeg',
-            'png' => 'image/png',
-            'gif' => 'image/gif',
-            'pdf' => 'application/pdf',
-            'doc' => 'application/msword',
-            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'xls' => 'application/vnd.ms-excel',
-            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'ppt' => 'application/vnd.ms-powerpoint',
-            'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'txt' => 'text/plain',
-            'csv' => 'text/csv',
-        ];
-
-        return $mimeTypes[strtolower($extension)] ?? 'application/octet-stream';
+        return $this->fileValidation->getMaxFileSize($fileType);
     }
 }

@@ -2,36 +2,220 @@
 
 namespace App\Http\Controllers\Receipts;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\BaseResourceController;
 use App\Models\Receipt;
+use App\Models\Tag;
 use App\Services\DocumentService;
 use App\Services\ReceiptService;
+use App\Traits\ShareableController;
 use App\Traits\SanitizesInput;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-class ReceiptController extends Controller
+class ReceiptController extends BaseResourceController
 {
-    use SanitizesInput;
+    use ShareableController, SanitizesInput;
+
+    protected string $model = Receipt::class;
+    protected string $resource = 'Receipt';
+
+    protected array $indexWith = ['merchant', 'file', 'lineItems', 'category', 'tags'];
+    protected array $showWith = ['merchant', 'file', 'lineItems', 'tags'];
+
+    protected array $searchableFields = ['receipt_description'];
+    protected array $filterableFields = ['category_id', 'merchant_id'];
+
+    protected array $validationRules = [
+        'receipt_date' => 'required|date',
+        'total_amount' => 'required|numeric',
+        'tax_amount' => 'nullable|numeric',
+        'currency' => 'required|string|size:3',
+        'receipt_category' => 'nullable|string|max:255',
+        'receipt_description' => 'nullable|string|max:1000',
+        'merchant_id' => 'nullable|exists:merchants,id',
+        'tags' => 'sometimes|array',
+        'tags.*' => 'integer|exists:tags,id',
+    ];
 
     protected DocumentService $documentService;
 
     public function __construct(DocumentService $documentService)
     {
+        parent::__construct();
         $this->documentService = $documentService;
     }
 
-    public function index()
+    /**
+     * Display a listing of receipts with user preferences.
+     */
+    public function index(Request $request)
     {
         $user = auth()->user();
-        $perPage = $user->preference('receipts_per_page', 20);
+        $this->perPage = $user->preference('receipts_per_page', 20);
         $sortOption = $user->preference('default_sort', 'date_desc');
 
-        // Build query with sorting
-        $query = Receipt::with(['merchant', 'file', 'lineItems', 'category', 'tags'])
-            ->where('user_id', $user->id);
+        $query = $this->model::query()->with($this->indexWith);
 
-        // Apply sorting based on preference
+        // Apply search
+        if ($search = $request->input('search')) {
+            $query = $this->applySearch($query, $search);
+        }
+
+        // Apply filters
+        foreach ($this->filterableFields as $field) {
+            if ($value = $request->input($field)) {
+                $query = $this->applyFilter($query, $field, $value);
+            }
+        }
+
+        // Apply custom sorting based on user preference
+        $this->applySortOption($query, $sortOption);
+
+        $receipts = $query->paginate($this->perPage);
+
+        $categories = auth()->user()->categories()
+            ->active()
+            ->ordered()
+            ->get();
+
+        return inertia("{$this->resource}/Index", [
+            'receipts' => $receipts->through(fn($receipt) => $this->transformForIndex($receipt)),
+            'categories' => $categories,
+            'pagination' => [
+                'current_page' => $receipts->currentPage(),
+                'last_page' => $receipts->lastPage(),
+                'per_page' => $receipts->perPage(),
+                'total' => $receipts->total(),
+                'from' => $receipts->firstItem(),
+                'to' => $receipts->lastItem(),
+            ],
+            'user_preferences' => [
+                'receipts_per_page' => $this->perPage,
+                'default_sort' => $sortOption,
+                'receipt_list_view' => $user->preference('receipt_list_view', 'grid'),
+            ],
+            'filters' => $this->getFilters($request),
+        ]);
+    }
+
+    /**
+     * Transform item for index display.
+     */
+    protected function transformForIndex($receipt): array
+    {
+        return [
+            'id' => $receipt->id,
+            'merchant' => $receipt->merchant,
+            'category' => $receipt->category,
+            'category_id' => $receipt->category_id,
+            'receipt_date' => $receipt->receipt_date,
+            'tax_amount' => $receipt->tax_amount,
+            'total_amount' => $receipt->total_amount,
+            'currency' => $receipt->currency,
+            'receipt_category' => $receipt->receipt_category,
+            'receipt_description' => $receipt->receipt_description,
+            'file' => $receipt->file ? [
+                'id' => $receipt->file->id,
+                'url' => route('receipts.showImage', $receipt->id),
+                'pdfUrl' => $receipt->file->guid ? route('receipts.showPdf', $receipt->id) : null,
+                'extension' => $receipt->file->fileExtension ?? 'jpg',
+                'mime_type' => $receipt->file->mime_type,
+            ] : null,
+            'lineItems' => $receipt->lineItems ? $receipt->lineItems->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'description' => $item->text,
+                    'sku' => $item->sku,
+                    'quantity' => $item->qty,
+                    'unit_price' => $item->price,
+                    'total_amount' => $item->total,
+                ];
+            }) : [],
+            'tags' => $receipt->tags ? $receipt->tags->map(function ($tag) {
+                return [
+                    'id' => $tag->id,
+                    'name' => $tag->name,
+                    'color' => $tag->color,
+                ];
+            }) : [],
+        ];
+    }
+
+    /**
+     * Transform item for show display.
+     */
+    protected function transformForShow($receipt): array
+    {
+        return [
+            'id' => $receipt->id,
+            'merchant' => $receipt->merchant,
+            'receipt_date' => $receipt->receipt_date,
+            'tax_amount' => $receipt->tax_amount,
+            'total_amount' => $receipt->total_amount,
+            'currency' => $receipt->currency,
+            'receipt_category' => $receipt->receipt_category,
+            'receipt_description' => $receipt->receipt_description,
+            'file' => $receipt->file ? [
+                'id' => $receipt->file->id,
+                'url' => route('receipts.showImage', $receipt->id),
+                'pdfUrl' => $receipt->file->guid ? route('receipts.showPdf', $receipt->id) : null,
+                'extension' => $receipt->file->fileExtension ?? 'jpg',
+                'mime_type' => $receipt->file->mime_type,
+            ] : null,
+            'lineItems' => $receipt->lineItems ? $receipt->lineItems->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'text' => $item->text,
+                    'sku' => $item->sku,
+                    'qty' => $item->qty,
+                    'price' => $item->price,
+                    'total' => $item->total,
+                ];
+            }) : [],
+            'tags' => $receipt->tags ? $receipt->tags->map(function ($tag) {
+                return [
+                    'id' => $tag->id,
+                    'name' => $tag->name,
+                    'color' => $tag->color,
+                ];
+            }) : [],
+        ];
+    }
+
+    /**
+     * Prepare data for update.
+     */
+    protected function prepareForUpdate(array $validated, $receipt): array
+    {
+        // Sanitize string inputs
+        $validated = $this->sanitizeData($validated, ['receipt_category', 'receipt_description']);
+
+        // Handle tags separately
+        if (isset($validated['tags'])) {
+            $receipt->tags()->sync($validated['tags']);
+            unset($validated['tags']);
+        }
+
+        return $validated;
+    }
+
+    /**
+     * Hook called before destroy.
+     */
+    protected function beforeDestroy($receipt): void
+    {
+        $receiptService = app(ReceiptService::class);
+        
+        if (!$receiptService->deleteReceipt($receipt)) {
+            throw new \Exception('Could not delete the receipt');
+        }
+    }
+
+    /**
+     * Apply sort option to query.
+     */
+    protected function applySortOption($query, string $sortOption): void
+    {
         switch ($sortOption) {
             case 'date_asc':
                 $query->orderBy('receipt_date', 'asc');
@@ -57,126 +241,35 @@ class ReceiptController extends Controller
                 $query->orderBy('receipt_date', 'desc');
                 break;
         }
-
-        $receipts = $query->paginate($perPage);
-
-        // Transform the items in the paginator
-        $receipts->getCollection()->transform(function ($receipt) {
-            return [
-                'id' => $receipt->id,
-                'merchant' => $receipt->merchant,
-                'category' => $receipt->category,
-                'category_id' => $receipt->category_id,
-                'receipt_date' => $receipt->receipt_date,
-                'tax_amount' => $receipt->tax_amount,
-                'total_amount' => $receipt->total_amount,
-                'currency' => $receipt->currency,
-                'receipt_category' => $receipt->receipt_category,
-                'receipt_description' => $receipt->receipt_description,
-                'file' => $receipt->file ? [
-                    'id' => $receipt->file->id,
-                    'url' => route('receipts.showImage', $receipt->id),
-                    'pdfUrl' => $receipt->file->guid ? route('receipts.showPdf', $receipt->id) : null,
-                    'extension' => $receipt->file->fileExtension ?? 'jpg',
-                    'mime_type' => $receipt->file->mime_type,
-                ] : null,
-                'lineItems' => $receipt->lineItems ? $receipt->lineItems->map(function ($item) {
-                    return [
-                        'id' => $item->id,
-                        'description' => $item->text,
-                        'sku' => $item->sku,
-                        'quantity' => $item->qty,
-                        'unit_price' => $item->price,
-                        'total_amount' => $item->total,
-                    ];
-                }) : [],
-                'tags' => $receipt->tags ? $receipt->tags->map(function ($tag) {
-                    return [
-                        'id' => $tag->id,
-                        'name' => $tag->name,
-                        'color' => $tag->color,
-                    ];
-                }) : [],
-            ];
-        });
-
-        $categories = auth()->user()->categories()
-            ->active()
-            ->ordered()
-            ->get();
-
-        return Inertia::render('Receipt/Index', [
-            'receipts' => $receipts->items(),
-            'categories' => $categories,
-            'pagination' => [
-                'current_page' => $receipts->currentPage(),
-                'last_page' => $receipts->lastPage(),
-                'per_page' => $receipts->perPage(),
-                'total' => $receipts->total(),
-                'from' => $receipts->firstItem(),
-                'to' => $receipts->lastItem(),
-            ],
-            'user_preferences' => [
-                'receipts_per_page' => $perPage,
-                'default_sort' => $sortOption,
-                'receipt_list_view' => $user->preference('receipt_list_view', 'grid'),
-            ],
-        ]);
     }
 
-    public function show(Receipt $receipt)
+    /**
+     * Get shareable type for ShareableController trait.
+     */
+    protected function getShareableType(): string
     {
-        $this->authorize('view', $receipt);
-
-        $receipt->load(['merchant', 'file', 'lineItems', 'tags']);
-
-        return Inertia::render('Receipt/Show', [
-            'receipt' => [
-                'id' => $receipt->id,
-                'merchant' => $receipt->merchant,
-                'receipt_date' => $receipt->receipt_date,
-                'tax_amount' => $receipt->tax_amount,
-                'total_amount' => $receipt->total_amount,
-                'currency' => $receipt->currency,
-                'receipt_category' => $receipt->receipt_category,
-                'receipt_description' => $receipt->receipt_description,
-                'file' => $receipt->file ? [
-                    'id' => $receipt->file->id,
-                    'url' => route('receipts.showImage', $receipt->id),
-                    'pdfUrl' => $receipt->file->guid ? route('receipts.showPdf', $receipt->id) : null,
-                    'extension' => $receipt->file->fileExtension ?? 'jpg',
-                    'mime_type' => $receipt->file->mime_type,
-                ] : null,
-                'lineItems' => $receipt->lineItems ? $receipt->lineItems->map(function ($item) {
-                    return [
-                        'id' => $item->id,
-                        'text' => $item->text,
-                        'sku' => $item->sku,
-                        'qty' => $item->qty,
-                        'price' => $item->price,
-                        'total' => $item->total,
-                    ];
-                }) : [],
-                'tags' => $receipt->tags ? $receipt->tags->map(function ($tag) {
-                    return [
-                        'id' => $tag->id,
-                        'name' => $tag->name,
-                        'color' => $tag->color,
-                    ];
-                }) : [],
-            ],
-        ]);
+        return 'receipt';
     }
 
+    /**
+     * Get route name prefix.
+     */
+    protected function getRouteName(): string
+    {
+        return 'receipts';
+    }
+
+    /**
+     * Display receipt image.
+     */
     public function showImage(Receipt $receipt)
     {
         $this->authorize('view', $receipt);
 
-        if (! $receipt->file || ! $receipt->file->guid) {
+        if (!$receipt->file || !$receipt->file->guid) {
             abort(404);
         }
 
-        // Use the actual file extension, defaulting to jpg if not set
         $extension = $receipt->file->fileExtension ?? 'jpg';
 
         return redirect()->route('documents.serve', [
@@ -187,11 +280,14 @@ class ReceiptController extends Controller
         ]);
     }
 
+    /**
+     * Display receipt PDF.
+     */
     public function showPdf(Receipt $receipt)
     {
         $this->authorize('view', $receipt);
 
-        if (! $receipt->file || ! $receipt->file->guid) {
+        if (!$receipt->file || !$receipt->file->guid) {
             abort(404);
         }
 
@@ -209,6 +305,38 @@ class ReceiptController extends Controller
         ]);
     }
 
+    /**
+     * Attach tag to receipt.
+     */
+    public function attachTag(Request $request, Receipt $receipt)
+    {
+        $this->authorize('update', $receipt);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:50',
+        ]);
+
+        $tag = $receipt->addTagByName($validated['name']);
+
+        return back()->with('success', 'Tag added successfully');
+    }
+
+    /**
+     * Detach tag from receipt.
+     */
+    public function detachTag(Receipt $receipt, Tag $tag)
+    {
+        $this->authorize('update', $receipt);
+        $this->authorize('view', $tag);
+
+        $receipt->removeTag($tag);
+
+        return back()->with('success', 'Tag removed successfully');
+    }
+
+    /**
+     * Show receipts by merchant.
+     */
     public function byMerchant($merchant)
     {
         // Validate merchant ID
@@ -219,45 +347,17 @@ class ReceiptController extends Controller
             ->where('user_id', auth()->id())
             ->exists();
 
-        if (! $hasAccess) {
+        if (!$hasAccess) {
             abort(403, 'Unauthorized access to merchant');
         }
 
         $receipts = Receipt::where('merchant_id', $merchantModel->id)
             ->where('user_id', auth()->id())
-            ->with(['merchant', 'file', 'lineItems'])
+            ->with(['merchant', 'file', 'lineItems', 'category', 'tags'])
             ->orderBy('receipt_date', 'desc')
             ->get()
             ->map(function ($receipt) {
-                return [
-                    'id' => $receipt->id,
-                    'merchant' => $receipt->merchant,
-                    'category' => $receipt->category,
-                    'category_id' => $receipt->category_id,
-                    'receipt_date' => $receipt->receipt_date,
-                    'tax_amount' => $receipt->tax_amount,
-                    'total_amount' => $receipt->total_amount,
-                    'currency' => $receipt->currency,
-                    'receipt_category' => $receipt->receipt_category,
-                    'receipt_description' => $receipt->receipt_description,
-                    'file' => $receipt->file ? [
-                        'id' => $receipt->file->id,
-                        'url' => $receipt->file ? route('receipts.showImage', $receipt->id) : null,
-                        'pdfUrl' => $receipt->file->guid ? route('receipts.showPdf', $receipt->id) : null,
-                        'extension' => $receipt->file->fileExtension ?? 'jpg',
-                        'mime_type' => $receipt->file->mime_type,
-                    ] : null,
-                    'lineItems' => $receipt->lineItems ? $receipt->lineItems->map(function ($item) {
-                        return [
-                            'id' => $item->id,
-                            'description' => $item->text,
-                            'sku' => $item->sku,
-                            'quantity' => $item->qty,
-                            'unit_price' => $item->price,
-                            'total_amount' => $item->total,
-                        ];
-                    }) : [],
-                ];
+                return $this->transformForIndex($receipt);
             });
 
         return Inertia::render('Receipt/Index', [
@@ -265,32 +365,15 @@ class ReceiptController extends Controller
         ]);
     }
 
-    public function destroy(Receipt $receipt, ReceiptService $receiptService)
+    /**
+     * Override update method to include custom validation and sanitization.
+     */
+    public function update(Request $request, $id)
     {
-        $this->authorize('delete', $receipt);
-
-        if ($receiptService->deleteReceipt($receipt)) {
-            return redirect()->route('receipts.index')->with('success', 'The receipt was deleted');
-        }
-
-        return redirect()->back()->with('error', 'Could not delete the receipt');
-    }
-
-    public function update(Request $request, Receipt $receipt)
-    {
+        $receipt = $this->findModel($id);
         $this->authorize('update', $receipt);
 
-        $validated = $request->validate([
-            'receipt_date' => 'required|date',
-            'total_amount' => 'required|numeric',
-            'tax_amount' => 'nullable|numeric',
-            'currency' => 'required|string|size:3',
-            'receipt_category' => 'nullable|string|max:255',
-            'receipt_description' => 'nullable|string|max:1000',
-            'merchant_id' => 'nullable|exists:merchants,id',
-            'tags' => 'sometimes|array',
-            'tags.*' => 'integer|exists:tags,id',
-        ]);
+        $validated = $request->validate($this->validationRules);
 
         // Sanitize string inputs
         $validated = $this->sanitizeData($validated, ['receipt_category', 'receipt_description']);
@@ -307,38 +390,19 @@ class ReceiptController extends Controller
     }
 
     /**
-     * Attach tag to receipt
+     * Override destroy method to use ReceiptService.
      */
-    public function attachTag(Request $request, Receipt $receipt)
+    public function destroy($id)
     {
-        $this->authorize('update', $receipt);
+        $receipt = $this->findModel($id);
+        $this->authorize('delete', $receipt);
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:50',
-        ]);
+        $receiptService = app(ReceiptService::class);
 
-        $tag = \App\Models\Tag::findOrCreateByName(
-            $validated['name'],
-            auth()->id()
-        );
-
-        if (! $receipt->tags->contains($tag->id)) {
-            $receipt->tags()->attach($tag->id, ['file_type' => 'receipt']);
+        if ($receiptService->deleteReceipt($receipt)) {
+            return redirect()->route('receipts.index')->with('success', 'The receipt was deleted');
         }
 
-        return back()->with('success', 'Tag added successfully');
-    }
-
-    /**
-     * Detach tag from receipt
-     */
-    public function detachTag(Receipt $receipt, \App\Models\Tag $tag)
-    {
-        $this->authorize('update', $receipt);
-        $this->authorize('view', $tag);
-
-        $receipt->tags()->detach($tag->id);
-
-        return back()->with('success', 'Tag removed successfully');
+        return redirect()->back()->with('error', 'Could not delete the receipt');
     }
 }

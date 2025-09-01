@@ -62,7 +62,7 @@ class Invitation extends Model
         $this->update(['used_at' => now()]);
     }
 
-    public static function createForEmail(string $email, int $invitedByUserId): self
+    public static function createForEmail(string $email, ?int $invitedByUserId): self
     {
         return self::create([
             'email' => $email,

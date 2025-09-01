@@ -14,7 +14,7 @@ class SendInvitation extends Command
      *
      * @var string
      */
-    protected $signature = 'invite:send {email} {--invited-by=1}';
+    protected $signature = 'invite:send {email} {--invited-by=}';
 
     /**
      * The console command description.
@@ -30,6 +30,14 @@ class SendInvitation extends Command
     {
         $email = $this->argument('email');
         $invitedByUserId = $this->option('invited-by');
+        
+        // If no invited-by is provided and no users exist, allow creating first user
+        if (!$invitedByUserId && User::count() === 0) {
+            $invitedByUserId = null;
+        } elseif (!$invitedByUserId) {
+            $this->error('The --invited-by option is required when users already exist.');
+            return 1;
+        }
 
         // Check if user already exists
         if (User::where('email', $email)->exists()) {

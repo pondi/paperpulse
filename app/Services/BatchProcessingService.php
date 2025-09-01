@@ -74,11 +74,6 @@ class BatchProcessingService
     }
 
     /**
-     * Optimize configuration for batch processing
-     */
-    // Removed model optimization; core uses fixed OpenAI provider
-
-    /**
      * Create batch items and dispatch processing jobs
      */
     protected function createAndDispatchBatchItems(
@@ -277,8 +272,6 @@ class BatchProcessingService
             return min($maxParallel, 3);
         }
     }
-
-    // Removed batch cost estimation to avoid model registry dependency
 
     protected function getQueueForBatch(BatchJob $batchJob, array $options): string
     {

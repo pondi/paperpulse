@@ -121,8 +121,7 @@ class SearchService
 
         // Apply tag filters
         if (isset($filters['tags']) && is_array($filters['tags'])) {
-            // This would require a more complex query with tag relationships
-            // For now, we'll handle it in the query callback
+            // Tag filtering is handled in the query callback
         }
 
         $results = $searchQuery

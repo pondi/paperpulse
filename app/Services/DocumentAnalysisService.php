@@ -38,8 +38,6 @@ class DocumentAnalysisService
         return $result['data'] ?? [];
     }
 
-    // Removed analyzeAndCreateDocument(): unused in current pipeline
-
     /** Generate document summary */
     public function generateSummary(string $content, int $maxLength = 200): string
     {
@@ -63,18 +61,4 @@ class DocumentAnalysisService
     {
         return $this->aiService->extractEntities($content, $types);
     }
-
-    // Removed determineCategory(): part of unused create flow
-
-    // Removed attachTags(): part of unused create flow
-
-    // Removed extractAndStoreDates(): part of unused create flow
-
-    // Removed generateTitle(): part of unused create flow
-
-    // Removed generateCategoryColor(): part of unused create flow
-
-    // Removed reanalyzeDocument(): unused
-
-    // Removed batchAnalyze(): unused
 }

@@ -179,8 +179,6 @@ class ProcessBatchItem implements ShouldQueue
         return $result;
     }
 
-    // Removed unused batch API placeholder methods to simplify implementation
-
     protected function markChunkAsFailed(string $error): void
     {
         BatchItem::where('batch_job_id', $this->batchJobId)

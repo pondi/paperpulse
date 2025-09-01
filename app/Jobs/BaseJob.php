@@ -43,8 +43,6 @@ abstract class BaseJob implements ShouldQueue
         $this->jobName = class_basename($this);
     }
 
-    // Removed custom payload(): Laravel queue uses its own payload structure.
-
     /**
      * Get the job ID.
      */

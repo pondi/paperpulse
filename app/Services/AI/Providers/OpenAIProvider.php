@@ -79,8 +79,7 @@ class OpenAIProvider implements AIService
 
             $result = json_decode($response->choices[0]->message->content, true);
 
-            // Calculate cost if model config available
-            $cost = null; // cost estimation removed in simplified core
+            $cost = null;
 
             $finalResult = AIFallbackHandler::createSuccessResult('openai', $result, [
                 'model' => $model,

@@ -598,8 +598,6 @@ class DocumentController extends Controller
         ]);
     }
 
-    // Removed getSecureUrl endpoint (unused by frontend)
-
     /**
      * Validate an uploaded file for OCR processing
      */

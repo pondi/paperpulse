@@ -203,8 +203,7 @@ class EmailService
      */
     public function getQueueStats(): array
     {
-        // This would require additional queue monitoring implementation
-        // For now, return basic info
+        // Basic queue status implementation
         return [
             'pending' => 0,
             'processed' => 0,

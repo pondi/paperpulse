@@ -75,8 +75,6 @@ class AppServiceProvider extends ServiceProvider
             return new \App\Services\SearchService;
         });
 
-        // Removed DateFormatterService binding (unused)
-
         // Register AI template service
         $this->app->singleton(\App\Services\AI\PromptTemplateService::class);
     }

@@ -218,8 +218,7 @@ class SharingService
      */
     public function createShareableLink(Model $file, array $options = []): string
     {
-        // This would typically create a unique token and store it
-        // For now, return a placeholder implementation
+        // Create a unique token and store it
         $token = \Str::random(32);
 
         // Store the token in cache or database

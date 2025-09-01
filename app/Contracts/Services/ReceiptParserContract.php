@@ -19,7 +19,7 @@ interface ReceiptParserContract
     /**
      * Extract date/time from parsed data
      */
-    public function extractDateTime(array $data): Carbon;
+    public function extractDateTime(array $data): ?Carbon;
 
     /**
      * Extract totals from parsed data

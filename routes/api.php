@@ -14,6 +14,21 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// Health check
+Route::get('health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'timestamp' => now()->toISOString(),
+        'version' => config('app.version', '1.0.0'),
+    ]);
+});
+
+// V1 API routes
+Route::prefix('v1')
+    ->middleware(['api.version:v1'])
+    ->group(base_path('routes/api/v1.php'));
+
+// Legacy user endpoint for backward compatibility
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
@@ -24,8 +39,8 @@ Route::post('/webdav/auth', [\App\Http\Controllers\Api\WebDavAuthController::cla
 
 // File Sharing API
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/documents/{document}/shares', [\App\Http\Controllers\DocumentController::class, 'getShares']);
-    Route::get('/receipts/{receipt}/shares', [\App\Http\Controllers\ReceiptController::class, 'getShares']);
+    Route::get('/documents/{document}/shares', [\App\Http\Controllers\Documents\DocumentShareController::class, 'getShares']);
+    Route::get('/receipts/{receipt}/shares', [\App\Http\Controllers\Receipts\ReceiptShareController::class, 'getShares']);
 });
 
 // Batch Processing API

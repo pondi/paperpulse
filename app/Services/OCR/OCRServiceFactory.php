@@ -17,7 +17,7 @@ class OCRServiceFactory
      */
     public static function create(?string $provider = null): OCRService
     {
-        $provider = $provider ?? config('ocr.provider', 'textract');
+        $provider = $provider ?? config('ai.ocr.provider', 'textract');
 
         // Return cached instance if available
         if (isset(self::$instances[$provider])) {

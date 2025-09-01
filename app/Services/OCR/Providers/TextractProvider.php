@@ -28,10 +28,10 @@ class TextractProvider implements OCRService
     {
         $this->client = new TextractClient([
             'version' => 'latest',
-            'region' => config('ocr.textract.region', 'eu-central-1'),
+            'region' => config('ai.ocr.providers.textract.region', 'eu-central-1'),
             'credentials' => [
-                'key' => config('ocr.textract.key'),
-                'secret' => config('ocr.textract.secret'),
+                'key' => config('ai.ocr.providers.textract.key'),
+                'secret' => config('ai.ocr.providers.textract.secret'),
             ],
         ]);
 

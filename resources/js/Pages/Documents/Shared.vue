@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import SearchBar from '@/Components/SearchBar.vue';
+import SearchBar from '@/Components/Features/SearchBar.vue';
 import { 
     DocumentIcon, 
     FolderIcon, 

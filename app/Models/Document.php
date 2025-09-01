@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Traits\BelongsToUser;
+use App\Traits\ShareableModel;
+use App\Traits\TaggableModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Laravel\Scout\Searchable;
@@ -37,6 +39,8 @@ class Document extends Model
     use BelongsToUser;
     use HasFactory;
     use Searchable;
+    use ShareableModel;
+    use TaggableModel;
 
     /**
      * The attributes that are mass assignable.
@@ -111,68 +115,19 @@ class Document extends Model
     }
 
     /**
-     * Get the tags for the document.
+     * Get the shareable type for FileShare records.
      */
-    public function tags()
+    protected function getShareableType(): string
     {
-        return $this->belongsToMany(Tag::class, 'file_tags', 'file_id', 'tag_id')
-            ->wherePivot('file_type', 'document')
-            ->withTimestamps();
+        return 'document';
     }
 
     /**
-     * Get the shares for the document.
+     * Get the taggable type for the pivot table.
      */
-    public function shares()
+    protected function getTaggableType(): string
     {
-        return $this->hasMany(FileShare::class, 'file_id', 'file_id')
-            ->where('file_type', 'document');
-    }
-
-    /**
-     * Get the users that this document is shared with.
-     */
-    public function sharedUsers()
-    {
-        return $this->belongsToMany(User::class, 'file_shares', 'file_id', 'shared_with_user_id')
-            ->where('file_shares.file_type', 'document')
-            ->withPivot('permission', 'shared_at', 'expires_at')
-            ->wherePivot('expires_at', '>', now()->toDateTimeString())
-            ->orWherePivot('expires_at', null);
-    }
-
-    /**
-     * Check if the document can be viewed by a given user.
-     *
-     * @return bool
-     */
-    public function canBeViewedBy(User $user)
-    {
-        // Owner can always view
-        if ($this->user_id === $user->id) {
-            return true;
-        }
-
-        // Check if there's an active share for this user
-        return $this->shares()
-            ->where('shared_with_user_id', $user->id)
-            ->where(function ($query) {
-                $query->whereNull('expires_at')
-                    ->orWhere('expires_at', '>', now());
-            })
-            ->exists();
-    }
-
-    /**
-     * Check if the document can be edited by a given user.
-     *
-     * @return bool
-     */
-    public function canBeEditedBy(User $user)
-    {
-        // Only owner can edit for now
-        // This can be extended to check share permissions when edit permissions are added
-        return $this->user_id === $user->id;
+        return 'document';
     }
 
     /**

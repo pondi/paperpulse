@@ -2,14 +2,14 @@
 
 namespace App\Services;
 
-use App\Jobs\AnalyzeDocument;
-use App\Jobs\ApplyTags;
-use App\Jobs\DeleteWorkingFiles;
-use App\Jobs\MatchMerchant;
-use App\Jobs\ProcessDocument;
-use App\Jobs\ProcessFile;
-use App\Jobs\ProcessReceipt;
-use App\Jobs\UpdatePulseDavFileStatus;
+use App\Jobs\Documents\AnalyzeDocument;
+use App\Jobs\Documents\ProcessDocument;
+use App\Jobs\Files\ProcessFile;
+use App\Jobs\Maintenance\DeleteWorkingFiles;
+use App\Jobs\PulseDav\UpdatePulseDavFileStatus;
+use App\Jobs\Receipts\MatchMerchant;
+use App\Jobs\Receipts\ProcessReceipt;
+use App\Jobs\System\ApplyTags;
 use App\Models\File;
 use Exception;
 use Illuminate\Http\UploadedFile;
@@ -432,9 +432,9 @@ class FileProcessingService
         $extension = strtolower($extension);
 
         if ($fileType === 'receipt') {
-            $supported = explode(',', config('documents.supported_receipt_formats'));
+            $supported = config('processing.documents.supported_formats.receipts');
         } else {
-            $supported = explode(',', config('documents.supported_document_formats'));
+            $supported = config('processing.documents.supported_formats.documents');
         }
 
         return in_array($extension, $supported);
@@ -449,9 +449,9 @@ class FileProcessingService
     public function getMaxFileSize(string $fileType): int
     {
         if ($fileType === 'receipt') {
-            return config('documents.max_receipt_size') * 1024 * 1024; // MB to bytes
+            return config('processing.documents.max_file_size.receipts') * 1024 * 1024; // MB to bytes
         } else {
-            return config('documents.max_document_size') * 1024 * 1024; // MB to bytes
+            return config('processing.documents.max_file_size.documents') * 1024 * 1024; // MB to bytes
         }
     }
 

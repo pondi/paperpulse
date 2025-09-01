@@ -327,8 +327,8 @@ import { ref, computed, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { Link } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import TagSelector from '@/Components/TagSelector.vue';
-import FolderItem from '@/Components/FolderItem.vue';
+import TagSelector from '@/Components/Domain/TagSelector.vue';
+import FolderItem from '@/Components/Features/FolderItem.vue';
 
 const props = defineProps({
     files: Object,

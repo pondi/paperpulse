@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\ProcessFile;
-use App\Jobs\ProcessReceipt;
+use App\Jobs\Files\ProcessFile;
+use App\Jobs\Receipts\ProcessReceipt;
 use App\Models\File;
 use App\Models\User;
 use Illuminate\Console\Command;

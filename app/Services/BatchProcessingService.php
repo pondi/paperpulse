@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Jobs\ProcessBatchItem;
+use App\Jobs\Files\ProcessBatchItem;
 use App\Models\BatchJob;
 use App\Models\User;
 use Exception;

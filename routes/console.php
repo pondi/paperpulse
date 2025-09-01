@@ -1,10 +1,10 @@
 <?php
 
-use App\Jobs\CleanupPulseDavFiles;
-use App\Jobs\CleanupRetainedFiles;
-use App\Jobs\SendWeeklySummary;
-use App\Jobs\SyncPulseDavFiles;
-use App\Jobs\SyncPulseDavFilesRealtime;
+use App\Jobs\Maintenance\CleanupRetainedFiles;
+use App\Jobs\Maintenance\DeletePulseDavFiles;
+use App\Jobs\Notifications\SendWeeklySummary;
+use App\Jobs\PulseDav\SyncPulseDavFiles;
+use App\Jobs\PulseDav\SyncPulseDavFilesRealtime;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -24,7 +24,7 @@ Schedule::job(new SyncPulseDavFilesRealtime)->everyFiveMinutes()
     ->withoutOverlapping();
 
 // Schedule PulseDav cleanup daily at 2am
-Schedule::job(new CleanupPulseDavFiles(30))->dailyAt('02:00')
+Schedule::job(new DeletePulseDavFiles(30))->dailyAt('02:00')
     ->name('cleanup-pulsedav-files')
     ->withoutOverlapping();
 

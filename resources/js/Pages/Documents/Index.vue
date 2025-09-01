@@ -2,14 +2,14 @@
 import { ref, computed, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import SearchBar from '@/Components/SearchBar.vue';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
-import Checkbox from '@/Components/Checkbox.vue';
-import Modal from '@/Components/Modal.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import DangerButton from '@/Components/DangerButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
+import SearchBar from '@/Components/Features/SearchBar.vue';
+import Dropdown from '@/Components/Navigation/Dropdown.vue';
+import DropdownLink from '@/Components/Navigation/DropdownLink.vue';
+import Checkbox from '@/Components/Forms/Checkbox.vue';
+import Modal from '@/Components/Common/Modal.vue';
+import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
+import DangerButton from '@/Components/Buttons/DangerButton.vue';
+import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
 import { 
     DocumentIcon, 
     FolderIcon, 

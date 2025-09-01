@@ -227,9 +227,9 @@ import {
   TagIcon,
 } from '@heroicons/vue/24/outline'
 import { ChevronDownIcon } from '@heroicons/vue/20/solid'
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import SearchBar from '@/Components/SearchBar.vue';
-import NotificationBell from '@/Components/NotificationBell.vue';
+import ApplicationLogo from '@/Components/Common/ApplicationLogo.vue';
+import SearchBar from '@/Components/Features/SearchBar.vue';
+import NotificationBell from '@/Components/Features/NotificationBell.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
 const sidebarOpen = ref(false)

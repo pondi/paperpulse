@@ -374,7 +374,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import BulkOperations from '@/Components/BulkOperations.vue';
+import BulkOperations from '@/Components/Domain/BulkOperations.vue';
 import { ChevronRightIcon, EllipsisVerticalIcon } from '@heroicons/vue/20/solid';
 import { 
   XMarkIcon, 

@@ -439,10 +439,10 @@
 import { ref } from 'vue';
 import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
+import InputError from '@/Components/Forms/InputError.vue';
+import InputLabel from '@/Components/Forms/InputLabel.vue';
+import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
+import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
 
 const props = defineProps({
   preferences: Object,

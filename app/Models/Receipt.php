@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Traits\BelongsToUser;
+use App\Traits\ShareableModel;
+use App\Traits\TaggableModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Laravel\Scout\Searchable;
@@ -40,6 +42,8 @@ class Receipt extends Model
     use BelongsToUser;
     use HasFactory;
     use Searchable;
+    use ShareableModel;
+    use TaggableModel;
 
     protected $fillable = [
         'file_id',
@@ -87,11 +91,20 @@ class Receipt extends Model
         return $this->belongsTo(Category::class);
     }
 
-    public function tags()
+    /**
+     * Get the shareable type for FileShare records.
+     */
+    protected function getShareableType(): string
     {
-        return $this->belongsToMany(Tag::class, 'file_tags', 'file_id', 'tag_id')
-            ->wherePivot('file_type', 'receipt')
-            ->withTimestamps();
+        return 'receipt';
+    }
+
+    /**
+     * Get the taggable type for the pivot table.
+     */
+    protected function getTaggableType(): string
+    {
+        return 'receipt';
     }
 
     /**

@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
-use App\Jobs\AnalyzeDocument;
-use App\Jobs\DeleteWorkingFiles;
-use App\Jobs\MatchMerchant;
-use App\Jobs\ProcessDocument;
-use App\Jobs\ProcessFile;
-use App\Jobs\ProcessReceipt;
+use App\Jobs\Documents\AnalyzeDocument;
+use App\Jobs\Documents\ProcessDocument;
+use App\Jobs\Files\ProcessFile;
+use App\Jobs\Maintenance\DeleteWorkingFiles;
+use App\Jobs\Receipts\MatchMerchant;
+use App\Jobs\Receipts\ProcessReceipt;
 use App\Models\File;
 use App\Models\JobHistory;
 use App\Models\Receipt;

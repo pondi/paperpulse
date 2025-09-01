@@ -258,16 +258,16 @@
 import { ref, computed, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
-import DangerButton from '@/Components/DangerButton.vue';
-import TextInput from '@/Components/TextInput.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import InputError from '@/Components/InputError.vue';
-import Modal from '@/Components/Modal.vue';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
-import Pagination from '@/Components/Pagination.vue';
+import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
+import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
+import DangerButton from '@/Components/Buttons/DangerButton.vue';
+import TextInput from '@/Components/Forms/TextInput.vue';
+import InputLabel from '@/Components/Forms/InputLabel.vue';
+import InputError from '@/Components/Forms/InputError.vue';
+import Modal from '@/Components/Common/Modal.vue';
+import Dropdown from '@/Components/Navigation/Dropdown.vue';
+import DropdownLink from '@/Components/Navigation/DropdownLink.vue';
+import Pagination from '@/Components/Common/Pagination.vue';
 
 const props = defineProps({
     tags: Object,

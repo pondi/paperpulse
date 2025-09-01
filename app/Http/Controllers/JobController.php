@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\RestartJobChain;
+use App\Jobs\System\RestartJobChain;
 use App\Models\JobHistory;
 use App\Models\PulseDavFile;
 use App\Services\JobChainService;

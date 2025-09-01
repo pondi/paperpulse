@@ -23,6 +23,12 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ApiSecurityHeaders::class,
         ]);
 
+        // Register API middleware aliases
+        $middleware->alias([
+            'api.version' => \App\Http\Middleware\Api\ApiVersion::class,
+            'api.rate_limit' => \App\Http\Middleware\Api\ApiRateLimit::class,
+        ]);
+
         //
     })
     ->withExceptions(function (Exceptions $exceptions) {

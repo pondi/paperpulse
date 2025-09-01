@@ -26,7 +26,7 @@ class TextExtractionService
             $cacheKey = "text_extraction.{$fileGuid}";
             $cachedText = Cache::get($cacheKey);
 
-            if ($cachedText !== null && config('ocr.options.cache_results', true)) {
+            if ($cachedText !== null && config('ai.ocr.options.cache_results', true)) {
                 Log::debug('[TextExtractionService] Using cached text', [
                     'file_guid' => $fileGuid,
                 ]);
@@ -35,7 +35,7 @@ class TextExtractionService
             }
 
             // Simplified: single provider flow
-            $primaryProvider = config('ocr.provider', 'textract');
+            $primaryProvider = config('ai.ocr.provider', 'textract');
             $allProviders = [$primaryProvider];
 
             $lastError = null;
@@ -89,7 +89,7 @@ class TextExtractionService
             $text = $result->text;
 
             // Apply confidence filtering if needed
-            $minConfidence = config('ocr.options.min_confidence', 0.8);
+            $minConfidence = config('ai.ocr.options.min_confidence', 0.8);
             if ($result->confidence < $minConfidence) {
                 Log::warning('[TextExtractionService] Low confidence OCR result', [
                     'file_guid' => $fileGuid,
@@ -107,8 +107,8 @@ class TextExtractionService
             }
 
             // Cache the extracted text
-            if (config('ocr.options.cache_results', true)) {
-                $cacheDuration = now()->addDays(config('ocr.options.cache_duration', 7));
+            if (config('ai.ocr.options.cache_results', true)) {
+                $cacheDuration = now()->addDays(config('ai.ocr.options.cache_duration', 7));
                 Cache::put($cacheKey, $text, $cacheDuration);
             }
 

@@ -226,9 +226,9 @@
 import { ref, computed, watch } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import Modal from '@/Components/Modal.vue';
-import SharingControls from '@/Components/SharingControls.vue';
-import TagManager from '@/Components/TagManager.vue';
+import Modal from '@/Components/Common/Modal.vue';
+import SharingControls from '@/Components/Domain/SharingControls.vue';
+import TagManager from '@/Components/Domain/TagManager.vue';
 import {
   ArrowLeftIcon,
   DocumentIcon,

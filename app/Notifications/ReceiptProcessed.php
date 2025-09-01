@@ -62,8 +62,14 @@ class ReceiptProcessed extends TemplatedNotification
             'merchant_name' => $this->receiptData['merchant_name'],
             'amount' => number_format($this->receiptData['total_amount'], 2),
             'currency' => $this->receiptData['currency'],
-            'receipt_url' => route('receipts.show', $this->receiptData['id']),
         ];
+
+        // Only add receipt URL if we have a valid receipt ID
+        if ($this->receiptData['id']) {
+            $variables['receipt_url'] = route('receipts.show', $this->receiptData['id']);
+        } else {
+            $variables['receipt_url'] = route('receipts.index'); // Fallback to receipts index
+        }
 
         if (! $this->success) {
             $variables['error_message'] = $this->errorMessage ?? 'Unknown error';

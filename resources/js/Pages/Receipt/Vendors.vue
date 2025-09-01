@@ -61,11 +61,11 @@
                     </ul>
                 </template>
                 <template v-else>
-                    <div class="bg-gray-900 px-6 py-24 sm:py-32 lg:px-8">
+                    <div class="bg-gray-50 dark:bg-gray-900 px-6 py-24 sm:py-32 lg:px-8">
                         <div class="mx-auto max-w-2xl text-center">
                             <p class="text-base/7 font-semibold text-indigo-600">{{ __('no_vendors_found') }}</p>
-                            <h2 class="text-5xl font-semibold tracking-tight text-white sm:text-7xl">{{ __('add_products_from_vendors') }}</h2>
-                            <p class="mt-6 text-lg leading-8 text-gray-300">{{ __('no_vendors_description') }}</p>
+                            <h2 class="text-5xl font-semibold tracking-tight text-gray-900 dark:text-white sm:text-7xl">{{ __('add_products_from_vendors') }}</h2>
+                            <p class="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-300">{{ __('no_vendors_description') }}</p>
                         </div>
                     </div>
                 </template>

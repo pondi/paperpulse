@@ -46,6 +46,21 @@ class ReceiptController extends BaseResourceController
     }
 
     /**
+     * Override show method to pass correct prop name for Vue component.
+     */
+    public function show($id): Response
+    {
+        $receipt = $this->model::with($this->showWith)->findOrFail($id);
+        
+        $this->authorize('view', $receipt);
+
+        return Inertia::render("{$this->resource}/Show", [
+            'receipt' => $this->transformForShow($receipt),
+            'meta' => $this->getShowMeta(),
+        ]);
+    }
+
+    /**
      * Display a listing of receipts with user preferences.
      */
     public function index(Request $request): Response
@@ -79,7 +94,7 @@ class ReceiptController extends BaseResourceController
             ->get();
 
         return inertia("{$this->resource}/Index", [
-            'receipts' => $receipts->through(fn($receipt) => $this->transformForIndex($receipt)),
+            'receipts' => $receipts->through(fn($receipt) => $this->transformForIndex($receipt))->items(),
             'categories' => $categories,
             'pagination' => [
                 'current_page' => $receipts->currentPage(),

@@ -278,11 +278,11 @@ onUnmounted(() => {
             </ul>
           </template>
           <template v-else>
-            <div class="bg-gray-900 px-6 py-24 sm:py-32 lg:px-8">
+            <div class="bg-gray-50 dark:bg-gray-900 px-6 py-24 sm:py-32 lg:px-8">
               <div class="mx-auto max-w-2xl text-center">
                 <p class="text-base font-semibold text-indigo-600">{{ __('no_receipts_found') }}</p>
-                <h2 class="text-4xl font-bold tracking-tight text-white sm:text-6xl">{{ __('upload_first_receipts') }}</h2>
-                <p class="mt-6 text-lg leading-8 text-gray-300">{{ __('no_receipts_description') }}</p>
+                <h2 class="text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-6xl">{{ __('upload_first_receipts') }}</h2>
+                <p class="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-300">{{ __('no_receipts_description') }}</p>
                 <div class="mt-10 flex items-center justify-center gap-x-6">
                   <Link :href="route('documents.upload')" class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
                     {{ __('upload_receipts') }}

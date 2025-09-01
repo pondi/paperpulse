@@ -20,6 +20,29 @@ class ConversionService
      */
     public function pdfToImage(string $storedFilePath, string $fileGUID, DocumentService $documentService): bool
     {
+        // Validate input file
+        if (! file_exists($storedFilePath)) {
+            Log::error('(ConversionService) [pdfToImage] - Source PDF file not found', [
+                'file_guid' => $fileGUID,
+                'file_path' => $storedFilePath,
+            ]);
+
+            return false;
+        }
+
+        // Check file size (limit to reasonable size)
+        $fileSize = filesize($storedFilePath);
+        $maxSize = 50 * 1024 * 1024; // 50MB limit
+        if ($fileSize > $maxSize) {
+            Log::warning('(ConversionService) [pdfToImage] - PDF file too large for conversion', [
+                'file_guid' => $fileGUID,
+                'file_size_mb' => round($fileSize / 1024 / 1024, 2),
+                'max_size_mb' => $maxSize / 1024 / 1024,
+            ]);
+
+            return false;
+        }
+
         try {
             // Check if imagick extension is available
             if (! extension_loaded('imagick')) {
@@ -27,9 +50,7 @@ class ConversionService
                     'file_guid' => $fileGUID,
                 ]);
 
-                // For now, we'll skip the conversion but still return true to continue processing
-                // The OCR service should be able to handle PDFs directly
-                return true;
+                return false; // Changed to false to indicate actual failure
             }
 
             // Check if Ghostscript is available
@@ -39,21 +60,40 @@ class ConversionService
                     'file_guid' => $fileGUID,
                 ]);
 
-                // Skip conversion but continue processing
-                return true;
+                return false; // Changed to false to indicate actual failure
+            }
+
+            $outputPath = storage_path('app/uploads/'.$fileGUID.'.jpg');
+
+            // Ensure output directory exists
+            $outputDir = dirname($outputPath);
+            if (! is_dir($outputDir)) {
+                mkdir($outputDir, 0755, true);
             }
 
             $spatiePDF = new Pdf($storedFilePath);
-            $outputPath = storage_path('app/uploads/'.$fileGUID.'.jpg');
 
-            // Generate the image
+            // Configure conversion settings
             $spatiePDF->quality(85)
                 ->resolution(144)
                 ->save($outputPath);
 
-            Log::debug('(ConversionService) [pdfToImage] - PDF converted to image', [
+            // Verify output file was created
+            if (! file_exists($outputPath)) {
+                throw new \Exception('PDF conversion completed but output file was not created');
+            }
+
+            $outputSize = filesize($outputPath);
+            if ($outputSize === 0) {
+                throw new \Exception('PDF conversion produced empty output file');
+            }
+
+            Log::info('(ConversionService) [pdfToImage] - PDF converted to image successfully', [
                 'file_path' => $storedFilePath,
                 'file_guid' => $fileGUID,
+                'input_size_kb' => round($fileSize / 1024, 2),
+                'output_size_kb' => round($outputSize / 1024, 2),
+                'output_path' => $outputPath,
             ]);
 
             // Store image in permanent storage
@@ -65,7 +105,10 @@ class ConversionService
                 'jpg'
             );
 
-            Log::debug("(ConversionService) [pdfToImage] - Image stored (file: {$fileGUID})");
+            Log::info('(ConversionService) [pdfToImage] - Image stored permanently', [
+                'file_guid' => $fileGUID,
+                'storage_size_kb' => round(strlen($imageContent) / 1024, 2),
+            ]);
 
             // Clean up temporary file
             if (file_exists($outputPath)) {
@@ -73,12 +116,38 @@ class ConversionService
             }
 
             return true;
-        } catch (\Exception $e) {
-            Log::error("(ConversionService) [pdfToImage] - Error converting PDF to image (file: {$fileGUID})", [
+
+        } catch (\Spatie\PdfToImage\Exceptions\InvalidFormat $e) {
+            Log::error('(ConversionService) [pdfToImage] - Invalid PDF format', [
+                'file_guid' => $fileGUID,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'file_path' => $storedFilePath,
             ]);
-            throw $e;
+
+            return false;
+        } catch (\Spatie\PdfToImage\Exceptions\PageDoesNotExist $e) {
+            Log::error('(ConversionService) [pdfToImage] - PDF page does not exist', [
+                'file_guid' => $fileGUID,
+                'error' => $e->getMessage(),
+                'file_path' => $storedFilePath,
+            ]);
+
+            return false;
+        } catch (\Exception $e) {
+            Log::error('(ConversionService) [pdfToImage] - Error converting PDF to image', [
+                'file_guid' => $fileGUID,
+                'error' => $e->getMessage(),
+                'error_type' => get_class($e),
+                'file_path' => $storedFilePath,
+            ]);
+
+            // Clean up temporary file if it exists
+            $outputPath = storage_path('app/uploads/'.$fileGUID.'.jpg');
+            if (file_exists($outputPath)) {
+                unlink($outputPath);
+            }
+
+            return false;
         }
     }
 

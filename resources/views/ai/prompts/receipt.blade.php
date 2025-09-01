@@ -47,11 +47,23 @@ Include confidence score for each extracted element.
 Follow the JSON schema carefully but be flexible with missing information. If information is missing, leave fields empty or null rather than guessing.
 
 ## Important Guidelines:
-1. Prices should be numeric values (not strings)
-2. Dates in YYYY-MM-DD format (be flexible with date parsing)
-3. Organization number as 9-digit string (optional if not present)
-4. Quantities as decimal numbers
-5. VAT rates as decimal numbers (0.25 for 25%, but allow approximations)
+1. **Dates**: Extract the actual receipt date in YYYY-MM-DD format - DO NOT use today's date if the receipt shows a different date
+2. **Line Items**: Extract ALL individual items with precise details:
+   - Item name/description (be descriptive, not just "Unknown Item")
+   - Unit price (individual item price)
+   - Quantity (number of items purchased)
+   - Total price for that item (unit_price × quantity)
+3. **Calculations**: Ensure line item totals add up to the receipt total
+4. **Prices**: All prices as numeric values (not strings)
+5. **Organization number**: 9-digit string (optional if not present)
+6. **VAT rates**: Decimal numbers (0.25 for 25%)
+
+## Line Item Extraction Rules:
+- Look for item names, product codes, descriptions
+- Identify quantity indicators (x2, 2st, 2 pcs, etc.)
+- Match prices to their corresponding items
+- Validate that quantity × unit_price = total for each item
+- If an item appears multiple times, extract each occurrence separately
 
 @if(isset($debug) && $debug)
 Also include a 'debug' section with processing notes.

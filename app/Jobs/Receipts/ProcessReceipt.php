@@ -85,17 +85,23 @@ class ProcessReceipt extends BaseJob
                     ]);
                 }
 
-                $conversionService->pdfToImage(
+                $conversionResult = $conversionService->pdfToImage(
                     $metadata['filePath'],
                     $metadata['fileGuid'],
                     app(\App\Services\DocumentService::class)
                 );
 
-                if ($debugEnabled) {
-                    Log::debug('[ProcessReceipt] PDF conversion completed', [
+                if ($conversionResult) {
+                    Log::info('[ProcessReceipt] PDF conversion completed successfully', [
                         'job_id' => $this->jobID,
                         'file_guid' => $metadata['fileGuid'],
                     ]);
+                } else {
+                    Log::warning('[ProcessReceipt] PDF conversion failed, proceeding with direct PDF processing', [
+                        'job_id' => $this->jobID,
+                        'file_guid' => $metadata['fileGuid'],
+                    ]);
+                    // Continue processing - OCR service may still be able to handle the PDF directly
                 }
             }
 
@@ -138,28 +144,48 @@ class ProcessReceipt extends BaseJob
             try {
                 $file = File::find($metadata['fileId']);
                 if ($file) {
-                    // Generate thumbnail preview
-                    $thumbnailData = $this->generateThumbnail($metadata['filePath'], $metadata['fileGuid']);
+                    // Generate thumbnail preview with proper error handling
+                    $thumbnailData = null;
+                    $thumbnailError = null;
+
+                    try {
+                        $thumbnailData = $this->generateThumbnail($metadata['filePath'], $metadata['fileGuid']);
+                    } catch (\Exception $thumbError) {
+                        $thumbnailError = $thumbError->getMessage();
+                        Log::warning('[ProcessReceipt] Thumbnail generation failed', [
+                            'job_id' => $this->jobID,
+                            'file_guid' => $metadata['fileGuid'],
+                            'error' => $thumbnailError,
+                        ]);
+                    }
 
                     $file->status = 'completed';
                     $file->s3_processed_path = $metadata['s3OriginalPath']; // Use original as processed for receipts
-                    $file->fileImage = $thumbnailData; // Store thumbnail data
+
+                    // Only set thumbnail if generation was successful
+                    if ($thumbnailData) {
+                        $file->fileImage = $thumbnailData;
+                    }
+
                     $file->save();
 
-                    Log::debug('[ProcessReceipt] File status updated to completed', [
+                    Log::info('[ProcessReceipt] File status updated to completed', [
                         'job_id' => $this->jobID,
                         'file_id' => $file->id,
                         'file_guid' => $file->guid,
                         's3_processed_path' => $file->s3_processed_path,
                         'has_thumbnail' => ! empty($thumbnailData),
+                        'thumbnail_error' => $thumbnailError,
                     ]);
                 }
             } catch (\Exception $e) {
-                Log::warning('Failed to update file status', [
+                Log::error('[ProcessReceipt] Failed to update file status', [
                     'job_id' => $this->jobID,
                     'file_id' => $metadata['fileId'],
                     'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
+                // Don't throw here - file processing succeeded, only status update failed
             }
 
             $this->updateProgress(100);
@@ -225,18 +251,32 @@ class ProcessReceipt extends BaseJob
      */
     private function generateThumbnail(string $filePath, string $fileGuid): ?string
     {
+        // Check if file exists
+        if (! file_exists($filePath)) {
+            Log::warning('[ProcessReceipt] File not found for thumbnail generation', [
+                'file_guid' => $fileGuid,
+                'file_path' => $filePath,
+            ]);
+
+            return null;
+        }
+
+        // Check if imagick extension is available
+        if (! extension_loaded('imagick')) {
+            Log::warning('[ProcessReceipt] Imagick extension not available, cannot generate thumbnail', [
+                'file_guid' => $fileGuid,
+            ]);
+
+            return null;
+        }
+
         try {
-            // Check if imagick extension is available
-            if (! extension_loaded('imagick')) {
-                Log::debug('[ProcessReceipt] Imagick not available, skipping thumbnail generation', [
-                    'file_guid' => $fileGuid,
-                ]);
-
-                return null;
-            }
-
             // Create thumbnail using Imagick
             $imagick = new \Imagick($filePath);
+
+            // Get original dimensions for logging
+            $originalWidth = $imagick->getImageWidth();
+            $originalHeight = $imagick->getImageHeight();
 
             // Resize to thumbnail size (max 300px width/height, maintain aspect ratio)
             $imagick->thumbnailImage(300, 300, true, true);
@@ -248,22 +288,37 @@ class ProcessReceipt extends BaseJob
             // Get image data as base64 string
             $thumbnailData = base64_encode($imagick->getImageBlob());
 
+            // Get thumbnail dimensions
+            $thumbWidth = $imagick->getImageWidth();
+            $thumbHeight = $imagick->getImageHeight();
+
             $imagick->clear();
             $imagick->destroy();
 
-            Log::debug('[ProcessReceipt] Thumbnail generated successfully', [
+            Log::info('[ProcessReceipt] Thumbnail generated successfully', [
                 'file_guid' => $fileGuid,
-                'thumbnail_size' => strlen($thumbnailData),
+                'original_dimensions' => "{$originalWidth}x{$originalHeight}",
+                'thumbnail_dimensions' => "{$thumbWidth}x{$thumbHeight}",
+                'thumbnail_size_bytes' => strlen($thumbnailData),
             ]);
 
             return $thumbnailData;
-        } catch (\Exception $e) {
-            Log::warning('[ProcessReceipt] Failed to generate thumbnail', [
+        } catch (\ImagickException $e) {
+            Log::error('[ProcessReceipt] Imagick error during thumbnail generation', [
                 'file_guid' => $fileGuid,
+                'file_path' => $filePath,
                 'error' => $e->getMessage(),
+                'error_type' => 'ImagickException',
             ]);
-
-            return null;
+            throw new \Exception("Thumbnail generation failed: {$e->getMessage()}");
+        } catch (\Exception $e) {
+            Log::error('[ProcessReceipt] Unexpected error during thumbnail generation', [
+                'file_guid' => $fileGuid,
+                'file_path' => $filePath,
+                'error' => $e->getMessage(),
+                'error_type' => get_class($e),
+            ]);
+            throw new \Exception("Thumbnail generation failed: {$e->getMessage()}");
         }
     }
 }

@@ -4,7 +4,7 @@
   <AuthenticatedLayout>
     <template #header>
       <div class="flex justify-between items-center">
-        <h2 class="font-semibold text-xl text-gray-200 leading-tight flex items-center gap-x-2">
+        <h2 class="font-semibold text-xl text-gray-900 dark:text-gray-200 leading-tight flex items-center gap-x-2">
           <ReceiptRefundIcon class="size-6" />
           {{ receipt.merchant?.name || __('unknown_merchant') }}
         </h2>
@@ -28,16 +28,16 @@
 
     <div class="flex h-[calc(100vh-9rem)] overflow-hidden">
       <!-- Left Panel - Receipt Details -->
-      <div class="w-1/2 p-6 overflow-y-auto border-r border-gray-700">
+      <div class="w-1/2 p-6 overflow-y-auto border-r border-gray-200 dark:border-gray-700">
         <div class="space-y-8">
           <!-- Receipt Status -->
-          <div class="bg-gray-800 rounded-lg p-6">
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-x-3">
                 <div :class="[getStatusClass(receipt), 'flex-none rounded-full p-1']">
                   <div class="size-2 rounded-full bg-current" />
                 </div>
-                <h3 class="text-lg font-medium text-gray-200">{{ __('receipt_status') }}</h3>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-200">{{ __('receipt_status') }}</h3>
               </div>
               <button
                 @click="isEditing = !isEditing"
@@ -53,7 +53,7 @@
             <dl class="mt-6 space-y-6">
               <div v-for="(field, index) in receiptFields" :key="index" class="flex flex-col">
                 <dt class="text-sm font-medium text-gray-500">{{ field.label }}</dt>
-                <dd v-if="!isEditing" class="mt-1 text-sm text-gray-200">
+                <dd v-if="!isEditing" class="mt-1 text-sm text-gray-700 dark:text-gray-200">
                   {{ formatFieldValue(receipt[field.key], field.type) }}
                 </dd>
                 <div v-else class="mt-1">
@@ -61,12 +61,12 @@
                     v-if="field.type === 'text' || field.type === 'number' || field.type === 'date'"
                     v-model="editedReceipt[field.key]"
                     :type="field.type"
-                    class="block w-full rounded-md border-0 bg-gray-700 text-gray-200 shadow-sm ring-1 ring-inset ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm"
+                    class="block w-full rounded-md border-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm"
                   />
                   <select
                     v-else-if="field.type === 'select'"
                     v-model="editedReceipt[field.key]"
-                    class="block w-full rounded-md border-0 bg-gray-700 text-gray-200 shadow-sm ring-1 ring-inset ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm"
+                    class="block w-full rounded-md border-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm"
                   >
                     <option v-for="option in field.options" :key="option.value" :value="option.value">
                       {{ option.label }}
@@ -78,8 +78,8 @@
           </div>
 
           <!-- Tags -->
-          <div class="bg-gray-800 rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-200 mb-4">Tags</h3>
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-200 mb-4">Tags</h3>
             <TagManager
               v-model="receiptTags"
               :readonly="!isEditing"
@@ -89,9 +89,9 @@
           </div>
 
           <!-- Line Items -->
-          <div class="bg-gray-800 rounded-lg p-6">
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
             <div class="flex items-center justify-between mb-6">
-              <h3 class="text-lg font-medium text-gray-200">{{ __('line_items') }}</h3>
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-200">{{ __('line_items') }}</h3>
               <button
                 @click="showAddLineItem = true"
                 class="inline-flex items-center gap-x-2 px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200"
@@ -102,10 +102,10 @@
             </div>
 
             <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-700">
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead>
                   <tr>
-                    <th v-for="header in lineItemHeaders" :key="header.key" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-300">
+                    <th v-for="header in lineItemHeaders" :key="header.key" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
                       {{ header.label }}
                     </th>
                     <th class="relative py-3.5 pl-3 pr-4 sm:pr-6">
@@ -113,13 +113,13 @@
                     </th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-700">
-                  <tr v-for="item in receipt.lineItems" :key="item.id" class="hover:bg-gray-700/50">
-                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">{{ item.text }}</td>
-                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">{{ item.sku }}</td>
-                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">{{ item.qty }}</td>
-                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">{{ formatCurrency(item.price, receipt.currency) }}</td>
-                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">{{ formatCurrency(item.total, receipt.currency) }}</td>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr v-for="item in receipt.lineItems" :key="item.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-700 dark:text-gray-300">{{ item.text }}</td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-700 dark:text-gray-300">{{ item.sku }}</td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-700 dark:text-gray-300">{{ item.qty }}</td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-700 dark:text-gray-300">{{ formatCurrency(item.price, receipt.currency) }}</td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-700 dark:text-gray-300">{{ formatCurrency(item.total, receipt.currency) }}</td>
                     <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                       <div class="flex items-center justify-end gap-x-2">
                         <button
@@ -145,7 +145,7 @@
       </div>
 
       <!-- Right Panel - Receipt Image -->
-      <div class="w-1/2 bg-gray-900 overflow-hidden">
+      <div class="w-1/2 bg-gray-50 dark:bg-gray-900 overflow-hidden">
         <div class="h-full flex items-center justify-center relative">
           <div class="w-full h-full overflow-y-auto">
             <template v-if="receipt.file?.url">
@@ -171,7 +171,7 @@
           <div v-if="receipt.file?.pdfUrl" class="absolute bottom-6 right-6">
             <button
               @click="openPdf(receipt.file.pdfUrl)"
-              class="inline-flex items-center gap-x-2 px-4 py-2 bg-gray-800 rounded-md text-sm font-semibold text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+              class="inline-flex items-center gap-x-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-md text-sm font-semibold text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-800 border border-gray-200 dark:border-transparent"
             >
               <DocumentIcon class="size-5" />
               {{ __('view_pdf') }}
@@ -184,27 +184,27 @@
     <!-- Add/Edit Line Item Modal -->
     <Modal :show="showAddLineItem" @close="closeAddLineItem">
       <div class="p-6">
-        <h3 class="text-lg font-medium text-gray-200 mb-5">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-200 mb-5">
           {{ editingLineItem ? __('edit_line_item') : __('add_line_item') }}
         </h3>
         
         <form @submit.prevent="saveLineItem" class="space-y-4">
           <div v-for="field in lineItemFields" :key="field.key" class="space-y-1">
-            <label :for="field.key" class="block text-sm font-medium text-gray-300">
+            <label :for="field.key" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ field.label }}
             </label>
             <input
               :id="field.key"
               v-model="lineItemForm[field.key]"
               :type="field.type"
-              class="block w-full rounded-md border-0 bg-gray-700 text-gray-200 shadow-sm ring-1 ring-inset ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm"
+              class="block w-full rounded-md border-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm"
             />
           </div>
 
           <div class="mt-6 flex items-center justify-end gap-x-4">
             <button
               type="button"
-              class="text-sm font-semibold text-gray-300 hover:text-gray-100"
+              class="text-sm font-semibold text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100"
               @click="closeAddLineItem"
             >
               {{ __('cancel') }}

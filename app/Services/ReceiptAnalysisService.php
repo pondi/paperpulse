@@ -104,6 +104,11 @@ class ReceiptAnalysisService
             // Extract date and time
             $dateTime = $this->parser->extractDateTime($data);
 
+            // Validate that we have a valid date - if not, this receipt cannot be processed
+            if (! $dateTime) {
+                throw new \Exception('Receipt date could not be extracted - this is required for processing');
+            }
+
             // Determine category
             $categoryName = null;
             $categoryId = null;
@@ -124,9 +129,10 @@ class ReceiptAnalysisService
                 $categoryId = $defaultCategoryId;
             }
 
-            // Extract totals and currency
-            $totals = $this->parser->extractTotals($data);
+            // Extract currency and calculate totals from line items
             $currency = $this->parser->extractCurrency($data, $defaultCurrency);
+            $items = $this->parser->extractItems($data);
+            $totals = $this->calculateTotalsFromItems($items, $data);
 
             // Enrich receipt data
             $enrichedData = $this->enricher->enrichReceiptData($data, $merchant);
@@ -157,7 +163,6 @@ class ReceiptAnalysisService
 
             // Create line items if user preference allows
             if ($extractLineItems) {
-                $items = $this->parser->extractItems($data);
                 $this->createLineItems($receipt, $items);
 
                 if ($debugEnabled) {
@@ -250,6 +255,108 @@ class ReceiptAnalysisService
             DB::rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Calculate totals from line items with validation and fallback logic
+     */
+    protected function calculateTotalsFromItems(array $items, array $data): array
+    {
+        $calculatedTotal = 0;
+        $validItemsCount = 0;
+        $itemValidationErrors = [];
+
+        // Validate and calculate total from line items
+        foreach ($items as $index => $item) {
+            $quantity = (float) ($item['quantity'] ?? 1);
+            $unitPrice = (float) ($item['unit_price'] ?? $item['price'] ?? 0);
+            $itemTotal = (float) ($item['total_price'] ?? $item['total'] ?? 0);
+
+            // If no item total provided, calculate it
+            if ($itemTotal == 0 && $unitPrice > 0) {
+                $itemTotal = $quantity * $unitPrice;
+            }
+
+            // Validate item calculation
+            $expectedTotal = $quantity * $unitPrice;
+            if ($unitPrice > 0 && abs($itemTotal - $expectedTotal) > 0.01) {
+                $itemValidationErrors[] = [
+                    'item_index' => $index,
+                    'item_name' => $item['name'] ?? $item['description'] ?? 'Unknown',
+                    'expected_total' => $expectedTotal,
+                    'actual_total' => $itemTotal,
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                ];
+            }
+
+            if ($itemTotal > 0) {
+                $calculatedTotal += $itemTotal;
+                $validItemsCount++;
+            }
+        }
+
+        // Get AI totals for comparison
+        $aiTotals = $this->parser->extractTotals($data);
+        $aiTotal = (float) ($aiTotals['total_amount'] ?? 0);
+        $calculatedTax = (float) ($aiTotals['tax_amount'] ?? 0);
+
+        // Log validation results
+        if (! empty($itemValidationErrors)) {
+            Log::warning('[ReceiptAnalysis] Line item calculation mismatches found', [
+                'validation_errors' => $itemValidationErrors,
+                'total_items' => count($items),
+                'valid_items' => $validItemsCount,
+            ]);
+        }
+
+        // Decision logic for which total to use
+        $tolerance = 0.02; // 2% tolerance for rounding differences
+        if ($calculatedTotal > 0 && $validItemsCount > 0) {
+            $difference = abs($calculatedTotal - $aiTotal);
+            $percentDifference = $aiTotal > 0 ? ($difference / $aiTotal) : 0;
+
+            if ($percentDifference <= $tolerance) {
+                // Close enough - use AI total but log the difference
+                Log::info('[ReceiptAnalysis] Using AI total - close match with calculated items', [
+                    'calculated_total' => $calculatedTotal,
+                    'ai_total' => $aiTotal,
+                    'difference' => $difference,
+                    'percent_difference' => $percentDifference * 100,
+                    'valid_items_count' => $validItemsCount,
+                ]);
+
+                return [
+                    'total_amount' => $aiTotal,
+                    'tax_amount' => $calculatedTax,
+                ];
+            } else {
+                // Significant difference - prefer calculated if we have good line items
+                Log::warning('[ReceiptAnalysis] Significant difference between calculated and AI totals', [
+                    'calculated_total' => $calculatedTotal,
+                    'ai_total' => $aiTotal,
+                    'difference' => $difference,
+                    'percent_difference' => $percentDifference * 100,
+                    'using' => 'calculated_total',
+                    'valid_items_count' => $validItemsCount,
+                ]);
+
+                return [
+                    'total_amount' => $calculatedTotal,
+                    'tax_amount' => $calculatedTax,
+                ];
+            }
+        }
+
+        // Fall back to AI totals if no valid line items found
+        Log::warning('[ReceiptAnalysis] Using AI totals - insufficient line item data', [
+            'calculated_total' => $calculatedTotal,
+            'ai_total' => $aiTotal,
+            'valid_items_count' => $validItemsCount,
+            'total_items' => count($items),
+        ]);
+
+        return $aiTotals;
     }
 
     /**

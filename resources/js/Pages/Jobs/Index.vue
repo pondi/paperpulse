@@ -3,10 +3,10 @@
 
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-semibold text-xl text-white leading-tight">Jobs</h2>
+      <h2 class="font-semibold text-xl text-gray-900 dark:text-gray-200 leading-tight">Jobs</h2>
     </template>
 
-    <div class="py-12 bg-gray-900">
+    <div class="py-12 bg-gray-50 dark:bg-gray-900">
       <div class="max-w-7xl 2xl:max-w-screen-2xl mx-auto sm:px-6 lg:px-8">
         <div class="lg:grid lg:grid-cols-12 lg:gap-8">
           <!-- Left Column: Statistics -->
@@ -25,7 +25,7 @@
             </div>
 
             <!-- Empty State -->
-            <div v-else class="bg-gray-800 shadow-sm rounded-lg p-6 text-center text-gray-400 border border-gray-700">
+            <div v-else class="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6 text-center text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
               No jobs found
             </div>
 
@@ -45,7 +45,8 @@
 
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { reactive, watch } from 'vue';
+import { reactive, watch, ref, onMounted, onUnmounted } from 'vue';
+import axios from 'axios';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import JobStats from '@/Pages/Jobs/Components/JobStats.vue';
 import PulseDavStats from '@/Pages/Jobs/Components/PulseDavStats.vue';
@@ -169,14 +170,42 @@ const form = reactive({
   page: props.pagination?.current_page ?? 1
 });
 
+const jobs = ref(props.jobs);
+const stats = ref(props.stats);
+const pulseDavStats = ref(props.pulseDavStats);
+const recentPulseDavFiles = ref(props.recentPulseDavFiles);
+const pagination = ref(props.pagination);
+let pollInterval = null;
+
 const updateForm = (newForm: typeof form) => {
   Object.assign(form, newForm);
 };
 
+const loadJobsData = async () => {
+  try {
+    const response = await axios.get('/jobs/status', { 
+      params: {
+        status: form.status || undefined,
+        queue: form.queue || undefined,
+        search: form.search || undefined,
+        page: form.page
+      }
+    });
+    
+    if (response.data.success) {
+      jobs.value = response.data.data;
+      stats.value = response.data.stats;
+      pagination.value = response.data.pagination;
+    }
+  } catch (error) {
+    console.error('Failed to load jobs data:', error);
+  }
+};
+
 const handleJobRestart = (jobId: string) => {
   console.log('Job restart initiated for:', jobId);
-  // The JobCard component handles the actual restart request
-  // This is just for parent component awareness if needed
+  // Refresh data after restart
+  setTimeout(() => loadJobsData(), 1000);
 };
 
 watch(form, (newForm) => {
@@ -187,4 +216,29 @@ watch(form, (newForm) => {
     only: ['jobs', 'stats', 'pulseDavStats', 'recentPulseDavFiles', 'pagination']
   });
 }, { deep: true });
+
+onMounted(() => {
+  // Poll for job updates every 10 seconds
+  pollInterval = setInterval(loadJobsData, 10000);
+  
+  // Listen for Echo events if available
+  if (window.Echo) {
+    window.Echo.private(`App.Models.User.${window.page.props.auth.user.id}`)
+      .listen('JobStatusChanged', () => {
+        loadJobsData();
+      })
+      .listen('JobCompleted', () => {
+        loadJobsData();
+      })
+      .listen('JobFailed', () => {
+        loadJobsData();
+      });
+  }
+});
+
+onUnmounted(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+  }
+});
 </script> 

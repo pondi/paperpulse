@@ -59,10 +59,13 @@ class JobController extends Controller
             }
         }
 
+        // Use effective status for parent jobs
+        $effectiveStatus = $isChild ? $job->status : $this->calculateParentJobStatus($job);
+        
         $data = [
             'id' => $job->uuid,
             'name' => $job->name,
-            'status' => $job->status,
+            'status' => $effectiveStatus,
             'queue' => $job->queue,
             'started_at' => $job->started_at?->toIso8601String(),
             'finished_at' => $job->finished_at?->toIso8601String(),
@@ -76,11 +79,17 @@ class JobController extends Controller
         if (! $isChild) {
             $data['type'] = $jobType;
             $data['file_info'] = $fileInfo;
-            $data['steps'] = $job->tasks()
-                ->orderBy('order_in_chain')
-                ->get()
-                ->map(fn (JobHistory $child): array => $this->transformJob($child, true))
-                ->all();
+            
+            // Get unique steps (latest attempt for each task name)
+            $children = $job->tasks()->orderBy('order_in_chain')->get();
+            $uniqueSteps = [];
+            
+            foreach ($children->groupBy('name') as $taskName => $attempts) {
+                $latestAttempt = $attempts->sortByDesc('created_at')->first();
+                $uniqueSteps[] = $this->transformJob($latestAttempt, true);
+            }
+            
+            $data['steps'] = collect($uniqueSteps)->sortBy('order')->values()->all();
         }
 
         return $data;
@@ -181,18 +190,91 @@ class JobController extends Controller
     }
 
     /**
+     * Calculate the effective status of a parent job based on its children.
+     */
+    private function calculateParentJobStatus(JobHistory $parentJob): string
+    {
+        $children = $parentJob->tasks;
+        
+        if ($children->isEmpty()) {
+            return $parentJob->status;
+        }
+
+        // Group children by their task name and order to identify retries
+        $taskGroups = $children->groupBy('name');
+        $effectiveStatuses = [];
+
+        foreach ($taskGroups as $taskName => $taskAttempts) {
+            // Sort by creation time to get the latest attempt
+            $latestAttempt = $taskAttempts->sortByDesc('created_at')->first();
+            $effectiveStatuses[] = $latestAttempt->status;
+        }
+
+        // Determine overall status
+        if (in_array('processing', $effectiveStatuses)) {
+            return 'processing';
+        }
+        
+        if (in_array('pending', $effectiveStatuses)) {
+            return 'pending';
+        }
+        
+        if (in_array('failed', $effectiveStatuses)) {
+            return 'failed';
+        }
+        
+        if (count($effectiveStatuses) > 0 && collect($effectiveStatuses)->every(fn($status) => $status === 'completed')) {
+            return 'completed';
+        }
+
+        return $parentJob->status;
+    }
+
+    /**
      * Get job statistics.
      */
     private function getJobStats(): array
     {
-        $query = JobHistory::parentJobs();
+        // Get all parent jobs with their children
+        $parentJobs = JobHistory::whereNull('parent_uuid')
+            ->with('tasks')
+            ->get();
 
-        return [
-            'pending' => (clone $query)->where('status', 'pending')->count(),
-            'processing' => (clone $query)->where('status', 'processing')->count(),
-            'completed' => (clone $query)->where('status', 'completed')->count(),
-            'failed' => $query->where('status', 'failed')->count(),
+        $stats = [
+            'pending' => 0,
+            'processing' => 0,
+            'completed' => 0,
+            'failed' => 0,
         ];
+
+        foreach ($parentJobs as $job) {
+            $children = $job->tasks;
+            
+            if ($children->isEmpty()) {
+                // No subtasks, count the parent job itself
+                $stats[$job->status]++;
+            } else {
+                // Has subtasks - count each subtask individually
+                $taskGroups = $children->groupBy('name');
+                
+                foreach ($taskGroups as $taskName => $taskAttempts) {
+                    // Get the latest attempt for each unique task
+                    $latestAttempt = $taskAttempts->sortByDesc('created_at')->first();
+                    $taskStatus = $latestAttempt->status;
+                    
+                    // Count each subtask based on its individual status
+                    if (isset($stats[$taskStatus])) {
+                        $stats[$taskStatus]++;
+                    }
+                }
+            }
+        }
+
+        // Add any pending jobs from the queue
+        $pendingQueueJobs = DB::table('jobs')->count();
+        $stats['pending'] += $pendingQueueJobs;
+
+        return $stats;
     }
 
     /**
@@ -307,7 +389,7 @@ class JobController extends Controller
                     return $jobData;
                 }),
                 'stats' => $this->getJobStats(),
-                'queues' => JobHistory::select('queue')->distinct()->pluck('queue'),
+                'queues' => JobHistory::whereNull('parent_uuid')->select('queue')->distinct()->pluck('queue'),
                 'pagination' => [
                     'total' => $historyJobs->total(),
                     'per_page' => $historyJobs->perPage(),

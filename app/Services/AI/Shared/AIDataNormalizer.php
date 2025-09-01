@@ -31,7 +31,7 @@ class AIDataNormalizer
 
             // Extract receipt info from nested structure
             $normalized['receipt_info'] = [
-                'date' => $receiptData['date'] ?? date('Y-m-d'),
+                'date' => $receiptData['date'] ?? null,
                 'time' => $receiptData['time'] ?? null,
                 'receipt_number' => $receiptData['receipt_number'] ?? null,
                 'transaction_id' => $receiptData['transaction_id'] ?? null,
@@ -63,7 +63,7 @@ class AIDataNormalizer
                 $normalized['receipt_info'] = $data['receipt_info'];
             } else {
                 $normalized['receipt_info'] = [
-                    'date' => $data['date'] ?? date('Y-m-d'),
+                    'date' => $data['date'] ?? null,
                     'time' => $data['time'] ?? null,
                 ];
             }
@@ -106,7 +106,7 @@ class AIDataNormalizer
         }
 
         if (! isset($normalized['receipt_info'])) {
-            $normalized['receipt_info'] = ['date' => date('Y-m-d')];
+            $normalized['receipt_info'] = ['date' => null];
         }
 
         // Ensure items is always an array

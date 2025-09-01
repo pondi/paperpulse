@@ -50,7 +50,15 @@ class ReceiptEnricherService implements ReceiptEnricherContract
 
         $merchant = new Merchant;
         $merchant->name = $merchantData['name'];
-        $merchant->address = $merchantData['address'] ?? null;
+        
+        // Handle address - could be string or array from AI response
+        $address = $merchantData['address'] ?? null;
+        if (is_array($address)) {
+            $merchant->address = implode(', ', array_filter($address));
+        } else {
+            $merchant->address = $address;
+        }
+        
         $merchant->vat_number = $merchantData['vat_number'] ?? null;
         $merchant->save();
 

@@ -1,10 +1,10 @@
 <template>
   <Menu as="div" class="relative ml-3">
     <div>
-      <MenuButton class="relative flex rounded-full bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800">
+      <MenuButton class="relative flex rounded-full bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-800 border border-gray-200 dark:border-transparent">
         <span class="absolute -inset-1.5" />
         <span class="sr-only">View notifications</span>
-        <BellIcon class="h-6 w-6 text-gray-400 hover:text-gray-300" aria-hidden="true" />
+        <BellIcon class="h-6 w-6 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300" aria-hidden="true" />
         <span v-if="unreadCount > 0" class="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 flex items-center justify-center">
           <span class="text-xs text-white font-medium">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
         </span>

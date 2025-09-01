@@ -94,10 +94,13 @@ export function useDateFormatter() {
         const userCurrency = currency || user?.preferences?.currency || 'NOK';
         const locale = user?.preferences?.language === 'nb' ? 'nb-NO' : 'en-US';
         
+        // Convert from cents/øre to main currency unit
+        const actualAmount = (amount || 0) / 100;
+        
         return new Intl.NumberFormat(locale, {
             style: 'currency',
             currency: userCurrency
-        }).format(amount);
+        }).format(actualAmount);
     };
     
     return {

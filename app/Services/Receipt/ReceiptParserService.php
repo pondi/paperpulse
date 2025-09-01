@@ -94,7 +94,7 @@ class ReceiptParserService implements ReceiptParserContract
     /**
      * Extract date/time from parsed data
      */
-    public function extractDateTime(array $data): Carbon
+    public function extractDateTime(array $data): ?Carbon
     {
         $date = null;
         $time = null;
@@ -212,7 +212,7 @@ class ReceiptParserService implements ReceiptParserContract
     /**
      * Parse date and time strings into Carbon object
      */
-    protected function parseDateTime(?string $date, ?string $time): Carbon
+    protected function parseDateTime(?string $date, ?string $time): ?Carbon
     {
         try {
             if ($date) {
@@ -232,6 +232,11 @@ class ReceiptParserService implements ReceiptParserContract
             ]);
         }
 
-        return Carbon::now();
+        Log::warning('[ReceiptParser] No valid date found in receipt data', [
+            'date' => $date,
+            'time' => $time,
+        ]);
+
+        return null;
     }
 }

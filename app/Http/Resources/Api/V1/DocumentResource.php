@@ -8,15 +8,21 @@ class DocumentResource extends BaseApiResource
 {
     public function toArray($request)
     {
+        $isShowRoute = method_exists($request, 'routeIs')
+            ? ($request->routeIs('documents.show') || $request->routeIs('api.v1.documents.show'))
+            : false;
+
         return array_merge($this->commonFields(), $this->ownershipField(), [
             'title' => $this->title,
             'description' => $this->description,
             'document_type' => $this->document_type,
-            'content' => $this->content,
-            'extracted_text' => $this->extracted_text,
-            'entities' => $this->entities,
-            'ai_entities' => $this->ai_entities,
-            'ai_summary' => $this->ai_summary ?? null,
+            // Redact heavy fields unless this is the show endpoint
+            'content' => $this->when($isShowRoute, $this->content),
+            'extracted_text' => $this->when($isShowRoute, $this->extracted_text),
+            'entities' => $this->when($isShowRoute, $this->entities),
+            'ai_entities' => $this->when($isShowRoute, $this->ai_entities),
+            'ai_summary' => $this->when($isShowRoute, $this->ai_summary ?? null),
+            // Keep lightweight metadata
             'metadata' => $this->metadata,
             'language' => $this->language,
             'document_date' => $this->document_date?->toISOString(),

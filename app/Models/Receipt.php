@@ -117,6 +117,8 @@ class Receipt extends Model
         $this->load(['merchant', 'lineItems']);
 
         $array = [
+            // Ensure search engine can filter by user
+            'user_id' => $this->user_id,
             'id' => $this->id,
             'receipt_date' => $this->receipt_date,
             'tax_amount' => $this->tax_amount,

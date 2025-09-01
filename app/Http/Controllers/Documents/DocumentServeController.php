@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Documents;
 
 use App\Http\Controllers\Controller;
+use App\Models\File;
+use App\Models\FileShare;
 use App\Services\StorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -16,33 +18,48 @@ class DocumentServeController extends Controller
             'guid' => 'required|string|regex:/^[a-f0-9\-]{36}$/i',
             'type' => 'required|string|in:receipts,image,pdf,documents',
             'extension' => 'required|string|in:jpg,jpeg,png,gif,pdf',
-            'user_id' => 'required|integer',
         ]);
 
         $guid = $request->input('guid');
         $type = $request->input('type');
         $extension = $request->input('extension');
-        $userId = $request->input('user_id');
-
-        // Verify user has access to this file
-        if ($userId != auth()->id() && ! auth()->user()->is_admin) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
 
         // Determine file type and variant
         $fileType = in_array($type, ['receipts', 'receipt']) ? 'receipt' : 'document';
-        // For receipts, PDFs are stored as 'original', not 'processed'
         $variant = 'original';
 
-        // Get the document content
-        $content = $storageService->getFileByUserAndGuid($userId, $guid, $fileType, $variant, $extension);
+        // Look up file by GUID across users
+        $file = File::withoutGlobalScope('user')->where('guid', $guid)->first();
+        if (! $file) {
+            Log::warning('(DocumentServeController) [serve] - File not found by GUID', [
+                'guid' => $guid,
+                'type' => $type,
+                'extension' => $extension,
+            ]);
+            return response()->json(['error' => 'Document not found'], 404);
+        }
+
+        // Authorization: owner, valid share, or admin
+        $isOwner = $file->user_id === auth()->id();
+        $hasShare = FileShare::active()
+            ->where('file_id', $file->id)
+            ->where('file_type', $fileType)
+            ->where('shared_with_user_id', auth()->id())
+            ->exists();
+
+        if (! $isOwner && ! $hasShare && ! (auth()->user()?->is_admin)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Get the document content using the actual owner ID
+        $content = $storageService->getFileByUserAndGuid($file->user_id, $guid, $fileType, $variant, $extension);
 
         if (! $content) {
             Log::error('(DocumentServeController) [serve] - Document not found', [
                 'guid' => $guid,
                 'type' => $type,
                 'extension' => $extension,
-                'user_id' => $userId,
+                'user_id' => $file->user_id,
             ]);
 
             return response()->json(['error' => 'Document not found'], 404);

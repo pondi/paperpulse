@@ -42,7 +42,6 @@ class ReceiptController extends BaseResourceController
 
     public function __construct(DocumentService $documentService)
     {
-        parent::__construct();
         $this->documentService = $documentService;
     }
 

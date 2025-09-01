@@ -157,9 +157,9 @@ class TestFileProcessing extends Command
             // Authenticate as the user for this test
             auth()->login($user);
 
-            $documentService = app(\App\Services\DocumentService::class);
+            $fileProcessingService = app(\App\Services\FileProcessingService::class);
 
-            $result = $documentService->processUpload($uploadedFile, 'receipt');
+            $result = $fileProcessingService->processUpload($uploadedFile, 'receipt', $user->id);
 
             $this->info('✅ File upload successful');
 

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Files;
 
 use App\Http\Controllers\Controller;
 use App\Services\ConversionService;
-use App\Services\DocumentService;
+use App\Services\FileProcessingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -19,7 +19,7 @@ class FileProcessingController extends Controller
     /**
      * Store uploaded files
      */
-    public function store(Request $request, DocumentService $documentService, ConversionService $conversionService)
+    public function store(Request $request, FileProcessingService $fileProcessingService, ConversionService $conversionService)
     {
         $fileType = $request->input('file_type', 'receipt');
 
@@ -82,7 +82,7 @@ class FileProcessingController extends Controller
                 }
 
                 // Process the upload based on file type
-                $result = $documentService->processUpload($uploadedFile, $fileType);
+                $result = $fileProcessingService->processUpload($uploadedFile, $fileType, auth()->id());
                 $processedFiles[] = $result;
 
                 Log::info('(FileProcessingController) [store] - File processed', [

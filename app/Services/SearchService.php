@@ -49,7 +49,9 @@ class SearchService
      */
     protected function searchReceipts(string $query, array $filters): Collection
     {
-        $searchQuery = Receipt::search($query);
+        $searchQuery = Receipt::search($query)
+            // Scope search results to current user
+            ->where('user_id', auth()->id());
 
         // Apply date filters
         if (isset($filters['date_from'])) {
@@ -104,7 +106,9 @@ class SearchService
      */
     protected function searchDocuments(string $query, array $filters): Collection
     {
-        $searchQuery = Document::search($query);
+        $searchQuery = Document::search($query)
+            // Scope search results to current user
+            ->where('user_id', auth()->id());
 
         // Apply date filters
         if (isset($filters['date_from'])) {

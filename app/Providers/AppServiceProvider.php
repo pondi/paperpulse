@@ -41,9 +41,27 @@ class AppServiceProvider extends ServiceProvider
             );
         });
 
+        $this->app->singleton(\App\Services\File\FileStorageService::class, function ($app) {
+            return new \App\Services\File\FileStorageService(
+                $app->make(\App\Services\StorageService::class)
+            );
+        });
+
+        $this->app->singleton(\App\Services\File\FileMetadataService::class, function ($app) {
+            return new \App\Services\File\FileMetadataService(
+                $app->make(\App\Services\File\FileValidationService::class)
+            );
+        });
+
+        $this->app->singleton(\App\Services\File\FileValidationService::class, function ($app) {
+            return new \App\Services\File\FileValidationService;
+        });
+
         $this->app->singleton(\App\Services\FileProcessingService::class, function ($app) {
             return new \App\Services\FileProcessingService(
-                $app->make(\App\Services\StorageService::class),
+                $app->make(\App\Services\File\FileStorageService::class),
+                $app->make(\App\Services\File\FileMetadataService::class),
+                $app->make(\App\Services\File\FileValidationService::class),
                 $app->make(\App\Services\TextExtractionService::class)
             );
         });
@@ -53,9 +71,16 @@ class AppServiceProvider extends ServiceProvider
             return AIServiceFactory::create();
         });
 
+        // Register Receipt service contracts
+        $this->app->bind(\App\Contracts\Services\ReceiptParserContract::class, \App\Services\Receipt\ReceiptParserService::class);
+        $this->app->bind(\App\Contracts\Services\ReceiptValidatorContract::class, \App\Services\Receipt\ReceiptValidatorService::class);
+        $this->app->bind(\App\Contracts\Services\ReceiptEnricherContract::class, \App\Services\Receipt\ReceiptEnricherService::class);
+
         $this->app->singleton(\App\Services\ReceiptAnalysisService::class, function ($app) {
             return new \App\Services\ReceiptAnalysisService(
-                $app->make(AIService::class)
+                $app->make(\App\Contracts\Services\ReceiptParserContract::class),
+                $app->make(\App\Contracts\Services\ReceiptValidatorContract::class),
+                $app->make(\App\Contracts\Services\ReceiptEnricherContract::class)
             );
         });
 
@@ -75,6 +100,14 @@ class AppServiceProvider extends ServiceProvider
             return new \App\Services\SearchService;
         });
 
+        // Register DocumentService
+        $this->app->singleton(\App\Services\DocumentService::class, function ($app) {
+            return new \App\Services\DocumentService(
+                $app->make(\App\Services\FileProcessingService::class),
+                $app->make(\App\Services\StorageService::class)
+            );
+        });
+
         // Register AI template service
         $this->app->singleton(\App\Services\AI\PromptTemplateService::class);
     }
@@ -89,6 +122,11 @@ class AppServiceProvider extends ServiceProvider
 
         // Register event listeners
         Event::listen(Registered::class, CreateUserPreferences::class);
+
+        // Admin gate for route/middleware checks
+        Gate::define('admin', function ($user) {
+            return $user && method_exists($user, 'isAdmin') ? $user->isAdmin() : false;
+        });
     }
 
     /**

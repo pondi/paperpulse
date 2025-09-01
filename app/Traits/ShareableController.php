@@ -78,7 +78,8 @@ trait ShareableController
     public function getShares($id)
     {
         $item = $this->model::findOrFail($id);
-        $this->authorize('view', $item);
+        // Only owners can list shares for a resource
+        $this->authorize('share', $item);
 
         $shares = $item->shares()->with('sharedWithUser:id,name,email')->get();
 

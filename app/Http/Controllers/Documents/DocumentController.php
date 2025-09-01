@@ -6,6 +6,7 @@ use App\Http\Controllers\BaseResourceController;
 use App\Models\Document;
 use App\Models\Tag;
 use App\Services\DocumentService;
+use App\Services\FileProcessingService;
 use App\Services\ConversionService;
 use App\Traits\ShareableController;
 use Illuminate\Http\Request;
@@ -318,7 +319,7 @@ class DocumentController extends BaseResourceController
         ]);
 
         try {
-            $documentService = app(DocumentService::class);
+            $fileProcessingService = app(FileProcessingService::class);
             $uploadedFiles = $request->file('files');
             $processedFiles = [];
 
@@ -337,7 +338,7 @@ class DocumentController extends BaseResourceController
                     return back()->with('error', 'File validation failed for "'.$uploadedFile->getClientOriginalName().'": '.$fileValidation['error']);
                 }
 
-                $result = $documentService->processUpload($uploadedFile, $fileType);
+                $result = $fileProcessingService->processUpload($uploadedFile, $fileType, auth()->id());
                 $processedFiles[] = $result;
             }
 

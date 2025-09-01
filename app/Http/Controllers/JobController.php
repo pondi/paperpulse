@@ -216,6 +216,10 @@ class JobController extends Controller
      */
     public function index(Request $request): Response
     {
+        // Restrict job visibility to administrators
+        if (! auth()->user()?->isAdmin()) {
+            abort(403, 'Unauthorized');
+        }
         $historyQuery = JobHistory::query()
             ->whereNull('parent_uuid')
             ->orderBy('created_at', 'desc')
@@ -271,6 +275,9 @@ class JobController extends Controller
      */
     public function getStatus(Request $request): JsonResponse
     {
+        if (! auth()->user()?->isAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
         try {
             $pendingJobs = $this->getPendingJobs();
 
@@ -336,6 +343,9 @@ class JobController extends Controller
      */
     public function restart(Request $request, string $jobId): JsonResponse
     {
+        if (! auth()->user()?->isAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
         try {
             // Validate that the job exists and can be restarted
             $jobChainService = app(JobChainService::class);
@@ -392,6 +402,9 @@ class JobController extends Controller
      */
     public function restartMultiple(Request $request): JsonResponse
     {
+        if (! auth()->user()?->isAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
         $request->validate([
             'job_ids' => 'required|array|min:1|max:10',
             'job_ids.*' => 'required|string|uuid',
@@ -487,6 +500,9 @@ class JobController extends Controller
      */
     public function show(string $jobId): JsonResponse
     {
+        if (! auth()->user()?->isAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
         try {
             $jobChainService = app(JobChainService::class);
             $status = $jobChainService->getJobChainStatus($jobId);

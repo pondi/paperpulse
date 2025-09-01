@@ -140,6 +140,8 @@ class Document extends Model
         $this->load(['category', 'tags', 'file']);
 
         return [
+            // Ensure search engine can filter by user
+            'user_id' => $this->user_id,
             'id' => $this->id,
             'title' => $this->title,
             'description' => $this->description,

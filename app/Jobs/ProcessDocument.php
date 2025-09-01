@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\AnalyzeDocument;
 use App\Models\Document;
 use App\Models\File;
 use App\Services\StorageService;
@@ -146,10 +147,8 @@ class ProcessDocument extends BaseJob
                     'document_id' => $document->id,
                 ]);
 
-                // TODO: Dispatch AnalyzeDocument job when AI integration is ready
-                // AnalyzeDocument::dispatch($this->jobID)
-                //     ->onQueue('documents')
-                //     ->delay(now()->addSeconds(5));
+                AnalyzeDocument::dispatch($this->jobID)
+                    ->onQueue('documents');
 
             } catch (Exception $e) {
                 DB::rollBack();

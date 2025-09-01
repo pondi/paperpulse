@@ -194,15 +194,9 @@ class ReceiptController extends Controller
             abort(404);
         }
 
-        // For now, just serve the original file format
-        // TODO: Implement PDF conversion for non-PDF receipts
         $extension = $receipt->file->fileExtension ?? 'jpg';
 
-        // If it's already a PDF, serve it directly
-        // Otherwise, we would need to convert it to PDF first
         if ($extension !== 'pdf') {
-            // For now, redirect to the original image
-            // In the future, implement on-the-fly PDF conversion
             return redirect()->route('receipts.showImage', $receipt->id);
         }
 

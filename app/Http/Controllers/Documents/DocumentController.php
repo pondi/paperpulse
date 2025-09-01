@@ -49,13 +49,11 @@ class DocumentController extends BaseResourceController
                     'guid' => $document->file->guid,
                     'type' => $typeFolder,
                     'extension' => $extension,
-                    'user_id' => $document->file->user_id,
                 ]),
                 'pdfUrl' => $extension === 'pdf' ? route('documents.serve', [
                     'guid' => $document->file->guid,
                     'type' => $typeFolder,
                     'extension' => 'pdf',
-                    'user_id' => $document->file->user_id,
                 ]) : null,
                 'extension' => $extension,
                 'size' => $document->file->fileSize,
@@ -92,13 +90,11 @@ class DocumentController extends BaseResourceController
                     'guid' => $document->file->guid,
                     'type' => $typeFolder,
                     'extension' => $extension,
-                    'user_id' => $document->file->user_id,
                 ]),
                 'pdfUrl' => $extension === 'pdf' ? route('documents.serve', [
                     'guid' => $document->file->guid,
                     'type' => $typeFolder,
                     'extension' => 'pdf',
-                    'user_id' => $document->file->user_id,
                 ]) : null,
                 'extension' => $extension,
                 'mime_type' => $document->file->mime_type,
@@ -107,13 +103,16 @@ class DocumentController extends BaseResourceController
             ];
         }
 
+        $isOwner = auth()->id() === $document->user_id;
+
         return [
             'id' => $document->id,
             'title' => $document->title,
             'summary' => $document->summary,
             'category_id' => $document->category_id,
             'tags' => $document->tags,
-            'shared_users' => $document->sharedUsers,
+            // Only owners can see who else this is shared with
+            'shared_users' => $isOwner ? $document->sharedUsers : [],
             'created_at' => $document->created_at?->toIso8601String(),
             'updated_at' => $document->updated_at?->toIso8601String(),
             'file' => $fileInfo,
@@ -308,7 +307,7 @@ class DocumentController extends BaseResourceController
     /**
      * Store uploaded documents.
      */
-    public function store(Request $request, DocumentService $documentService, ConversionService $conversionService)
+    public function store(Request $request)
     {
         $fileType = $request->input('file_type', 'document');
 
@@ -319,6 +318,7 @@ class DocumentController extends BaseResourceController
         ]);
 
         try {
+            $documentService = app(DocumentService::class);
             $uploadedFiles = $request->file('files');
             $processedFiles = [];
 

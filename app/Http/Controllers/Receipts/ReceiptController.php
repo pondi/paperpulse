@@ -11,6 +11,7 @@ use App\Traits\ShareableController;
 use App\Traits\SanitizesInput;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ReceiptController extends BaseResourceController
 {
@@ -48,7 +49,7 @@ class ReceiptController extends BaseResourceController
     /**
      * Display a listing of receipts with user preferences.
      */
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $user = auth()->user();
         $this->perPage = $user->preference('receipts_per_page', 20);
@@ -276,7 +277,6 @@ class ReceiptController extends BaseResourceController
             'guid' => $receipt->file->guid,
             'type' => 'receipts',
             'extension' => $extension,
-            'user_id' => $receipt->user_id,
         ]);
     }
 
@@ -301,7 +301,6 @@ class ReceiptController extends BaseResourceController
             'guid' => $receipt->file->guid,
             'type' => 'receipts',
             'extension' => 'pdf',
-            'user_id' => $receipt->user_id,
         ]);
     }
 

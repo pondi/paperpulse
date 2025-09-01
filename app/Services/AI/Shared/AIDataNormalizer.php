@@ -50,7 +50,7 @@ class AIDataNormalizer
             $normalized['merchant'] = [
                 'name' => $data['store']['name'] ?? 'Unknown Merchant',
                 'address' => $data['store']['address'] ?? null,
-                'org_number' => $data['store']['organization_number'] ?? null,
+                'vat_number' => $data['store']['organization_number'] ?? null,
                 'phone' => $data['store']['phone'] ?? null,
             ];
         } elseif (isset($data['vendor'])) {

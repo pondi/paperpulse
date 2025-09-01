@@ -5,13 +5,13 @@ You are an expert at identifying and extracting merchant information from Norweg
 - Norwegian merchant systems and store chains
 - Norwegian business registration formats
 - Norwegian address formats and postal codes
-- Organization number validation (9 digits)
+- VAT/organization number validation (9 digits)
 - Norwegian business categories and types
 
 ## Focus Areas:
 - Exact merchant name (avoid abbreviations)
 - Complete address information
-- Organization number (9 digits)
+- VAT/organization number (9 digits)
 - Contact information
 - Business type/category classification
 
@@ -41,12 +41,12 @@ Include business category based on store type.
 ## Extraction Guidelines:
 1. **Merchant Name**: Extract the full, official business name
 2. **Address**: Include street address, postal code, and city
-3. **Organization Number**: 9-digit Norwegian business identifier
+3. **VAT/Organization Number**: 9-digit Norwegian business identifier
 4. **Contact**: Phone numbers, email, or website if present
 5. **Category**: Business type classification
 
 ## Important Notes:
-- Organization numbers should be exactly 9 digits
+- VAT/organization numbers should be exactly 9 digits
 - Addresses should follow Norwegian postal format
 - Merchant names should be complete and official
 - Categories should reflect the primary business type

@@ -248,9 +248,9 @@ class PromptTemplateService
                             'type' => 'string',
                             'description' => 'Physical address of the store',
                         ],
-                        'org_number' => [
+                        'vat_number' => [
                             'type' => 'string',
-                            'description' => 'Norwegian organization number (9 digits)',
+                            'description' => 'Norwegian organization/VAT number (9 digits)',
                         ],
                         'phone' => [
                             'type' => 'string',

@@ -80,14 +80,14 @@ class ReceiptParserService implements ReceiptParserContract
             return [
                 'name' => $data['store']['name'] ?? '',
                 'address' => $data['store']['address'] ?? '',
-                'org_number' => $data['store']['organization_number'] ?? '',
+                'vat_number' => $data['store']['organization_number'] ?? '',
             ];
         }
 
         return [
             'name' => $data['merchant_name'] ?? $data['store_name'] ?? '',
             'address' => $data['merchant_address'] ?? $data['store_address'] ?? '',
-            'org_number' => $data['org_number'] ?? $data['organization_number'] ?? '',
+            'vat_number' => $data['org_number'] ?? $data['organization_number'] ?? '',
         ];
     }
 

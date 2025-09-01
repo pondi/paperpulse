@@ -20,17 +20,17 @@ class ReceiptEnricherService implements ReceiptEnricherContract
 
         Log::debug('[ReceiptEnricher] Looking for merchant', [
             'merchant_name' => $merchantData['name'],
-            'org_number' => $merchantData['org_number'] ?? null,
+            'vat_number' => $merchantData['vat_number'] ?? null,
         ]);
 
         $query = Merchant::query();
 
-        if (! empty($merchantData['org_number'])) {
-            $existingMerchant = $query->where('org_number', $merchantData['org_number'])->first();
+        if (! empty($merchantData['vat_number'])) {
+            $existingMerchant = $query->where('vat_number', $merchantData['vat_number'])->first();
             if ($existingMerchant) {
-                Log::debug('[ReceiptEnricher] Found merchant by org number', [
+                Log::debug('[ReceiptEnricher] Found merchant by vat number', [
                     'merchant_id' => $existingMerchant->id,
-                    'org_number' => $merchantData['org_number'],
+                    'vat_number' => $merchantData['vat_number'],
                 ]);
 
                 return $existingMerchant;
@@ -51,13 +51,13 @@ class ReceiptEnricherService implements ReceiptEnricherContract
         $merchant = new Merchant;
         $merchant->name = $merchantData['name'];
         $merchant->address = $merchantData['address'] ?? null;
-        $merchant->org_number = $merchantData['org_number'] ?? null;
+        $merchant->vat_number = $merchantData['vat_number'] ?? null;
         $merchant->save();
 
         Log::info('[ReceiptEnricher] Created new merchant', [
             'merchant_id' => $merchant->id,
             'merchant_name' => $merchant->name,
-            'org_number' => $merchant->org_number,
+            'vat_number' => $merchant->vat_number,
         ]);
 
         return $merchant;
@@ -196,7 +196,7 @@ class ReceiptEnricherService implements ReceiptEnricherContract
                 'id' => $merchant->id,
                 'name' => $merchant->name,
                 'address' => $merchant->address,
-                'org_number' => $merchant->org_number,
+                'vat_number' => $merchant->vat_number,
             ];
         }
 

@@ -296,10 +296,16 @@ class ReceiptAnalysisService
             }
         }
 
+        // Calculate tax amount from line items with VAT rates
+        $calculatedTax = $this->calculateTaxFromItems($items);
+        
         // Get AI totals for comparison
         $aiTotals = $this->parser->extractTotals($data);
         $aiTotal = (float) ($aiTotals['total_amount'] ?? 0);
-        $calculatedTax = (float) ($aiTotals['tax_amount'] ?? 0);
+        $aiTax = (float) ($aiTotals['tax_amount'] ?? 0);
+        
+        // Use calculated tax if we have VAT rates, otherwise fall back to AI tax
+        $finalTax = $calculatedTax > 0 ? $calculatedTax : $aiTax;
 
         // Log validation results
         if (! empty($itemValidationErrors)) {
@@ -328,7 +334,7 @@ class ReceiptAnalysisService
 
                 return [
                     'total_amount' => $aiTotal,
-                    'tax_amount' => $calculatedTax,
+                    'tax_amount' => $finalTax,
                 ];
             } else {
                 // Significant difference - prefer calculated if we have good line items
@@ -343,7 +349,7 @@ class ReceiptAnalysisService
 
                 return [
                     'total_amount' => $calculatedTotal,
-                    'tax_amount' => $calculatedTax,
+                    'tax_amount' => $finalTax,
                 ];
             }
         }
@@ -356,7 +362,48 @@ class ReceiptAnalysisService
             'total_items' => count($items),
         ]);
 
-        return $aiTotals;
+        // Return AI totals but with calculated tax if available
+        return [
+            'total_amount' => $aiTotal,
+            'tax_amount' => $finalTax,
+        ];
+    }
+
+    /**
+     * Calculate total tax amount from line items with VAT rates
+     */
+    protected function calculateTaxFromItems(array $items): float
+    {
+        $totalTax = 0.0;
+        $taxCalculationLog = [];
+        
+        foreach ($items as $index => $item) {
+            $vatRate = (float) ($item['vat_rate'] ?? 0);
+            $itemTotal = (float) ($item['total_price'] ?? $item['total'] ?? 0);
+            
+            if ($vatRate > 0 && $itemTotal > 0) {
+                // Norwegian VAT calculation: tax_amount = total_with_vat / (1 + vat_rate) * vat_rate
+                // For example: 115 NOK with 15% VAT = 115 / 1.15 * 0.15 = 15 NOK tax
+                $taxAmount = $itemTotal / (1 + $vatRate) * $vatRate;
+                $totalTax += $taxAmount;
+                
+                $taxCalculationLog[] = [
+                    'item' => $item['name'] ?? $item['description'] ?? "Item {$index}",
+                    'total_with_vat' => $itemTotal,
+                    'vat_rate' => $vatRate,
+                    'calculated_tax' => round($taxAmount, 2),
+                ];
+            }
+        }
+        
+        if ($totalTax > 0) {
+            Log::info('[ReceiptAnalysis] Calculated tax from line items', [
+                'total_tax' => round($totalTax, 2),
+                'item_calculations' => $taxCalculationLog,
+            ]);
+        }
+        
+        return round($totalTax, 2);
     }
 
     /**

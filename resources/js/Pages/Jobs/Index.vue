@@ -176,6 +176,7 @@ const pulseDavStats = ref(props.pulseDavStats);
 const recentPulseDavFiles = ref(props.recentPulseDavFiles);
 const pagination = ref(props.pagination);
 let pollInterval = null;
+let fastPollInterval = null;
 
 const updateForm = (newForm: typeof form) => {
   Object.assign(form, newForm);
@@ -196,6 +197,28 @@ const loadJobsData = async () => {
       jobs.value = response.data.data;
       stats.value = response.data.stats;
       pagination.value = response.data.pagination;
+      
+      // Implement adaptive polling - faster when there are processing jobs
+      const hasProcessingJobs = response.data.data.some(job => 
+        job.status === 'processing' || job.status === 'pending' ||
+        job.steps?.some(step => step.status === 'processing' || step.status === 'pending')
+      );
+      
+      // Clear existing fast polling
+      if (fastPollInterval) {
+        clearInterval(fastPollInterval);
+        fastPollInterval = null;
+      }
+      
+      // If we have processing jobs and no filter is applied, poll every 1 second
+      if (hasProcessingJobs && !form.status && !form.queue && !form.search) {
+        fastPollInterval = setInterval(loadJobsData, 1000);
+        // Clear the normal interval to avoid double polling
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+      }
     }
   } catch (error) {
     console.error('Failed to load jobs data:', error);
@@ -209,17 +232,31 @@ const handleJobRestart = (jobId: string) => {
 };
 
 watch(form, (newForm) => {
+  // Clear both polling intervals when filters change
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+  if (fastPollInterval) {
+    clearInterval(fastPollInterval);
+    fastPollInterval = null;
+  }
+  
   router.get('/jobs', newForm, {
     preserveState: true,
     preserveScroll: true,
     replace: true,
-    only: ['jobs', 'stats', 'pulseDavStats', 'recentPulseDavFiles', 'pagination']
+    only: ['jobs', 'stats', 'pulseDavStats', 'recentPulseDavFiles', 'pagination'],
+    onSuccess: () => {
+      // Re-establish polling after filter change
+      pollInterval = setInterval(loadJobsData, 2000);
+    }
   });
 }, { deep: true });
 
 onMounted(() => {
-  // Poll for job updates every 10 seconds
-  pollInterval = setInterval(loadJobsData, 10000);
+  // Poll for job updates every 2 seconds for real-time updates
+  pollInterval = setInterval(loadJobsData, 2000);
   
   // Listen for Echo events if available
   if (window.Echo) {
@@ -239,6 +276,9 @@ onMounted(() => {
 onUnmounted(() => {
   if (pollInterval) {
     clearInterval(pollInterval);
+  }
+  if (fastPollInterval) {
+    clearInterval(fastPollInterval);
   }
 });
 </script> 

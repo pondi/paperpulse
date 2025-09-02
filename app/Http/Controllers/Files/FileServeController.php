@@ -17,7 +17,7 @@ class FileServeController extends Controller
         $request->validate([
             'guid' => 'required|string|regex:/^[a-f0-9\-]{36}$/i',
             'type' => 'required|string|in:receipts,image,pdf,documents',
-            'extension' => 'required|string|in:jpg,jpeg,png,gif,pdf',
+            'extension' => 'required|string|in:jpg,jpeg,png,gif,pdf,JPG,JPEG,PNG,GIF,PDF',
         ]);
 
         $guid = $request->input('guid');
@@ -72,6 +72,11 @@ class FileServeController extends Controller
             'png' => 'image/png',
             'gif' => 'image/gif',
             'pdf' => 'application/pdf',
+            'JPG' => 'image/jpeg',
+            'JPEG' => 'image/jpeg',
+            'PNG' => 'image/png',
+            'GIF' => 'image/gif',
+            'PDF' => 'application/pdf',
         ];
 
         $mimeType = $mimeTypes[$extension] ?? 'application/octet-stream';

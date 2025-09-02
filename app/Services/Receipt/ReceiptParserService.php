@@ -214,29 +214,87 @@ class ReceiptParserService implements ReceiptParserContract
      */
     protected function parseDateTime(?string $date, ?string $time): ?Carbon
     {
-        try {
-            if ($date) {
-                $dateTime = Carbon::createFromFormat('Y-m-d', $date);
-                if ($time) {
-                    $timePart = Carbon::createFromFormat('H:i:s', $time);
-                    $dateTime->setTimeFromTimeString($timePart->format('H:i:s'));
-                }
-
-                return $dateTime;
-            }
-        } catch (\Exception $e) {
-            Log::warning('[ReceiptParser] Failed to parse date/time', [
-                'date' => $date,
-                'time' => $time,
-                'error' => $e->getMessage(),
-            ]);
+        if (!$date) {
+            Log::warning('[ReceiptParser] No date provided for parsing');
+            return null;
         }
 
-        Log::warning('[ReceiptParser] No valid date found in receipt data', [
-            'date' => $date,
-            'time' => $time,
-        ]);
+        // Common date formats found on receipts
+        $dateFormats = [
+            'Y-m-d',        // 2023-12-25
+            'd/m/Y',        // 25/12/2023
+            'd.m.Y',        // 25.12.2023
+            'd-m-Y',        // 25-12-2023
+            'm/d/Y',        // 12/25/2023
+            'Y/m/d',        // 2023/12/25
+            'd/m/y',        // 25/12/23
+            'd.m.y',        // 25.12.23
+            'd-m-y',        // 25-12-23
+            'm/d/y',        // 12/25/23
+            'j.n.Y',        // 5.1.2023
+            'j/n/Y',        // 5/1/2023
+            'j-n-Y',        // 5-1-2023
+        ];
 
-        return null;
+        $dateTime = null;
+
+        // Try each format until one works
+        foreach ($dateFormats as $format) {
+            try {
+                $dateTime = Carbon::createFromFormat($format, trim($date));
+                if ($dateTime) {
+                    Log::debug('[ReceiptParser] Successfully parsed date', [
+                        'original_date' => $date,
+                        'format_used' => $format,
+                        'parsed_date' => $dateTime->toDateString(),
+                    ]);
+                    break;
+                }
+            } catch (\Exception $e) {
+                // Continue to next format
+                continue;
+            }
+        }
+
+        // If no format worked, try Carbon's flexible parsing
+        if (!$dateTime) {
+            try {
+                $dateTime = Carbon::parse($date);
+                Log::debug('[ReceiptParser] Used Carbon::parse() for date', [
+                    'original_date' => $date,
+                    'parsed_date' => $dateTime->toDateString(),
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('[ReceiptParser] Failed to parse date with all methods', [
+                    'date' => $date,
+                    'error' => $e->getMessage(),
+                ]);
+                return null;
+            }
+        }
+
+        // Add time if provided
+        if ($time && $dateTime) {
+            $timeFormats = ['H:i:s', 'H:i', 'H.i.s', 'H.i'];
+            
+            foreach ($timeFormats as $timeFormat) {
+                try {
+                    $timePart = Carbon::createFromFormat($timeFormat, trim($time));
+                    if ($timePart) {
+                        $dateTime->setTimeFromTimeString($timePart->format('H:i:s'));
+                        Log::debug('[ReceiptParser] Successfully added time', [
+                            'original_time' => $time,
+                            'format_used' => $timeFormat,
+                            'final_datetime' => $dateTime->toDateTimeString(),
+                        ]);
+                        break;
+                    }
+                } catch (\Exception $e) {
+                    continue;
+                }
+            }
+        }
+
+        return $dateTime;
     }
 }

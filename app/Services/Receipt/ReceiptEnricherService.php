@@ -88,8 +88,8 @@ class ReceiptEnricherService implements ReceiptEnricherContract
                 'patterns' => ['/food.*store/', '/super.*market/'],
             ],
             'Restaurant' => [
-                'keywords' => ['restaurant', 'cafe', 'pizza', 'burger', 'sushi', 'bar', 'pub', 'bistro', 'eatery', 'mcdonald'],
-                'patterns' => ['/.*restaurant/', '/.*cafe/'],
+                'keywords' => ['restaurant', 'cafe', 'pizza', 'burger', 'sushi', 'bar', 'pub', 'bistro', 'brasserie', 'eatery', 'mcdonald'],
+                'patterns' => ['/.*restaurant/', '/.*cafe/', '/.*brasserie/'],
             ],
             'Gas Station' => [
                 'keywords' => ['shell', 'esso', 'statoil', 'circle k', 'uno-x', 'gas', 'fuel', 'petrol'],

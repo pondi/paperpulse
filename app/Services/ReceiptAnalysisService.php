@@ -382,8 +382,8 @@ class ReceiptAnalysisService
             $itemTotal = (float) ($item['total_price'] ?? $item['total'] ?? 0);
             
             if ($vatRate > 0 && $itemTotal > 0) {
-                // Norwegian VAT calculation: tax_amount = total_with_vat / (1 + vat_rate) * vat_rate
-                // For example: 115 NOK with 15% VAT = 115 / 1.15 * 0.15 = 15 NOK tax
+                // International VAT calculation: tax_amount = total_with_vat / (1 + vat_rate) * vat_rate
+                // For example: 115 with 15% VAT = 115 / 1.15 * 0.15 = 15 tax amount
                 $taxAmount = $itemTotal / (1 + $vatRate) * $vatRate;
                 $totalTax += $taxAmount;
                 

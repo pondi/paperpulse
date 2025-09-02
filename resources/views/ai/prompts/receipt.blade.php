@@ -53,10 +53,15 @@ Follow the JSON schema carefully but be flexible with missing information. If in
    - Unit price (individual item price)
    - Quantity (number of items purchased)
    - Total price for that item (unit_price × quantity)
-3. **Calculations**: Ensure line item totals add up to the receipt total
-4. **Prices**: All prices as numeric values (not strings)
-5. **Organization number**: 9-digit string (optional if not present)
-6. **VAT rates**: Decimal numbers (0.25 for 25%)
+3. **VAT/Tax Information**: Look specifically for Norwegian VAT information:
+   - Look for "MVA" (Norwegian VAT), "mva", "VAT", or tax amounts
+   - Extract total VAT/tax amount in the totals section as "tax_amount"
+   - Common Norwegian VAT rates: 25% (standard), 15% (food), 12% (transport), 0% (books, newspapers)
+   - Look for VAT breakdown tables or summaries on receipts
+4. **Calculations**: Ensure line item totals add up to the receipt total
+5. **Prices**: All prices as numeric values (not strings)
+6. **Organization number**: 9-digit string (optional if not present)
+7. **VAT rates**: Decimal numbers (0.25 for 25%)
 
 ## Line Item Extraction Rules:
 - Look for item names, product codes, descriptions

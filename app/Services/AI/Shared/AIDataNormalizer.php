@@ -80,6 +80,11 @@ class AIDataNormalizer
             }
         }
 
+        // Ensure tax_amount is always present in totals
+        if (isset($normalized['totals']) && !isset($normalized['totals']['tax_amount'])) {
+            $normalized['totals']['tax_amount'] = 0.0;
+        }
+
         // Fallback for items (non-nested)
         if (! isset($normalized['items'])) {
             if (isset($data['items'])) {
@@ -102,7 +107,7 @@ class AIDataNormalizer
         }
 
         if (! isset($normalized['totals'])) {
-            $normalized['totals'] = ['total_amount' => 0];
+            $normalized['totals'] = ['total_amount' => 0, 'tax_amount' => 0.0];
         }
 
         if (! isset($normalized['receipt_info'])) {

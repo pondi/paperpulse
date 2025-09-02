@@ -88,7 +88,11 @@ class TextractProvider implements OCRService
                     confidence: $result['confidence'],
                     pages: $result['pages'] ?? [],
                     blocks: $result['blocks'] ?? [],
-                    processingTime: $processingTime
+                    processingTime: $processingTime,
+                    structuredData: [
+                        'forms' => $result['forms'] ?? [],
+                        'tables' => $result['tables'] ?? []
+                    ]
                 );
 
             } finally {
@@ -116,16 +120,20 @@ class TextractProvider implements OCRService
 
     protected function extractReceiptText(string $s3Path, array $options = []): array
     {
-        $result = $this->client->detectDocumentText([
+        // Use analyzeDocument for receipts to get forms/tables data
+        $featureTypes = ['TABLES', 'FORMS'];
+        
+        $result = $this->client->analyzeDocument([
             'Document' => [
                 'S3Object' => [
                     'Bucket' => $this->bucket,
                     'Name' => $s3Path,
                 ],
             ],
+            'FeatureTypes' => $featureTypes,
         ]);
 
-        return $this->parseTextractResponse($result->toArray(), 'receipt');
+        return $this->parseTextractStructuredResponse($result->toArray(), 'receipt');
     }
 
     protected function extractDocumentText(string $s3Path, array $options = []): array
@@ -271,10 +279,140 @@ class TextractProvider implements OCRService
         ];
     }
 
-    protected function parseTable(array $tableBlock, array $allBlocks): string
+    /**
+     * Parse Textract response with structured data extraction (forms, tables)
+     */
+    protected function parseTextractStructuredResponse(array $result, string $type = 'receipt'): array
     {
-        // Simplified table parsing - can be enhanced later
-        return '[TABLE CONTENT]';
+        $blocks = $result['Blocks'] ?? [];
+        $blocksById = array_column($blocks, null, 'Id');
+        
+        $text = '';
+        $forms = [];
+        $tables = [];
+        $confidence = 0.0;
+        $lineCount = 0;
+
+        // Extract text from LINE blocks
+        foreach ($blocks as $block) {
+            if ($block['BlockType'] === 'LINE' && isset($block['Text'])) {
+                $text .= $block['Text'] . "\n";
+                $confidence += $block['Confidence'] ?? 0;
+                $lineCount++;
+            }
+        }
+
+        // Extract key-value pairs from forms
+        foreach ($blocks as $block) {
+            if ($block['BlockType'] === 'KEY_VALUE_SET' && isset($block['EntityTypes']) && in_array('KEY', $block['EntityTypes'])) {
+                if (isset($block['Relationships'])) {
+                    $keyText = '';
+                    $valueText = '';
+                    
+                    foreach ($block['Relationships'] as $relationship) {
+                        if ($relationship['Type'] === 'CHILD') {
+                            // Get key text
+                            $keyText = $this->resolveBlockText($relationship['Ids'], $blocksById);
+                        } elseif ($relationship['Type'] === 'VALUE') {
+                            // Find the VALUE block and get its text
+                            foreach ($relationship['Ids'] as $valueId) {
+                                if (isset($blocksById[$valueId]) && isset($blocksById[$valueId]['Relationships'])) {
+                                    foreach ($blocksById[$valueId]['Relationships'] as $valueRelation) {
+                                        if ($valueRelation['Type'] === 'CHILD') {
+                                            $valueText = $this->resolveBlockText($valueRelation['Ids'], $blocksById);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    if ($keyText && $valueText) {
+                        $forms[] = [
+                            'key' => trim($keyText),
+                            'value' => trim($valueText),
+                            'confidence' => $block['Confidence'] ?? 0
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Extract tables
+        foreach ($blocks as $block) {
+            if ($block['BlockType'] === 'TABLE' && isset($block['Relationships'])) {
+                $tables[] = $this->parseTable($block, $blocksById);
+            }
+        }
+
+        return [
+            'text' => trim($text),
+            'metadata' => [
+                'block_count' => count($blocks),
+                'line_count' => $lineCount,
+                'extraction_type' => $type,
+                'forms_count' => count($forms),
+                'tables_count' => count($tables),
+                'textract_job_id' => $result['JobId'] ?? null,
+            ],
+            'confidence' => $lineCount > 0 ? $confidence / $lineCount / 100 : 0,
+            'blocks' => $blocks,
+            'forms' => $forms,
+            'tables' => $tables,
+        ];
+    }
+
+    /**
+     * Resolve text content from block IDs
+     */
+    protected function resolveBlockText(array $blockIds, array $blocksById): string
+    {
+        $text = '';
+        
+        foreach ($blockIds as $blockId) {
+            if (isset($blocksById[$blockId]) && isset($blocksById[$blockId]['Text'])) {
+                $text .= $blocksById[$blockId]['Text'] . ' ';
+            }
+        }
+        
+        return trim($text);
+    }
+
+    /**
+     * Parse table structure from Textract
+     */
+    protected function parseTable(array $tableBlock, array $blocksById): array
+    {
+        $table = [];
+        
+        if (!isset($tableBlock['Relationships'])) {
+            return $table;
+        }
+        
+        foreach ($tableBlock['Relationships'] as $relationship) {
+            if ($relationship['Type'] === 'CHILD') {
+                foreach ($relationship['Ids'] as $cellId) {
+                    if (isset($blocksById[$cellId]) && $blocksById[$cellId]['BlockType'] === 'CELL') {
+                        $cell = $blocksById[$cellId];
+                        $row = ($cell['RowIndex'] ?? 1) - 1; // Convert to 0-based
+                        $col = ($cell['ColumnIndex'] ?? 1) - 1; // Convert to 0-based
+                        
+                        $cellText = '';
+                        if (isset($cell['Relationships'])) {
+                            foreach ($cell['Relationships'] as $cellRelation) {
+                                if ($cellRelation['Type'] === 'CHILD') {
+                                    $cellText = $this->resolveBlockText($cellRelation['Ids'], $blocksById);
+                                }
+                            }
+                        }
+                        
+                        $table[$row][$col] = trim($cellText);
+                    }
+                }
+            }
+        }
+        
+        return $table;
     }
 
     public function canHandle(string $filePath): bool

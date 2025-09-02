@@ -18,6 +18,64 @@ class ReceiptParserService implements ReceiptParserContract
     }
 
     /**
+     * Parse receipt content using AI with structured OCR data
+     */
+    public function parseReceiptWithStructuredData(string $content, array $structuredData, int $fileId): array
+    {
+        $debugEnabled = config('app.debug');
+
+        Log::info('[ReceiptParser] Starting receipt parsing with structured data', [
+            'file_id' => $fileId,
+            'content_length' => strlen($content),
+            'forms_count' => count($structuredData['forms'] ?? []),
+            'tables_count' => count($structuredData['tables'] ?? []),
+        ]);
+
+        if ($debugEnabled) {
+            Log::debug('[ReceiptParser] Content preview with structured data', [
+                'file_id' => $fileId,
+                'content_preview' => substr($content, 0, 300).'...',
+                'structured_data_sample' => array_slice($structuredData['forms'] ?? [], 0, 5),
+            ]);
+        }
+
+        try {
+            $options = [];
+            if (!empty($structuredData)) {
+                $options['structured_data'] = $structuredData;
+            }
+
+            $analysis = $this->aiService->analyzeReceipt($content, $options);
+
+            if ($debugEnabled) {
+                Log::debug('[ReceiptParser] AI service response with structured data', [
+                    'file_id' => $fileId,
+                    'analysis_success' => $analysis['success'] ?? false,
+                    'provider' => $analysis['provider'] ?? 'unknown',
+                    'model' => $analysis['model'] ?? 'unknown',
+                    'tokens_used' => $analysis['tokens_used'] ?? 0,
+                    'fallback_used' => $analysis['fallback_used'] ?? false,
+                    'template' => $analysis['template'] ?? 'unknown',
+                    'data_keys' => isset($analysis['data']) && is_array($analysis['data']) ? array_keys($analysis['data']) : 'no data',
+                    'error' => $analysis['error'] ?? null,
+                ]);
+            }
+
+            if (! $analysis['success']) {
+                throw new \Exception($analysis['error'] ?? 'Receipt analysis failed');
+            }
+
+            return $analysis;
+        } catch (\Exception $e) {
+            Log::error('[ReceiptParser] Parsing with structured data failed', [
+                'error' => $e->getMessage(),
+                'file_id' => $fileId,
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Parse receipt content using AI
      */
     public function parseReceipt(string $content, int $fileId): array

@@ -13,7 +13,8 @@ class OCRResult
         public readonly float $confidence = 0.0,
         public readonly array $pages = [],
         public readonly array $blocks = [],
-        public readonly int $processingTime = 0
+        public readonly int $processingTime = 0,
+        public readonly array $structuredData = []
     ) {}
 
     /**
@@ -26,7 +27,8 @@ class OCRResult
         float $confidence = 1.0,
         array $pages = [],
         array $blocks = [],
-        int $processingTime = 0
+        int $processingTime = 0,
+        array $structuredData = []
     ): self {
         return new self(
             success: true,
@@ -37,7 +39,8 @@ class OCRResult
             confidence: $confidence,
             pages: $pages,
             blocks: $blocks,
-            processingTime: $processingTime
+            processingTime: $processingTime,
+            structuredData: $structuredData
         );
     }
 
@@ -82,6 +85,7 @@ class OCRResult
             'pages' => $this->pages,
             'blocks' => $this->blocks,
             'processing_time' => $this->processingTime,
+            'structured_data' => $this->structuredData,
         ];
     }
 }

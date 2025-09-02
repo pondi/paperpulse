@@ -17,9 +17,9 @@ class TextExtractionService
     }
 
     /**
-     * Extract text from a file using OCR providers
+     * Extract both text and structured data from a file using OCR providers
      */
-    public function extract(string $filePath, string $fileType, string $fileGuid): string
+    public function extractWithStructuredData(string $filePath, string $fileType, string $fileGuid): array
     {
         try {
             // Check cache first
@@ -31,7 +31,10 @@ class TextExtractionService
                     'file_guid' => $fileGuid,
                 ]);
 
-                return $cachedText;
+                return [
+                    'text' => $cachedText,
+                    'structured_data' => Cache::get("{$cacheKey}.structured", [])
+                ];
             }
 
             // Simplified: single provider flow
@@ -87,6 +90,7 @@ class TextExtractionService
             }
 
             $text = $result->text;
+            $structuredData = $result->structuredData;
 
             // Apply confidence filtering if needed
             $minConfidence = config('ai.ocr.options.min_confidence', 0.8);
@@ -106,31 +110,47 @@ class TextExtractionService
                 }
             }
 
-            // Cache the extracted text
+            // Cache both text and structured data
             if (config('ai.ocr.options.cache_results', true)) {
                 $cacheDuration = now()->addDays(config('ai.ocr.options.cache_duration', 7));
                 Cache::put($cacheKey, $text, $cacheDuration);
+                Cache::put("{$cacheKey}.structured", $structuredData, $cacheDuration);
             }
 
-            Log::info('[TextExtractionService] Text extracted successfully', [
+            Log::info('[TextExtractionService] Text and structured data extracted successfully', [
                 'file_guid' => $fileGuid,
                 'file_type' => $fileType,
                 'provider' => $result->provider,
                 'confidence' => $result->confidence,
                 'text_length' => strlen($text),
+                'forms_count' => count($structuredData['forms'] ?? []),
+                'tables_count' => count($structuredData['tables'] ?? []),
                 'processing_time' => $result->processingTime,
             ]);
 
-            return $text;
+            return [
+                'text' => $text,
+                'structured_data' => $structuredData
+            ];
 
         } catch (Exception $e) {
             Log::error('[TextExtractionService] Text extraction failed', [
                 'error' => $e->getMessage(),
                 'file_guid' => $fileGuid,
+                'file_path' => $filePath,
                 'file_type' => $fileType,
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Extract text from a file using OCR providers
+     */
+    public function extract(string $filePath, string $fileType, string $fileGuid): string
+    {
+        $result = $this->extractWithStructuredData($filePath, $fileType, $fileGuid);
+        return $result['text'];
     }
 
     /**

@@ -39,21 +39,26 @@ class ReceiptService
             // Get the file model to get user ID
             $file = \App\Models\File::findOrFail($fileId);
 
-            // Extract text from the file using TextExtractionService
-            $ocrText = $this->textExtractionService->extract($filePath, 'receipt', $fileGuid);
+            // Extract text and structured data from the file using TextExtractionService
+            $ocrData = $this->textExtractionService->extractWithStructuredData($filePath, 'receipt', $fileGuid);
+            $ocrText = $ocrData['text'];
+            $structuredData = $ocrData['structured_data'] ?? [];
 
             if (empty($ocrText)) {
                 throw new \Exception('No text could be extracted from the file');
             }
 
-            Log::debug('Text extracted from receipt', [
+            Log::debug('Text and structured data extracted from receipt', [
                 'file_id' => $fileId,
                 'text_length' => strlen($ocrText),
+                'forms_count' => count($structuredData['forms'] ?? []),
+                'tables_count' => count($structuredData['tables'] ?? []),
             ]);
 
             // Use the new ReceiptAnalysisService to analyze and create receipt
-            $receipt = $this->receiptAnalysisService->analyzeAndCreateReceipt(
+            $receipt = $this->receiptAnalysisService->analyzeAndCreateReceiptWithStructuredData(
                 $ocrText,
+                $structuredData,
                 $fileId,
                 $file->user_id
             );

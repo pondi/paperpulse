@@ -1,8 +1,10 @@
 <template>
   <div :class="{
     'shadow-sm rounded-lg p-6 border': true,
-    'bg-gray-800 border-gray-700': job.status !== 'failed',
-    'bg-red-900/20 border-red-800': job.status === 'failed'
+    // Default (non-failed) card colors: light + dark
+    'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700': job.status !== 'failed',
+    // Failed card colors: light + dark
+    'bg-red-50 border-red-300 dark:bg-red-900/20 dark:border-red-800': job.status === 'failed'
   }">
     <!-- Job Header -->
     <div class="flex justify-between items-start mb-4">
@@ -19,12 +21,12 @@
           </div>
           
           <div>
-            <h3 class="font-semibold text-lg text-white">
+            <h3 class="font-semibold text-lg text-gray-900 dark:text-white">
               {{ job.file_info?.job_name || 'Processing Job' }}
             </h3>
-            <p class="text-sm text-gray-400">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
               {{ job.file_info?.name || 'Unknown File' }}
-              <span v-if="job.file_info?.extension" class="ml-1 px-1.5 py-0.5 bg-gray-700 rounded text-xs">
+              <span v-if="job.file_info?.extension" class="ml-1 px-1.5 py-0.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 rounded text-xs">
                 {{ job.file_info.extension.toUpperCase() }}
               </span>
             </p>
@@ -60,10 +62,10 @@
         
         <span :class="{
           'px-3 py-1 rounded-full text-sm font-semibold': true,
-          'bg-yellow-900/50 text-yellow-300': job.status === 'pending',
-          'bg-blue-900/50 text-blue-300': job.status === 'processing',
-          'bg-green-900/50 text-green-300': job.status === 'completed',
-          'bg-red-900/50 text-red-300': job.status === 'failed'
+          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300': job.status === 'pending',
+          'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300': job.status === 'processing',
+          'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300': job.status === 'completed',
+          'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300': job.status === 'failed'
         }">
           {{ job.status }}
         </span>
@@ -71,14 +73,14 @@
     </div>
 
     <!-- Overall Progress Bar -->
-    <div class="w-full bg-gray-700 rounded-full h-2.5 mb-4">
+    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-4">
       <div class="bg-indigo-500 h-2.5 rounded-full transition-all duration-500" 
         :style="{ width: `${job.progress}%` }">
       </div>
     </div>
 
     <!-- Job Details -->
-    <div class="grid grid-cols-3 gap-4 text-sm text-gray-400 mb-6">
+    <div class="grid grid-cols-3 gap-4 text-sm text-gray-600 dark:text-gray-400 mb-6">
       <div>
         <p>Started: {{ formatDateTime(job.started_at) }}</p>
         <p v-if="job.finished_at">Finished: {{ formatDateTime(job.finished_at) }}</p>
@@ -95,7 +97,7 @@
 
     <!-- Processing Pipeline -->
     <div v-if="job.steps?.length" class="mt-6">
-      <h4 class="font-semibold mb-4 text-white">Processing Pipeline</h4>
+      <h4 class="font-semibold mb-4 text-gray-900 dark:text-white">Processing Pipeline</h4>
       
       <!-- Horizontal Step Flow -->
       <div class="flex items-center gap-2 overflow-x-auto pb-4">
@@ -113,14 +115,14 @@
           
           <!-- Step Info -->
           <div class="min-w-0 flex-1">
-            <div class="text-sm font-medium text-white">{{ step.name }}</div>
-            <div class="text-xs text-gray-400">
+            <div class="text-sm font-medium text-gray-900 dark:text-white">{{ step.name }}</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400">
               {{ step.status }}
               <span v-if="step.duration !== null && step.duration !== undefined">
                 - {{ formatDuration(step.duration) }}
               </span>
             </div>
-            <div v-if="step.status === 'processing'" class="w-16 bg-gray-700 rounded-full h-1 mt-1">
+            <div v-if="step.status === 'processing'" class="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-1 mt-1">
               <div class="bg-blue-500 h-1 rounded-full transition-all duration-500" 
                 :style="{ width: `${step.progress}%` }">
               </div>
@@ -128,7 +130,7 @@
           </div>
           
           <!-- Arrow -->
-          <div v-if="index < job.steps.length - 1" class="text-gray-500 mx-2">
+          <div v-if="index < job.steps.length - 1" class="text-gray-400 dark:text-gray-500 mx-2">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
               <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
@@ -137,9 +139,9 @@
       </div>
       
       <!-- Failed Step Details -->
-      <div v-for="step in failedSteps" :key="`error-${step.id}`" class="mt-4 p-4 bg-red-900/30 border border-red-700 rounded-lg">
-        <h5 class="text-red-400 font-semibold mb-2">{{ step.name }} Failed</h5>
-        <pre class="text-red-300 text-sm whitespace-pre-wrap">{{ step.exception }}</pre>
+      <div v-for="step in failedSteps" :key="`error-${step.id}`" class="mt-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+        <h5 class="text-red-700 dark:text-red-400 font-semibold mb-2">{{ step.name }} Failed</h5>
+        <pre class="text-red-600 dark:text-red-300 text-sm whitespace-pre-wrap">{{ step.exception }}</pre>
       </div>
     </div>
   </div>

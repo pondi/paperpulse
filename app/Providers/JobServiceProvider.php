@@ -163,6 +163,11 @@ class JobServiceProvider extends ServiceProvider
 
                 // For the first job in chain (ProcessFile or ProcessPulseDavFile), create or update parent job
                 if (in_array(class_basename($command), ['ProcessFile', 'ProcessPulseDavFile'])) {
+                    // Extract file info from metadata
+                    $fileName = $details['metadata']['fileName'] ?? null;
+                    $fileType = $details['metadata']['fileType'] ?? null;
+                    $fileId = $details['metadata']['fileId'] ?? null;
+                    
                     // For ProcessPulseDavFile, it IS the parent job
                     if (class_basename($command) === 'ProcessPulseDavFile') {
                         JobHistory::updateOrCreate(
@@ -177,6 +182,10 @@ class JobServiceProvider extends ServiceProvider
                                     'command' => $details['name'],
                                     'data' => $details['command_data'],
                                 ],
+                                'metadata' => $details['metadata'],
+                                'file_name' => $fileName,
+                                'file_type' => $fileType,
+                                'file_id' => $fileId,
                                 'status' => 'processing',
                                 'started_at' => now(),
                                 'progress' => 0,
@@ -200,6 +209,10 @@ class JobServiceProvider extends ServiceProvider
                                     'command' => $details['name'],
                                     'data' => $details['command_data'],
                                 ],
+                                'metadata' => $details['metadata'],
+                                'file_name' => $fileName,
+                                'file_type' => $fileType,
+                                'file_id' => $fileId,
                                 'status' => 'processing',
                                 'started_at' => now(),
                                 'progress' => 0,

@@ -35,14 +35,25 @@ class JobController extends Controller
         // Get file info for parent jobs
         $fileInfo = null;
         if (! $isChild) {
-            $metadata = Cache::get("job.{$job->uuid}.fileMetaData");
-            if ($metadata) {
+            // First try to get from database
+            if ($job->file_name) {
                 $fileInfo = [
-                    'name' => $metadata['fileName'] ?? 'Unknown File',
-                    'extension' => $metadata['fileExtension'] ?? null,
-                    'size' => $metadata['fileSize'] ?? null,
-                    'job_name' => $metadata['jobName'] ?? 'Processing Job',
+                    'name' => $job->file_name,
+                    'extension' => $job->metadata['fileExtension'] ?? pathinfo($job->file_name, PATHINFO_EXTENSION),
+                    'size' => $job->metadata['fileSize'] ?? null,
+                    'job_name' => $job->metadata['jobName'] ?? $job->name,
                 ];
+            } else {
+                // Fallback to cache for older jobs
+                $metadata = Cache::get("job.{$job->uuid}.fileMetaData");
+                if ($metadata) {
+                    $fileInfo = [
+                        'name' => $metadata['fileName'] ?? 'Unknown File',
+                        'extension' => $metadata['fileExtension'] ?? null,
+                        'size' => $metadata['fileSize'] ?? null,
+                        'job_name' => $metadata['jobName'] ?? 'Processing Job',
+                    ];
+                }
             }
         }
 
@@ -423,28 +434,38 @@ class JobController extends Controller
     /**
      * Restart a failed job chain
      */
-    public function restart(Request $request, string $jobId): JsonResponse
+    public function restart(Request $request, string $jobId)
     {
         if (! auth()->user()?->isAdmin()) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+            abort(403, 'Unauthorized');
         }
+        
         try {
             // Validate that the job exists and can be restarted
             $jobChainService = app(JobChainService::class);
             $status = $jobChainService->getJobChainStatus($jobId);
 
             if (! $status['found']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Job chain not found',
-                ], 404);
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Job chain not found',
+                    ], 404);
+                }
+                return back()->with('error', 'Job chain not found');
             }
 
             if (! $status['can_restart']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Job chain cannot be restarted - no failed tasks found',
-                ], 400);
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Job chain cannot be restarted - no failed tasks found',
+                    ], 400);
+                }
+                return back()->with('error', 'Job chain cannot be restarted - no failed tasks found');
             }
 
             // Generate a new job ID for the restart operation
@@ -459,11 +480,22 @@ class JobController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Job chain restart initiated',
-                'restart_job_id' => $restartJobId,
-            ]);
+            // For Inertia requests, redirect back with success message
+            if ($request->header('X-Inertia')) {
+                return redirect()->route('jobs.index')->with('success', 'Job chain restart initiated');
+            }
+
+            // For API requests, return JSON
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Job chain restart initiated',
+                    'restart_job_id' => $restartJobId,
+                ]);
+            }
+
+            // Default redirect for web requests
+            return redirect()->route('jobs.index')->with('success', 'Job chain restart initiated');
 
         } catch (\Exception $e) {
             Log::error('Failed to restart job chain', [
@@ -472,10 +504,14 @@ class JobController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to restart job chain: '.$e->getMessage(),
-            ], 500);
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to restart job chain: '.$e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', 'Failed to restart job chain: '.$e->getMessage());
         }
     }
 

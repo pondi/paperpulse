@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class DocumentController extends BaseResourceController
 {
@@ -34,6 +35,42 @@ class DocumentController extends BaseResourceController
         'tags' => 'sometimes|array',
         'tags.*' => 'integer|exists:tags,id',
     ];
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request): Response
+    {
+        $query = $this->model::query()->with($this->indexWith);
+
+        // Apply user scope
+        $query->where('user_id', auth()->id());
+
+        // Apply search
+        if ($search = $request->input('search')) {
+            $query = $this->applySearch($query, $search);
+        }
+
+        // Apply filters
+        foreach ($this->filterableFields as $field) {
+            if ($value = $request->input($field)) {
+                $query = $this->applyFilter($query, $field, $value);
+            }
+        }
+
+        // Apply sorting
+        $sortField = $request->input('sort', $this->defaultSort);
+        $sortDirection = $request->input('sort_direction', $this->defaultSortDirection);
+        $query->orderBy($sortField, $sortDirection);
+
+        $documents = $query->paginate($request->get('per_page', $this->perPage));
+
+        return Inertia::render('Documents/Index', [
+            'documents' => $documents->through(fn($item) => $this->transformForIndex($item)),
+            'categories' => auth()->user()->categories()->orderBy('name')->get(['id', 'name', 'color']),
+            'filters' => $this->getFilters($request),
+        ]);
+    }
 
     /**
      * Transform item for index display.

@@ -171,8 +171,9 @@ class TextExtractionService
                 $pdf = $parser->parseFile($filePath);
                 $text = $pdf->getText();
 
-                Log::debug('[TextExtractionService] Used PDF parser fallback', [
+                Log::info('[TextExtractionService] Used PDF parser fallback', [
                     'file_path' => $filePath,
+                    'text_length' => strlen($text),
                 ]);
 
                 return $text;

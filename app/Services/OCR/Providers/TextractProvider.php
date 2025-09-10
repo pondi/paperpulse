@@ -9,6 +9,7 @@ use Aws\Textract\TextractClient;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Spatie\PdfToImage\Pdf;
 
 class TextractProvider implements OCRService
 {
@@ -186,9 +187,14 @@ class TextractProvider implements OCRService
                 'status_code' => $e->getStatusCode(),
             ]);
 
-            // If this is an UnsupportedDocumentException, provide more specific error
-            if ($e->getAwsErrorCode() === 'UnsupportedDocumentException') {
-                throw new Exception('PDF format is not supported by Textract. The PDF might be encrypted, corrupted, or in an unsupported format. Try converting it to a standard PDF or using a different file.');
+            // If this is an UnsupportedDocumentException, try converting PDF to images
+            if ($e->getAwsErrorCode() === 'UnsupportedDocumentException' && str_ends_with($s3Path, '.pdf')) {
+                Log::info('[TextractProvider] Unsupported PDF format detected, attempting conversion to images', [
+                    's3_path' => $s3Path,
+                ]);
+                
+                // Try to convert PDF to images and process them
+                return $this->extractFromConvertedPdf($s3Path, $options);
             }
 
             throw $e;
@@ -422,6 +428,171 @@ class TextractProvider implements OCRService
         return in_array($extension, $this->getSupportedExtensions());
     }
 
+    /**
+     * Convert PDF to images and extract text from them
+     */
+    protected function extractFromConvertedPdf(string $s3Path, array $options = []): array
+    {
+        $textractDisk = Storage::disk('textract');
+        $fileGuid = pathinfo($s3Path, PATHINFO_FILENAME);
+        
+        try {
+            // Download PDF from S3 to local temp
+            $pdfContent = $textractDisk->get($s3Path);
+            $localPdfPath = storage_path('app/temp/' . $fileGuid . '.pdf');
+            
+            // Ensure temp directory exists
+            if (!is_dir(dirname($localPdfPath))) {
+                mkdir(dirname($localPdfPath), 0755, true);
+            }
+            
+            file_put_contents($localPdfPath, $pdfContent);
+            
+            // Check if Imagick and Ghostscript are available
+            if (!extension_loaded('imagick')) {
+                Log::warning('[TextractProvider] Imagick not available for PDF conversion');
+                throw new Exception('PDF format is not supported by Textract and conversion tools are not available.');
+            }
+            
+            $gsPath = exec('which gs 2>/dev/null');
+            if (empty($gsPath)) {
+                Log::warning('[TextractProvider] Ghostscript not available for PDF conversion');
+                throw new Exception('PDF format is not supported by Textract and Ghostscript is not available for conversion.');
+            }
+            
+            // Convert PDF to images
+            $pdf = new Pdf($localPdfPath);
+            $pageCount = $pdf->pageCount();
+            
+            Log::info('[TextractProvider] Converting PDF to images', [
+                'pdf_path' => $localPdfPath,
+                'page_count' => $pageCount,
+            ]);
+            
+            $allText = '';
+            $allBlocks = [];
+            $allForms = [];
+            $allTables = [];
+            $totalConfidence = 0;
+            $processedPages = 0;
+            
+            // Ensure temp directory exists
+            $tempDir = storage_path('app/temp');
+            if (!is_dir($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+            
+            // Process each page
+            for ($page = 1; $page <= min($pageCount, 10); $page++) { // Limit to 10 pages for performance
+                $imageFileName = $fileGuid . '_page_' . $page . '.jpg';
+                
+                // Convert PDF page to image
+                $pdf = new Pdf($localPdfPath);
+                $savedFiles = $pdf->selectPage($page)
+                    ->resolution(144)
+                    ->quality(85)
+                    ->save($tempDir, $fileGuid . '_page_' . $page);
+                
+                // The save method returns an array, get the first (and only) file path
+                $imagePath = $savedFiles[0]->path ?? storage_path('app/temp/' . $imageFileName);
+                
+                // Upload image to Textract S3
+                $imageContent = file_get_contents($imagePath);
+                $imageS3Path = "temp/{$fileGuid}/page_{$page}.jpg";
+                $textractDisk->put($imageS3Path, $imageContent);
+                
+                try {
+                    // Process image with Textract
+                    $result = $this->client->analyzeDocument([
+                        'Document' => [
+                            'S3Object' => [
+                                'Bucket' => $this->bucket,
+                                'Name' => $imageS3Path,
+                            ],
+                        ],
+                        'FeatureTypes' => $options['feature_types'] ?? ['LAYOUT', 'TABLES', 'FORMS'],
+                    ]);
+                    
+                    $pageResult = $this->parseTextractDocumentResponse($result->toArray());
+                    
+                    // Aggregate results
+                    if ($page > 1) {
+                        $allText .= "\n\n--- Page {$page} ---\n\n";
+                    }
+                    $allText .= $pageResult['text'];
+                    
+                    // Merge blocks, forms, tables
+                    if (isset($pageResult['blocks'])) {
+                        $allBlocks = array_merge($allBlocks, $pageResult['blocks']);
+                    }
+                    if (isset($pageResult['forms'])) {
+                        $allForms = array_merge($allForms, $pageResult['forms']);
+                    }
+                    if (isset($pageResult['tables'])) {
+                        $allTables = array_merge($allTables, $pageResult['tables']);
+                    }
+                    
+                    $totalConfidence += $pageResult['confidence'] ?? 0;
+                    $processedPages++;
+                    
+                } finally {
+                    // Clean up S3 image
+                    try {
+                        $textractDisk->delete($imageS3Path);
+                    } catch (Exception $e) {
+                        Log::debug('[TextractProvider] Could not delete temp image from S3', ['path' => $imageS3Path]);
+                    }
+                    
+                    // Clean up local image
+                    if (file_exists($imagePath)) {
+                        unlink($imagePath);
+                    }
+                }
+            }
+            
+            // Clean up local PDF
+            if (file_exists($localPdfPath)) {
+                unlink($localPdfPath);
+            }
+            
+            Log::info('[TextractProvider] Successfully processed PDF via image conversion', [
+                'pages_processed' => $processedPages,
+                'text_length' => strlen($allText),
+            ]);
+            
+            return [
+                'text' => trim($allText),
+                'metadata' => [
+                    'page_count' => $processedPages,
+                    'block_count' => count($allBlocks),
+                    'extraction_type' => 'pdf_converted_to_images',
+                    'original_pdf_pages' => $pageCount,
+                ],
+                'confidence' => $processedPages > 0 ? $totalConfidence / $processedPages : 0,
+                'pages' => range(1, $processedPages),
+                'blocks' => $allBlocks,
+                'forms' => $allForms,
+                'tables' => $allTables,
+            ];
+            
+        } catch (Exception $e) {
+            Log::error('[TextractProvider] Failed to convert and process PDF', [
+                'error' => $e->getMessage(),
+                's3_path' => $s3Path,
+            ]);
+            
+            // Clean up any temp files
+            $tempFiles = glob(storage_path('app/temp/' . $fileGuid . '*'));
+            foreach ($tempFiles as $tempFile) {
+                if (file_exists($tempFile)) {
+                    unlink($tempFile);
+                }
+            }
+            
+            throw new Exception('PDF format is not supported by Textract. The PDF might be encrypted, corrupted, or in an unsupported format.');
+        }
+    }
+    
     protected function validateFile(string $filePath): array
     {
         // Check if file exists

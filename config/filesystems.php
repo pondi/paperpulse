@@ -58,11 +58,19 @@ return [
             'throw' => true,
             'options' => [
                 'ACL' => 'private',
+                // Fix for RequestTimeTooSkewed error
+                'http' => [
+                    'synchronous' => false,
+                ],
             ],
             'client' => [
                 'http' => [
                     'verify' => false,
+                    'synchronous' => false,
                 ],
+                // Allow for clock skew
+                'signature_version' => 'v4',
+                'use_aws_shared_config_files' => false,
             ],
         ],
 
@@ -80,11 +88,19 @@ return [
             'throw' => true,
             'options' => [
                 'ACL' => 'private',
+                // Fix for RequestTimeTooSkewed error
+                'http' => [
+                    'synchronous' => false,
+                ],
             ],
             'client' => [
                 'http' => [
                     'verify' => false,
+                    'synchronous' => false,
                 ],
+                // Allow for clock skew
+                'signature_version' => 'v4',
+                'use_aws_shared_config_files' => false,
             ],
         ],
 

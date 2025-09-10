@@ -21,12 +21,17 @@ class JobHistory extends Model
         'progress',
         'order_in_chain',
         'exception',
+        'metadata',
+        'file_name',
+        'file_type',
+        'file_id',
         'started_at',
         'finished_at',
     ];
 
     protected $casts = [
         'payload' => 'array',
+        'metadata' => 'array',
         'started_at' => 'datetime',
         'finished_at' => 'datetime',
     ];

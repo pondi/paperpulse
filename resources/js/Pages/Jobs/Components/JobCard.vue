@@ -225,44 +225,37 @@ const formatFileSize = (bytes: number): string => {
   return Math.round(bytes / Math.pow(1024, i)) + ' ' + sizes[i];
 };
 
-const restartJob = async () => {
+const restartJob = () => {
   if (isRestarting.value) return;
   
-  try {
-    isRestarting.value = true;
-    
-    const response = await fetch(`/jobs/${props.job.id}/restart`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-      },
-    });
-    
-    const result = await response.json();
-    
-    if (result.success) {
+  isRestarting.value = true;
+  
+  // Use Inertia's router.post for proper CSRF handling
+  router.post(`/jobs/${props.job.id}/restart`, {}, {
+    preserveScroll: true,
+    preserveState: false,
+    onStart: () => {
+      console.log('Restarting job:', props.job.id);
+    },
+    onSuccess: () => {
       // Emit restart event to parent component
       emit('restart', props.job.id);
-      
-      // Show success message or toast
       console.log('Job restart initiated successfully');
+      isRestarting.value = false;
       
-      // Refresh the jobs list after a short delay
-      setTimeout(() => {
-        router.reload({ only: ['jobs', 'stats'] });
-      }, 1000);
-      
-    } else {
-      console.error('Failed to restart job:', result.message);
-      alert('Failed to restart job: ' + result.message);
+      // The page will reload automatically with updated data
+    },
+    onError: (errors) => {
+      console.error('Failed to restart job:', errors);
+      alert('Failed to restart job. Please try again.');
+      isRestarting.value = false;
+    },
+    onFinish: () => {
+      // Reset state if needed
+      if (isRestarting.value) {
+        isRestarting.value = false;
+      }
     }
-    
-  } catch (error) {
-    console.error('Error restarting job:', error);
-    alert('Error restarting job. Please try again.');
-  } finally {
-    isRestarting.value = false;
-  }
+  });
 };
 </script> 

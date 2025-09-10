@@ -72,91 +72,15 @@ class ReceiptEnricherService implements ReceiptEnricherContract
     }
 
     /**
-     * Categorize merchant based on name
+     * Categorize merchant based on name (deprecated).
+     * Category should come from AI output structure. This remains for backward compatibility
+     * and will always return null to avoid heuristic misclassification.
      */
     public function categorizeMerchant(string $merchantName): ?string
     {
-        if (empty($merchantName)) {
-            return null;
-        }
-
-        $merchantName = strtolower($merchantName);
-
-        $categories = [
-            'Groceries' => [
-                'keywords' => ['grocery', 'supermarket', 'market', 'food', 'ica', 'coop', 'rema', 'kiwi', 'meny'],
-                'patterns' => ['/food.*store/', '/super.*market/'],
-            ],
-            'Restaurant' => [
-                'keywords' => ['restaurant', 'cafe', 'pizza', 'burger', 'sushi', 'bar', 'pub', 'bistro', 'brasserie', 'eatery', 'mcdonald'],
-                'patterns' => ['/.*restaurant/', '/.*cafe/', '/.*brasserie/'],
-            ],
-            'Gas Station' => [
-                'keywords' => ['shell', 'esso', 'statoil', 'circle k', 'uno-x', 'gas', 'fuel', 'petrol'],
-                'patterns' => ['/.*gas.*station/', '/.*fuel/'],
-            ],
-            'Pharmacy' => [
-                'keywords' => ['pharmacy', 'apotek', 'boots', 'medicine', 'drug store'],
-                'patterns' => ['/.*pharmacy/', '/.*apotek/'],
-            ],
-            'Clothing' => [
-                'keywords' => ['h&m', 'zara', 'nike', 'adidas', 'clothing', 'fashion', 'apparel'],
-                'patterns' => ['/.*clothing/', '/.*fashion/'],
-            ],
-            'Electronics' => [
-                'keywords' => ['elkjøp', 'mediamarkt', 'komplett', 'apple', 'samsung', 'electronics'],
-                'patterns' => ['/.*electronics/', '/.*tech/'],
-            ],
-            'Transportation' => [
-                'keywords' => ['ruter', 'nsb', 'vy', 'taxi', 'uber', 'bolt', 'transport', 'bus', 'train'],
-                'patterns' => ['/.*transport/', '/.*taxi/'],
-            ],
-            'Entertainment' => [
-                'keywords' => ['cinema', 'movie', 'theater', 'concert', 'entertainment', 'spotify', 'netflix'],
-                'patterns' => ['/.*cinema/', '/.*entertainment/'],
-            ],
-            'Health' => [
-                'keywords' => ['hospital', 'clinic', 'doctor', 'dental', 'health', 'medical'],
-                'patterns' => ['/.*medical/', '/.*health/'],
-            ],
-            'Home & Garden' => [
-                'keywords' => ['ikea', 'bauhaus', 'maxbo', 'home', 'garden', 'furniture', 'hardware'],
-                'patterns' => ['/.*furniture/', '/.*garden/'],
-            ],
-        ];
-
-        foreach ($categories as $category => $rules) {
-            // Check keywords
-            foreach ($rules['keywords'] as $keyword) {
-                if (strpos($merchantName, $keyword) !== false) {
-                    Log::debug('[ReceiptEnricher] Category matched by keyword', [
-                        'merchant_name' => $merchantName,
-                        'category' => $category,
-                        'keyword' => $keyword,
-                    ]);
-
-                    return $category;
-                }
-            }
-
-            // Check patterns
-            foreach ($rules['patterns'] as $pattern) {
-                if (preg_match($pattern, $merchantName)) {
-                    Log::debug('[ReceiptEnricher] Category matched by pattern', [
-                        'merchant_name' => $merchantName,
-                        'category' => $category,
-                        'pattern' => $pattern,
-                    ]);
-
-                    return $category;
-                }
-            }
-        }
-
-        Log::debug('[ReceiptEnricher] No category matched', [
+        Log::notice('[ReceiptEnricher] categorizeMerchant() is deprecated; relying on AI-provided categories', [
             'merchant_name' => $merchantName,
         ]);
-
         return null;
     }
 
@@ -190,12 +114,10 @@ class ReceiptEnricherService implements ReceiptEnricherContract
      */
     public function enrichReceiptData(array $receiptData, ?Merchant $merchant = null): array
     {
-        // Add merchant category if merchant is provided
-        if ($merchant && ! empty($merchant->name)) {
-            $suggestedCategory = $this->categorizeMerchant($merchant->name);
-            if ($suggestedCategory) {
-                $receiptData['suggested_category'] = $suggestedCategory;
-            }
+        // Add merchant/receipt category if available from AI
+        $aiCategory = $receiptData['merchant']['category'] ?? $receiptData['receipt_category'] ?? null;
+        if (!empty($aiCategory)) {
+            $receiptData['suggested_category'] = $aiCategory;
         }
 
         // Add merchant information

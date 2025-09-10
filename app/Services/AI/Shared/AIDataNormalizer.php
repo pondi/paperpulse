@@ -101,6 +101,31 @@ class AIDataNormalizer
             $normalized['payment'] = ['method' => $data['payment_method']];
         }
 
+        // Map vendor/brand info
+        if (isset($data['vendors']) && is_array($data['vendors'])) {
+            $normalized['vendors'] = array_values(array_unique(array_filter($data['vendors'])));
+        } elseif (isset($data['brands']) && is_array($data['brands'])) {
+            $normalized['vendors'] = array_values(array_unique(array_filter($data['brands'])));
+        } elseif (isset($data['product_vendors']) && is_array($data['product_vendors'])) {
+            $normalized['vendors'] = array_values(array_unique(array_filter($data['product_vendors'])));
+        }
+
+        // Normalize item vendor fields (brand -> vendor)
+        if (isset($normalized['items']) && is_array($normalized['items'])) {
+            foreach ($normalized['items'] as $idx => $item) {
+                if (isset($item['brand']) && !isset($item['vendor'])) {
+                    $normalized['items'][$idx]['vendor'] = $item['brand'];
+                }
+            }
+        } elseif (isset($data['items']) && is_array($data['items'])) {
+            $normalized['items'] = $data['items'];
+            foreach ($normalized['items'] as $idx => $item) {
+                if (isset($item['brand']) && !isset($item['vendor'])) {
+                    $normalized['items'][$idx]['vendor'] = $item['brand'];
+                }
+            }
+        }
+
         // Ensure required structure exists with defaults
         if (! isset($normalized['merchant'])) {
             $normalized['merchant'] = ['name' => 'Unknown Merchant'];

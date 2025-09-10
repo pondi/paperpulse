@@ -74,6 +74,19 @@ class SearchService
             $searchQuery->where('receipt_category', $filters['category']);
         }
 
+        // Apply vendor filter (supports string or array)
+        if (isset($filters['vendor']) && is_string($filters['vendor']) && $filters['vendor'] !== '') {
+            $searchQuery->where('vendors', $filters['vendor']);
+        }
+        if (isset($filters['vendors']) && is_array($filters['vendors']) && !empty($filters['vendors'])) {
+            // Apply AND semantics for multiple vendors
+            foreach ($filters['vendors'] as $v) {
+                if (is_string($v) && $v !== '') {
+                    $searchQuery->where('vendors', $v);
+                }
+            }
+        }
+
         $results = $searchQuery
             ->query(function ($builder) {
                 $builder->with(['merchant', 'lineItems']);

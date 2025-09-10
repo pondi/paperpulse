@@ -135,7 +135,7 @@ return [
         'key' => env('MEILISEARCH_KEY'),
         'index-settings' => [
             'receipts' => [
-                'filterableAttributes' => ['id', 'user_id', 'merchant_id', 'category_id', 'status', 'date'],
+                'filterableAttributes' => ['id', 'user_id', 'merchant_id', 'category_id', 'status', 'date', 'vendors'],
                 'sortableAttributes' => ['date', 'total_amount', 'created_at'],
                 'searchableAttributes' => ['merchant_name', 'line_items', 'notes'],
             ],

@@ -114,7 +114,7 @@ class Receipt extends Model
      */
     public function toSearchableArray()
     {
-        $this->load(['merchant', 'lineItems']);
+        $this->load(['merchant', 'lineItems.vendor']);
 
         $array = [
             // Ensure search engine can filter by user
@@ -135,8 +135,16 @@ class Receipt extends Model
                     'sku' => $item->sku,
                     'quantity' => $item->qty,
                     'price' => $item->price,
+                    'vendor_id' => $item->vendor_id,
+                    'vendor_name' => $item->vendor?->name,
                 ];
             })->toArray(),
+            'vendors' => $this->lineItems
+                ->filter(fn($li) => !empty($li->vendor?->name))
+                ->map(fn($li) => $li->vendor->name)
+                ->unique()
+                ->values()
+                ->toArray(),
             'url' => route('receipts.show', $this->id),
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),

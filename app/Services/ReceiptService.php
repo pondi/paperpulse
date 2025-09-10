@@ -6,6 +6,7 @@ use App\Models\Receipt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Services\StorageService;
 
 class ReceiptService
 {
@@ -15,14 +16,18 @@ class ReceiptService
 
     protected $textExtractionService;
 
+    protected StorageService $storageService;
+
     public function __construct(
         DocumentService $documentService,
         ReceiptAnalysisService $receiptAnalysisService,
-        TextExtractionService $textExtractionService
+        TextExtractionService $textExtractionService,
+        StorageService $storageService
     ) {
         $this->documentService = $documentService;
         $this->receiptAnalysisService = $receiptAnalysisService;
         $this->textExtractionService = $textExtractionService;
+        $this->storageService = $storageService;
     }
 
     /**
@@ -55,6 +60,9 @@ class ReceiptService
                 'tables_count' => count($structuredData['tables'] ?? []),
             ]);
 
+            // Persist OCR artifacts (text/blocks/structured) for auditing and retraining
+            $this->persistOcrArtifacts($file->user_id, $fileGuid, $ocrText, $structuredData, $ocrData['blocks'] ?? [], $ocrData['ocr_metadata'] ?? []);
+
             // Use the new ReceiptAnalysisService to analyze and create receipt
             $receipt = $this->receiptAnalysisService->analyzeAndCreateReceiptWithStructuredData(
                 $ocrText,
@@ -66,6 +74,17 @@ class ReceiptService
             // Make the receipt searchable after all relations are saved
             $receipt->load(['merchant', 'lineItems']);
             $receipt->searchable();
+
+            // Persist AI response (as stored in receipt_data) for auditing
+            try {
+                $this->persistAiArtifacts($file->user_id, $fileGuid, $receipt->receipt_data ?? null);
+            } catch (\Exception $e) {
+                Log::warning('[ReceiptService] Failed to persist AI artifacts', [
+                    'file_id' => $fileId,
+                    'file_guid' => $fileGuid,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             Log::info('Receipt data processed successfully', [
                 'file_id' => $fileId,
@@ -135,6 +154,71 @@ class ReceiptService
             ]);
 
             return false;
+        }
+    }
+
+    /**
+     * Persist OCR artifacts (text, structured data, blocks, metadata) to long-term storage
+     */
+    protected function persistOcrArtifacts(int $userId, string $fileGuid, string $text, array $structuredData, array $blocks, array $ocrMetadata): void
+    {
+        try {
+            $paths = [];
+
+            // Store plain OCR text
+            if (!empty($text)) {
+                $paths['ocr_text'] = $this->storageService->storeFile($text, $userId, $fileGuid, 'receipt', 'ocr_text', 'txt');
+            }
+
+            // Store structured OCR data
+            $paths['ocr_structured'] = $this->storageService->storeFile(json_encode($structuredData, JSON_PRETTY_PRINT), $userId, $fileGuid, 'receipt', 'ocr_structured', 'json');
+
+            // Store raw blocks (closest to original Textract response content)
+            if (!empty($blocks)) {
+                $paths['ocr_blocks'] = $this->storageService->storeFile(json_encode($blocks, JSON_PRETTY_PRINT), $userId, $fileGuid, 'receipt', 'ocr_blocks', 'json');
+            }
+
+            // Store OCR metadata if present (e.g., counts, job_id)
+            if (!empty($ocrMetadata)) {
+                $paths['ocr_meta'] = $this->storageService->storeFile(json_encode($ocrMetadata, JSON_PRETTY_PRINT), $userId, $fileGuid, 'receipt', 'ocr_meta', 'json');
+            }
+
+            // Update File.meta with artifact references
+            $file = \App\Models\File::where('guid', $fileGuid)->first();
+            if ($file) {
+                $meta = $file->meta ?? [];
+                $meta['artifacts'] = array_merge($meta['artifacts'] ?? [], $paths);
+                $file->meta = $meta;
+                $file->save();
+            }
+        } catch (\Exception $e) {
+            Log::warning('[ReceiptService] Persist OCR artifacts failed', [
+                'file_guid' => $fileGuid,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Persist AI analysis response (as JSON string) to long-term storage and reference on File.meta
+     */
+    protected function persistAiArtifacts(int $userId, string $fileGuid, ?string $receiptDataJson): void
+    {
+        if (empty($receiptDataJson)) {
+            return;
+        }
+
+        $path = $this->storageService->storeFile($receiptDataJson, $userId, $fileGuid, 'receipt', 'ai_response', 'json');
+
+        $file = \App\Models\File::where('guid', $fileGuid)->first();
+        if ($file) {
+            $meta = $file->meta ?? [];
+            $meta['artifacts'] = array_merge($meta['artifacts'] ?? [], [
+                'ai_response' => $path,
+                'ai_response_persisted' => true,
+            ]);
+            $file->meta = $meta;
+            $file->save();
         }
     }
 }

@@ -92,14 +92,16 @@
                     <!-- Expiration Date (Optional) -->
                     <div class="mt-4">
                         <InputLabel for="share-expires" value="Expires (Optional)" />
-                        <TextInput
+                        <DatePicker
                             id="share-expires"
                             v-model="shareForm.expires_at"
-                            type="datetime-local"
-                            class="mt-1 block w-full"
-                            :min="minExpirationDate"
+                            :min-date="minExpirationDate"
+                            placeholder="Select expiration date..."
+                            :error="shareForm.errors.expires_at"
                         />
-                        <InputError :message="shareForm.errors.expires_at" class="mt-2" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Leave blank for no expiration
+                        </p>
                     </div>
 
                     <!-- Share Link Section -->
@@ -156,6 +158,7 @@ import Modal from '@/Components/Common/Modal.vue';
 import InputLabel from '@/Components/Forms/InputLabel.vue';
 import InputError from '@/Components/Forms/InputError.vue';
 import TextInput from '@/Components/Forms/TextInput.vue';
+import DatePicker from '@/Components/Forms/DatePicker.vue';
 import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
 import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
 import {
@@ -218,7 +221,7 @@ const shareForm = useForm({
 const minExpirationDate = computed(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().slice(0, 16);
+    return tomorrow.toISOString().slice(0, 10);
 });
 
 // Get permission badge classes

@@ -66,7 +66,8 @@ class OpenAIProvider implements AIService
                         'name' => 'receipt_analysis',
                         'description' => 'Structured receipt data extraction',
                         'schema' => $promptData['schema'],
-                        'strict' => true,
+                        // Make strict mode configurable; default to false for production reliability
+                        'strict' => (bool) config('ai.options.strict_json_schema', false),
                     ],
                 ],
             ], $params);

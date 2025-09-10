@@ -310,6 +310,14 @@ class PromptTemplateService
                                 'type' => 'string',
                                 'description' => 'Product code or SKU if present',
                             ],
+                            'vendor' => [
+                                'type' => 'string',
+                                'description' => 'Product vendor/brand if identifiable (e.g., Philips, Siemens)',
+                            ],
+                            'brand' => [
+                                'type' => 'string',
+                                'description' => 'Alias of vendor if provider uses brand terminology',
+                            ],
                         ],
                         'required' => ['name', 'total_price'],
                         'additionalProperties' => false,
@@ -588,8 +596,16 @@ class PromptTemplateService
                         ],
                     ],
                 ],
+                'vendors' => [
+                    'type' => 'array',
+                    'description' => 'Distinct list of identified product vendors/brands present on this receipt',
+                    'items' => [
+                        'type' => 'string'
+                    ],
+                ],
             ],
-            'required' => ['title', 'document_type', 'summary', 'language'],
+            // Keep top-level required minimal and relevant to receipts
+            'required' => ['merchant', 'totals', 'receipt_info'],
             'additionalProperties' => false,
         ];
     }

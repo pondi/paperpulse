@@ -33,7 +33,11 @@ class TextExtractionService
 
                 return [
                     'text' => $cachedText,
-                    'structured_data' => Cache::get("{$cacheKey}.structured", [])
+                    'structured_data' => Cache::get("{$cacheKey}.structured", []),
+                    // Cached path does not include blocks/metadata; callers should tolerate nulls
+                    'blocks' => [],
+                    'ocr_metadata' => [],
+                    'provider' => config('ai.ocr.provider', 'textract'),
                 ];
             }
 
@@ -130,7 +134,10 @@ class TextExtractionService
 
             return [
                 'text' => $text,
-                'structured_data' => $structuredData
+                'structured_data' => $structuredData,
+                'blocks' => $result->blocks,
+                'ocr_metadata' => $result->metadata,
+                'provider' => $result->provider,
             ];
 
         } catch (Exception $e) {

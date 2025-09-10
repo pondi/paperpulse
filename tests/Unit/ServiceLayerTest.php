@@ -170,24 +170,18 @@ class ServiceLayerTest extends TestCase
     {
         $enricher = $this->app->make(ReceiptEnricherContract::class);
 
-        // Test merchant categorization
-        $category = $enricher->categorizeMerchant('ICA Supermarket');
-        $this->assertEquals('Groceries', $category);
-
-        $category = $enricher->categorizeMerchant('McDonald\'s');
-        $this->assertEquals('Restaurant', $category);
-
-        $category = $enricher->categorizeMerchant('Unknown Store');
-        $this->assertNull($category);
-
-        // Test description generation
-        $data = [
-            'merchant' => ['name' => 'Test Store'],
+        // Test that suggested_category comes from AI data
+        $input = [
+            'merchant' => ['name' => 'Test Store', 'category' => 'Groceries'],
             'items' => [['name' => 'Item 1'], ['name' => 'Item 2']],
             'totals' => ['total_amount' => 100.50],
         ];
 
-        $description = $enricher->generateEnhancedDescription($data, 'NOK', 'Groceries');
+        $enriched = $enricher->enrichReceiptData($input);
+        $this->assertEquals('Groceries', $enriched['suggested_category'] ?? null);
+
+        // Test description generation
+        $description = $enricher->generateEnhancedDescription($input, 'NOK', $input['merchant']['category']);
         $this->assertStringContainsString('Groceries', $description);
         $this->assertStringContainsString('Test Store', $description);
         $this->assertStringContainsString('100.50', $description);

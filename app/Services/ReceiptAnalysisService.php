@@ -111,18 +111,19 @@ class ReceiptAnalysisService
                 throw new \Exception('Receipt date could not be extracted - this is required for processing');
             }
 
-            // Determine category
-            $categoryName = null;
+            // Determine category (prefer AI-provided)
+            $categoryName = $data['merchant']['category'] ?? $data['receipt_category'] ?? null;
             $categoryId = null;
 
-            if ($autoCategorize && $merchant) {
+            if ($autoCategorize && !$categoryName && $merchant) {
+                // Backward compatibility (deprecated heuristic)
                 $categoryName = $this->enricher->categorizeMerchant($merchant->name);
+            }
 
-                if ($categoryName && $user) {
-                    $category = $this->enricher->findUserCategory($user, $categoryName);
-                    if ($category) {
-                        $categoryId = $category->id;
-                    }
+            if ($categoryName && $user) {
+                $category = $this->enricher->findUserCategory($user, $categoryName);
+                if ($category) {
+                    $categoryId = $category->id;
                 }
             }
 
@@ -151,7 +152,7 @@ class ReceiptAnalysisService
                 'category_id' => $categoryId,
                 'receipt_category' => $categoryName,
                 'receipt_description' => $this->enricher->generateEnhancedDescription($data, $defaultCurrency, $categoryName),
-                'receipt_data' => json_encode(array_merge($analysis, ['enriched_data' => $enrichedData, 'structured_ocr_data' => $structuredData])),
+                'receipt_data' => json_encode(array_merge($analysis, ['enriched_data' => $enrichedData])),
             ];
 
             if ($debugEnabled) {
@@ -165,7 +166,7 @@ class ReceiptAnalysisService
 
             // Create line items if user preference allows
             if ($extractLineItems) {
-                $this->createLineItems($receipt, $items);
+                $this->createLineItems($receipt, $items, $data['vendors'] ?? []);
 
                 if ($debugEnabled) {
                     Log::debug('[ReceiptAnalysis] Line items created', [
@@ -282,18 +283,19 @@ class ReceiptAnalysisService
                 throw new \Exception('Receipt date could not be extracted - this is required for processing');
             }
 
-            // Determine category
-            $categoryName = null;
+            // Determine category (prefer AI-provided)
+            $categoryName = $data['merchant']['category'] ?? $data['receipt_category'] ?? null;
             $categoryId = null;
 
-            if ($autoCategorize && $merchant) {
+            if ($autoCategorize && !$categoryName && $merchant) {
+                // Backward compatibility (deprecated heuristic)
                 $categoryName = $this->enricher->categorizeMerchant($merchant->name);
+            }
 
-                if ($categoryName && $user) {
-                    $category = $this->enricher->findUserCategory($user, $categoryName);
-                    if ($category) {
-                        $categoryId = $category->id;
-                    }
+            if ($categoryName && $user) {
+                $category = $this->enricher->findUserCategory($user, $categoryName);
+                if ($category) {
+                    $categoryId = $category->id;
                 }
             }
 
@@ -336,7 +338,7 @@ class ReceiptAnalysisService
 
             // Create line items if user preference allows
             if ($extractLineItems) {
-                $this->createLineItems($receipt, $items);
+                $this->createLineItems($receipt, $items, $data['vendors'] ?? []);
 
                 if ($debugEnabled) {
                     Log::debug('[ReceiptAnalysis] Line items created', [
@@ -539,12 +541,49 @@ class ReceiptAnalysisService
     /**
      * Create line items for a receipt
      */
-    protected function createLineItems(Receipt $receipt, array $items): void
+    protected function createLineItems(Receipt $receipt, array $items, array $vendors = []): void
     {
+        // Build cache of vendor names to IDs to minimize queries
+        $vendorIdCache = [];
+
+        $resolveVendorId = function (?string $name) use (&$vendorIdCache) {
+            if (!$name) { return null; }
+            $key = mb_strtolower(trim($name));
+            if (isset($vendorIdCache[$key])) {
+                return $vendorIdCache[$key];
+            }
+            $vendor = \App\Models\Vendor::firstOrCreate(['name' => trim($name)]);
+            $vendorIdCache[$key] = $vendor->id;
+            return $vendor->id;
+        };
+
+        // Normalize vendors array to lowercase for inference
+        $vendorSet = array_map(fn($v) => mb_strtolower(trim($v)), $vendors);
+
         foreach ($items as $item) {
+            $itemName = $item['name'] ?? $item['description'] ?? '';
+            $explicitVendor = $item['vendor'] ?? $item['brand'] ?? null;
+
+            $vendorId = null;
+            if (!empty($explicitVendor)) {
+                $vendorId = $resolveVendorId($explicitVendor);
+            } elseif (!empty($itemName) && !empty($vendorSet)) {
+                // Infer vendor from item name using top-level vendor list
+                $match = null;
+                foreach ($vendorSet as $v) {
+                    if ($v !== '' && mb_strpos(mb_strtolower($itemName), $v) !== false) {
+                        $match = $v; break;
+                    }
+                }
+                if ($match) {
+                    $vendorId = $resolveVendorId($match);
+                }
+            }
+
             LineItem::create([
                 'receipt_id' => $receipt->id,
-                'text' => $item['name'] ?? $item['description'] ?? 'Unknown Item',
+                'vendor_id' => $vendorId,
+                'text' => $itemName !== '' ? $itemName : 'Unknown Item',
                 'sku' => $item['sku'] ?? null,
                 'qty' => $item['quantity'] ?? 1,
                 'price' => $item['unit_price'] ?? $item['price'] ?? 0,

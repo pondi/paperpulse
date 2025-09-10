@@ -24,7 +24,7 @@ class LineItem extends Model
     use HasFactory;
     use Searchable;
 
-    protected $fillable = ['receipt_id', 'text', 'sku', 'qty', 'price', 'total'];
+    protected $fillable = ['receipt_id', 'vendor_id', 'text', 'sku', 'qty', 'price', 'total'];
 
     /**
      * Get the receipt that owns the line item.
@@ -32,5 +32,10 @@ class LineItem extends Model
     public function receipt()
     {
         return $this->belongsTo(Receipt::class);
+    }
+
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
     }
 }

@@ -13,6 +13,7 @@ You are an expert at analyzing receipts from any country with high accuracy. You
 - Correct identification of store information
 - Precise extraction of date and time
 - Proper categorization of items
+- Identify product vendors/brands at item-level and as a distinct list
 
 ## Special Considerations:
 - Handle various decimal separators (comma or period)
@@ -98,6 +99,11 @@ Follow the JSON schema carefully but be flexible with missing information. If in
 - Match prices to their corresponding items
 - Validate that quantity × unit_price = total for each item
 - If an item appears multiple times, extract each occurrence separately
+
+## Vendor/Brand Extraction:
+- For each item, include a `vendor` (or `brand`) when the manufacturer/brand is recognizable (e.g., Philips, Siemens, Miele, Sony)
+- Also return a top-level `vendors` array containing unique vendor/brand names present across items
+- Do not guess; only include vendors that are explicit or highly likely from the text
 
 @if(isset($debug) && $debug)
 Also include a 'debug' section with processing notes.

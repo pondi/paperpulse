@@ -57,8 +57,13 @@
                   {{ formatFieldValue(receipt[field.key], field.type) }}
                 </dd>
                 <div v-else class="mt-1">
+                  <DatePicker
+                    v-if="field.type === 'date'"
+                    v-model="editedReceipt[field.key]"
+                    :placeholder="`Select ${field.label.toLowerCase()}...`"
+                  />
                   <input
-                    v-if="field.type === 'text' || field.type === 'number' || field.type === 'date'"
+                    v-else-if="field.type === 'text' || field.type === 'number'"
                     v-model="editedReceipt[field.key]"
                     :type="field.type"
                     class="block w-full rounded-md border-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm"
@@ -229,6 +234,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Modal from '@/Components/Common/Modal.vue';
 import SharingControls from '@/Components/Domain/SharingControls.vue';
 import TagManager from '@/Components/Domain/TagManager.vue';
+import DatePicker from '@/Components/Forms/DatePicker.vue';
 import {
   ArrowLeftIcon,
   DocumentIcon,
@@ -257,6 +263,22 @@ const editingLineItem = ref(null);
 const imageError = ref(false);
 const editedReceipt = ref({ ...props.receipt });
 const receiptTags = ref(props.receipt.tags || []);
+
+// Format date for HTML date input (YYYY-MM-DD format)
+const formatDateForInput = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  return d.toISOString().split('T')[0];
+};
+
+// Initialize editedReceipt with properly formatted date
+const initializeEditedReceipt = () => {
+  editedReceipt.value = {
+    ...props.receipt,
+    receipt_date: formatDateForInput(props.receipt.receipt_date)
+  };
+};
 const lineItemForm = ref({
   text: '',
   sku: '',
@@ -387,13 +409,25 @@ const deleteLineItem = (id) => {
 };
 
 watch(isEditing, (newValue) => {
-  if (!newValue && JSON.stringify(props.receipt) !== JSON.stringify(editedReceipt.value)) {
-    // Include tags as array of IDs
-    const dataToSave = {
-      ...editedReceipt.value,
-      tags: receiptTags.value.map(t => t.id)
+  if (newValue) {
+    // When entering edit mode, reinitialize the edited receipt with proper date formatting
+    initializeEditedReceipt();
+  } else {
+    // When exiting edit mode, save if there are changes
+    const originalReceipt = {
+      ...props.receipt,
+      receipt_date: formatDateForInput(props.receipt.receipt_date)
     };
-    router.patch(route('receipts.update', props.receipt.id), dataToSave);
+    
+    if (JSON.stringify(originalReceipt) !== JSON.stringify(editedReceipt.value) || 
+        JSON.stringify(props.receipt.tags || []) !== JSON.stringify(receiptTags.value)) {
+      // Include tags as array of IDs
+      const dataToSave = {
+        ...editedReceipt.value,
+        tags: receiptTags.value.map(t => t.id)
+      };
+      router.patch(route('receipts.update', props.receipt.id), dataToSave);
+    }
   }
 });
 </script> 

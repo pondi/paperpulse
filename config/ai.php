@@ -66,6 +66,9 @@ return [
             'document' => 0.2,
             'summary' => 0.3,
         ],
+        // Controls OpenAI JSON schema strict mode; false avoids provider
+        // rejections when optional fields are omitted by the model
+        'strict_json_schema' => env('AI_STRICT_JSON_SCHEMA', false),
     ],
 
     /*

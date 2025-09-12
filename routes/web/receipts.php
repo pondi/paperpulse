@@ -3,7 +3,6 @@
 use App\Http\Controllers\BulkOperationsController;
 use App\Http\Controllers\Receipts\LineItemController;
 use App\Http\Controllers\Receipts\ReceiptController;
-use App\Http\Controllers\Receipts\ReceiptShareController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'web'])->group(function () {
@@ -19,8 +18,9 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::post('/{receipt}/line-items', [LineItemController::class, 'store'])->name('line-items.store');
         Route::patch('/{receipt}/line-items/{lineItem}', [LineItemController::class, 'update'])->name('line-items.update');
         Route::delete('/{receipt}/line-items/{lineItem}', [LineItemController::class, 'destroy'])->name('line-items.destroy');
-        Route::post('/{receipt}/share', [ReceiptShareController::class, 'share'])->name('share');
-        Route::delete('/{receipt}/share/{user}', [ReceiptShareController::class, 'unshare'])->name('unshare');
+        // Use ReceiptController for share/unshare via ShareableController trait
+        Route::post('/{receipt}/share', [ReceiptController::class, 'share'])->name('share');
+        Route::delete('/{receipt}/share/{user}', [ReceiptController::class, 'unshare'])->name('unshare');
         Route::post('/{receipt}/tags', [ReceiptController::class, 'attachTag'])->name('tags.store');
         Route::delete('/{receipt}/tags/{tag}', [ReceiptController::class, 'detachTag'])->name('tags.destroy');
     });

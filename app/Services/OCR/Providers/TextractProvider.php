@@ -109,13 +109,22 @@ class TextractProvider implements OCRService
             }
 
         } catch (Exception $e) {
+            // Handle AWS exceptions that might have array messages
+            $errorMessage = $e->getMessage();
+            if ($e instanceof \Aws\Exception\AwsException) {
+                $errorMessage = $e->getAwsErrorMessage() ?: $e->getMessage();
+            }
+            if (is_array($errorMessage)) {
+                $errorMessage = json_encode($errorMessage);
+            }
+            
             Log::error('[TextractProvider] Text extraction failed', [
-                'error' => $e->getMessage(),
+                'error' => $errorMessage,
                 'file_guid' => $fileGuid,
                 'file_type' => $fileType,
             ]);
 
-            return OCRResult::failure($e->getMessage(), $this->getProviderName());
+            return OCRResult::failure($errorMessage, $this->getProviderName());
         }
     }
 
@@ -197,7 +206,12 @@ class TextractProvider implements OCRService
                 return $this->extractFromConvertedPdf($s3Path, $options);
             }
 
-            throw $e;
+            // Ensure we always throw with a string message
+            $errorMessage = $e->getAwsErrorMessage() ?: $e->getMessage();
+            if (is_array($errorMessage)) {
+                $errorMessage = json_encode($errorMessage);
+            }
+            throw new Exception($errorMessage);
         }
     }
 

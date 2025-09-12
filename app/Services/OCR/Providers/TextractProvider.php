@@ -74,11 +74,21 @@ class TextractProvider implements OCRService
             $textractDisk->put($textractPath, $fileContent);
 
             try {
-                $result = match ($fileType) {
-                    'receipt' => $this->extractReceiptText($textractPath, $options),
-                    'document' => $this->extractDocumentText($textractPath, $options),
-                    default => throw new Exception("Unknown file type: {$fileType}"),
-                };
+                // Wrap the match expression to catch any array to string conversion errors
+                try {
+                    $result = match ($fileType) {
+                        'receipt' => $this->extractReceiptText($textractPath, $options),
+                        'document' => $this->extractDocumentText($textractPath, $options),
+                        default => throw new Exception("Unknown file type: {$fileType}"),
+                    };
+                } catch (\Throwable $matchError) {
+                    // Handle any error including array to string conversion
+                    $errorMsg = $matchError->getMessage();
+                    if (is_array($errorMsg)) {
+                        $errorMsg = json_encode($errorMsg);
+                    }
+                    throw new Exception("Error during text extraction: " . $errorMsg);
+                }
 
                 $processingTime = (int) ((microtime(true) - $startTime) * 1000);
 
@@ -250,6 +260,9 @@ class TextractProvider implements OCRService
         $pages = [];
         $confidence = 0.0;
         $lineCount = 0;
+        
+        // Create blocks indexed by ID for table parsing
+        $blocksById = array_column($blocks, null, 'Id');
 
         // Group blocks by page
         foreach ($blocks as $block) {
@@ -280,7 +293,10 @@ class TextractProvider implements OCRService
                     $confidence += $block['Confidence'] ?? 0;
                     $lineCount++;
                 } elseif ($block['BlockType'] === 'TABLE') {
-                    $text .= $this->parseTable($block, $blocks)."\n";
+                    // Parse table and convert to string
+                    $tableData = $this->parseTable($block, $blocksById);
+                    $tableText = $this->formatTableAsText($tableData);
+                    $text .= $tableText . "\n";
                 }
             }
         }
@@ -433,6 +449,26 @@ class TextractProvider implements OCRService
         }
         
         return $table;
+    }
+    
+    /**
+     * Format table array as text
+     */
+    protected function formatTableAsText(array $table): string
+    {
+        if (empty($table)) {
+            return '';
+        }
+        
+        $text = '';
+        foreach ($table as $row) {
+            if (is_array($row)) {
+                $rowText = implode(' | ', $row);
+                $text .= $rowText . "\n";
+            }
+        }
+        
+        return trim($text);
     }
 
     public function canHandle(string $filePath): bool

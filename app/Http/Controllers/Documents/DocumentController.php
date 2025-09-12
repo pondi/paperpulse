@@ -73,6 +73,25 @@ class DocumentController extends BaseResourceController
     }
 
     /**
+     * Override show to pass props expected by Vue component.
+     */
+    public function show($id): Response
+    {
+        $document = $this->model::with($this->showWith)->findOrFail($id);
+
+        $this->authorize('view', $document);
+
+        $meta = $this->getShowMeta();
+
+        return Inertia::render("{$this->resource}/Show", [
+            'document' => $this->transformForShow($document),
+            // Flatten meta for Vue expectations
+            'categories' => $meta['categories'] ?? [],
+            'available_tags' => $meta['available_tags'] ?? [],
+        ]);
+    }
+
+    /**
      * Transform item for index display.
      */
     protected function transformForIndex($document): array
@@ -143,14 +162,32 @@ class DocumentController extends BaseResourceController
 
         $isOwner = auth()->id() === $document->user_id;
 
+        // Map shared users to include permission/metadata at top-level
+        $sharedUsers = [];
+        if ($isOwner && $document->relationLoaded('sharedUsers')) {
+            $sharedUsers = $document->sharedUsers->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'permission' => $user->pivot->permission ?? 'view',
+                    'shared_at' => optional($user->pivot->shared_at)->toIso8601String(),
+                ];
+            })->values();
+        }
+
         return [
             'id' => $document->id,
             'title' => $document->title,
             'summary' => $document->summary,
             'category_id' => $document->category_id,
-            'tags' => $document->tags,
+            'tags' => $document->tags?->map(fn($t) => [
+                'id' => $t->id,
+                'name' => $t->name,
+                'color' => $t->color,
+            ])->values(),
             // Only owners can see who else this is shared with
-            'shared_users' => $isOwner ? $document->sharedUsers : [],
+            'shared_users' => $sharedUsers,
             'created_at' => $document->created_at?->toIso8601String(),
             'updated_at' => $document->updated_at?->toIso8601String(),
             'file' => $fileInfo,
@@ -202,12 +239,16 @@ class DocumentController extends BaseResourceController
     protected function beforeDestroy($document): void
     {
         try {
-            // Delete from S3
-            if ($document->file && $document->file->s3_path) {
-                Storage::disk('paperpulse')->delete($document->file->s3_path);
+            // If file has a GUID, delete the original variant using StorageService pathing
+            if ($document->file && $document->file->guid) {
+                $storageService = app(\App\Services\StorageService::class);
+                $extension = $document->file->fileExtension ?? 'pdf';
+                // Build path: documents/{user_id}/{guid}/original.{extension}
+                $fullPath = 'documents/'.$document->user_id.'/'.$document->file->guid.'/original.'.$extension;
+                $storageService->deleteFile($fullPath);
             }
         } catch (\Exception $e) {
-            Log::error('Failed to delete document file from S3', [
+            Log::error('Failed to delete document file', [
                 'document_id' => $document->id,
                 'error' => $e->getMessage(),
             ]);
@@ -237,16 +278,31 @@ class DocumentController extends BaseResourceController
     {
         $this->authorize('view', $document);
 
-        if (!$document->file || !$document->file->s3_path) {
+        if (!$document->file || !$document->file->guid) {
             abort(404, 'Document file not found');
         }
 
         try {
-            $file = Storage::disk('paperpulse')->get($document->file->s3_path);
+            $storageService = app(\App\Services\StorageService::class);
+            $extension = $document->file->fileExtension ?? 'pdf';
+            $content = $storageService->getFileByUserAndGuid(
+                $document->user_id,
+                $document->file->guid,
+                'document',
+                'original',
+                $extension
+            );
 
-            return response($file)
-                ->header('Content-Type', $document->file->mime_type)
-                ->header('Content-Disposition', 'attachment; filename="' . $document->file_name . '"');
+            if ($content === null) {
+                abort(404, 'Document file not found');
+            }
+
+            $filename = $document->file->original_filename
+                ?? ($document->title ? preg_replace('/[^a-zA-Z0-9\-_\.]/', '_', $document->title).'.'.$extension : 'document.'.$extension);
+
+            return response($content)
+                ->header('Content-Type', $document->file->mime_type ?? 'application/octet-stream')
+                ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
         } catch (\Exception $e) {
             Log::error('Failed to download document', [
                 'document_id' => $document->id,

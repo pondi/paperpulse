@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Documents;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
+use App\Services\StorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -23,13 +24,16 @@ class DocumentBulkController extends Controller
         ]);
 
         $deleted = 0;
+        $storageService = app(StorageService::class);
         foreach ($validated['ids'] as $id) {
             $document = Document::find($id);
             if ($document && auth()->user()->can('delete', $document)) {
                 try {
-                    // Delete from S3
-                    if ($document->file && $document->file->s3_path) {
-                        Storage::disk('paperpulse')->delete($document->file->s3_path);
+                    // Delete stored file using StorageService and GUID path
+                    if ($document->file && $document->file->guid) {
+                        $extension = $document->file->fileExtension ?? 'pdf';
+                        $fullPath = 'documents/'.$document->user_id.'/'.$document->file->guid.'/original.'.$extension;
+                        $storageService->deleteFile($fullPath);
                     }
                     $document->delete();
                     $deleted++;
@@ -80,16 +84,25 @@ class DocumentBulkController extends Controller
 
             $filenameCounter = [];
 
+            $storageService = app(\App\Services\StorageService::class);
+
             foreach ($documents as $document) {
                 try {
-                    if (! $document->file || ! $document->file->s3_path) {
-                        Log::warning("Document {$document->id} has no file or s3_path");
+                    if (! $document->file || ! $document->file->guid) {
+                        Log::warning("Document {$document->id} has no file or guid");
 
                         continue;
                     }
 
-                    // Get file content from S3
-                    $fileContent = Storage::disk('paperpulse')->get($document->file->s3_path);
+                    // Get file content from storage using user/guid
+                    $extension = $document->file->fileExtension ?? 'pdf';
+                    $fileContent = $storageService->getFileByUserAndGuid(
+                        $document->user_id,
+                        $document->file->guid,
+                        'document',
+                        'original',
+                        $extension
+                    );
 
                     if ($fileContent === null) {
                         Log::warning("Could not retrieve file content for document {$document->id}");
@@ -99,7 +112,7 @@ class DocumentBulkController extends Controller
 
                     // Generate safe filename using original filename
                     $originalName = $document->file->original_filename ?? $document->title;
-                    $extension = $document->file->fileExtension ?? 'txt';
+                    $extension = $extension ?: 'txt';
 
                     // Remove invalid characters
                     $safeFilename = preg_replace('/[^a-zA-Z0-9\-_\.]/', '_', $originalName);

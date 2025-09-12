@@ -112,7 +112,7 @@ const saveDocument = () => {
     // Update tags to be the array of tag IDs
     form.tags = documentTags.value.map(t => t.id);
     
-    form.put(route('documents.update', props.document.id), {
+    form.patch(route('documents.update', props.document.id), {
         onSuccess: () => {
             isEditing.value = false;
         }
@@ -179,8 +179,37 @@ const getFileIcon = (fileType: string) => {
 };
 
 const handleSharesUpdated = (shares: any[]) => {
-    // Update the document's shared_users
-    props.document.shared_users = shares;
+    // Normalize shares into simplified user list for this page
+    props.document.shared_users = (shares || []).map((s: any) => ({
+        id: s.shared_with_user?.id ?? s.id,
+        name: s.shared_with_user?.name ?? s.name,
+        email: s.shared_with_user?.email ?? s.email,
+        permission: s.permission,
+        shared_at: s.shared_at,
+    }));
+};
+
+// Adapt shared users for SharingControls expected shape
+const sharingControlShares = computed(() => {
+    const users = (props.document.shared_users || []) as any[];
+    return users.map((u: any) => ({
+        shared_with_user: { id: u.id, name: u.name, email: u.email },
+        permission: u.permission,
+        shared_at: u.shared_at,
+    }));
+});
+
+// Remove share from the list (fallback in addition to SharingControls)
+const removeShare = (userId: number) => {
+    if (!confirm('Remove access for this user?')) return;
+    router.delete(route('documents.unshare', [props.document.id, userId]), {
+        preserveScroll: true,
+        onSuccess: () => {
+            props.document.shared_users = (props.document.shared_users || []).filter(
+                (u: any) => u.id !== userId
+            );
+        },
+    });
 };
 </script>
 
@@ -214,7 +243,7 @@ const handleSharesUpdated = (shares: any[]) => {
                     <SharingControls
                         :file-id="document.id"
                         file-type="document"
-                        :current-shares="document.shared_users || []"
+                        :current-shares="sharingControlShares"
                         @shares-updated="handleSharesUpdated"
                     />
                     <button

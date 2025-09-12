@@ -12,7 +12,7 @@
           <SharingControls
             :file-id="receipt.id"
             file-type="receipt"
-            :current-shares="receipt.shared_users || []"
+            :current-shares="sharingControlShares"
             @shares-updated="handleSharesUpdated"
           />
           <Link
@@ -287,10 +287,26 @@ const lineItemForm = ref({
   total: 0
 });
 
+// Normalize inbound shares from API to simplified user list for this page
 const handleSharesUpdated = (shares) => {
-  // Update the receipt's shared_users
-  props.receipt.shared_users = shares;
+  props.receipt.shared_users = (shares || []).map((s) => ({
+    id: s.shared_with_user?.id ?? s.id,
+    name: s.shared_with_user?.name ?? s.name,
+    email: s.shared_with_user?.email ?? s.email,
+    permission: s.permission,
+    shared_at: s.shared_at,
+  }));
 };
+
+// Adapt simplified list to SharingControls expected shape
+const sharingControlShares = computed(() => {
+  const users = (props.receipt.shared_users || []);
+  return users.map((u) => ({
+    shared_with_user: { id: u.id, name: u.name, email: u.email },
+    permission: u.permission,
+    shared_at: u.shared_at,
+  }));
+});
 
 const handleTagAdded = (tag) => {
   // When in edit mode, just update the local tags

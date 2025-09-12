@@ -21,7 +21,7 @@ class ReceiptController extends BaseResourceController
     protected string $resource = 'Receipt';
 
     protected array $indexWith = ['merchant', 'file', 'lineItems', 'category', 'tags'];
-    protected array $showWith = ['merchant', 'file', 'lineItems', 'tags'];
+    protected array $showWith = ['merchant', 'file', 'lineItems', 'tags', 'sharedUsers'];
 
     protected array $searchableFields = ['receipt_description'];
     protected array $filterableFields = ['category_id', 'merchant_id'];
@@ -161,6 +161,28 @@ class ReceiptController extends BaseResourceController
      */
     protected function transformForShow($receipt): array
     {
+        $fileInfo = $receipt->file ? [
+            'id' => $receipt->file->id,
+            'url' => route('receipts.showImage', $receipt->id),
+            'pdfUrl' => $receipt->file->guid ? route('receipts.showPdf', $receipt->id) : null,
+            'extension' => $receipt->file->fileExtension ?? 'jpg',
+            'mime_type' => $receipt->file->mime_type,
+        ] : null;
+
+        $isOwner = auth()->id() === $receipt->user_id;
+        $sharedUsers = [];
+        if ($isOwner && $receipt->relationLoaded('sharedUsers')) {
+            $sharedUsers = $receipt->sharedUsers->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'permission' => $user->pivot->permission ?? 'view',
+                    'shared_at' => optional($user->pivot->shared_at)->toIso8601String(),
+                ];
+            })->values();
+        }
+
         return [
             'id' => $receipt->id,
             'merchant' => $receipt->merchant,
@@ -170,13 +192,7 @@ class ReceiptController extends BaseResourceController
             'currency' => $receipt->currency,
             'receipt_category' => $receipt->receipt_category,
             'receipt_description' => $receipt->receipt_description,
-            'file' => $receipt->file ? [
-                'id' => $receipt->file->id,
-                'url' => route('receipts.showImage', $receipt->id),
-                'pdfUrl' => $receipt->file->guid ? route('receipts.showPdf', $receipt->id) : null,
-                'extension' => $receipt->file->fileExtension ?? 'jpg',
-                'mime_type' => $receipt->file->mime_type,
-            ] : null,
+            'file' => $fileInfo,
             'lineItems' => $receipt->lineItems ? $receipt->lineItems->map(function ($item) {
                 return [
                     'id' => $item->id,
@@ -194,6 +210,8 @@ class ReceiptController extends BaseResourceController
                     'color' => $tag->color,
                 ];
             }) : [],
+            // Only owners can see who else this is shared with
+            'shared_users' => $sharedUsers,
         ];
     }
 

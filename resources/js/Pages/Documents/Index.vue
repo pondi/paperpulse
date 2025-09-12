@@ -304,7 +304,7 @@ const applyFilter = (filters: any) => {
                                     </span>
                                 </div>
                                 
-                                <div v-if="document.tags.length > 0" class="flex flex-wrap gap-1">
+                                <div v-if="document.tags && document.tags.length > 0" class="flex flex-wrap gap-1">
                                     <span 
                                         v-for="tag in document.tags.slice(0, 3)" 
                                         :key="tag.id"
@@ -313,10 +313,10 @@ const applyFilter = (filters: any) => {
                                         {{ tag.name }}
                                     </span>
                                     <span 
-                                        v-if="document.tags.length > 3"
+                                        v-if="document.tags && document.tags.length > 3"
                                         class="text-xs text-gray-500 dark:text-gray-400"
                                     >
-                                        +{{ document.tags.length - 3 }} more
+                                        +{{ document.tags ? document.tags.length - 3 : 0 }} more
                                     </span>
                                 </div>
                             </div>
@@ -445,17 +445,17 @@ const applyFilter = (filters: any) => {
                                     <td class="px-6 py-4">
                                         <div class="flex flex-wrap gap-1">
                                             <span 
-                                                v-for="tag in document.tags.slice(0, 2)" 
+                                                v-for="tag in (document.tags || []).slice(0, 2)" 
                                                 :key="tag.id"
                                                 class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                                             >
                                                 {{ tag.name }}
                                             </span>
                                             <span 
-                                                v-if="document.tags.length > 2"
+                                                v-if="document.tags && document.tags.length > 2"
                                                 class="text-xs text-gray-500 dark:text-gray-400"
                                             >
-                                                +{{ document.tags.length - 2 }}
+                                                +{{ document.tags ? document.tags.length - 2 : 0 }}
                                             </span>
                                         </div>
                                     </td>

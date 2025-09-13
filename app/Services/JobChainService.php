@@ -8,6 +8,7 @@ use App\Jobs\Files\ProcessFile;
 use App\Jobs\Maintenance\DeleteWorkingFiles;
 use App\Jobs\Receipts\MatchMerchant;
 use App\Jobs\Receipts\ProcessReceipt;
+use App\Jobs\System\ApplyTags;
 use App\Models\File;
 use App\Models\JobHistory;
 use App\Models\Receipt;
@@ -194,6 +195,10 @@ class JobChainService
             }
 
             // Rebuild the metadata
+            // Try to preserve original tag IDs from parent job metadata
+            $originalMetadata = $parentJob->metadata['metadata'] ?? [];
+            $tagIds = $originalMetadata['tagIds'] ?? [];
+
             $metadata = [
                 'fileId' => $file->id,
                 'fileGuid' => $file->guid,
@@ -205,7 +210,10 @@ class JobChainService
                 'userId' => $file->user_id,
                 's3OriginalPath' => $file->s3_original_path,
                 'jobName' => $parentJob->name ?? 'Restarted Job',
-                'metadata' => $file->meta ?? [],
+                'metadata' => array_merge($file->meta ?? [], [
+                    'tagIds' => $tagIds,
+                    'source' => $originalMetadata['source'] ?? 'upload',
+                ]),
             ];
 
             // Cache the rebuilt metadata
@@ -245,11 +253,19 @@ class JobChainService
             case 'ProcessFile':
                 $jobs[] = (new ProcessFile($jobId))->onQueue($queue);
                 // Fall through to add subsequent jobs
+                if ($fileType === 'receipt') {
+                    $jobs[] = (new ProcessReceipt($jobId))->onQueue($queue);
+                    $jobs[] = (new MatchMerchant($jobId))->onQueue($queue);
+                } else {
+                    $jobs[] = (new ProcessDocument($jobId))->onQueue($queue);
+                    $jobs[] = (new AnalyzeDocument($jobId))->onQueue($queue);
+                }
+                break;
 
             case 'ProcessReceipt':
                 if ($fileType === 'receipt') {
                     $jobs[] = (new ProcessReceipt($jobId))->onQueue($queue);
-                    // MatchMerchant will be dispatched by ProcessReceipt
+                    $jobs[] = (new MatchMerchant($jobId))->onQueue($queue);
                 }
                 break;
 
@@ -283,6 +299,19 @@ class JobChainService
                     $jobs[] = (new AnalyzeDocument($jobId))->onQueue($queue);
                 }
                 break;
+
+            case 'ApplyTags':
+                // Tags will be re-applied at the end of the chain
+                break;
+        }
+
+        // Add ApplyTags job if there are tags to apply
+        $tagIds = $fileMetadata['metadata']['tagIds'] ?? [];
+        if (! empty($tagIds) && isset($fileMetadata['fileId'])) {
+            $file = \App\Models\File::find($fileMetadata['fileId']);
+            if ($file) {
+                $jobs[] = (new ApplyTags($jobId, $file, $tagIds))->onQueue($queue);
+            }
         }
 
         // Always add cleanup job at the end

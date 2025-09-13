@@ -27,6 +27,6 @@ class ImportService
             'status' => 'processing',
         ]);
 
-        \App\Jobs\ProcessPulseDavFile::dispatch($file, $allTagIds)->onQueue('default');
+        \App\Jobs\PulseDav\ProcessPulseDavFile::dispatch($file, $allTagIds)->onQueue('default');
     }
 }

@@ -26,8 +26,6 @@ class CleanupDuplicateReceipts extends Command
 
     /**
      * Execute the console command.
-     *
-     * @return int
      */
     public function handle(): int
     {
@@ -35,7 +33,7 @@ class CleanupDuplicateReceipts extends Command
         $fileId = $this->option('file-id');
 
         $this->info('Starting duplicate receipt cleanup...');
-        
+
         if ($dryRun) {
             $this->warn('DRY RUN MODE - No changes will be made');
         }
@@ -52,15 +50,16 @@ class CleanupDuplicateReceipts extends Command
     private function cleanFileReceipts(int $fileId, bool $dryRun): void
     {
         $duplicates = DuplicateReceiptIdentifier::findDuplicatesForFile($fileId);
-        
+
         if ($duplicates->count() <= 1) {
             $this->info("No duplicates found for file ID: $fileId");
+
             return;
         }
 
         $this->info("Found {$duplicates->count()} receipts for file ID: $fileId");
-        
-        if (!$dryRun) {
+
+        if (! $dryRun) {
             $result = DuplicateReceiptCleaner::cleanForFile($fileId);
             $this->info("Deleted {$result['receipts_deleted']} duplicate(s), kept receipt ID: {$result['kept_receipt_id']}");
         }
@@ -69,18 +68,19 @@ class CleanupDuplicateReceipts extends Command
     private function cleanAllReceipts(bool $dryRun): void
     {
         $duplicateGroups = DuplicateReceiptIdentifier::findDuplicates();
-        
+
         if ($duplicateGroups->isEmpty()) {
             $this->info('No duplicate receipts found in the system.');
+
             return;
         }
 
         $totalFiles = $duplicateGroups->count();
-        $totalDuplicates = $duplicateGroups->sum(fn($group) => $group->count() - 1);
-        
+        $totalDuplicates = $duplicateGroups->sum(fn ($group) => $group->count() - 1);
+
         $this->info("Found duplicates for $totalFiles file(s) with $totalDuplicates duplicate receipt(s) total");
-        
-        if (!$dryRun) {
+
+        if (! $dryRun) {
             $results = DuplicateReceiptCleaner::cleanAll();
             $totalDeleted = collect($results)->sum('receipts_deleted');
             $this->info("Successfully deleted $totalDeleted duplicate receipt(s)");

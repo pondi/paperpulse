@@ -11,9 +11,9 @@ class SelectionImportService
     {
         Log::info('[SelectionImportService] Delegating to ImportOrchestrator', [
             'user_id' => $user->id,
-            'selections_count' => count($selections)
+            'selections_count' => count($selections),
         ]);
-        
+
         return ImportOrchestrator::orchestrateImport($user, $selections, $options);
     }
 }

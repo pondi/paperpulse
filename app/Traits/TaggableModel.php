@@ -23,7 +23,7 @@ trait TaggableModel
     public function addTag(Tag $tag): void
     {
         $this->tags()->syncWithoutDetaching([
-            $tag->id => ['file_type' => $this->getTaggableType()]
+            $tag->id => ['file_type' => $this->getTaggableType()],
         ]);
     }
 

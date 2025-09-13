@@ -118,7 +118,7 @@ class FileProcessingService
 
             // Store metadata persistently for job chain
             \App\Services\Jobs\JobMetadataPersistence::store($jobId, $fileMetadata);
-            
+
             // Create parent job history record
             \App\Services\Jobs\JobHistoryCreator::createParentJob(
                 $jobId,

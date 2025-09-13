@@ -4,7 +4,6 @@ namespace App\Services\Receipts\Cleanup;
 
 use App\Models\Receipt;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Identifies duplicate receipts in the system.
@@ -34,7 +33,7 @@ class DuplicateReceiptIdentifier
     /**
      * Find duplicate receipts for a specific file.
      *
-     * @param int $fileId The file ID to check for duplicates
+     * @param  int  $fileId  The file ID to check for duplicates
      * @return Collection Collection of duplicate receipts for the file
      */
     public static function findDuplicatesForFile(int $fileId): Collection

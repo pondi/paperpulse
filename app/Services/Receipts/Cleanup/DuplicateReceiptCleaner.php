@@ -2,7 +2,6 @@
 
 namespace App\Services\Receipts\Cleanup;
 
-use App\Models\Receipt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -15,13 +14,13 @@ class DuplicateReceiptCleaner
     /**
      * Clean duplicate receipts for a specific file.
      *
-     * @param int $fileId The file ID to clean duplicates for
+     * @param  int  $fileId  The file ID to clean duplicates for
      * @return array Cleanup results
      */
     public static function cleanForFile(int $fileId): array
     {
         $duplicates = DuplicateReceiptIdentifier::findDuplicatesForFile($fileId);
-        
+
         if ($duplicates->count() <= 1) {
             return [
                 'file_id' => $fileId,
@@ -32,7 +31,7 @@ class DuplicateReceiptCleaner
         }
 
         $receiptToKeep = ReceiptSelectionStrategy::selectBestReceipt($duplicates);
-        $receiptsToDelete = $duplicates->reject(fn($r) => $r->id === $receiptToKeep->id);
+        $receiptsToDelete = $duplicates->reject(fn ($r) => $r->id === $receiptToKeep->id);
 
         $deletedCount = 0;
         DB::transaction(function () use ($receiptsToDelete, &$deletedCount) {

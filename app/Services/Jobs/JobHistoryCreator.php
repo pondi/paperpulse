@@ -6,7 +6,7 @@ use App\Models\JobHistory;
 
 /**
  * Creates and manages JobHistory records for job chains.
- * 
+ *
  * Responsible for creating the parent job record that tracks
  * the entire job chain lifecycle and stores metadata.
  */
@@ -14,13 +14,13 @@ class JobHistoryCreator
 {
     /**
      * Create the parent job history record with metadata.
-     * 
-     * @param string $jobId The unique job chain identifier
-     * @param string $jobName Human-readable job name
-     * @param string $fileType Either 'receipt' or 'document'
-     * @param array $metadata Complete job metadata including file details
-     * @param int $fileId The file being processed
-     * @param string|null $fileName Optional filename for tracking
+     *
+     * @param  string  $jobId  The unique job chain identifier
+     * @param  string  $jobName  Human-readable job name
+     * @param  string  $fileType  Either 'receipt' or 'document'
+     * @param  array  $metadata  Complete job metadata including file details
+     * @param  int  $fileId  The file being processed
+     * @param  string|null  $fileName  Optional filename for tracking
      * @return JobHistory The created job history record
      */
     public static function createParentJob(

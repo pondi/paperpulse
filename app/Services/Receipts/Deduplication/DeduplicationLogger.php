@@ -31,7 +31,7 @@ class DeduplicationLogger
     {
         $totalDeleted = collect($results)->sum('receipts_deleted');
         $filesProcessed = count($results);
-        
+
         Log::info('[DeduplicationLogger] Cleanup performed', [
             'files_processed' => $filesProcessed,
             'total_receipts_deleted' => $totalDeleted,

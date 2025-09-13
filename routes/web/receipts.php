@@ -34,7 +34,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::post('/receipts/export/pdf', [BulkOperationsController::class, 'bulkExportPdf'])->name('receipts.export.pdf');
         Route::post('/receipts/stats', [BulkOperationsController::class, 'getStats'])->name('receipts.stats');
     });
-    
+
     // Merchant logo routes
     Route::prefix('merchants')->name('merchants.')->group(function () {
         Route::get('/{merchant}/logo', [MerchantLogoController::class, 'show'])->name('logo');

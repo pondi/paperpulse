@@ -205,7 +205,7 @@ class PulseDavController extends Controller
 
             // Only sync if explicitly needed (removed auto-sync to avoid checking thousands of files)
             // Users should use the sync button if files are missing
-            
+
             \Log::info('[PulseDavController] Calling PulseDavService::importSelections', [
                 'selections_count' => count($request->selections),
                 'file_type' => $request->file_type,

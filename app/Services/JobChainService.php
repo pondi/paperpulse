@@ -120,7 +120,7 @@ class JobChainService
     {
         // Use the persistence service to get metadata
         $metadata = \App\Services\Jobs\JobMetadataPersistence::retrieve($jobId);
-        
+
         if ($metadata) {
             return $metadata;
         }
@@ -139,56 +139,57 @@ class JobChainService
         try {
             // Multiple strategies to find the file
             $file = null;
-            
+
             // Strategy 1: Try to find by exact job_id in metadata (if stored)
             if ($parentJob->metadata && isset($parentJob->metadata['file_id'])) {
                 $file = File::find($parentJob->metadata['file_id']);
             }
-            
+
             // Strategy 2: Search by parent job timestamp and user
-            if (!$file) {
+            if (! $file) {
                 // Get user_id from the first task if available
                 $firstTask = $parentJob->tasks()->orderBy('order_in_chain')->first();
                 $userId = null;
                 if ($firstTask && $firstTask->metadata && isset($firstTask->metadata['user_id'])) {
                     $userId = $firstTask->metadata['user_id'];
                 }
-                
+
                 // Find files created around the same time
                 $query = File::whereBetween('created_at', [
                     $parentJob->created_at->subSeconds(30),
                     $parentJob->created_at->addMinutes(2),
                 ]);
-                
+
                 if ($userId) {
                     $query->where('user_id', $userId);
                 }
-                
+
                 $file = $query->orderBy('created_at', 'desc')->first();
             }
 
             // Strategy 3: Try to find via receipt relationship
-            if (!$file) {
+            if (! $file) {
                 $receipt = Receipt::whereBetween('created_at', [
                     $parentJob->created_at,
                     $parentJob->created_at->addMinutes(5),
                 ])->first();
-                
+
                 if ($receipt) {
                     $file = $receipt->file;
                 }
             }
-            
+
             // Strategy 4: Find the most recent file that matches the time window
-            if (!$file) {
+            if (! $file) {
                 $file = File::whereBetween('created_at', [
                     $parentJob->created_at->subMinutes(10),
                     $parentJob->created_at->addMinutes(10),
                 ])->orderBy('created_at', 'desc')->first();
             }
 
-            if (!$file) {
+            if (! $file) {
                 Log::warning('Could not find file for job chain restart', ['job_id' => $jobId]);
+
                 return null;
             }
 
@@ -239,7 +240,7 @@ class JobChainService
 
         // Normalize job name for comparison (handle both with and without spaces)
         $jobName = str_replace(' ', '', $restartPoint['name']);
-        
+
         switch ($jobName) {
             case 'ProcessFile':
                 $jobs[] = (new ProcessFile($jobId))->onQueue($queue);

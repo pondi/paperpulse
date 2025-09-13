@@ -126,6 +126,7 @@ readonly class LogoService
             if ($model instanceof Merchant) {
                 return route('merchants.logo', ['merchant' => $model->id]);
             }
+
             // For other models without ID or fallback
             return route('merchants.logo.generate', ['name' => $model->name]);
         }

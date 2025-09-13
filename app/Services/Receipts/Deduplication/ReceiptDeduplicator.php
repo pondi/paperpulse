@@ -18,7 +18,7 @@ class ReceiptDeduplicator
      */
     public static function shouldCreateReceipt(int $fileId): bool
     {
-        return !ReceiptExistenceChecker::exists($fileId);
+        return ! ReceiptExistenceChecker::exists($fileId);
     }
 
     /**
@@ -30,32 +30,32 @@ class ReceiptDeduplicator
         ReceiptParserContract $parser
     ): Receipt {
         $fileId = $payload['file_id'] ?? null;
-        
-        if (!$fileId) {
+
+        if (! $fileId) {
             // No file_id means we can't check for duplicates
             return ReceiptCreator::create($payload, $data, $parser);
         }
 
         $existing = ReceiptExistenceChecker::findExisting($fileId);
-        
+
         if ($existing) {
             Log::info('[ReceiptDeduplicator] Receipt already exists for file', [
                 'file_id' => $fileId,
                 'receipt_id' => $existing->id,
                 'created_at' => $existing->created_at,
             ]);
-            
+
             return $existing;
         }
 
         // No existing receipt, create a new one
         $receipt = ReceiptCreator::create($payload, $data, $parser);
-        
+
         Log::info('[ReceiptDeduplicator] Created new receipt', [
             'file_id' => $fileId,
             'receipt_id' => $receipt->id,
         ]);
-        
+
         return $receipt;
     }
 }

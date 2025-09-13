@@ -5,6 +5,8 @@ namespace App\Services\File;
 use App\Contracts\Services\FileMetadataContract;
 use App\Models\File;
 use Exception;
+use App\Services\Files\JobNameGenerator;
+use App\Services\Files\ImageMetadataExtractor;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 
@@ -22,13 +24,7 @@ class FileMetadataService implements FileMetadataContract
      */
     public function generateJobName(): string
     {
-        $adjectives = ['swift', 'bright', 'stellar', 'cosmic', 'quantum', 'digital', 'cyber', 'turbo', 'mega', 'ultra'];
-        $nouns = ['pulse', 'wave', 'stream', 'flow', 'burst', 'beam', 'spark', 'flash', 'surge', 'blast'];
-
-        $adjective = $adjectives[array_rand($adjectives)];
-        $noun = $nouns[array_rand($nouns)];
-
-        return "{$adjective}-{$noun}-".substr(md5(microtime()), rand(0, 26), 5);
+        return JobNameGenerator::generate();
     }
 
     /**
@@ -160,95 +156,12 @@ class FileMetadataService implements FileMetadataContract
      */
     public function extractImageMetadata(string $filePath): array
     {
-        $metadata = [];
-
-        try {
-            // Get basic image info
-            $imageInfo = getimagesize($filePath);
-            if ($imageInfo !== false) {
-                $metadata['width'] = $imageInfo[0];
-                $metadata['height'] = $imageInfo[1];
-                $metadata['mime_type'] = $imageInfo['mime'];
-                $metadata['bits'] = $imageInfo['bits'] ?? null;
-                $metadata['channels'] = $imageInfo['channels'] ?? null;
-            }
-
-            // Try to get EXIF data for JPEG images
-            if (function_exists('exif_read_data') && in_array(strtolower(pathinfo($filePath, PATHINFO_EXTENSION)), ['jpg', 'jpeg'])) {
-                $exifData = @exif_read_data($filePath);
-                if ($exifData !== false) {
-                    $metadata['exif'] = [
-                        'camera_make' => $exifData['Make'] ?? null,
-                        'camera_model' => $exifData['Model'] ?? null,
-                        'date_taken' => $exifData['DateTime'] ?? null,
-                        'gps_latitude' => $this->extractGPSCoordinate($exifData, 'GPSLatitude', 'GPSLatitudeRef'),
-                        'gps_longitude' => $this->extractGPSCoordinate($exifData, 'GPSLongitude', 'GPSLongitudeRef'),
-                    ];
-                }
-            }
-        } catch (Exception $e) {
+        $metadata = ImageMetadataExtractor::extract($filePath);
+        if (empty($metadata)) {
             Log::warning('[FileMetadataService] Failed to extract image metadata', [
                 'file_path' => $filePath,
-                'error' => $e->getMessage(),
             ]);
         }
-
         return $metadata;
-    }
-
-    /**
-     * Extract GPS coordinate from EXIF data
-     */
-    protected function extractGPSCoordinate(array $exifData, string $coordinateKey, string $refKey): ?float
-    {
-        if (! isset($exifData[$coordinateKey]) || ! isset($exifData[$refKey])) {
-            return null;
-        }
-
-        $coordinates = $exifData[$coordinateKey];
-        $ref = $exifData[$refKey];
-
-        if (! is_array($coordinates) || count($coordinates) !== 3) {
-            return null;
-        }
-
-        $decimal = $this->convertDMSToDecimal($coordinates[0], $coordinates[1], $coordinates[2]);
-
-        if (in_array($ref, ['S', 'W'])) {
-            $decimal *= -1;
-        }
-
-        return $decimal;
-    }
-
-    /**
-     * Convert DMS (Degrees, Minutes, Seconds) to decimal
-     */
-    protected function convertDMSToDecimal($degrees, $minutes, $seconds): float
-    {
-        $degreesDecimal = $this->fractionToDecimal($degrees);
-        $minutesDecimal = $this->fractionToDecimal($minutes);
-        $secondsDecimal = $this->fractionToDecimal($seconds);
-
-        return $degreesDecimal + ($minutesDecimal / 60) + ($secondsDecimal / 3600);
-    }
-
-    /**
-     * Convert fraction string to decimal
-     */
-    protected function fractionToDecimal($fraction): float
-    {
-        if (is_numeric($fraction)) {
-            return (float) $fraction;
-        }
-
-        if (strpos($fraction, '/') !== false) {
-            $parts = explode('/', $fraction);
-            if (count($parts) === 2 && $parts[1] != 0) {
-                return (float) $parts[0] / (float) $parts[1];
-            }
-        }
-
-        return 0;
     }
 }

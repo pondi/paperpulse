@@ -8,6 +8,8 @@ use App\Models\Tag;
 use App\Services\DocumentService;
 use App\Services\FileProcessingService;
 use App\Services\ConversionService;
+use App\Services\Documents\DocumentTransformer;
+use App\Services\Documents\DocumentUploadValidator;
 use App\Traits\ShareableController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -66,7 +68,7 @@ class DocumentController extends BaseResourceController
         $documents = $query->paginate($request->get('per_page', $this->perPage));
 
         return Inertia::render('Documents/Index', [
-            'documents' => $documents->through(fn($item) => $this->transformForIndex($item)),
+            'documents' => $documents->through(fn($item) => DocumentTransformer::forIndex($item)),
             'categories' => auth()->user()->categories()->orderBy('name')->get(['id', 'name', 'color']),
             'filters' => $this->getFilters($request),
         ]);
@@ -84,7 +86,7 @@ class DocumentController extends BaseResourceController
         $meta = $this->getShowMeta();
 
         return Inertia::render("{$this->resource}/Show", [
-            'document' => $this->transformForShow($document),
+            'document' => DocumentTransformer::forShow($document),
             // Flatten meta for Vue expectations
             'categories' => $meta['categories'] ?? [],
             'available_tags' => $meta['available_tags'] ?? [],
@@ -96,40 +98,7 @@ class DocumentController extends BaseResourceController
      */
     protected function transformForIndex($document): array
     {
-        $fileInfo = null;
-        if ($document->file) {
-            $extension = $document->file->fileExtension ?? 'pdf';
-            $typeFolder = 'documents';
-            $fileInfo = [
-                'id' => $document->file->id,
-                'url' => route('documents.serve', [
-                    'guid' => $document->file->guid,
-                    'type' => $typeFolder,
-                    'extension' => $extension,
-                ]),
-                'pdfUrl' => $extension === 'pdf' ? route('documents.serve', [
-                    'guid' => $document->file->guid,
-                    'type' => $typeFolder,
-                    'extension' => 'pdf',
-                ]) : null,
-                'extension' => $extension,
-                'size' => $document->file->fileSize,
-            ];
-        }
-
-        return [
-            'id' => $document->id,
-            'title' => $document->title,
-            'file_name' => $document->file?->fileName,
-            'file_type' => $document->file?->fileType,
-            'size' => $document->file?->fileSize ?? 0,
-            'created_at' => $document->created_at?->toIso8601String(),
-            'updated_at' => $document->updated_at?->toIso8601String(),
-            'category' => $document->category?->only(['id', 'name', 'color']),
-            'tags' => $document->tags?->map(fn ($t) => $t->only(['id', 'name']))->values(),
-            'shared_with_count' => $document->sharedUsers?->count() ?? 0,
-            'file' => $fileInfo,
-        ];
+        return DocumentTransformer::forIndex($document);
     }
 
     /**
@@ -137,61 +106,7 @@ class DocumentController extends BaseResourceController
      */
     protected function transformForShow($document): array
     {
-        $fileInfo = null;
-        if ($document->file) {
-            $extension = $document->file->fileExtension ?? 'pdf';
-            $typeFolder = 'documents';
-            $fileInfo = [
-                'id' => $document->file->id,
-                'url' => route('documents.serve', [
-                    'guid' => $document->file->guid,
-                    'type' => $typeFolder,
-                    'extension' => $extension,
-                ]),
-                'pdfUrl' => $extension === 'pdf' ? route('documents.serve', [
-                    'guid' => $document->file->guid,
-                    'type' => $typeFolder,
-                    'extension' => 'pdf',
-                ]) : null,
-                'extension' => $extension,
-                'mime_type' => $document->file->mime_type,
-                'size' => $document->file->fileSize,
-                'guid' => $document->file->guid,
-            ];
-        }
-
-        $isOwner = auth()->id() === $document->user_id;
-
-        // Map shared users to include permission/metadata at top-level
-        $sharedUsers = [];
-        if ($isOwner && $document->relationLoaded('sharedUsers')) {
-            $sharedUsers = $document->sharedUsers->map(function ($user) {
-                return [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'permission' => $user->pivot->permission ?? 'view',
-                    'shared_at' => optional($user->pivot->shared_at)->toIso8601String(),
-                ];
-            })->values();
-        }
-
-        return [
-            'id' => $document->id,
-            'title' => $document->title,
-            'summary' => $document->summary,
-            'category_id' => $document->category_id,
-            'tags' => $document->tags?->map(fn($t) => [
-                'id' => $t->id,
-                'name' => $t->name,
-                'color' => $t->color,
-            ])->values(),
-            // Only owners can see who else this is shared with
-            'shared_users' => $sharedUsers,
-            'created_at' => $document->created_at?->toIso8601String(),
-            'updated_at' => $document->updated_at?->toIso8601String(),
-            'file' => $fileInfo,
-        ];
+        return DocumentTransformer::forShow($document);
     }
 
     /**
@@ -414,29 +329,25 @@ class DocumentController extends BaseResourceController
         try {
             $fileProcessingService = app(FileProcessingService::class);
             $uploadedFiles = $request->file('files');
-            $processedFiles = [];
-
             if (!is_array($uploadedFiles)) {
                 $uploadedFiles = [$uploadedFiles];
             }
 
-            foreach ($uploadedFiles as $uploadedFile) {
-                // Additional file validation before processing
-                $fileValidation = $this->validateUploadedFile($uploadedFile);
-                if (!$fileValidation['valid']) {
-                    Log::error('File validation failed', [
-                        'filename' => $uploadedFile->getClientOriginalName(),
-                        'error' => $fileValidation['error'],
-                    ]);
-                    return back()->with('error', 'File validation failed for "'.$uploadedFile->getClientOriginalName().'": '.$fileValidation['error']);
-                }
+            $result = \App\Services\Documents\DocumentUploadHandler::processUploads(
+                $uploadedFiles,
+                $fileType,
+                auth()->id(),
+                $fileProcessingService
+            );
 
-                $result = $fileProcessingService->processUpload($uploadedFile, $fileType, auth()->id());
-                $processedFiles[] = $result;
+            if (!empty($result['errors'])) {
+                $firstError = reset($result['errors']);
+                $firstFile = array_key_first($result['errors']);
+                return back()->with('error', 'File validation failed for "'.$firstFile.'": '.$firstError);
             }
 
             return redirect()->route($fileType === 'document' ? 'documents.index' : 'receipts.index')
-                ->with('success', count($processedFiles) . ' file(s) uploaded successfully');
+                ->with('success', count($result['processed']) . ' file(s) uploaded successfully');
         } catch (\Exception $e) {
             Log::error('Failed to upload document', [
                 'error' => $e->getMessage(),
@@ -452,68 +363,6 @@ class DocumentController extends BaseResourceController
      */
     protected function validateUploadedFile($uploadedFile): array
     {
-        // Check file size (10MB for Textract)
-        $maxSize = 10 * 1024 * 1024; // 10MB in bytes
-        if ($uploadedFile->getSize() > $maxSize) {
-            return ['valid' => false, 'error' => 'File size exceeds 10MB limit'];
-        }
-
-        if ($uploadedFile->getSize() === 0) {
-            return ['valid' => false, 'error' => 'File is empty'];
-        }
-
-        // Check file extension
-        $extension = strtolower($uploadedFile->getClientOriginalExtension());
-        $supportedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'tiff', 'tif'];
-
-        if (!in_array($extension, $supportedExtensions)) {
-            return [
-                'valid' => false,
-                'error' => "Unsupported file format '{$extension}'. Supported formats: ".implode(', ', $supportedExtensions),
-            ];
-        }
-
-        // Validate MIME type to prevent files with wrong extensions
-        $mimeType = $uploadedFile->getMimeType();
-        $expectedMimeTypes = [
-            'pdf' => ['application/pdf'],
-            'png' => ['image/png'],
-            'jpg' => ['image/jpeg', 'image/pjpeg'],
-            'jpeg' => ['image/jpeg', 'image/pjpeg'],
-            'tiff' => ['image/tiff'],
-            'tif' => ['image/tiff'],
-        ];
-
-        if (isset($expectedMimeTypes[$extension]) && !in_array($mimeType, $expectedMimeTypes[$extension])) {
-            return [
-                'valid' => false,
-                'error' => "File MIME type '{$mimeType}' doesn't match extension '{$extension}'. File may be corrupted or have wrong extension.",
-            ];
-        }
-
-        // Try to get temporary file path for deeper validation
-        $tempPath = $uploadedFile->getPathname();
-
-        // Basic file integrity check
-        if ($extension === 'pdf') {
-            // Check PDF header
-            $handle = fopen($tempPath, 'rb');
-            if ($handle) {
-                $header = fread($handle, 5);
-                fclose($handle);
-
-                if (substr($header, 0, 4) !== '%PDF') {
-                    return ['valid' => false, 'error' => 'Invalid PDF file - missing PDF header'];
-                }
-            }
-        } elseif (in_array($extension, ['png', 'jpg', 'jpeg', 'tiff', 'tif'])) {
-            // Try to get image info to validate image files
-            $imageInfo = @getimagesize($tempPath);
-            if ($imageInfo === false) {
-                return ['valid' => false, 'error' => 'Invalid or corrupted image file'];
-            }
-        }
-
-        return ['valid' => true, 'error' => null];
+        return DocumentUploadValidator::validate($uploadedFile);
     }
 }

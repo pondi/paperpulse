@@ -5,6 +5,7 @@ namespace App\Services;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Services\Files\StoragePathBuilder;
 
 class StorageService
 {
@@ -53,7 +54,7 @@ class StorageService
         $this->configureDualBuckets();
 
         try {
-            $path = $this->generateIncomingPath($userId, $filename);
+            $path = StoragePathBuilder::incomingPath($userId, $filename, $this->incomingPrefix);
 
             $success = $this->incomingDisk->put($path, $content);
 
@@ -101,7 +102,7 @@ class StorageService
             $content = $this->incomingDisk->get($incomingPath);
 
             // Generate storage path
-            $storagePath = $this->generateStoragePath($userId, $guid, $fileType, 'original', $extension);
+            $storagePath = StoragePathBuilder::storagePath($userId, $guid, $fileType, 'original', $extension);
 
             // Write to storage bucket
             $success = $this->storageDisk->put($storagePath, $content);
@@ -147,7 +148,7 @@ class StorageService
         $this->configureDualBuckets();
 
         try {
-            $path = $this->generateStoragePath($userId, $guid, $fileType, $variant, $extension);
+            $path = StoragePathBuilder::storagePath($userId, $guid, $fileType, $variant, $extension);
 
             $success = $this->storageDisk->put($path, $content);
 
@@ -213,7 +214,7 @@ class StorageService
      */
     public function getFileByUserAndGuid(int $userId, string $guid, string $fileType, string $variant, string $extension): ?string
     {
-        $path = $this->generateStoragePath($userId, $guid, $fileType, $variant, $extension);
+        $path = StoragePathBuilder::storagePath($userId, $guid, $fileType, $variant, $extension);
 
         return $this->getFile($path);
     }
@@ -319,14 +320,7 @@ class StorageService
      */
     protected function generateIncomingPath(int $userId, string $filename): string
     {
-        // Sanitize filename
-        $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $filename);
-
-        // Add timestamp to avoid conflicts
-        $timestamp = now()->format('Y-m-d_His');
-        $uniqueName = "{$timestamp}_{$safeName}";
-
-        return trim("{$this->incomingPrefix}{$userId}/{$uniqueName}", '/');
+        return StoragePathBuilder::incomingPath($userId, $filename, $this->incomingPrefix);
     }
 
     /**
@@ -341,9 +335,7 @@ class StorageService
      */
     protected function generateStoragePath(int $userId, string $guid, string $fileType, string $variant, string $extension): string
     {
-        $typeFolder = $fileType === 'receipt' ? 'receipts' : 'documents';
-
-        return trim("{$typeFolder}/{$userId}/{$guid}/{$variant}.{$extension}", '/');
+        return StoragePathBuilder::storagePath($userId, $guid, $fileType, $variant, $extension);
     }
 
     /**

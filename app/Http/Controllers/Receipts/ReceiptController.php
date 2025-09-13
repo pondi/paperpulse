@@ -7,6 +7,7 @@ use App\Models\Receipt;
 use App\Models\Tag;
 use App\Services\DocumentService;
 use App\Services\ReceiptService;
+use App\Services\Receipts\ReceiptTransformer;
 use App\Traits\ShareableController;
 use App\Traits\SanitizesInput;
 use Illuminate\Http\Request;
@@ -55,7 +56,7 @@ class ReceiptController extends BaseResourceController
         $this->authorize('view', $receipt);
 
         return Inertia::render("{$this->resource}/Show", [
-            'receipt' => $this->transformForShow($receipt),
+            'receipt' => ReceiptTransformer::forShow($receipt),
             'meta' => $this->getShowMeta(),
         ]);
     }
@@ -94,7 +95,7 @@ class ReceiptController extends BaseResourceController
             ->get();
 
         return inertia("{$this->resource}/Index", [
-            'receipts' => $receipts->through(fn($receipt) => $this->transformForIndex($receipt))->items(),
+            'receipts' => $receipts->through(fn($receipt) => ReceiptTransformer::forIndex($receipt))->items(),
             'categories' => $categories,
             'pagination' => [
                 'current_page' => $receipts->currentPage(),
@@ -118,42 +119,7 @@ class ReceiptController extends BaseResourceController
      */
     protected function transformForIndex($receipt): array
     {
-        return [
-            'id' => $receipt->id,
-            'merchant' => $receipt->merchant,
-            'category' => $receipt->category,
-            'category_id' => $receipt->category_id,
-            'receipt_date' => $receipt->receipt_date,
-            'tax_amount' => $receipt->tax_amount,
-            'total_amount' => $receipt->total_amount,
-            'currency' => $receipt->currency,
-            'receipt_category' => $receipt->receipt_category,
-            'receipt_description' => $receipt->receipt_description,
-            'file' => $receipt->file ? [
-                'id' => $receipt->file->id,
-                'url' => route('receipts.showImage', $receipt->id),
-                'pdfUrl' => $receipt->file->guid ? route('receipts.showPdf', $receipt->id) : null,
-                'extension' => $receipt->file->fileExtension ?? 'jpg',
-                'mime_type' => $receipt->file->mime_type,
-            ] : null,
-            'lineItems' => $receipt->lineItems ? $receipt->lineItems->map(function ($item) {
-                return [
-                    'id' => $item->id,
-                    'description' => $item->text,
-                    'sku' => $item->sku,
-                    'quantity' => $item->qty,
-                    'unit_price' => $item->price,
-                    'total_amount' => $item->total,
-                ];
-            }) : [],
-            'tags' => $receipt->tags ? $receipt->tags->map(function ($tag) {
-                return [
-                    'id' => $tag->id,
-                    'name' => $tag->name,
-                    'color' => $tag->color,
-                ];
-            }) : [],
-        ];
+        return ReceiptTransformer::forIndex($receipt);
     }
 
     /**
@@ -161,58 +127,7 @@ class ReceiptController extends BaseResourceController
      */
     protected function transformForShow($receipt): array
     {
-        $fileInfo = $receipt->file ? [
-            'id' => $receipt->file->id,
-            'url' => route('receipts.showImage', $receipt->id),
-            'pdfUrl' => $receipt->file->guid ? route('receipts.showPdf', $receipt->id) : null,
-            'extension' => $receipt->file->fileExtension ?? 'jpg',
-            'mime_type' => $receipt->file->mime_type,
-        ] : null;
-
-        $isOwner = auth()->id() === $receipt->user_id;
-        $sharedUsers = [];
-        if ($isOwner && $receipt->relationLoaded('sharedUsers')) {
-            $sharedUsers = $receipt->sharedUsers->map(function ($user) {
-                return [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'permission' => $user->pivot->permission ?? 'view',
-                    'shared_at' => optional($user->pivot->shared_at)->toIso8601String(),
-                ];
-            })->values();
-        }
-
-        return [
-            'id' => $receipt->id,
-            'merchant' => $receipt->merchant,
-            'receipt_date' => $receipt->receipt_date,
-            'tax_amount' => $receipt->tax_amount,
-            'total_amount' => $receipt->total_amount,
-            'currency' => $receipt->currency,
-            'receipt_category' => $receipt->receipt_category,
-            'receipt_description' => $receipt->receipt_description,
-            'file' => $fileInfo,
-            'lineItems' => $receipt->lineItems ? $receipt->lineItems->map(function ($item) {
-                return [
-                    'id' => $item->id,
-                    'text' => $item->text,
-                    'sku' => $item->sku,
-                    'qty' => $item->qty,
-                    'price' => $item->price,
-                    'total' => $item->total,
-                ];
-            }) : [],
-            'tags' => $receipt->tags ? $receipt->tags->map(function ($tag) {
-                return [
-                    'id' => $tag->id,
-                    'name' => $tag->name,
-                    'color' => $tag->color,
-                ];
-            }) : [],
-            // Only owners can see who else this is shared with
-            'shared_users' => $sharedUsers,
-        ];
+        return ReceiptTransformer::forShow($receipt);
     }
 
     /**
@@ -249,31 +164,7 @@ class ReceiptController extends BaseResourceController
      */
     protected function applySortOption($query, string $sortOption): void
     {
-        switch ($sortOption) {
-            case 'date_asc':
-                $query->orderBy('receipt_date', 'asc');
-                break;
-            case 'amount_desc':
-                $query->orderBy('total_amount', 'desc');
-                break;
-            case 'amount_asc':
-                $query->orderBy('total_amount', 'asc');
-                break;
-            case 'merchant_asc':
-                $query->leftJoin('merchants', 'receipts.merchant_id', '=', 'merchants.id')
-                    ->orderBy('merchants.name', 'asc')
-                    ->select('receipts.*');
-                break;
-            case 'merchant_desc':
-                $query->leftJoin('merchants', 'receipts.merchant_id', '=', 'merchants.id')
-                    ->orderBy('merchants.name', 'desc')
-                    ->select('receipts.*');
-                break;
-            case 'date_desc':
-            default:
-                $query->orderBy('receipt_date', 'desc');
-                break;
-        }
+        \App\Services\Receipts\ReceiptSortApplier::apply($query, $sortOption);
     }
 
     /**

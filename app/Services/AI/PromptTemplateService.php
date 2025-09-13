@@ -5,6 +5,10 @@ namespace App\Services\AI;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
+use App\Services\AI\Prompt\TemplatePathResolver;
+use App\Services\AI\Prompt\PromptContentParser;
+use App\Services\AI\Prompt\FallbackPromptProvider;
+use App\Services\AI\Prompt\TemplateOptionsProvider;
 use Illuminate\Support\Str;
 
 class PromptTemplateService
@@ -28,7 +32,7 @@ class PromptTemplateService
     public function getPrompt(string $templateName, array $data = [], array $options = []): array
     {
         try {
-            $templatePath = $this->getTemplatePath($templateName);
+            $templatePath = TemplatePathResolver::resolve($templateName, $this->defaultTemplates);
 
             if (! View::exists($templatePath)) {
                 throw new Exception("Template '{$templatePath}' not found");
@@ -47,7 +51,13 @@ class PromptTemplateService
             $renderedContent = View::make($templatePath, $templateData)->render();
 
             // Parse the rendered content into system and user messages
-            return $this->parsePromptContent($renderedContent, $templateName, $options);
+            return PromptContentParser::parse(
+                $renderedContent,
+                fn(string $name, array $opts) => $this->getSchema($name, $opts),
+                fn(string $name, array $opts) => $this->getTemplateOptions($name, $opts),
+                $templateName,
+                $options
+            );
 
         } catch (Exception $e) {
             Log::error('[PromptTemplateService] Template rendering failed', [
@@ -56,7 +66,14 @@ class PromptTemplateService
             ]);
 
             // Return fallback prompt
-            return $this->getFallbackPrompt($templateName, $data, $options);
+            return [
+                'messages' => [
+                    ['role' => 'user', 'content' => FallbackPromptProvider::forTemplate($templateName)],
+                ],
+                'template_name' => $templateName,
+                'schema' => $this->getSchema($templateName, $options),
+                'options' => $this->getTemplateOptions($templateName, $options),
+            ];
         }
     }
 
@@ -98,134 +115,24 @@ class PromptTemplateService
     /**
      * Get template path, checking for custom overrides
      */
-    protected function getTemplatePath(string $templateName): string
-    {
-        // Check for custom template first
-        $customPath = "ai.prompts.custom.{$templateName}";
-        if (View::exists($customPath)) {
-            return $customPath;
-        }
-
-        // Use default template
-        return $this->defaultTemplates[$templateName] ?? "ai.prompts.{$templateName}";
-    }
+    // Path resolution moved to TemplatePathResolver
 
     /**
      * Parse rendered prompt content into structured format
      */
-    protected function parsePromptContent(string $content, string $templateName, array $options): array
-    {
-        // Split content by sections using XML-like tags
-        $sections = [];
-
-        // Extract system prompt
-        if (preg_match('/<system>(.*?)<\/system>/s', $content, $matches)) {
-            $sections['system'] = trim($matches[1]);
-        }
-
-        // Extract user prompt
-        if (preg_match('/<user>(.*?)<\/user>/s', $content, $matches)) {
-            $sections['user'] = trim($matches[1]);
-        }
-
-        // Extract assistant prompt (for few-shot examples)
-        if (preg_match('/<assistant>(.*?)<\/assistant>/s', $content, $matches)) {
-            $sections['assistant'] = trim($matches[1]);
-        }
-
-        // If no sections found, treat entire content as user prompt
-        if (empty($sections)) {
-            $sections['user'] = trim($content);
-        }
-
-        // Build messages array
-        $messages = [];
-
-        if (! empty($sections['system'])) {
-            $messages[] = [
-                'role' => 'system',
-                'content' => $sections['system'],
-            ];
-        }
-
-        if (! empty($sections['user'])) {
-            $messages[] = [
-                'role' => 'user',
-                'content' => $sections['user'],
-            ];
-        }
-
-        if (! empty($sections['assistant'])) {
-            $messages[] = [
-                'role' => 'assistant',
-                'content' => $sections['assistant'],
-            ];
-        }
-
-        return [
-            'messages' => $messages,
-            'template_name' => $templateName,
-            'schema' => $this->getSchema($templateName, $options),
-            'options' => $this->getTemplateOptions($templateName, $options),
-        ];
-    }
+    // Parsing moved to PromptContentParser
 
     /**
      * Get fallback prompt when template fails
      */
-    protected function getFallbackPrompt(string $templateName, array $data, array $options): array
-    {
-        $fallbackPrompts = [
-            'receipt' => 'Analyze this Norwegian receipt and extract structured data in JSON format.',
-            'document' => 'Analyze this document and extract structured metadata in JSON format.',
-            'merchant' => 'Extract merchant information from this text in JSON format.',
-            'line_items' => 'Extract line items from this receipt in JSON format.',
-            'summary' => 'Provide a concise summary of this content.',
-            'classification' => 'Classify this document type.',
-            'tags' => 'Extract relevant tags from this content.',
-            'entities' => 'Extract named entities from this text.',
-        ];
-
-        $prompt = $fallbackPrompts[$templateName] ?? 'Analyze this content and provide structured information.';
-
-        return [
-            'messages' => [
-                ['role' => 'user', 'content' => $prompt],
-            ],
-            'template_name' => $templateName,
-            'schema' => $this->getSchema($templateName, $options),
-            'options' => $this->getTemplateOptions($templateName, $options),
-        ];
-    }
+    // Fallback moved to FallbackPromptProvider
 
     /**
      * Get template-specific options
      */
     protected function getTemplateOptions(string $templateName, array $userOptions = []): array
     {
-        $defaults = [
-            'receipt' => [
-                'temperature' => 0.1,
-                'max_tokens' => 2048,
-                'response_format' => 'json_schema',
-            ],
-            'document' => [
-                'temperature' => 0.2,
-                'max_tokens' => 3000,
-                'response_format' => 'json_schema',
-            ],
-            'merchant' => [
-                'temperature' => 0.1,
-                'max_tokens' => 300,
-                'response_format' => 'json_object',
-            ],
-            'summary' => [
-                'temperature' => 0.3,
-                'max_tokens' => 300,
-            ],
-        ];
-
-        return array_merge($defaults[$templateName] ?? [], $userOptions);
+        return TemplateOptionsProvider::forTemplate($templateName, $userOptions);
     }
 
     // Schema methods for different templates

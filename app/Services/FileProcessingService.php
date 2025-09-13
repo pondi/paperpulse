@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
+use App\Services\Files\FileJobChainDispatcher;
+
 class FileProcessingService
 {
     protected FileStorageContract $fileStorage;
@@ -30,17 +32,20 @@ class FileProcessingService
     protected FileValidationContract $fileValidation;
 
     protected TextExtractionService $textExtractionService;
+    protected FileJobChainDispatcher $jobChainDispatcher;
 
     public function __construct(
         FileStorageContract $fileStorage,
         FileMetadataContract $fileMetadata,
         FileValidationContract $fileValidation,
-        TextExtractionService $textExtractionService
+        TextExtractionService $textExtractionService,
+        FileJobChainDispatcher $jobChainDispatcher
     ) {
         $this->fileStorage = $fileStorage;
         $this->fileMetadata = $fileMetadata;
         $this->fileValidation = $fileValidation;
         $this->textExtractionService = $textExtractionService;
+        $this->jobChainDispatcher = $jobChainDispatcher;
     }
 
     /**
@@ -106,7 +111,7 @@ class FileProcessingService
             Cache::put("job.{$jobId}.fileMetaData", $fileMetadata, now()->addHours(2));
 
             // Dispatch appropriate job chain based on file type
-            $this->dispatchJobChain($jobId, $fileType);
+            $this->jobChainDispatcher->dispatch($jobId, $fileType);
 
             Log::info("[FileProcessing] [{$jobName}] File processing initiated", [
                 'job_id' => $jobId,
@@ -223,67 +228,7 @@ class FileProcessingService
         }
     }
 
-    /**
-     * Dispatch the appropriate job chain based on file type
-     */
-    protected function dispatchJobChain(string $jobId, string $fileType): void
-    {
-        // Get metadata
-        $metadata = Cache::get("job.{$jobId}.fileMetaData");
-        $source = $metadata['metadata']['source'] ?? 'upload';
-        $tagIds = $metadata['metadata']['tagIds'] ?? [];
-        $pulseDavFileId = $metadata['metadata']['pulseDavFileId'] ?? null;
-
-        Log::info('Dispatching job chain', [
-            'jobId' => $jobId,
-            'fileType' => $fileType,
-            'source' => $source,
-            'tagIds' => $tagIds,
-            'pulseDavFileId' => $pulseDavFileId,
-            'jobName' => $metadata['jobName'] ?? 'Unknown',
-        ]);
-
-        // Determine queue based on file type
-        $queue = $fileType === 'receipt' ? 'receipts' : 'documents';
-
-        // Base jobs for processing
-        $jobs = [];
-
-        if ($fileType === 'receipt') {
-            $jobs = [
-                (new ProcessFile($jobId))->onQueue($queue),
-                (new ProcessReceipt($jobId))->onQueue($queue),
-                (new MatchMerchant($jobId))->onQueue($queue),
-            ];
-        } else {
-            $jobs = [
-                (new ProcessFile($jobId))->onQueue($queue),
-                (new ProcessDocument($jobId))->onQueue($queue),
-                (new AnalyzeDocument($jobId))->onQueue($queue),
-            ];
-        }
-
-        // Add tag application if there are tags
-        if (! empty($tagIds) && isset($metadata['fileId'])) {
-            $file = \App\Models\File::find($metadata['fileId']);
-            if ($file) {
-                $jobs[] = (new ApplyTags($jobId, $file, $tagIds))->onQueue($queue);
-            }
-        }
-
-        // Always add cleanup job
-        $jobs[] = (new DeleteWorkingFiles($jobId))->onQueue($queue);
-
-        // Add PulseDav status update if this is from PulseDav
-        if ($source === 'pulsedav' && $pulseDavFileId && isset($metadata['fileId'])) {
-            $file = \App\Models\File::find($metadata['fileId']);
-            if ($file) {
-                $jobs[] = (new UpdatePulseDavFileStatus($jobId, $file, $pulseDavFileId, $fileType))->onQueue($queue);
-            }
-        }
-
-        Bus::chain($jobs)->dispatch();
-    }
+    
 
     /**
      * Validate file type is supported

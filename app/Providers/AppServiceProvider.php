@@ -57,12 +57,17 @@ class AppServiceProvider extends ServiceProvider
             return new \App\Services\File\FileValidationService;
         });
 
+        $this->app->singleton(\App\Services\Files\FileJobChainDispatcher::class, function ($app) {
+            return new \App\Services\Files\FileJobChainDispatcher();
+        });
+
         $this->app->singleton(\App\Services\FileProcessingService::class, function ($app) {
             return new \App\Services\FileProcessingService(
                 $app->make(\App\Services\File\FileStorageService::class),
                 $app->make(\App\Services\File\FileMetadataService::class),
                 $app->make(\App\Services\File\FileValidationService::class),
-                $app->make(\App\Services\TextExtractionService::class)
+                $app->make(\App\Services\TextExtractionService::class),
+                $app->make(\App\Services\Files\FileJobChainDispatcher::class)
             );
         });
 

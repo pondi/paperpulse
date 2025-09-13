@@ -9,6 +9,9 @@ use App\Services\AI\Shared\AIDebugLogger;
 use App\Services\AI\Shared\AIFallbackHandler;
 use Illuminate\Support\Facades\Log;
 use OpenAI\Laravel\Facades\OpenAI;
+use App\Services\AI\OpenAI\ChatPayloadBuilder;
+use App\Services\AI\OpenAI\ResponseParser;
+use App\Services\AI\OpenAI\FallbackPayloadFactory;
 
 class OpenAIProvider implements AIService
 {
@@ -57,20 +60,7 @@ class OpenAIProvider implements AIService
 
             AIDebugLogger::promptData('OpenAI', $promptData);
 
-            $requestPayload = array_merge([
-                'model' => $model,
-                'messages' => $promptData['messages'],
-                'response_format' => [
-                    'type' => 'json_schema',
-                    'json_schema' => [
-                        'name' => 'receipt_analysis',
-                        'description' => 'Structured receipt data extraction',
-                        'schema' => $promptData['schema'],
-                        // Make strict mode configurable; default to false for production reliability
-                        'strict' => (bool) config('ai.options.strict_json_schema', false),
-                    ],
-                ],
-            ], $params);
+            $requestPayload = ChatPayloadBuilder::forReceipt($promptData, $model, $params);
 
             AIDebugLogger::apiRequest('OpenAI', $requestPayload);
 
@@ -78,7 +68,7 @@ class OpenAIProvider implements AIService
 
             AIDebugLogger::apiResponse('OpenAI', $response);
 
-            $result = json_decode($response->choices[0]->message->content, true);
+            $result = ResponseParser::jsonContent($response);
 
             $cost = null;
 
@@ -106,18 +96,13 @@ class OpenAIProvider implements AIService
                 ]);
 
                 try {
-                    $fallbackPayload = AIFallbackHandler::createOpenAIFallbackPayload(
-                        $promptData['messages'],
-                        $model
-                    );
-                    // Merge additional params if available
-                    $fallbackPayload = array_merge($fallbackPayload, $params);
+                    $fallbackPayload = FallbackPayloadFactory::make($promptData['messages'], $model, $params);
 
                     $response = OpenAI::chat()->create($fallbackPayload);
 
                     AIDebugLogger::apiResponse('OpenAI', $response);
 
-                    $result = json_decode($response->choices[0]->message->content, true);
+                    $result = ResponseParser::jsonContent($response);
 
                     // Normalize the response structure to match validation expectations
                     $normalizedData = AIDataNormalizer::normalizeReceiptData($result);
@@ -162,23 +147,9 @@ class OpenAIProvider implements AIService
                 'include_sentiment' => $options['include_sentiment'] ?? false,
             ], $options);
 
-            $response = OpenAI::chat()->create([
-                'model' => $model,
-                'messages' => $promptData['messages'],
-                'temperature' => $promptData['options']['temperature'] ?? 0.2,
-                'max_tokens' => $promptData['options']['max_tokens'] ?? 3000,
-                'response_format' => [
-                    'type' => 'json_schema',
-                    'json_schema' => [
-                        'name' => 'document_analysis',
-                        'description' => 'Structured document metadata extraction',
-                        'schema' => $promptData['schema'],
-                        'strict' => true,
-                    ],
-                ],
-            ]);
+            $response = OpenAI::chat()->create(ChatPayloadBuilder::forDocument($promptData, $model));
 
-            $result = json_decode($response->choices[0]->message->content, true);
+            $result = ResponseParser::jsonContent($response);
 
             return AIFallbackHandler::createSuccessResult('openai', $result, [
                 'model' => $model,
@@ -212,9 +183,7 @@ class OpenAIProvider implements AIService
                 'response_format' => ['type' => 'json_object'],
             ]);
 
-            $result = json_decode($response->choices[0]->message->content, true);
-
-            return $result ?? [];
+            return \App\Services\AI\OpenAI\ResponseParser::jsonContent($response);
         } catch (\Exception $e) {
             Log::error('Merchant extraction failed', ['error' => $e->getMessage()]);
 
@@ -284,8 +253,7 @@ class OpenAIProvider implements AIService
                 ],
             ]);
 
-            $result = json_decode($response->choices[0]->message->content, true);
-
+            $result = \App\Services\AI\OpenAI\ResponseParser::jsonContent($response);
             return $result['tags'] ?? [];
         } catch (\Exception $e) {
             Log::error('Tag suggestion failed', ['error' => $e->getMessage()]);
@@ -350,9 +318,7 @@ class OpenAIProvider implements AIService
                 'temperature' => 0.1,
                 'response_format' => ['type' => 'json_object'],
             ]);
-
-            $result = json_decode($response->choices[0]->message->content, true);
-
+            $result = \App\Services\AI\OpenAI\ResponseParser::jsonContent($response);
             return array_intersect_key($result, array_flip($types));
         } catch (\Exception $e) {
             Log::error('Entity extraction failed', ['error' => $e->getMessage()]);

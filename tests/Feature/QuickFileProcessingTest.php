@@ -49,11 +49,8 @@ class QuickFileProcessingTest extends TestCase
 
         $this->app->instance(StorageService::class, $storageService);
 
-        // Test FileProcessingService
-        $fileProcessingService = new FileProcessingService(
-            $storageService,
-            app(TextExtractionService::class)
-        );
+        // Resolve FileProcessingService via container (constructor deps bound in provider)
+        $fileProcessingService = app(FileProcessingService::class);
 
         // Generate test data
         $jobId = Str::uuid()->toString();

@@ -135,7 +135,7 @@ class ReceiptAnalysisService
             // Extract currency and calculate totals from line items
             $currency = $this->parser->extractCurrency($data, $defaultCurrency);
             $items = $this->parser->extractItems($data);
-            $totals = $this->calculateTotalsFromItems($items, $data);
+            $totals = \App\Services\Receipts\TotalsCalculator::calculate($items, $data, $this->parser);
 
             // Enrich receipt data
             $enrichedData = $this->enricher->enrichReceiptData($data, $merchant);
@@ -166,7 +166,7 @@ class ReceiptAnalysisService
 
             // Create line items if user preference allows
             if ($extractLineItems) {
-                $this->createLineItems($receipt, $items, $data['vendors'] ?? []);
+                \App\Services\Receipts\LineItemsCreator::create($receipt, $items, $data['vendors'] ?? []);
 
                 if ($debugEnabled) {
                     Log::debug('[ReceiptAnalysis] Line items created', [
@@ -307,7 +307,7 @@ class ReceiptAnalysisService
             // Extract currency and calculate totals from line items
             $currency = $this->parser->extractCurrency($data, $defaultCurrency);
             $items = $this->parser->extractItems($data);
-            $totals = $this->calculateTotalsFromItems($items, $data);
+            $totals = \App\Services\Receipts\TotalsCalculator::calculate($items, $data, $this->parser);
 
             // Enrich receipt data
             $enrichedData = $this->enricher->enrichReceiptData($data, $merchant);
@@ -338,7 +338,7 @@ class ReceiptAnalysisService
 
             // Create line items if user preference allows
             if ($extractLineItems) {
-                $this->createLineItems($receipt, $items, $data['vendors'] ?? []);
+                \App\Services\Receipts\LineItemsCreator::create($receipt, $items, $data['vendors'] ?? []);
 
                 if ($debugEnabled) {
                     Log::debug('[ReceiptAnalysis] Line items created', [
@@ -437,105 +437,7 @@ class ReceiptAnalysisService
      */
     protected function calculateTotalsFromItems(array $items, array $data): array
     {
-        $calculatedTotal = 0;
-        $validItemsCount = 0;
-        $itemValidationErrors = [];
-
-        // Validate and calculate total from line items
-        foreach ($items as $index => $item) {
-            $quantity = (float) ($item['quantity'] ?? 1);
-            $unitPrice = (float) ($item['unit_price'] ?? $item['price'] ?? 0);
-            $itemTotal = (float) ($item['total_price'] ?? $item['total'] ?? 0);
-
-            // If no item total provided, calculate it
-            if ($itemTotal == 0 && $unitPrice > 0) {
-                $itemTotal = $quantity * $unitPrice;
-            }
-
-            // Validate item calculation
-            $expectedTotal = $quantity * $unitPrice;
-            if ($unitPrice > 0 && abs($itemTotal - $expectedTotal) > 0.01) {
-                $itemValidationErrors[] = [
-                    'item_index' => $index,
-                    'item_name' => $item['name'] ?? $item['description'] ?? 'Unknown',
-                    'expected_total' => $expectedTotal,
-                    'actual_total' => $itemTotal,
-                    'quantity' => $quantity,
-                    'unit_price' => $unitPrice,
-                ];
-            }
-
-            if ($itemTotal > 0) {
-                $calculatedTotal += $itemTotal;
-                $validItemsCount++;
-            }
-        }
-
-        // Get AI totals directly - no calculations
-        $aiTotals = $this->parser->extractTotals($data);
-        $aiTotal = (float) ($aiTotals['total_amount'] ?? 0);
-        $aiTax = (float) ($aiTotals['tax_amount'] ?? 0);
-
-        // Log validation results
-        if (! empty($itemValidationErrors)) {
-            Log::warning('[ReceiptAnalysis] Line item calculation mismatches found', [
-                'validation_errors' => $itemValidationErrors,
-                'total_items' => count($items),
-                'valid_items' => $validItemsCount,
-            ]);
-        }
-
-        // Decision logic for which total to use
-        $tolerance = 0.02; // 2% tolerance for rounding differences
-        if ($calculatedTotal > 0 && $validItemsCount > 0) {
-            $difference = abs($calculatedTotal - $aiTotal);
-            $percentDifference = $aiTotal > 0 ? ($difference / $aiTotal) : 0;
-
-            if ($percentDifference <= $tolerance) {
-                // Close enough - use AI total but log the difference
-                Log::info('[ReceiptAnalysis] Using AI total - close match with calculated items', [
-                    'calculated_total' => $calculatedTotal,
-                    'ai_total' => $aiTotal,
-                    'difference' => $difference,
-                    'percent_difference' => $percentDifference * 100,
-                    'valid_items_count' => $validItemsCount,
-                ]);
-
-                return [
-                    'total_amount' => $aiTotal,
-                    'tax_amount' => $aiTax,
-                ];
-            } else {
-                // Significant difference - prefer calculated if we have good line items
-                Log::warning('[ReceiptAnalysis] Significant difference between calculated and AI totals', [
-                    'calculated_total' => $calculatedTotal,
-                    'ai_total' => $aiTotal,
-                    'difference' => $difference,
-                    'percent_difference' => $percentDifference * 100,
-                    'using' => 'calculated_total',
-                    'valid_items_count' => $validItemsCount,
-                ]);
-
-                return [
-                    'total_amount' => $calculatedTotal,
-                    'tax_amount' => $aiTax,
-                ];
-            }
-        }
-
-        // Fall back to AI totals if no valid line items found
-        Log::warning('[ReceiptAnalysis] Using AI totals - insufficient line item data', [
-            'calculated_total' => $calculatedTotal,
-            'ai_total' => $aiTotal,
-            'valid_items_count' => $validItemsCount,
-            'total_items' => count($items),
-        ]);
-
-        // Return AI totals directly
-        return [
-            'total_amount' => $aiTotal,
-            'tax_amount' => $aiTax,
-        ];
+        return \App\Services\Receipts\TotalsCalculator::calculate($items, $data, $this->parser);
     }
 
     /**
@@ -543,52 +445,6 @@ class ReceiptAnalysisService
      */
     protected function createLineItems(Receipt $receipt, array $items, array $vendors = []): void
     {
-        // Build cache of vendor names to IDs to minimize queries
-        $vendorIdCache = [];
-
-        $resolveVendorId = function (?string $name) use (&$vendorIdCache) {
-            if (!$name) { return null; }
-            $key = mb_strtolower(trim($name));
-            if (isset($vendorIdCache[$key])) {
-                return $vendorIdCache[$key];
-            }
-            $vendor = \App\Models\Vendor::firstOrCreate(['name' => trim($name)]);
-            $vendorIdCache[$key] = $vendor->id;
-            return $vendor->id;
-        };
-
-        // Normalize vendors array to lowercase for inference
-        $vendorSet = array_map(fn($v) => mb_strtolower(trim($v)), $vendors);
-
-        foreach ($items as $item) {
-            $itemName = $item['name'] ?? $item['description'] ?? '';
-            $explicitVendor = $item['vendor'] ?? $item['brand'] ?? null;
-
-            $vendorId = null;
-            if (!empty($explicitVendor)) {
-                $vendorId = $resolveVendorId($explicitVendor);
-            } elseif (!empty($itemName) && !empty($vendorSet)) {
-                // Infer vendor from item name using top-level vendor list
-                $match = null;
-                foreach ($vendorSet as $v) {
-                    if ($v !== '' && mb_strpos(mb_strtolower($itemName), $v) !== false) {
-                        $match = $v; break;
-                    }
-                }
-                if ($match) {
-                    $vendorId = $resolveVendorId($match);
-                }
-            }
-
-            LineItem::create([
-                'receipt_id' => $receipt->id,
-                'vendor_id' => $vendorId,
-                'text' => $itemName !== '' ? $itemName : 'Unknown Item',
-                'sku' => $item['sku'] ?? null,
-                'qty' => $item['quantity'] ?? 1,
-                'price' => $item['unit_price'] ?? $item['price'] ?? 0,
-                'total' => $item['total_price'] ?? $item['total'] ?? (($item['unit_price'] ?? $item['price'] ?? 0) * ($item['quantity'] ?? 1)),
-            ]);
-        }
+        \App\Services\Receipts\LineItemsCreator::create($receipt, $items, $vendors);
     }
 }

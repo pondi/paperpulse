@@ -203,6 +203,11 @@ class PulseDavController extends Controller
                 }
             }
 
+            // Auto-sync S3 files before import to ensure database is up-to-date
+            \Log::info('[PulseDavController] Running auto-sync before import');
+            $synced = \App\Services\PulseDav\Import\AutoSyncService::syncBeforeImport($request->user());
+            \Log::info('[PulseDavController] Auto-sync completed', ['synced' => $synced]);
+
             \Log::info('[PulseDavController] Calling PulseDavService::importSelections', [
                 'selections_count' => count($request->selections),
                 'file_type' => $request->file_type,
@@ -227,6 +232,8 @@ class PulseDavController extends Controller
                 'message' => "Imported {$result['imported']} files successfully",
                 'batch_id' => $result['batch_id'],
                 'imported' => $result['imported'],
+                'skipped' => $result['skipped'] ?? 0,
+                'synced' => $synced,
             ]);
         } catch (\Exception $e) {
             $response = [

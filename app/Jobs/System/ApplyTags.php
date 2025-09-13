@@ -41,8 +41,12 @@ class ApplyTags extends BaseJob
                 $document = Document::where('file_id', $this->file->id)->first();
 
                 if ($document) {
-                    // Sync tags to document
-                    $document->tags()->syncWithoutDetaching($this->tagIds);
+                    // Sync tags to document with proper file_type pivot data
+                    $pivotData = [];
+                    foreach ($this->tagIds as $tagId) {
+                        $pivotData[$tagId] = ['file_type' => 'document'];
+                    }
+                    $document->tags()->syncWithoutDetaching($pivotData);
 
                     Log::info('Tags applied to document', [
                         'document_id' => $document->id,
@@ -54,8 +58,12 @@ class ApplyTags extends BaseJob
                 $receipt = Receipt::where('file_id', $this->file->id)->first();
 
                 if ($receipt) {
-                    // Sync tags to receipt
-                    $receipt->tags()->syncWithoutDetaching($this->tagIds);
+                    // Sync tags to receipt with proper file_type pivot data
+                    $pivotData = [];
+                    foreach ($this->tagIds as $tagId) {
+                        $pivotData[$tagId] = ['file_type' => 'receipt'];
+                    }
+                    $receipt->tags()->syncWithoutDetaching($pivotData);
 
                     Log::info('Tags applied to receipt', [
                         'receipt_id' => $receipt->id,

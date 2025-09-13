@@ -22,7 +22,9 @@ trait TaggableModel
      */
     public function addTag(Tag $tag): void
     {
-        $this->tags()->syncWithoutDetaching([$tag->id]);
+        $this->tags()->syncWithoutDetaching([
+            $tag->id => ['file_type' => $this->getTaggableType()]
+        ]);
     }
 
     /**
@@ -49,7 +51,11 @@ trait TaggableModel
      */
     public function syncTags(array $tagIds): void
     {
-        $this->tags()->sync($tagIds);
+        $pivotData = [];
+        foreach ($tagIds as $tagId) {
+            $pivotData[$tagId] = ['file_type' => $this->getTaggableType()];
+        }
+        $this->tags()->sync($pivotData);
     }
 
     /**

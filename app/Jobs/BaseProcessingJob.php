@@ -6,12 +6,22 @@ use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Base class for file-processing jobs with a consistent execution pattern.
+ *
+ * Adds:
+ * - Metadata validation
+ * - Progress milestones and timing logs
+ * - Hook points for completion and error handling
+ */
 abstract class BaseProcessingJob extends BaseJob
 {
     protected string $jobType;
 
     /**
      * Execute the job's logic with common processing pattern.
+     *
+     * @return void
      */
     protected function handleJob(): void
     {
@@ -83,6 +93,9 @@ abstract class BaseProcessingJob extends BaseJob
 
     /**
      * Validate the metadata structure.
+     *
+     * @param array $metadata
+     * @return void
      */
     protected function validateMetadata(array $metadata): void
     {
@@ -97,11 +110,18 @@ abstract class BaseProcessingJob extends BaseJob
 
     /**
      * Process the file - implemented by subclasses.
+     *
+     * @param array $metadata
+     * @return array
      */
     abstract protected function processFile(array $metadata): array;
 
     /**
      * Handle successful completion - can be overridden by subclasses.
+     *
+     * @param array $result
+     * @param array $metadata
+     * @return void
      */
     protected function handleCompletion(array $result, array $metadata): void
     {
@@ -111,6 +131,9 @@ abstract class BaseProcessingJob extends BaseJob
 
     /**
      * Handle job errors - can be overridden by subclasses.
+     *
+     * @param Exception $e
+     * @return void
      */
     protected function handleError(Exception $e): void
     {
@@ -119,7 +142,11 @@ abstract class BaseProcessingJob extends BaseJob
     }
 
     /**
-     * Log processing step with consistent format.
+     * Log a processing step with consistent format.
+     *
+     * @param string $step
+     * @param array $context
+     * @return void
      */
     protected function logProcessingStep(string $step, array $context = []): void
     {

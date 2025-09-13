@@ -6,6 +6,11 @@ use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Represents a high-level batch operation and its items with progress.
+ *
+ * Includes helpers for derived progress metrics and commonly-used scopes.
+ */
 class BatchJob extends Model
 {
     use BelongsToUser;

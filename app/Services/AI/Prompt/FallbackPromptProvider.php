@@ -2,8 +2,12 @@
 
 namespace App\Services\AI\Prompt;
 
+/**
+ * Provides minimal fallback prompts when template rendering fails.
+ */
 class FallbackPromptProvider
 {
+    /** Get a generic fallback prompt for a template key. */
     public static function forTemplate(string $templateName): string
     {
         $fallbacks = [
@@ -20,4 +24,3 @@ class FallbackPromptProvider
         return $fallbacks[$templateName] ?? 'Analyze this content and provide structured information.';
     }
 }
-

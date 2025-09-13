@@ -11,6 +11,12 @@ use App\Services\DocumentAnalysisService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Runs AI-powered analysis on previously created Document records.
+ *
+ * Updates title/summary/metadata, applies suggested category and tags,
+ * and records entities extracted from content.
+ */
 class AnalyzeDocument extends BaseJob
 {
     public $timeout = 3600;

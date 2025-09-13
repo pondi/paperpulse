@@ -6,6 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Tracks the lifecycle of a queued job chain and its tasks.
+ *
+ * Parent rows (order_in_chain = 0) represent the chain; child rows are tasks.
+ * Provides relationships for navigating parent/children and scopes for views.
+ */
 class JobHistory extends Model
 {
     protected $table = 'job_history';

@@ -9,6 +9,13 @@ use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Coordinates OCR extraction for files and caches results.
+ *
+ * - Selects provider via configuration
+ * - Applies fallback strategies and confidence checks
+ * - Persists/reads cached extraction results
+ */
 class TextExtractionService
 {
     protected StorageService $storageService;
@@ -19,7 +26,13 @@ class TextExtractionService
     }
 
     /**
-     * Extract both text and structured data from a file using OCR providers
+     * Extract both text and structured data from a file using OCR providers.
+     *
+     * @param string $filePath Absolute path to the working file
+     * @param string $fileType Either 'receipt' or 'document'
+     * @param string $fileGuid Unique file GUID for caching
+     * @return array{text:string,structured_data:array,blocks:array,ocr_metadata:array,provider:string}
+     * @throws Exception
      */
     public function extractWithStructuredData(string $filePath, string $fileType, string $fileGuid): array
     {
@@ -148,7 +161,12 @@ class TextExtractionService
     }
 
     /**
-     * Extract text from a file using OCR providers
+     * Extract text from a file using OCR providers.
+     *
+     * @param string $filePath
+     * @param string $fileType
+     * @param string $fileGuid
+     * @return string
      */
     public function extract(string $filePath, string $fileType, string $fileGuid): string
     {
@@ -157,7 +175,10 @@ class TextExtractionService
     }
 
     /**
-     * Fallback PDF text extraction using PHP
+     * Fallback PDF text extraction using a local parser, if available.
+     *
+     * @param string $filePath
+     * @return string
      */
     protected function extractPdfTextFallback(string $filePath): string
     {
@@ -189,7 +210,9 @@ class TextExtractionService
     }
 
     /**
-     * Clear cached text for a file
+     * Clear cached OCR results for a file.
+     *
+     * @param string $fileGuid
      */
     public function clearCache(string $fileGuid): void
     {
@@ -205,7 +228,15 @@ class TextExtractionService
     // Error formatting moved to OcrErrorFormatter
 
     /**
-     * Get available OCR providers and their capabilities
+     * Get available OCR providers and their capabilities.
+     *
+     * @return array<string,array{
+     *   name:string,
+     *   capabilities:array,
+     *   supported_extensions:array,
+     *   available:bool,
+     *   error?:string
+     * }>
      */
     public function getAvailableProviders(): array
     {

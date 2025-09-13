@@ -7,6 +7,12 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 
+/**
+ * Handles persistence and access of generated documents (PDF/JPG) in storage.
+ *
+ * Provides helpers to store, retrieve, sign, and delete documents while
+ * abstracting over local vs S3-backed disks.
+ */
 class DocumentService
 {
     protected $disk;
@@ -27,7 +33,14 @@ class DocumentService
 
 
     /**
-     * Store a document in the storage system
+     * Store a document in the storage system.
+     *
+     * @param string $content
+     * @param string $guid
+     * @param string $jobName  For logging context
+     * @param string $type     Folder scope, e.g. 'receipts'
+     * @param string $extension File extension (pdf|jpg)
+     * @return bool
      */
     public function storeDocument(string $content, string $guid, string $jobName, string $type = 'receipts', string $extension = 'pdf'): bool
     {
@@ -59,7 +72,12 @@ class DocumentService
     }
 
     /**
-     * Get a document's content directly
+     * Get a document's content directly.
+     *
+     * @param string $guid
+     * @param string $type
+     * @param string $extension
+     * @return string|null
      */
     public function getDocument(string $guid, string $type = 'receipts', string $extension = 'pdf')
     {
@@ -89,7 +107,14 @@ class DocumentService
     }
 
     /**
-     * Get a secure URL for accessing the document
+     * Get a secure URL for accessing the document.
+     *
+     * @param string $guid
+     * @param string $jobName
+     * @param string $type
+     * @param string $extension
+     * @param int $expirationMinutes
+     * @return string|null
      */
     public function getSecureUrl(string $guid, string $jobName, string $type = 'receipts', string $extension = 'pdf', int $expirationMinutes = 5): ?string
     {
@@ -136,7 +161,13 @@ class DocumentService
     }
 
     /**
-     * Delete a document from storage
+     * Delete a document from storage.
+     *
+     * @param string $guid
+     * @param string $jobName
+     * @param string $type
+     * @param string $extension
+     * @return bool
      */
     public function deleteDocument(string $guid, string $jobName, string $type = 'receipts', string $extension = 'pdf'): bool
     {
@@ -173,7 +204,7 @@ class DocumentService
     }
 
     /**
-     * Check if a document exists
+     * Check if a document exists.
      */
     public function documentExists(string $guid, string $type = 'receipts', string $extension = 'pdf'): bool
     {
@@ -181,7 +212,7 @@ class DocumentService
     }
 
     /**
-     * Get the storage path for a document
+     * Get the storage path for a document.
      */
     protected function getPath(string $guid, string $type, string $extension): string
     {

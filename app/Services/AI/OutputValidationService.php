@@ -5,6 +5,11 @@ namespace App\Services\AI;
 use Exception;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Validates and lightly sanitizes AI outputs against schemas and basics.
+ *
+ * Simplified: schema validation stub, core business checks, and basic cleaning.
+ */
 class OutputValidationService
 {
     protected array $validationRules = [];
@@ -18,7 +23,13 @@ class OutputValidationService
     }
 
     /**
-     * Validate AI output against schema and business rules
+     * Validate AI output against schema and business rules.
+     *
+     * @param array $data
+     * @param string $type    'receipt' or 'document'
+     * @param array $schema
+     * @param array $options
+     * @return ValidationResult
      */
     public function validateOutput(array $data, string $type, array $schema = [], array $options = []): ValidationResult
     {
@@ -68,7 +79,7 @@ class OutputValidationService
     }
 
     /**
-     * Validate against JSON schema
+     * Validate against JSON schema (stubbed in v1).
      */
     protected function validateAgainstSchema(array $data, array $schema, string $type): ValidationResult
     {
@@ -89,7 +100,7 @@ class OutputValidationService
     }
 
     /**
-     * Validate business logic rules - simplified version
+     * Validate business logic rules - simplified version.
      */
     protected function validateBusinessLogic(array $data, string $type, array $options = []): ValidationResult
     {
@@ -116,7 +127,7 @@ class OutputValidationService
     }
 
     /**
-     * Validate data quality and consistency - simplified version
+     * Validate data quality and consistency - simplified version.
      */
     protected function validateDataQuality(array $data, string $type, array $options = []): ValidationResult
     {
@@ -131,7 +142,7 @@ class OutputValidationService
     }
 
     /**
-     * Get a summary of data structure for logging
+     * Summarize structure of data for debug logging.
      */
     protected function getDataStructureSummary(array $data): array
     {
@@ -148,7 +159,7 @@ class OutputValidationService
     }
 
     /**
-     * Sanitize and transform data - simplified version
+     * Sanitize and transform data - simplified version.
      */
     protected function sanitizeData(array $data, string $type): array
     {
@@ -157,7 +168,7 @@ class OutputValidationService
     }
 
     /**
-     * Basic data cleaning - simplified approach
+     * Basic data cleaning - simplified approach.
      */
     protected function basicCleanData(array $data): array
     {
@@ -183,7 +194,7 @@ class OutputValidationService
     }
 
     /**
-     * Basic receipt validation - flexible with different data structures
+     * Basic receipt validation - flexible with different data structures.
      */
     protected function validateReceiptBasics(array $data): ValidationResult
     {
@@ -212,7 +223,7 @@ class OutputValidationService
     }
 
     /**
-     * Basic document validation
+     * Basic document validation.
      */
     protected function validateDocumentBasics(array $data): ValidationResult
     {

@@ -2,8 +2,21 @@
 
 namespace App\Services\AI\Prompt;
 
+/**
+ * Parses rendered prompt templates into Chat messages + schema/options.
+ */
 class PromptContentParser
 {
+    /**
+     * Parse Blade output into system/user/assistant message array.
+     *
+     * @param string $content Rendered Blade content
+     * @param callable $schemaResolver function(string,array):array
+     * @param callable $optionsResolver function(string,array):array
+     * @param string $templateName
+     * @param array $options
+     * @return array{messages:array,template_name:string,schema:array,options:array}
+     */
     public static function parse(string $content, callable $schemaResolver, callable $optionsResolver, string $templateName, array $options): array
     {
         $sections = [];
@@ -40,4 +53,3 @@ class PromptContentParser
         ];
     }
 }
-

@@ -13,6 +13,13 @@ use App\Services\AI\OpenAI\ChatPayloadBuilder;
 use App\Services\AI\OpenAI\ResponseParser;
 use App\Services\AI\OpenAI\FallbackPayloadFactory;
 
+/**
+ * OpenAI-backed implementation of AIService.
+ *
+ * Uses prompt templates + JSON Schema response_format to extract
+ * structured data (receipts, documents, merchants, tags, etc.).
+ * Includes a fallback path with relaxed schema when strict parsing fails.
+ */
 class OpenAIProvider implements AIService
 {
     protected PromptTemplateService $promptService;
@@ -25,6 +32,13 @@ class OpenAIProvider implements AIService
         $this->promptService = app(PromptTemplateService::class);
     }
 
+    /**
+     * Analyze a receipt text and return structured data.
+     *
+     * @param string $content OCR text
+     * @param array $options  Optional hints (merchant_hint, focus, include_confidence, examples)
+     * @return array          Standardized success/error payload
+     */
     public function analyzeReceipt(string $content, array $options = []): array
     {
         $startTime = microtime(true);
@@ -166,6 +180,12 @@ class OpenAIProvider implements AIService
         }
     }
 
+    /**
+     * Extract merchant details from text.
+     *
+     * @param string $content
+     * @return array
+     */
     public function extractMerchant(string $content): array
     {
         try {
@@ -191,6 +211,13 @@ class OpenAIProvider implements AIService
         }
     }
 
+    /**
+     * Generate a concise summary for content.
+     *
+     * @param string $content
+     * @param int $maxLength
+     * @return string
+     */
     public function generateSummary(string $content, int $maxLength = 200): string
     {
         try {
@@ -214,6 +241,13 @@ class OpenAIProvider implements AIService
         }
     }
 
+    /**
+     * Suggest up to maxTags tags for content.
+     *
+     * @param string $content
+     * @param int $maxTags
+     * @return array<string>
+     */
     public function suggestTags(string $content, int $maxTags = 5): array
     {
         try {
@@ -262,6 +296,12 @@ class OpenAIProvider implements AIService
         }
     }
 
+    /**
+     * Classify document type from content.
+     *
+     * @param string $content
+     * @return string One of predefined types; 'other' on failure
+     */
     public function classifyDocumentType(string $content): string
     {
         try {
@@ -297,6 +337,13 @@ class OpenAIProvider implements AIService
         }
     }
 
+    /**
+     * Extract selected entity lists from content.
+     *
+     * @param string $content
+     * @param array $types Subset of default: people, organizations, locations, dates, amounts
+     * @return array<string,array>
+     */
     public function extractEntities(string $content, array $types = []): array
     {
         $defaultTypes = ['people', 'organizations', 'locations', 'dates', 'amounts'];
@@ -327,6 +374,9 @@ class OpenAIProvider implements AIService
         }
     }
 
+    /**
+     * Get provider identifier.
+     */
     public function getProviderName(): string
     {
         return 'openai';

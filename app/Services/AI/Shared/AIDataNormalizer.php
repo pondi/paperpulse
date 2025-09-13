@@ -2,11 +2,14 @@
 
 namespace App\Services\AI\Shared;
 
+/**
+ * Normalizes heterogeneous AI outputs into expected internal structures.
+ */
 class AIDataNormalizer
 {
     /**
      * Normalize receipt data structure from various AI response formats
-     * to match the validation expectations
+     * to match validation expectations.
      */
     public static function normalizeReceiptData(array $data): array
     {
@@ -148,7 +151,7 @@ class AIDataNormalizer
     }
 
     /**
-     * Extract total tax amount from Norwegian VAT data structure
+     * Extract total tax amount from Norwegian VAT data structure.
      */
     private static function extractTaxFromVatData(array $vatData): float
     {
@@ -164,7 +167,7 @@ class AIDataNormalizer
     }
 
     /**
-     * Normalize document data structure
+     * Normalize document data structure.
      */
     public static function normalizeDocumentData(array $data): array
     {

@@ -8,6 +8,14 @@ use App\Services\StorageService;
 use App\Services\TextExtractionService;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Prepares uploaded files for downstream processing.
+ *
+ * Responsibilities:
+ * - Validate presence of metadata and S3 objects
+ * - For documents, pre-extract and cache text
+ * - For receipts, ensure conversion readiness
+ */
 class ProcessFile extends BaseJob
 {
     /**

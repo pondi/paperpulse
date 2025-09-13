@@ -14,8 +14,22 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Builds and dispatches the queued job chain for a given file type.
+ *
+ * Reads cached metadata and dynamically assembles a sequence of jobs
+ * (file processing, parsing/analysis, tagging, clean-up, and optional
+ * PulseDav status updates) and dispatches them as a single chain.
+ */
 class FileJobChainDispatcher
 {
+    /**
+     * Dispatch the job chain for a file.
+     *
+     * @param string $jobId     The parent job chain UUID
+     * @param string $fileType  Either 'receipt' or 'document'
+     * @return void
+     */
     public function dispatch(string $jobId, string $fileType): void
     {
         $metadata = Cache::get("job.{$jobId}.fileMetaData");
@@ -68,4 +82,3 @@ class FileJobChainDispatcher
         Bus::chain($jobs)->dispatch();
     }
 }
-

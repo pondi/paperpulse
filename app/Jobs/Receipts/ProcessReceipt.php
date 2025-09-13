@@ -11,6 +11,15 @@ use App\Services\ReceiptService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Converts receipt files when needed and performs receipt extraction flow.
+ *
+ * Steps:
+ * - Optional PDF->image conversion
+ * - OCR + analysis via ReceiptService
+ * - Update File status and generate thumbnail when possible
+ * - Notify user on success/failure
+ */
 class ProcessReceipt extends BaseJob
 {
     /**

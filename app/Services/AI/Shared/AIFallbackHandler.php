@@ -2,10 +2,13 @@
 
 namespace App\Services\AI\Shared;
 
+/**
+ * Centralized helpers for AI fallback decisions and standardized results.
+ */
 class AIFallbackHandler
 {
     /**
-     * Check if error should trigger fallback attempt
+     * Determine if an exception should trigger a fallback attempt.
      */
     public static function shouldAttemptFallback(\Exception $e): bool
     {
@@ -19,7 +22,9 @@ class AIFallbackHandler
     }
 
     /**
-     * Get fallback model configuration
+     * Get fallback model configuration by provider.
+     *
+     * @return array{model:string,max_tokens:int,temperature:float}
      */
     public static function getFallbackModel(string $provider): array
     {
@@ -36,7 +41,7 @@ class AIFallbackHandler
     }
 
     /**
-     * Create simple fallback payload for OpenAI
+     * Create a relaxed OpenAI payload (json_object) for fallback.
      */
     public static function createOpenAIFallbackPayload(array $messages, ?string $model = null): array
     {
@@ -52,7 +57,7 @@ class AIFallbackHandler
     }
 
     /**
-     * Create simple fallback payload for Anthropic
+     * Create a simple Anthropic payload for fallback scenarios.
      */
     public static function createAnthropicFallbackPayload(string $content): array
     {
@@ -73,7 +78,7 @@ class AIFallbackHandler
     }
 
     /**
-     * Create standardized error result
+     * Build a standardized error result.
      */
     public static function createErrorResult(string $provider, \Exception $e, float $startTime, array $context = []): array
     {
@@ -88,7 +93,7 @@ class AIFallbackHandler
     }
 
     /**
-     * Create standardized success result
+     * Build a standardized success result envelope.
      */
     public static function createSuccessResult(string $provider, array $data, array $context = []): array
     {

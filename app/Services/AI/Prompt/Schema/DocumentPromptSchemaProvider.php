@@ -2,8 +2,12 @@
 
 namespace App\Services\AI\Prompt\Schema;
 
+/**
+ * Provides the JSON Schema used for document analysis prompts.
+ */
 class DocumentPromptSchemaProvider
 {
+    /** Build the document JSON schema. */
     public static function schema(array $options = []): array
     {
         return [
@@ -16,6 +20,7 @@ class DocumentPromptSchemaProvider
                     'description' => 'Classification of document type',
                 ],
                 'summary' => ['type' => 'string', 'description' => 'Brief summary of document content'],
+                'suggested_category' => ['type' => 'string', 'description' => 'Suggested category for this document, if any'],
                 'entities' => [
                     'type' => 'object',
                     'properties' => [
@@ -57,13 +62,12 @@ class DocumentPromptSchemaProvider
                 ],
                 'vendors' => [
                     'type' => 'array',
-                    'description' => 'Distinct list of identified product vendors/brands present on this receipt',
+                    'description' => 'Distinct list of identified product vendors/brands present in this document',
                     'items' => ['type' => 'string'],
                 ],
             ],
-            'required' => ['merchant', 'totals', 'receipt_info'],
+            'required' => ['title', 'document_type'],
             'additionalProperties' => false,
         ];
     }
 }
-

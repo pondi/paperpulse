@@ -2,8 +2,12 @@
 
 namespace App\Services\AI\Prompt\Schema;
 
+/**
+ * Provides the JSON Schema used for receipt extraction prompts.
+ */
 class ReceiptPromptSchemaProvider
 {
+    /** Build the receipt JSON schema. */
     public static function schema(array $options = []): array
     {
         $strictMode = $options['strict_mode'] ?? true;
@@ -123,4 +127,3 @@ class ReceiptPromptSchemaProvider
         ];
     }
 }
-

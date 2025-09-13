@@ -2,8 +2,14 @@
 
 namespace App\Services\AI\Prompt;
 
+/**
+ * Supplies per-template default options merged with caller overrides.
+ */
 class TemplateOptionsProvider
 {
+    /**
+     * Get default options for a template and merge with user overrides.
+     */
     public static function forTemplate(string $templateName, array $userOptions = []): array
     {
         $defaults = [
@@ -31,4 +37,3 @@ class TemplateOptionsProvider
         return array_merge($defaults[$templateName] ?? [], $userOptions);
     }
 }
-

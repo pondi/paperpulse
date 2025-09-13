@@ -8,6 +8,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Services\StorageService;
 
+/**
+ * High-level receipt processing:
+ * - Extract OCR text/blocks/structured data
+ * - Orchestrate analysis to create Receipt model + relations
+ * - Persist artifacts (OCR and AI outputs) to long-term storage
+ * - Support safe deletion of receipts and related files
+ */
 class ReceiptService
 {
     protected $documentService;
@@ -31,7 +38,12 @@ class ReceiptService
     }
 
     /**
-     * Process receipt data from a file
+     * Process receipt data from a file.
+     *
+     * @param int $fileId
+     * @param string $fileGuid
+     * @param string $filePath Absolute working path
+     * @return array{receiptId:int,merchantName:string,merchantAddress:string,merchantVatID:string}
      */
     public function processReceiptData(int $fileId, string $fileGuid, string $filePath): array
     {
@@ -110,7 +122,9 @@ class ReceiptService
     }
 
     /**
-     * Delete a receipt and all associated resources
+     * Delete a receipt and all associated resources.
+     *
+     * @return bool True if deletion succeeded
      */
     public function deleteReceipt(Receipt $receipt): bool
     {
@@ -158,7 +172,15 @@ class ReceiptService
     }
 
     /**
-     * Persist OCR artifacts (text, structured data, blocks, metadata) to long-term storage
+     * Persist OCR artifacts (text, structured data, blocks, metadata) to long-term storage.
+     *
+     * @param int $userId
+     * @param string $fileGuid
+     * @param string $text
+     * @param array $structuredData
+     * @param array $blocks
+     * @param array $ocrMetadata
+     * @return void
      */
     protected function persistOcrArtifacts(int $userId, string $fileGuid, string $text, array $structuredData, array $blocks, array $ocrMetadata): void
     {
@@ -200,7 +222,12 @@ class ReceiptService
     }
 
     /**
-     * Persist AI analysis response (as JSON string) to long-term storage and reference on File.meta
+     * Persist AI analysis response (as JSON string) to long-term storage and reference on File.meta.
+     *
+     * @param int $userId
+     * @param string $fileGuid
+     * @param string|null $receiptDataJson
+     * @return void
      */
     protected function persistAiArtifacts(int $userId, string $fileGuid, ?string $receiptDataJson): void
     {

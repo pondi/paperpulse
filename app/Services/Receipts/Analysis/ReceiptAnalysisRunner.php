@@ -11,6 +11,15 @@ use App\Services\Receipts\TotalsCalculator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Encapsulates the receipt analysis pipeline and DB writes.
+ *
+ * Steps:
+ * - Load user preferences and validate parsed data
+ * - Resolve merchant, category, currency, totals, and items
+ * - Create receipt + line items transactionally
+ * - Emit detailed analysis logs and timing
+ */
 class ReceiptAnalysisRunner
 {
     public function __construct(
@@ -20,6 +29,16 @@ class ReceiptAnalysisRunner
     ) {
     }
 
+    /**
+     * Run the analysis pipeline and persist a new Receipt.
+     *
+     * @param callable $parseFn       Closure returning ['data' => array, ...] from parser
+     * @param int $fileId
+     * @param int $userId
+     * @param string $content         OCR text content
+     * @param array|null $structuredData Optional OCR structured payload
+     * @return Receipt
+     */
     public function run(callable $parseFn, int $fileId, int $userId, string $content, ?array $structuredData = null): Receipt
     {
         $debug = config('app.debug');

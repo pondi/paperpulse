@@ -6,8 +6,20 @@ use App\Services\FileProcessingService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Validates and dispatches a set of uploaded files for processing.
+ */
 class DocumentUploadHandler
 {
+    /**
+     * Validate and process uploaded files via FileProcessingService.
+     *
+     * @param iterable $uploadedFiles Iterable of UploadedFile
+     * @param string $fileType        'receipt' or 'document'
+     * @param int $userId
+     * @param FileProcessingService $fileProcessingService
+     * @return array{processed:array,errors:array}
+     */
     public static function processUploads(iterable $uploadedFiles, string $fileType, int $userId, FileProcessingService $fileProcessingService): array
     {
         $processed = [];
@@ -38,4 +50,3 @@ class DocumentUploadHandler
         ];
     }
 }
-

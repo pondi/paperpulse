@@ -4,8 +4,14 @@ namespace App\Services\AI\Shared;
 
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Structured debug logging for AI interactions, gated by app.debug.
+ */
 class AIDebugLogger
 {
+    /**
+     * Log the start of an AI analysis.
+     */
     public static function analysisStart(string $provider, string $type, array $context = []): void
     {
         if (! config('app.debug')) {
@@ -17,6 +23,9 @@ class AIDebugLogger
         ], $context));
     }
 
+    /**
+     * Log model configuration details.
+     */
     public static function modelConfiguration(string $provider, array $context = []): void
     {
         if (! config('app.debug')) {
@@ -26,6 +35,9 @@ class AIDebugLogger
         Log::debug("[{$provider}] Model configuration", $context);
     }
 
+    /**
+     * Log prompt template details and schema summary.
+     */
     public static function promptData(string $provider, array $promptData): void
     {
         if (! config('app.debug')) {
@@ -41,6 +53,9 @@ class AIDebugLogger
         ]);
     }
 
+    /**
+     * Log outbound API request summary (without full messages).
+     */
     public static function apiRequest(string $provider, array $payload): void
     {
         if (! config('app.debug')) {
@@ -62,6 +77,9 @@ class AIDebugLogger
         Log::debug("[{$provider}] API request payload", $logData);
     }
 
+    /**
+     * Log API response summary (ids, usage, counts).
+     */
     public static function apiResponse(string $provider, $response): void
     {
         if (! config('app.debug')) {
@@ -84,6 +102,9 @@ class AIDebugLogger
         Log::debug("[{$provider}] API response received", $logData);
     }
 
+    /**
+     * Log successful analysis completion and timing.
+     */
     public static function analysisComplete(string $provider, array $result, float $startTime): void
     {
         if (! config('app.debug')) {
@@ -102,6 +123,9 @@ class AIDebugLogger
         ]);
     }
 
+    /**
+     * Log that a fallback attempt is being made.
+     */
     public static function fallbackAttempt(string $provider, string $originalError, array $context = []): void
     {
         Log::info("[{$provider}] Attempting fallback", array_merge([
@@ -109,6 +133,9 @@ class AIDebugLogger
         ], $context));
     }
 
+    /**
+     * Log successful fallback and timing.
+     */
     public static function fallbackSuccess(string $provider, float $startTime, array $result): void
     {
         Log::info("[{$provider}] Fallback successful", [
@@ -117,6 +144,9 @@ class AIDebugLogger
         ]);
     }
 
+    /**
+     * Log an analysis error with timing and optional stack trace.
+     */
     public static function analysisError(string $provider, \Exception $e, float $startTime, array $context = []): void
     {
         $processingTime = microtime(true) - $startTime;

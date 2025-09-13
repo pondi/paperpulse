@@ -23,6 +23,15 @@ use Illuminate\Support\Str;
 
 use App\Services\Files\FileJobChainDispatcher;
 
+/**
+ * Orchestrates end-to-end file ingestion for receipts and documents.
+ *
+ * Responsibilities:
+ * - Validate incoming file payloads and types
+ * - Persist working/original files (local and S3)
+ * - Create DB records and cache job metadata
+ * - Dispatch the appropriate queued job chain per file type
+ */
 class FileProcessingService
 {
     protected FileStorageContract $fileStorage;
@@ -49,8 +58,15 @@ class FileProcessingService
     }
 
     /**
-     * Process a file from any source (upload, PulseDav, etc.)
-     * This is the unified method that all file processing should use
+     * Process a file from any source (upload, PulseDav, etc.).
+     * This is the unified entrypoint all file processing should use.
+     *
+     * @param array $fileData   Canonical file data (content, fileName, extension, size, etc.)
+     * @param string $fileType  Either 'receipt' or 'document'
+     * @param int $userId       Owner of the file
+     * @param array $metadata   Optional metadata (e.g. jobId, jobName, source, tagIds)
+     * @return array{success:bool,fileId:int,fileGuid:string,jobId:string,jobName:string}
+     * @throws Exception
      */
     public function processFile(array $fileData, string $fileType, int $userId, array $metadata = []): array
     {
@@ -137,8 +153,15 @@ class FileProcessingService
     }
 
     /**
-     * Process an uploaded file (receipt or document)
-     * This method now delegates to the unified processFile method
+     * Process an uploaded file (receipt or document).
+     * Delegates to the unified processFile method.
+     *
+     * @param UploadedFile $uploadedFile
+     * @param string $fileType   Either 'receipt' or 'document'
+     * @param int $userId
+     * @param array $metadata
+     * @return array{success:bool,fileId:int,fileGuid:string,jobId:string,jobName:string}
+     * @throws Exception
      */
     public function processUpload(UploadedFile $uploadedFile, string $fileType, int $userId, array $metadata = []): array
     {
@@ -166,8 +189,15 @@ class FileProcessingService
     }
 
     /**
-     * Process a PulseDav file
-     * This method now delegates to the unified processFile method
+     * Process a PulseDav file from the incoming bucket.
+     * Delegates to the unified processFile method.
+     *
+     * @param string $incomingPath  Path within the 'pulsedav' disk
+     * @param string $fileType      Either 'receipt' or 'document'
+     * @param int $userId
+     * @param array $metadata       Additional metadata to carry through the chain
+     * @return array{success:bool,fileId:int,fileGuid:string,jobId:string,jobName:string}
+     * @throws Exception
      */
     public function processPulseDavFile(string $incomingPath, string $fileType, int $userId, array $metadata = []): array
     {
@@ -231,7 +261,11 @@ class FileProcessingService
     
 
     /**
-     * Validate file type is supported
+     * Validate file type is supported for the given extension.
+     *
+     * @param string $extension
+     * @param string $fileType  Either 'receipt' or 'document'
+     * @return bool
      */
     public function isSupported(string $extension, string $fileType): bool
     {
@@ -239,7 +273,10 @@ class FileProcessingService
     }
 
     /**
-     * Get maximum file size for a file type
+     * Get maximum file size for a file type, in bytes.
+     *
+     * @param string $fileType Either 'receipt' or 'document'
+     * @return int
      */
     public function getMaxFileSize(string $fileType): int
     {

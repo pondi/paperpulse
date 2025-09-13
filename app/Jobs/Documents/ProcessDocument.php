@@ -12,6 +12,14 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Creates a Document from a processed file and prepares it for analysis.
+ *
+ * Responsibilities:
+ * - Ensure text extraction for documents
+ * - Create Document row with metadata and searchable content
+ * - Update File status/paths and queue AnalyzeDocument
+ */
 class ProcessDocument extends BaseJob
 {
     /**

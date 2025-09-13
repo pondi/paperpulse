@@ -2,8 +2,19 @@
 
 namespace App\Services\AI\OpenAI;
 
+/**
+ * Builds OpenAI Chat Completions payloads for structured responses.
+ */
 class ChatPayloadBuilder
 {
+    /**
+     * Build payload for receipt extraction with JSON Schema.
+     *
+     * @param array $promptData Output of PromptTemplateService::getPrompt
+     * @param string $model     Model name
+     * @param array $params     Overrides like max_tokens/temperature
+     * @return array
+     */
     public static function forReceipt(array $promptData, string $model, array $params): array
     {
         return array_merge([
@@ -21,6 +32,13 @@ class ChatPayloadBuilder
         ], $params);
     }
 
+    /**
+     * Build payload for document analysis with JSON Schema.
+     *
+     * @param array $promptData
+     * @param string $model
+     * @return array
+     */
     public static function forDocument(array $promptData, string $model): array
     {
         return [
@@ -40,4 +58,3 @@ class ChatPayloadBuilder
         ];
     }
 }
-

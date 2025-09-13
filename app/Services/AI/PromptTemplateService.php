@@ -11,6 +11,12 @@ use App\Services\AI\Prompt\FallbackPromptProvider;
 use App\Services\AI\Prompt\TemplateOptionsProvider;
 use App\Services\AI\Prompt\Schema\PromptSchemaResolver;
 
+/**
+ * Compiles Blade-based prompt templates and resolves schema/options.
+ *
+ * Supports custom overrides, safe fallbacks, and structured parsing into
+ * Chat messages + JSON schema compatible with provider expectations.
+ */
 class PromptTemplateService
 {
     protected array $defaultTemplates = [
@@ -27,7 +33,12 @@ class PromptTemplateService
     protected array $compiledTemplates = [];
 
     /**
-     * Get compiled prompt for a template
+     * Get compiled prompt for a template.
+     *
+     * @param string $templateName
+     * @param array $data     Template variables
+     * @param array $options  Provider/model/options hints
+     * @return array{messages:array,template_name:string,schema:array,options:array}
      */
     public function getPrompt(string $templateName, array $data = [], array $options = []): array
     {
@@ -77,17 +88,13 @@ class PromptTemplateService
         }
     }
 
-    /**
-     * Resolve the JSON schema for a given template.
-     */
+    /** Resolve the JSON schema for a given template. */
     public function getSchema(string $templateName, array $options = []): array
     {
         return PromptSchemaResolver::forTemplate($templateName, $options);
     }
 
-    /**
-     * Register a custom template
-     */
+    /** Register a custom template view path. */
     public function registerTemplate(string $name, string $viewPath): void
     {
         $this->defaultTemplates[$name] = $viewPath;
@@ -98,9 +105,7 @@ class PromptTemplateService
         }
     }
 
-    /**
-     * Get all available templates
-     */
+    /** Get all available template keys. */
     public function getAvailableTemplates(): array
     {
         return array_keys($this->defaultTemplates);
@@ -121,9 +126,7 @@ class PromptTemplateService
      */
     // Fallback moved to FallbackPromptProvider
 
-    /**
-     * Get template-specific options
-     */
+    /** Get template-specific options. */
     protected function getTemplateOptions(string $templateName, array $userOptions = []): array
     {
         return TemplateOptionsProvider::forTemplate($templateName, $userOptions);

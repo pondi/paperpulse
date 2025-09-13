@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -243,8 +242,8 @@ class JobController extends Controller
             // Generate a new job ID for the restart operation
             $restartJobId = (string) Str::uuid();
 
-            // Dispatch the restart job
-            Bus::dispatch(new RestartJobChain($restartJobId, $jobId));
+            // Dispatch the restart job to the default queue
+            dispatch(new RestartJobChain($restartJobId, $jobId))->onQueue('default');
 
             Log::info('Job chain restart requested', [
                 'original_job_id' => $jobId,
@@ -334,8 +333,8 @@ class JobController extends Controller
                     // Generate a new job ID for the restart operation
                     $restartJobId = (string) Str::uuid();
 
-                    // Dispatch the restart job
-                    Bus::dispatch(new RestartJobChain($restartJobId, $jobId));
+                    // Dispatch the restart job to the default queue
+                    dispatch(new RestartJobChain($restartJobId, $jobId))->onQueue('default');
 
                     $results[$jobId] = [
                         'success' => true,

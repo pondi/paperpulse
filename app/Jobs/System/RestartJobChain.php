@@ -16,6 +16,8 @@ class RestartJobChain extends BaseJob
 
     public $backoff = 30;
 
+    public $queue = 'default';
+
     public function __construct(string $jobID, string $originalJobId)
     {
         parent::__construct($jobID);

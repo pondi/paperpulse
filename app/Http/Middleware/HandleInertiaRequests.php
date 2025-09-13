@@ -53,6 +53,10 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
             ],
+            'features' => [
+                'beta' => config('features.beta.enabled'),
+                'documents' => config('features.beta.documents'),
+            ],
         ]);
     }
 

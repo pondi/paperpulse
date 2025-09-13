@@ -5,10 +5,11 @@ use App\Http\Controllers\Documents\DocumentController;
 // Use DocumentController for share/unshare via ShareableController trait
 use App\Http\Controllers\Files\FileProcessingController;
 use App\Http\Controllers\Files\FileServeController;
+use App\Http\Middleware\CheckBetaFeatures;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified', 'web'])->group(function () {
-    // Document routes
+Route::middleware(['auth', 'verified', 'web', CheckBetaFeatures::class.':documents'])->group(function () {
+    // Document routes (protected by beta feature flag)
     Route::prefix('documents')->name('documents.')->group(function () {
         Route::get('/', [DocumentController::class, 'index'])->name('index');
         Route::get('/upload', [DocumentController::class, 'upload'])->name('upload');

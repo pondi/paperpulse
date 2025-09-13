@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DocumentController;
+use App\Http\Middleware\CheckBetaFeatures;
 use Illuminate\Support\Facades\Route;
 
 // Authentication routes
@@ -17,9 +18,11 @@ Route::prefix('auth')->group(function () {
 // Protected API routes
 Route::middleware(['auth:sanctum', 'api.rate_limit:200,1'])->group(function () {
 
-    // Documents
-    Route::apiResource('documents', DocumentController::class);
-    Route::post('documents/{document}/share', [DocumentController::class, 'share']);
-    Route::delete('documents/{document}/share/{user}', [DocumentController::class, 'unshare']);
-    Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
+    // Documents (protected by beta feature flag)
+    Route::middleware([CheckBetaFeatures::class.':documents'])->group(function () {
+        Route::apiResource('documents', DocumentController::class);
+        Route::post('documents/{document}/share', [DocumentController::class, 'share']);
+        Route::delete('documents/{document}/share/{user}', [DocumentController::class, 'unshare']);
+        Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
+    });
 });

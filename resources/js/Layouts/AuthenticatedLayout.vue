@@ -240,12 +240,16 @@ const sidebarOpen = ref(false)
 const page = usePage();
 const __ = (key) => page.props.language.messages[key] || key;
 
-const navigation = [
+// Check if beta features are enabled
+const isBetaEnabled = page.props.features?.beta || false;
+const isDocumentsEnabled = page.props.features?.documents || false;
+
+const navigationItems = [
   { name: 'dashboard', href: route('dashboard'), icon: HomeIcon, current: route().current('dashboard') },
-  { 
-    name: 'receipts', 
-    href: route('receipts.index'), 
-    icon: DocumentDuplicateIcon, 
+  {
+    name: 'receipts',
+    href: route('receipts.index'),
+    icon: DocumentDuplicateIcon,
     current: route().current('receipts.*') || route().current('merchants.*') || route().current('vendors.*'),
     children: [
       { name: 'all_receipts', href: route('receipts.index'), current: route().current('receipts.index') },
@@ -253,23 +257,41 @@ const navigation = [
       { name: 'vendors', href: route('vendors.index'), current: route().current('vendors.index') },
     ]
   },
-  { 
-    name: 'documents', 
-    href: route('documents.index'), 
-    icon: FolderIcon, 
+];
+
+// Only add documents menu if beta feature is enabled
+if (isDocumentsEnabled) {
+  navigationItems.push({
+    name: 'documents',
+    href: route('documents.index'),
+    icon: FolderIcon,
     current: route().current('documents.*') && !route().current('documents.upload'),
     children: [
       { name: 'all_documents', href: route('documents.index'), current: route().current('documents.index') },
       { name: 'shared_with_me', href: route('documents.shared'), current: route().current('documents.shared') },
       { name: 'categories', href: route('documents.categories'), current: route().current('documents.categories') },
     ]
-  },
+  });
+}
+
+navigationItems.push(
   { name: 'analytics', href: route('analytics.index'), icon: ChartBarIcon, current: route().current('analytics.*') },
-  { name: 'tags', href: route('tags.index'), icon: TagIcon, current: route().current('tags.*') },
-  { name: 'upload', href: route('documents.upload'), icon: CloudArrowUpIcon, current: route().current('documents.upload') },
+  { name: 'tags', href: route('tags.index'), icon: TagIcon, current: route().current('tags.*') }
+);
+
+// Only add documents upload if beta feature is enabled
+if (isDocumentsEnabled) {
+  navigationItems.push(
+    { name: 'upload', href: route('documents.upload'), icon: CloudArrowUpIcon, current: route().current('documents.upload') }
+  );
+}
+
+navigationItems.push(
   { name: 'scanner_imports', href: route('pulsedav.index'), icon: CloudArrowDownIcon, current: route().current('pulsedav.*') },
-  { name: 'job_status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index') },
-]
+  { name: 'job_status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index') }
+);
+
+const navigation = navigationItems;
 
 const userNavigation = [
   { name: 'profile', href: route('profile.edit') },

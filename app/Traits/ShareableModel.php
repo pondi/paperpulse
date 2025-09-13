@@ -4,8 +4,8 @@ namespace App\Traits;
 
 use App\Models\FileShare;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 trait ShareableModel
 {

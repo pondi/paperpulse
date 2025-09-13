@@ -26,9 +26,8 @@ class FileJobChainDispatcher
     /**
      * Dispatch the job chain for a file.
      *
-     * @param string $jobId     The parent job chain UUID
-     * @param string $fileType  Either 'receipt' or 'document'
-     * @return void
+     * @param  string  $jobId  The parent job chain UUID
+     * @param  string  $fileType  Either 'receipt' or 'document'
      */
     public function dispatch(string $jobId, string $fileType): void
     {

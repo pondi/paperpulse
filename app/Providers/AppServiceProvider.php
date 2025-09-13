@@ -58,7 +58,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(\App\Services\Files\FileJobChainDispatcher::class, function ($app) {
-            return new \App\Services\Files\FileJobChainDispatcher();
+            return new \App\Services\Files\FileJobChainDispatcher;
         });
 
         $this->app->singleton(\App\Services\FileProcessingService::class, function ($app) {

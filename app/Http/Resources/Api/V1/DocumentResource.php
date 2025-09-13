@@ -27,7 +27,7 @@ class DocumentResource extends BaseApiResource
             'language' => $this->language,
             'document_date' => $this->document_date?->toISOString(),
             'page_count' => $this->page_count,
-            
+
             // File information
             'file' => $this->whenLoaded('file', function () {
                 return [
@@ -38,16 +38,16 @@ class DocumentResource extends BaseApiResource
                     'status' => $this->file->status ?? null,
                 ];
             }),
-            
+
             // Relationships
             'category' => $this->whenLoaded('category', function () {
                 return new CategoryResource($this->category);
             }),
-            
+
             'tags' => $this->whenLoaded('tags', function () {
                 return TagResource::collection($this->tags);
             }),
-            
+
             'shares' => $this->whenLoaded('shares', function () {
                 return $this->shares->map(function ($share) {
                     return [
@@ -58,7 +58,7 @@ class DocumentResource extends BaseApiResource
                     ];
                 });
             }),
-            
+
             // URLs
             'download_url' => $this->when($this->file, function () {
                 return route('api.v1.documents.download', $this->id);

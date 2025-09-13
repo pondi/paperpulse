@@ -31,16 +31,12 @@ class DocumentService
         $this->storageService = $storageService;
     }
 
-
     /**
      * Store a document in the storage system.
      *
-     * @param string $content
-     * @param string $guid
-     * @param string $jobName  For logging context
-     * @param string $type     Folder scope, e.g. 'receipts'
-     * @param string $extension File extension (pdf|jpg)
-     * @return bool
+     * @param  string  $jobName  For logging context
+     * @param  string  $type  Folder scope, e.g. 'receipts'
+     * @param  string  $extension  File extension (pdf|jpg)
      */
     public function storeDocument(string $content, string $guid, string $jobName, string $type = 'receipts', string $extension = 'pdf'): bool
     {
@@ -74,9 +70,6 @@ class DocumentService
     /**
      * Get a document's content directly.
      *
-     * @param string $guid
-     * @param string $type
-     * @param string $extension
      * @return string|null
      */
     public function getDocument(string $guid, string $type = 'receipts', string $extension = 'pdf')
@@ -108,13 +101,6 @@ class DocumentService
 
     /**
      * Get a secure URL for accessing the document.
-     *
-     * @param string $guid
-     * @param string $jobName
-     * @param string $type
-     * @param string $extension
-     * @param int $expirationMinutes
-     * @return string|null
      */
     public function getSecureUrl(string $guid, string $jobName, string $type = 'receipts', string $extension = 'pdf', int $expirationMinutes = 5): ?string
     {
@@ -162,12 +148,6 @@ class DocumentService
 
     /**
      * Delete a document from storage.
-     *
-     * @param string $guid
-     * @param string $jobName
-     * @param string $type
-     * @param string $extension
-     * @return bool
      */
     public function deleteDocument(string $guid, string $jobName, string $type = 'receipts', string $extension = 'pdf'): bool
     {
@@ -218,5 +198,4 @@ class DocumentService
     {
         return trim("{$type}/{$guid}.{$extension}", '/');
     }
-
 }

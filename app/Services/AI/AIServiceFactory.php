@@ -24,9 +24,8 @@ class AIServiceFactory
     /**
      * Create an AI service (OpenAI only in simplified core).
      *
-     * @param string|null $provider Provider name; defaults to config
-     * @param array $requirements   Reserved for future capability hints
-     * @return AIService
+     * @param  string|null  $provider  Provider name; defaults to config
+     * @param  array  $requirements  Reserved for future capability hints
      */
     public static function create(?string $provider = null, array $requirements = []): AIService
     {

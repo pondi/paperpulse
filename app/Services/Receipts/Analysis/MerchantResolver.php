@@ -11,7 +11,7 @@ class MerchantResolver
     public static function resolve(array $data, ReceiptParserContract $parser, ReceiptEnricherContract $enricher): ?Merchant
     {
         $merchantData = $parser->extractMerchantData($data);
+
         return $enricher->findOrCreateMerchant($merchantData);
     }
 }
-

@@ -167,7 +167,7 @@ class JobServiceProvider extends ServiceProvider
                     $fileName = $details['metadata']['fileName'] ?? null;
                     $fileType = $details['metadata']['fileType'] ?? null;
                     $fileId = $details['metadata']['fileId'] ?? null;
-                    
+
                     // For ProcessPulseDavFile, it IS the parent job
                     if (class_basename($command) === 'ProcessPulseDavFile') {
                         JobHistory::updateOrCreate(

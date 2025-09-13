@@ -19,7 +19,7 @@ class DocumentUploadValidator
 
         $extension = strtolower($uploadedFile->getClientOriginalExtension());
         $supportedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'tiff', 'tif'];
-        if (!in_array($extension, $supportedExtensions)) {
+        if (! in_array($extension, $supportedExtensions)) {
             return [
                 'valid' => false,
                 'error' => "Unsupported file format '{$extension}'. Supported formats: ".implode(', ', $supportedExtensions),
@@ -35,7 +35,7 @@ class DocumentUploadValidator
             'tiff' => ['image/tiff'],
             'tif' => ['image/tiff'],
         ];
-        if (isset($expectedMimeTypes[$extension]) && !in_array($mimeType, $expectedMimeTypes[$extension])) {
+        if (isset($expectedMimeTypes[$extension]) && ! in_array($mimeType, $expectedMimeTypes[$extension])) {
             return [
                 'valid' => false,
                 'error' => "File MIME type '{$mimeType}' doesn't match extension '{$extension}'. File may be corrupted or have wrong extension.",
@@ -62,4 +62,3 @@ class DocumentUploadValidator
         return ['valid' => true, 'error' => null];
     }
 }
-

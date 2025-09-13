@@ -41,7 +41,7 @@ class ReceiptParserService implements ReceiptParserContract
 
         try {
             $options = [];
-            if (!empty($structuredData)) {
+            if (! empty($structuredData)) {
                 $options['structured_data'] = $structuredData;
             }
 
@@ -272,8 +272,9 @@ class ReceiptParserService implements ReceiptParserContract
      */
     protected function parseDateTime(?string $date, ?string $time): ?Carbon
     {
-        if (!$date) {
+        if (! $date) {
             Log::warning('[ReceiptParser] No date provided for parsing');
+
             return null;
         }
 
@@ -315,7 +316,7 @@ class ReceiptParserService implements ReceiptParserContract
         }
 
         // If no format worked, try Carbon's flexible parsing
-        if (!$dateTime) {
+        if (! $dateTime) {
             try {
                 $dateTime = Carbon::parse($date);
                 Log::debug('[ReceiptParser] Used Carbon::parse() for date', [
@@ -327,6 +328,7 @@ class ReceiptParserService implements ReceiptParserContract
                     'date' => $date,
                     'error' => $e->getMessage(),
                 ]);
+
                 return null;
             }
         }
@@ -334,7 +336,7 @@ class ReceiptParserService implements ReceiptParserContract
         // Add time if provided
         if ($time && $dateTime) {
             $timeFormats = ['H:i:s', 'H:i', 'H.i.s', 'H.i'];
-            
+
             foreach ($timeFormats as $timeFormat) {
                 try {
                     $timePart = Carbon::createFromFormat($timeFormat, trim($time));

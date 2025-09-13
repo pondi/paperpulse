@@ -20,6 +20,7 @@ class PendingJobsReader
                     $payload = json_decode($job->payload, true, 512, JSON_THROW_ON_ERROR);
                     if (! isset($payload['data']['command'])) {
                         Log::warning('Invalid job payload structure - missing command', compact('payload'));
+
                         return null;
                     }
 
@@ -47,6 +48,7 @@ class PendingJobsReader
                         'job_id' => $job->id,
                         'payload' => $job->payload ?? null,
                     ]);
+
                     return null;
                 }
             })
@@ -54,4 +56,3 @@ class PendingJobsReader
             ->groupBy('parent_uuid');
     }
 }
-

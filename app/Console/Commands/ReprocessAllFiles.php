@@ -3,8 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Models\File;
-use App\Models\Receipt;
-use App\Models\Document;
 use App\Services\FileProcessingService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -54,7 +52,7 @@ class ReprocessAllFiles extends Command
         $dryRun = $this->option('dry-run');
 
         $this->info('Starting file reprocessing...');
-        
+
         if ($dryRun) {
             $this->warn('DRY RUN MODE - No files will actually be reprocessed');
         }
@@ -64,6 +62,7 @@ class ReprocessAllFiles extends Command
 
         if ($files->isEmpty()) {
             $this->info('No files found to reprocess.');
+
             return 0;
         }
 
@@ -79,17 +78,19 @@ class ReprocessAllFiles extends Command
         foreach ($files as $file) {
             try {
                 $progressBar->advance();
-                
+
                 if ($dryRun) {
                     $this->line("\nWould reprocess: {$file->original_filename} (ID: {$file->id}, Type: {$file->file_type})");
                     $successful++;
+
                     continue;
                 }
 
                 // Check if file has content in storage
-                if (!$file->file_path) {
+                if (! $file->file_path) {
                     $this->warn("\nSkipping file without storage path: {$file->original_filename}");
                     $skipped++;
+
                     continue;
                 }
 
@@ -104,10 +105,11 @@ class ReprocessAllFiles extends Command
                 ];
 
                 // Load file content from storage
-                $storagePath = storage_path('app/uploads/' . $file->file_guid . '.' . $fileData['extension']);
-                if (!file_exists($storagePath)) {
+                $storagePath = storage_path('app/uploads/'.$file->file_guid.'.'.$fileData['extension']);
+                if (! file_exists($storagePath)) {
                     $this->warn("\nFile not found in local storage: {$storagePath}");
                     $skipped++;
+
                     continue;
                 }
 
@@ -117,7 +119,7 @@ class ReprocessAllFiles extends Command
                 $jobId = (string) Str::uuid();
                 $metadata = [
                     'jobId' => $jobId,
-                    'jobName' => 'Reprocess: ' . $file->original_filename,
+                    'jobName' => 'Reprocess: '.$file->original_filename,
                     'originalFileId' => $file->id,
                     'reprocessedAt' => now()->toIso8601String(),
                 ];
@@ -139,7 +141,7 @@ class ReprocessAllFiles extends Command
                 }
 
             } catch (\Exception $e) {
-                $this->error("\n✗ Error reprocessing {$file->original_filename}: " . $e->getMessage());
+                $this->error("\n✗ Error reprocessing {$file->original_filename}: ".$e->getMessage());
                 Log::error('File reprocessing failed', [
                     'file_id' => $file->id,
                     'error' => $e->getMessage(),
@@ -187,7 +189,7 @@ class ReprocessAllFiles extends Command
         if ($failedOnly) {
             // Get files that don't have successful receipts/documents
             $query->whereDoesntHave('receipt')
-                  ->whereDoesntHave('document');
+                ->whereDoesntHave('document');
         }
 
         // Apply limit

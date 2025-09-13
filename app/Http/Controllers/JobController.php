@@ -6,14 +6,11 @@ use App\Jobs\System\RestartJobChain;
 use App\Models\JobHistory;
 use App\Models\PulseDavFile;
 use App\Services\JobChainService;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -215,7 +212,7 @@ class JobController extends Controller
             }
             abort(403, 'Unauthorized');
         }
-        
+
         try {
             // Validate that the job exists and can be restarted
             $jobChainService = app(JobChainService::class);
@@ -228,6 +225,7 @@ class JobController extends Controller
                         'message' => 'Job chain not found',
                     ], 404);
                 }
+
                 return back()->with('error', 'Job chain not found');
             }
 
@@ -238,6 +236,7 @@ class JobController extends Controller
                         'message' => 'Job chain cannot be restarted - no failed tasks found',
                     ], 400);
                 }
+
                 return back()->with('error', 'Job chain cannot be restarted - no failed tasks found');
             }
 

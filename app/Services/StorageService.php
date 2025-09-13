@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
+use App\Services\Files\StoragePathBuilder;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use App\Services\Files\StoragePathBuilder;
 
 /**
  * Facade over dual-bucket storage operations (incoming + permanent).
@@ -50,10 +50,10 @@ class StorageService
     /**
      * Upload a file to the incoming bucket.
      *
-     * @param string $content   File content
-     * @param int $userId       User ID for scoping
-     * @param string $filename  Original filename
-     * @return string           Path to the uploaded file
+     * @param  string  $content  File content
+     * @param  int  $userId  User ID for scoping
+     * @param  string  $filename  Original filename
+     * @return string Path to the uploaded file
      */
     public function uploadToIncoming(string $content, int $userId, string $filename): string
     {
@@ -88,12 +88,12 @@ class StorageService
     /**
      * Move a file from incoming to storage bucket.
      *
-     * @param string $incomingPath  Path in incoming bucket
-     * @param int $userId           User ID for scoping
-     * @param string $guid          File GUID for unique path
-     * @param string $fileType      'receipt' or 'document'
-     * @param string $extension     File extension
-     * @return string               Path in storage bucket
+     * @param  string  $incomingPath  Path in incoming bucket
+     * @param  int  $userId  User ID for scoping
+     * @param  string  $guid  File GUID for unique path
+     * @param  string  $fileType  'receipt' or 'document'
+     * @param  string  $extension  File extension
+     * @return string Path in storage bucket
      */
     public function moveToStorage(string $incomingPath, int $userId, string $guid, string $fileType, string $extension): string
     {
@@ -141,13 +141,13 @@ class StorageService
     /**
      * Store a file directly to the storage bucket.
      *
-     * @param string $content   File content
-     * @param int $userId       User ID for scoping
-     * @param string $guid      File GUID for unique path
-     * @param string $fileType  'receipt' or 'document'
-     * @param string $variant   'original', 'processed', etc.
-     * @param string $extension File extension
-     * @return string           Path in storage bucket
+     * @param  string  $content  File content
+     * @param  int  $userId  User ID for scoping
+     * @param  string  $guid  File GUID for unique path
+     * @param  string  $fileType  'receipt' or 'document'
+     * @param  string  $variant  'original', 'processed', etc.
+     * @param  string  $extension  File extension
+     * @return string Path in storage bucket
      */
     public function storeFile(string $content, int $userId, string $guid, string $fileType, string $variant, string $extension): string
     {
@@ -183,7 +183,7 @@ class StorageService
     /**
      * Get a file from the storage bucket.
      *
-     * @param string $path Path in storage bucket
+     * @param  string  $path  Path in storage bucket
      * @return string|null File content
      */
     public function getFile(string $path): ?string
@@ -211,12 +211,9 @@ class StorageService
     /**
      * Get a file's content by user and GUID.
      *
-     * @param int $userId
-     * @param string $guid
-     * @param string $fileType 'receipt' or 'document'
-     * @param string $variant  'original', 'processed', etc.
-     * @param string $extension File extension
-     * @return string|null
+     * @param  string  $fileType  'receipt' or 'document'
+     * @param  string  $variant  'original', 'processed', etc.
+     * @param  string  $extension  File extension
      */
     public function getFileByUserAndGuid(int $userId, string $guid, string $fileType, string $variant, string $extension): ?string
     {
@@ -227,10 +224,6 @@ class StorageService
 
     /**
      * Get a temporary URL for a file in the storage bucket.
-     *
-     * @param string $path
-     * @param int $expirationMinutes
-     * @return string|null
      */
     public function getTemporaryUrl(string $path, int $expirationMinutes = 60): ?string
     {
@@ -256,8 +249,6 @@ class StorageService
 
     /**
      * Delete a file from the storage bucket.
-     *
-     * @param string $path
      */
     public function deleteFile(string $path): bool
     {
@@ -290,7 +281,6 @@ class StorageService
     /**
      * List files in the incoming bucket for a user.
      *
-     * @param int $userId
      * @return array<string>
      */
     public function listIncomingFiles(int $userId): array
@@ -319,10 +309,6 @@ class StorageService
 
     /**
      * Generate a path for the incoming bucket.
-     *
-     * @param int $userId
-     * @param string $filename
-     * @return string
      */
     protected function generateIncomingPath(int $userId, string $filename): string
     {
@@ -332,12 +318,8 @@ class StorageService
     /**
      * Generate a path for the storage bucket.
      *
-     * @param int $userId
-     * @param string $guid
-     * @param string $fileType 'receipt' or 'document'
-     * @param string $variant  'original', 'processed', etc.
-     * @param string $extension
-     * @return string
+     * @param  string  $fileType  'receipt' or 'document'
+     * @param  string  $variant  'original', 'processed', etc.
      */
     protected function generateStoragePath(int $userId, string $guid, string $fileType, string $variant, string $extension): string
     {

@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Files;
 
 use App\Http\Controllers\Controller;
 use App\Services\ConversionService;
+use App\Services\Documents\DocumentUploadHandler;
+use App\Services\Documents\DocumentUploadValidator;
 use App\Services\FileProcessingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use App\Services\Documents\DocumentUploadValidator;
-use App\Services\Documents\DocumentUploadHandler;
 
 class FileProcessingController extends Controller
 {
@@ -51,10 +51,11 @@ class FileProcessingController extends Controller
 
             if (! $uploadedFiles) {
                 Log::error('(FileProcessingController) [store] - No files found in request');
+
                 return back()->with('error', 'No files were uploaded. Please select files and try again.');
             }
 
-            if (!is_array($uploadedFiles)) {
+            if (! is_array($uploadedFiles)) {
                 $uploadedFiles = [$uploadedFiles];
             }
 
@@ -65,9 +66,10 @@ class FileProcessingController extends Controller
                 $fileProcessingService
             );
 
-            if (!empty($result['errors'])) {
+            if (! empty($result['errors'])) {
                 $firstError = reset($result['errors']);
                 $firstFile = array_key_first($result['errors']);
+
                 return back()->with('error', 'File validation failed for "'.$firstFile.'": '.$firstError);
             }
 

@@ -9,11 +9,11 @@ class ParsedDataValidator
     public static function validateAndSanitize(array $analysisData, int $fileId, ReceiptValidatorContract $validator): array
     {
         $validation = $validator->validateParsedData($analysisData, $fileId);
-        if (!$validation['valid']) {
+        if (! $validation['valid']) {
             throw new \Exception('Receipt data validation failed: '.implode(', ', $validation['errors']));
         }
 
-        if (!$validator->hasEssentialData($analysisData)) {
+        if (! $validator->hasEssentialData($analysisData)) {
             throw new \Exception('AI analysis failed to extract essential merchant information');
         }
 
@@ -22,4 +22,3 @@ class ParsedDataValidator
         return [$data, $validation['warnings'] ?? []];
     }
 }
-

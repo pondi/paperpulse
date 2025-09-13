@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('file_name')->nullable()->after('metadata');
             $table->string('file_type')->nullable()->after('file_name');
             $table->integer('file_id')->nullable()->after('file_type');
-            
+
             $table->index('file_id');
             $table->index('file_type');
         });

@@ -6,7 +6,7 @@ class JobOrder
 {
     /**
      * Document processing job chain order
-     * 
+     *
      * 1. ProcessDocument     - Initial processing, file validation
      * 2. AnalyzeDocument     - OCR, text extraction, analysis
      * 3. ApplyTags          - Auto-tag based on analysis
@@ -14,14 +14,14 @@ class JobOrder
      */
     const DOCUMENT_CHAIN = [
         'ProcessDocument' => 1,
-        'AnalyzeDocument' => 2, 
+        'AnalyzeDocument' => 2,
         'ApplyTags' => 3,
         'DeleteWorkingFiles' => 4,
     ];
 
     /**
      * Receipt processing job chain order
-     * 
+     *
      * 1. ProcessReceipt      - OCR and basic data extraction
      * 2. MatchMerchant       - Merchant identification and matching
      * 3. ApplyTags          - Category and tag assignment
@@ -30,13 +30,13 @@ class JobOrder
     const RECEIPT_CHAIN = [
         'ProcessReceipt' => 1,
         'MatchMerchant' => 2,
-        'ApplyTags' => 3, 
+        'ApplyTags' => 3,
         'DeleteWorkingFiles' => 4,
     ];
 
     /**
      * PulseDav sync job chain order
-     * 
+     *
      * 1. SyncPulseDavFiles         - Discover and sync files
      * 2. ProcessPulseDavFile       - Process individual files
      * 3. UpdatePulseDavFileStatus  - Update processing status
@@ -61,7 +61,7 @@ class JobOrder
      */
     public static function getChainOrder(string $domain): array
     {
-        return match($domain) {
+        return match ($domain) {
             'document' => self::DOCUMENT_CHAIN,
             'receipt' => self::RECEIPT_CHAIN,
             'pulsedav' => self::PULSEDAV_CHAIN,
@@ -76,15 +76,17 @@ class JobOrder
     {
         $chain = self::getChainOrder($domain);
         $currentOrder = $chain[$currentJob] ?? null;
-        
-        if ($currentOrder === null) return null;
-        
+
+        if ($currentOrder === null) {
+            return null;
+        }
+
         foreach ($chain as $job => $order) {
             if ($order === $currentOrder + 1) {
                 return $job;
             }
         }
-        
+
         return null;
     }
 

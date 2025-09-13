@@ -21,8 +21,8 @@ use Illuminate\Support\Str;
  * - Automatic JobHistory create/update with progress + status
  * - Centralized error handling and parent status aggregation
  *
- * @property string $jobID   Parent job chain identifier
- * @property string|null $uuid  Unique identifier for this task
+ * @property string $jobID Parent job chain identifier
+ * @property string|null $uuid Unique identifier for this task
  * @property string $jobName Human-readable job name for UI/logs
  */
 abstract class BaseJob implements ShouldQueue
@@ -47,7 +47,7 @@ abstract class BaseJob implements ShouldQueue
     /**
      * Create a new job instance.
      *
-     * @param string $jobID Non-empty parent job chain ID
+     * @param  string  $jobID  Non-empty parent job chain ID
      */
     public function __construct(string $jobID)
     {
@@ -84,8 +84,6 @@ abstract class BaseJob implements ShouldQueue
 
     /**
      * Execute the job. Handles JobHistory lifecycle and error tracking.
-     *
-     * @return void
      */
     final public function handle(): void
     {
@@ -135,9 +133,6 @@ abstract class BaseJob implements ShouldQueue
 
     /**
      * Store metadata for this job.
-     *
-     * @param array $metadata
-     * @return void
      */
     protected function storeMetadata(array $metadata): void
     {
@@ -158,8 +153,6 @@ abstract class BaseJob implements ShouldQueue
 
     /**
      * Get metadata for this job.
-     *
-     * @return array|null
      */
     protected function getMetadata(): ?array
     {
@@ -188,8 +181,7 @@ abstract class BaseJob implements ShouldQueue
     /**
      * Update the job's progress.
      *
-     * @param int $progress 0-100
-     * @return void
+     * @param  int  $progress  0-100
      */
     protected function updateProgress(int $progress): void
     {
@@ -203,8 +195,6 @@ abstract class BaseJob implements ShouldQueue
 
     /**
      * Create or update job history record.
-     *
-     * @return void
      */
     protected function createOrUpdateJobHistory(): void
     {
@@ -357,9 +347,6 @@ abstract class BaseJob implements ShouldQueue
 
     /**
      * Mark the job as failed and update parent status.
-     *
-     * @param \Throwable $exception
-     * @return void
      */
     public function failed(\Throwable $exception): void
     {

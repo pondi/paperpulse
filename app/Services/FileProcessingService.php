@@ -5,23 +5,14 @@ namespace App\Services;
 use App\Contracts\Services\FileMetadataContract;
 use App\Contracts\Services\FileStorageContract;
 use App\Contracts\Services\FileValidationContract;
-use App\Jobs\Documents\AnalyzeDocument;
-use App\Jobs\Documents\ProcessDocument;
 use App\Jobs\Files\ProcessFile;
-use App\Jobs\Maintenance\DeleteWorkingFiles;
-use App\Jobs\PulseDav\UpdatePulseDavFileStatus;
-use App\Jobs\Receipts\MatchMerchant;
-use App\Jobs\Receipts\ProcessReceipt;
-use App\Jobs\System\ApplyTags;
 use App\Models\File;
+use App\Services\Files\FileJobChainDispatcher;
 use Exception;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-
-use App\Services\Files\FileJobChainDispatcher;
 
 /**
  * Orchestrates end-to-end file ingestion for receipts and documents.
@@ -41,6 +32,7 @@ class FileProcessingService
     protected FileValidationContract $fileValidation;
 
     protected TextExtractionService $textExtractionService;
+
     protected FileJobChainDispatcher $jobChainDispatcher;
 
     public function __construct(
@@ -61,11 +53,12 @@ class FileProcessingService
      * Process a file from any source (upload, PulseDav, etc.).
      * This is the unified entrypoint all file processing should use.
      *
-     * @param array $fileData   Canonical file data (content, fileName, extension, size, etc.)
-     * @param string $fileType  Either 'receipt' or 'document'
-     * @param int $userId       Owner of the file
-     * @param array $metadata   Optional metadata (e.g. jobId, jobName, source, tagIds)
+     * @param  array  $fileData  Canonical file data (content, fileName, extension, size, etc.)
+     * @param  string  $fileType  Either 'receipt' or 'document'
+     * @param  int  $userId  Owner of the file
+     * @param  array  $metadata  Optional metadata (e.g. jobId, jobName, source, tagIds)
      * @return array{success:bool,fileId:int,fileGuid:string,jobId:string,jobName:string}
+     *
      * @throws Exception
      */
     public function processFile(array $fileData, string $fileType, int $userId, array $metadata = []): array
@@ -156,11 +149,9 @@ class FileProcessingService
      * Process an uploaded file (receipt or document).
      * Delegates to the unified processFile method.
      *
-     * @param UploadedFile $uploadedFile
-     * @param string $fileType   Either 'receipt' or 'document'
-     * @param int $userId
-     * @param array $metadata
+     * @param  string  $fileType  Either 'receipt' or 'document'
      * @return array{success:bool,fileId:int,fileGuid:string,jobId:string,jobName:string}
+     *
      * @throws Exception
      */
     public function processUpload(UploadedFile $uploadedFile, string $fileType, int $userId, array $metadata = []): array
@@ -192,11 +183,11 @@ class FileProcessingService
      * Process a PulseDav file from the incoming bucket.
      * Delegates to the unified processFile method.
      *
-     * @param string $incomingPath  Path within the 'pulsedav' disk
-     * @param string $fileType      Either 'receipt' or 'document'
-     * @param int $userId
-     * @param array $metadata       Additional metadata to carry through the chain
+     * @param  string  $incomingPath  Path within the 'pulsedav' disk
+     * @param  string  $fileType  Either 'receipt' or 'document'
+     * @param  array  $metadata  Additional metadata to carry through the chain
      * @return array{success:bool,fileId:int,fileGuid:string,jobId:string,jobName:string}
+     *
      * @throws Exception
      */
     public function processPulseDavFile(string $incomingPath, string $fileType, int $userId, array $metadata = []): array
@@ -258,14 +249,10 @@ class FileProcessingService
         }
     }
 
-    
-
     /**
      * Validate file type is supported for the given extension.
      *
-     * @param string $extension
-     * @param string $fileType  Either 'receipt' or 'document'
-     * @return bool
+     * @param  string  $fileType  Either 'receipt' or 'document'
      */
     public function isSupported(string $extension, string $fileType): bool
     {
@@ -275,8 +262,7 @@ class FileProcessingService
     /**
      * Get maximum file size for a file type, in bytes.
      *
-     * @param string $fileType Either 'receipt' or 'document'
-     * @return int
+     * @param  string  $fileType  Either 'receipt' or 'document'
      */
     public function getMaxFileSize(string $fileType): int
     {

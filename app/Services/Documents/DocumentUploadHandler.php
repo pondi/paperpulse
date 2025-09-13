@@ -14,10 +14,8 @@ class DocumentUploadHandler
     /**
      * Validate and process uploaded files via FileProcessingService.
      *
-     * @param iterable $uploadedFiles Iterable of UploadedFile
-     * @param string $fileType        'receipt' or 'document'
-     * @param int $userId
-     * @param FileProcessingService $fileProcessingService
+     * @param  iterable  $uploadedFiles  Iterable of UploadedFile
+     * @param  string  $fileType  'receipt' or 'document'
      * @return array{processed:array,errors:array}
      */
     public static function processUploads(iterable $uploadedFiles, string $fileType, int $userId, FileProcessingService $fileProcessingService): array
@@ -26,18 +24,19 @@ class DocumentUploadHandler
         $errors = [];
 
         foreach ($uploadedFiles as $uploadedFile) {
-            if (!($uploadedFile instanceof UploadedFile)) {
+            if (! ($uploadedFile instanceof UploadedFile)) {
                 continue;
             }
 
             $validation = DocumentUploadValidator::validate($uploadedFile);
-            if (!$validation['valid']) {
+            if (! $validation['valid']) {
                 $filename = $uploadedFile->getClientOriginalName();
                 $errors[$filename] = $validation['error'];
                 Log::error('File validation failed', [
                     'filename' => $filename,
                     'error' => $validation['error'],
                 ]);
+
                 continue;
             }
 

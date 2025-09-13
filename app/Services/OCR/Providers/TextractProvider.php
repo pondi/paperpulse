@@ -4,15 +4,15 @@ namespace App\Services\OCR\Providers;
 
 use App\Services\OCR\OCRResult;
 use App\Services\OCR\OCRService;
+use App\Services\OCR\Textract\TextractFileValidator;
+use App\Services\OCR\Textract\TextractPdfImageProcessor;
+use App\Services\OCR\Textract\TextractResponseParser;
 use App\Services\StorageService;
 use Aws\Textract\TextractClient;
+// PDF handling is delegated to TextractPdfImageProcessor
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-// PDF handling is delegated to TextractPdfImageProcessor
-use App\Services\OCR\Textract\TextractFileValidator;
-use App\Services\OCR\Textract\TextractResponseParser;
-use App\Services\OCR\Textract\TextractPdfImageProcessor;
 
 class TextractProvider implements OCRService
 {
@@ -90,7 +90,7 @@ class TextractProvider implements OCRService
                     if (is_array($errorMsg)) {
                         $errorMsg = json_encode($errorMsg);
                     }
-                    throw new Exception("Error during text extraction: " . $errorMsg);
+                    throw new Exception('Error during text extraction: '.$errorMsg);
                 }
 
                 $processingTime = (int) ((microtime(true) - $startTime) * 1000);
@@ -105,7 +105,7 @@ class TextractProvider implements OCRService
                     processingTime: $processingTime,
                     structuredData: [
                         'forms' => $result['forms'] ?? [],
-                        'tables' => $result['tables'] ?? []
+                        'tables' => $result['tables'] ?? [],
                     ]
                 );
 
@@ -130,7 +130,7 @@ class TextractProvider implements OCRService
             if (is_array($errorMessage)) {
                 $errorMessage = json_encode($errorMessage);
             }
-            
+
             Log::error('[TextractProvider] Text extraction failed', [
                 'error' => $errorMessage,
                 'file_guid' => $fileGuid,
@@ -145,7 +145,7 @@ class TextractProvider implements OCRService
     {
         // Use analyzeDocument for receipts to get forms/tables data
         $featureTypes = ['TABLES', 'FORMS'];
-        
+
         $result = $this->client->analyzeDocument([
             'Document' => [
                 'S3Object' => [
@@ -214,7 +214,7 @@ class TextractProvider implements OCRService
                 Log::info('[TextractProvider] Unsupported PDF format detected, attempting conversion to images', [
                     's3_path' => $s3Path,
                 ]);
-                
+
                 // Try to convert PDF to images and process them
                 return TextractPdfImageProcessor::process($this->client, $this->bucket, $s3Path, $options);
             }
@@ -244,7 +244,7 @@ class TextractProvider implements OCRService
     {
         return TextractPdfImageProcessor::process($this->client, $this->bucket, $s3Path, $options);
     }
-    
+
     protected function validateFile(string $filePath): array
     {
         return TextractFileValidator::validate($filePath, $this->getSupportedExtensions());

@@ -10,11 +10,9 @@ class PromptContentParser
     /**
      * Parse Blade output into system/user/assistant message array.
      *
-     * @param string $content Rendered Blade content
-     * @param callable $schemaResolver function(string,array):array
-     * @param callable $optionsResolver function(string,array):array
-     * @param string $templateName
-     * @param array $options
+     * @param  string  $content  Rendered Blade content
+     * @param  callable  $schemaResolver  function(string,array):array
+     * @param  callable  $optionsResolver  function(string,array):array
      * @return array{messages:array,template_name:string,schema:array,options:array}
      */
     public static function parse(string $content, callable $schemaResolver, callable $optionsResolver, string $templateName, array $options): array
@@ -35,13 +33,13 @@ class PromptContentParser
         }
 
         $messages = [];
-        if (!empty($sections['system'])) {
+        if (! empty($sections['system'])) {
             $messages[] = ['role' => 'system', 'content' => $sections['system']];
         }
-        if (!empty($sections['user'])) {
+        if (! empty($sections['user'])) {
             $messages[] = ['role' => 'user', 'content' => $sections['user']];
         }
-        if (!empty($sections['assistant'])) {
+        if (! empty($sections['assistant'])) {
             $messages[] = ['role' => 'assistant', 'content' => $sections['assistant']];
         }
 

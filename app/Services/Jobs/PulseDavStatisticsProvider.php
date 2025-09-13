@@ -9,6 +9,7 @@ class PulseDavStatisticsProvider
     public static function forUser(int $userId): array
     {
         $query = PulseDavFile::where('user_id', $userId);
+
         return [
             'total' => (clone $query)->count(),
             'pending' => (clone $query)->where('status', 'pending')->count(),
@@ -18,4 +19,3 @@ class PulseDavStatisticsProvider
         ];
     }
 }
-

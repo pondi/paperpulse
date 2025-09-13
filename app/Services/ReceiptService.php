@@ -6,7 +6,6 @@ use App\Models\Receipt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use App\Services\StorageService;
 
 /**
  * High-level receipt processing:
@@ -40,9 +39,7 @@ class ReceiptService
     /**
      * Process receipt data from a file.
      *
-     * @param int $fileId
-     * @param string $fileGuid
-     * @param string $filePath Absolute working path
+     * @param  string  $filePath  Absolute working path
      * @return array{receiptId:int,merchantName:string,merchantAddress:string,merchantVatID:string}
      */
     public function processReceiptData(int $fileId, string $fileGuid, string $filePath): array
@@ -173,14 +170,6 @@ class ReceiptService
 
     /**
      * Persist OCR artifacts (text, structured data, blocks, metadata) to long-term storage.
-     *
-     * @param int $userId
-     * @param string $fileGuid
-     * @param string $text
-     * @param array $structuredData
-     * @param array $blocks
-     * @param array $ocrMetadata
-     * @return void
      */
     protected function persistOcrArtifacts(int $userId, string $fileGuid, string $text, array $structuredData, array $blocks, array $ocrMetadata): void
     {
@@ -188,7 +177,7 @@ class ReceiptService
             $paths = [];
 
             // Store plain OCR text
-            if (!empty($text)) {
+            if (! empty($text)) {
                 $paths['ocr_text'] = $this->storageService->storeFile($text, $userId, $fileGuid, 'receipt', 'ocr_text', 'txt');
             }
 
@@ -196,12 +185,12 @@ class ReceiptService
             $paths['ocr_structured'] = $this->storageService->storeFile(json_encode($structuredData, JSON_PRETTY_PRINT), $userId, $fileGuid, 'receipt', 'ocr_structured', 'json');
 
             // Store raw blocks (closest to original Textract response content)
-            if (!empty($blocks)) {
+            if (! empty($blocks)) {
                 $paths['ocr_blocks'] = $this->storageService->storeFile(json_encode($blocks, JSON_PRETTY_PRINT), $userId, $fileGuid, 'receipt', 'ocr_blocks', 'json');
             }
 
             // Store OCR metadata if present (e.g., counts, job_id)
-            if (!empty($ocrMetadata)) {
+            if (! empty($ocrMetadata)) {
                 $paths['ocr_meta'] = $this->storageService->storeFile(json_encode($ocrMetadata, JSON_PRETTY_PRINT), $userId, $fileGuid, 'receipt', 'ocr_meta', 'json');
             }
 
@@ -223,11 +212,6 @@ class ReceiptService
 
     /**
      * Persist AI analysis response (as JSON string) to long-term storage and reference on File.meta.
-     *
-     * @param int $userId
-     * @param string $fileGuid
-     * @param string|null $receiptDataJson
-     * @return void
      */
     protected function persistAiArtifacts(int $userId, string $fileGuid, ?string $receiptDataJson): void
     {

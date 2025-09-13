@@ -84,7 +84,7 @@ class AIDataNormalizer
         }
 
         // Ensure tax_amount is always present in totals
-        if (isset($normalized['totals']) && !isset($normalized['totals']['tax_amount'])) {
+        if (isset($normalized['totals']) && ! isset($normalized['totals']['tax_amount'])) {
             $normalized['totals']['tax_amount'] = 0.0;
         }
 
@@ -116,14 +116,14 @@ class AIDataNormalizer
         // Normalize item vendor fields (brand -> vendor)
         if (isset($normalized['items']) && is_array($normalized['items'])) {
             foreach ($normalized['items'] as $idx => $item) {
-                if (isset($item['brand']) && !isset($item['vendor'])) {
+                if (isset($item['brand']) && ! isset($item['vendor'])) {
                     $normalized['items'][$idx]['vendor'] = $item['brand'];
                 }
             }
         } elseif (isset($data['items']) && is_array($data['items'])) {
             $normalized['items'] = $data['items'];
             foreach ($normalized['items'] as $idx => $item) {
-                if (isset($item['brand']) && !isset($item['vendor'])) {
+                if (isset($item['brand']) && ! isset($item['vendor'])) {
                     $normalized['items'][$idx]['vendor'] = $item['brand'];
                 }
             }

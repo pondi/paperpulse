@@ -29,11 +29,10 @@ class JobParentStatusCalculator
         if (in_array('failed', $effectiveStatuses)) {
             return 'failed';
         }
-        if (!empty($effectiveStatuses) && collect($effectiveStatuses)->every(fn($s) => $s === 'completed')) {
+        if (! empty($effectiveStatuses) && collect($effectiveStatuses)->every(fn ($s) => $s === 'completed')) {
             return 'completed';
         }
 
         return $parentJob->status;
     }
 }
-

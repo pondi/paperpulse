@@ -140,8 +140,8 @@ class Receipt extends Model
                 ];
             })->toArray(),
             'vendors' => $this->lineItems
-                ->filter(fn($li) => !empty($li->vendor?->name))
-                ->map(fn($li) => $li->vendor->name)
+                ->filter(fn ($li) => ! empty($li->vendor?->name))
+                ->map(fn ($li) => $li->vendor->name)
                 ->unique()
                 ->values()
                 ->toArray(),

@@ -6,25 +6,28 @@ use App\Http\Controllers\BaseResourceController;
 use App\Models\Receipt;
 use App\Models\Tag;
 use App\Services\DocumentService;
-use App\Services\ReceiptService;
 use App\Services\Receipts\ReceiptTransformer;
-use App\Traits\ShareableController;
+use App\Services\ReceiptService;
 use App\Traits\SanitizesInput;
+use App\Traits\ShareableController;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ReceiptController extends BaseResourceController
 {
-    use ShareableController, SanitizesInput;
+    use SanitizesInput, ShareableController;
 
     protected string $model = Receipt::class;
+
     protected string $resource = 'Receipt';
 
     protected array $indexWith = ['merchant', 'file', 'lineItems', 'category', 'tags'];
+
     protected array $showWith = ['merchant', 'file', 'lineItems', 'tags', 'sharedUsers'];
 
     protected array $searchableFields = ['receipt_description'];
+
     protected array $filterableFields = ['category_id', 'merchant_id'];
 
     protected array $validationRules = [
@@ -52,7 +55,7 @@ class ReceiptController extends BaseResourceController
     public function show($id): Response
     {
         $receipt = $this->model::with($this->showWith)->findOrFail($id);
-        
+
         $this->authorize('view', $receipt);
 
         return Inertia::render("{$this->resource}/Show", [
@@ -95,7 +98,7 @@ class ReceiptController extends BaseResourceController
             ->get();
 
         return inertia("{$this->resource}/Index", [
-            'receipts' => $receipts->through(fn($receipt) => ReceiptTransformer::forIndex($receipt))->items(),
+            'receipts' => $receipts->through(fn ($receipt) => ReceiptTransformer::forIndex($receipt))->items(),
             'categories' => $categories,
             'pagination' => [
                 'current_page' => $receipts->currentPage(),
@@ -144,6 +147,11 @@ class ReceiptController extends BaseResourceController
             unset($validated['tags']);
         }
 
+        // Clear date update flag if date was updated
+        if (isset($validated['receipt_date']) && \App\Services\Receipts\Analysis\DateUpdateNotifier::needsDateUpdate($receipt)) {
+            \App\Services\Receipts\Analysis\DateUpdateNotifier::clearDateUpdateFlag($receipt);
+        }
+
         return $validated;
     }
 
@@ -153,8 +161,8 @@ class ReceiptController extends BaseResourceController
     protected function beforeDestroy($receipt): void
     {
         $receiptService = app(ReceiptService::class);
-        
-        if (!$receiptService->deleteReceipt($receipt)) {
+
+        if (! $receiptService->deleteReceipt($receipt)) {
             throw new \Exception('Could not delete the receipt');
         }
     }
@@ -190,7 +198,7 @@ class ReceiptController extends BaseResourceController
     {
         $this->authorize('view', $receipt);
 
-        if (!$receipt->file || !$receipt->file->guid) {
+        if (! $receipt->file || ! $receipt->file->guid) {
             abort(404);
         }
 
@@ -210,7 +218,7 @@ class ReceiptController extends BaseResourceController
     {
         $this->authorize('view', $receipt);
 
-        if (!$receipt->file || !$receipt->file->guid) {
+        if (! $receipt->file || ! $receipt->file->guid) {
             abort(404);
         }
 
@@ -269,7 +277,7 @@ class ReceiptController extends BaseResourceController
             ->where('user_id', auth()->id())
             ->exists();
 
-        if (!$hasAccess) {
+        if (! $hasAccess) {
             abort(403, 'Unauthorized access to merchant');
         }
 

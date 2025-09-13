@@ -64,6 +64,7 @@ class TotalsCalculator
                     'percent_difference' => $percentDifference * 100,
                     'valid_items_count' => $validItemsCount,
                 ]);
+
                 return ['total_amount' => $aiTotal, 'tax_amount' => $aiTax];
             }
 
@@ -75,6 +76,7 @@ class TotalsCalculator
                 'using' => 'calculated_total',
                 'valid_items_count' => $validItemsCount,
             ]);
+
             return ['total_amount' => $calculatedTotal, 'tax_amount' => $aiTax];
         }
 
@@ -88,4 +90,3 @@ class TotalsCalculator
         return ['total_amount' => $aiTotal, 'tax_amount' => $aiTax];
     }
 }
-

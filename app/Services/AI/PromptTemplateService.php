@@ -2,14 +2,14 @@
 
 namespace App\Services\AI;
 
+use App\Services\AI\Prompt\FallbackPromptProvider;
+use App\Services\AI\Prompt\PromptContentParser;
+use App\Services\AI\Prompt\Schema\PromptSchemaResolver;
+use App\Services\AI\Prompt\TemplateOptionsProvider;
+use App\Services\AI\Prompt\TemplatePathResolver;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
-use App\Services\AI\Prompt\TemplatePathResolver;
-use App\Services\AI\Prompt\PromptContentParser;
-use App\Services\AI\Prompt\FallbackPromptProvider;
-use App\Services\AI\Prompt\TemplateOptionsProvider;
-use App\Services\AI\Prompt\Schema\PromptSchemaResolver;
 
 /**
  * Compiles Blade-based prompt templates and resolves schema/options.
@@ -35,9 +35,8 @@ class PromptTemplateService
     /**
      * Get compiled prompt for a template.
      *
-     * @param string $templateName
-     * @param array $data     Template variables
-     * @param array $options  Provider/model/options hints
+     * @param  array  $data  Template variables
+     * @param  array  $options  Provider/model/options hints
      * @return array{messages:array,template_name:string,schema:array,options:array}
      */
     public function getPrompt(string $templateName, array $data = [], array $options = []): array
@@ -64,8 +63,8 @@ class PromptTemplateService
             // Parse the rendered content into system and user messages
             return PromptContentParser::parse(
                 $renderedContent,
-                fn(string $name, array $opts) => $this->getSchema($name, $opts),
-                fn(string $name, array $opts) => $this->getTemplateOptions($name, $opts),
+                fn (string $name, array $opts) => $this->getSchema($name, $opts),
+                fn (string $name, array $opts) => $this->getTemplateOptions($name, $opts),
                 $templateName,
                 $options
             );

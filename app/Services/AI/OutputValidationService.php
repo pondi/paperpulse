@@ -25,11 +25,7 @@ class OutputValidationService
     /**
      * Validate AI output against schema and business rules.
      *
-     * @param array $data
-     * @param string $type    'receipt' or 'document'
-     * @param array $schema
-     * @param array $options
-     * @return ValidationResult
+     * @param  string  $type  'receipt' or 'document'
      */
     public function validateOutput(array $data, string $type, array $schema = [], array $options = []): ValidationResult
     {

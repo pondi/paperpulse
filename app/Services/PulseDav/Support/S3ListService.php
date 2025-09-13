@@ -13,7 +13,9 @@ class S3ListService
             $files = [];
             if (isset($objects['Contents'])) {
                 foreach ($objects['Contents'] as $object) {
-                    if (substr($object['Key'], -1) === '/') { continue; }
+                    if (substr($object['Key'], -1) === '/') {
+                        continue;
+                    }
                     $files[] = [
                         's3_path' => $object['Key'],
                         'filename' => basename($object['Key']),
@@ -22,9 +24,11 @@ class S3ListService
                     ];
                 }
             }
+
             return $files;
         } catch (\Exception $e) {
             Log::error('Failed to list S3 files', ['prefix' => $prefix, 'error' => $e->getMessage()]);
+
             return [];
         }
     }
@@ -40,7 +44,9 @@ class S3ListService
                 foreach ($objects['Contents'] as $object) {
                     $key = $object['Key'];
                     $relativePath = str_replace($prefix, '', $key);
-                    if ($relativePath === '') { continue; }
+                    if ($relativePath === '') {
+                        continue;
+                    }
 
                     $parts = explode('/', $relativePath);
                     $currentPath = '';
@@ -78,8 +84,8 @@ class S3ListService
             return array_merge(array_values($folders), $items);
         } catch (\Exception $e) {
             Log::error('Failed to list S3 files with folders', ['prefix' => $prefix, 'error' => $e->getMessage()]);
+
             return [];
         }
     }
 }
-

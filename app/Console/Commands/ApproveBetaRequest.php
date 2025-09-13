@@ -39,16 +39,19 @@ class ApproveBetaRequest extends Command
 
         if (! $betaRequest) {
             $this->error("No beta request found for email: {$email}");
+
             return 1;
         }
 
         if ($betaRequest->isInvited()) {
             $this->error("Beta request for {$email} has already been invited.");
+
             return 1;
         }
 
         if ($betaRequest->isRejected()) {
             $this->error("Beta request for {$email} has already been rejected.");
+
             return 1;
         }
 
@@ -56,12 +59,14 @@ class ApproveBetaRequest extends Command
         if ($reject) {
             $betaRequest->markAsRejected();
             $this->info("Beta request for {$email} has been rejected.");
+
             return 0;
         }
 
         // Check if user already exists
         if (User::where('email', $email)->exists()) {
             $this->error("User with email {$email} already exists.");
+
             return 1;
         }
 
@@ -73,6 +78,7 @@ class ApproveBetaRequest extends Command
 
         if ($existingInvitation) {
             $this->error("A valid invitation for {$email} already exists.");
+
             return 1;
         }
 

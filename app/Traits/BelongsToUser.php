@@ -56,21 +56,18 @@ trait BelongsToUser
     public function scopeForUser($query, $user)
     {
         $userId = $user instanceof User ? $user->id : $user;
+
         return $query->withoutGlobalScope('user')->where('user_id', $userId);
     }
 
     /**
      * Scope a query to include records accessible by a user (owned + shared).
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @param  User  $user
-     * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeAccessibleBy(Builder $query, User $user): Builder
     {
         return $query->withoutGlobalScope('user')->where(function ($q) use ($user) {
             $q->where('user_id', $user->id);
-            
+
             // If the model uses ShareableModel trait, include shared records
             if (in_array(ShareableModel::class, class_uses_recursive(static::class))) {
                 $q->orWhereHas('shares', function ($shareQuery) use ($user) {

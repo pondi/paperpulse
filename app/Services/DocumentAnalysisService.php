@@ -24,9 +24,6 @@ class DocumentAnalysisService
     /**
      * Analyze an existing Document and return structured analysis data.
      * Used by AnalyzeDocument job to update the document in-place.
-     *
-     * @param Document $document
-     * @return array
      */
     public function analyze(Document $document): array
     {
@@ -48,10 +45,6 @@ class DocumentAnalysisService
 
     /**
      * Generate a natural-language summary for the document content.
-     *
-     * @param string $content
-     * @param int $maxLength
-     * @return string
      */
     public function generateSummary(string $content, int $maxLength = 200): string
     {
@@ -60,10 +53,6 @@ class DocumentAnalysisService
 
     /**
      * Suggest tags based on document content.
-     *
-     * @param string $content
-     * @param int $maxTags
-     * @return array
      */
     public function suggestTags(string $content, int $maxTags = 5): array
     {
@@ -72,9 +61,6 @@ class DocumentAnalysisService
 
     /**
      * Classify document type (e.g., invoice, report).
-     *
-     * @param string $content
-     * @return string
      */
     public function classifyDocument(string $content): string
     {
@@ -83,10 +69,6 @@ class DocumentAnalysisService
 
     /**
      * Extract entities from document content.
-     *
-     * @param string $content
-     * @param array $types
-     * @return array
      */
     public function extractEntities(string $content, array $types = []): array
     {

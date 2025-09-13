@@ -32,6 +32,7 @@ class ReceiptAnalysisService
     public function analyzeAndCreateReceiptWithStructuredData(string $content, array $structuredData, int $fileId, int $userId): Receipt
     {
         $orchestrator = new ReceiptAnalysisOrchestrator($this->parser, $this->validator, $this->enricher);
+
         return $orchestrator->analyzeAndCreateReceiptWithStructuredData($content, $structuredData, $fileId, $userId);
     }
 
@@ -41,6 +42,7 @@ class ReceiptAnalysisService
     public function analyzeAndCreateReceipt(string $content, int $fileId, int $userId): Receipt
     {
         $orchestrator = new ReceiptAnalysisOrchestrator($this->parser, $this->validator, $this->enricher);
+
         return $orchestrator->analyzeAndCreateReceipt($content, $fileId, $userId);
     }
 

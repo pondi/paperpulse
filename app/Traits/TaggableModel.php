@@ -32,7 +32,7 @@ trait TaggableModel
     {
         $tag = Tag::findOrCreateByName($name, $this->user_id);
         $this->addTag($tag);
-        
+
         return $tag;
     }
 

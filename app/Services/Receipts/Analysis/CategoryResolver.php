@@ -19,7 +19,7 @@ class CategoryResolver
         $categoryName = $data['merchant']['category'] ?? $data['receipt_category'] ?? null;
         $categoryId = null;
 
-        if ($autoCategorize && !$categoryName && $merchant) {
+        if ($autoCategorize && ! $categoryName && $merchant) {
             $categoryName = $enricher->categorizeMerchant($merchant->name);
         }
 
@@ -30,11 +30,10 @@ class CategoryResolver
             }
         }
 
-        if (!$categoryId && $defaultCategoryId) {
+        if (! $categoryId && $defaultCategoryId) {
             $categoryId = $defaultCategoryId;
         }
 
         return [$categoryName, $categoryId];
     }
 }
-

@@ -26,7 +26,7 @@ abstract class BaseApiResource extends JsonResource
         if (isset($this->user_id)) {
             return ['owner_id' => $this->user_id];
         }
-        
+
         return [];
     }
 }

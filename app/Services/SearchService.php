@@ -78,7 +78,7 @@ class SearchService
         if (isset($filters['vendor']) && is_string($filters['vendor']) && $filters['vendor'] !== '') {
             $searchQuery->where('vendors', $filters['vendor']);
         }
-        if (isset($filters['vendors']) && is_array($filters['vendors']) && !empty($filters['vendors'])) {
+        if (isset($filters['vendors']) && is_array($filters['vendors']) && ! empty($filters['vendors'])) {
             // Apply AND semantics for multiple vendors
             foreach ($filters['vendors'] as $v) {
                 if (is_string($v) && $v !== '') {

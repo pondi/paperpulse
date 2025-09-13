@@ -10,7 +10,7 @@ class FolderHierarchyBuilder
         $folderMap = [];
 
         foreach ($items as $item) {
-            if (!empty($item['is_folder'])) {
+            if (! empty($item['is_folder'])) {
                 $folderMap[$item['folder_path']] = [
                     'path' => $item['folder_path'],
                     'name' => $item['filename'],
@@ -44,4 +44,3 @@ class FolderHierarchyBuilder
         return $hierarchy;
     }
 }
-

@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -53,6 +53,7 @@ abstract class BaseResourceController extends Controller
      * Default sort field and direction.
      */
     protected string $defaultSort = 'created_at';
+
     protected string $defaultSortDirection = 'desc';
 
     /**
@@ -82,7 +83,7 @@ abstract class BaseResourceController extends Controller
         $items = $query->paginate($request->get('per_page', $this->perPage));
 
         return Inertia::render("{$this->resource}/Index", [
-            'items' => $items->through(fn($item) => $this->transformForIndex($item)),
+            'items' => $items->through(fn ($item) => $this->transformForIndex($item)),
             'filters' => $this->getFilters($request),
         ]);
     }
@@ -93,7 +94,7 @@ abstract class BaseResourceController extends Controller
     public function show($id): Response
     {
         $item = $this->model::with($this->showWith)->findOrFail($id);
-        
+
         $this->authorize('view', $item);
 
         return Inertia::render("{$this->resource}/Show", [
@@ -108,7 +109,7 @@ abstract class BaseResourceController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate($this->getValidationRules('store'));
-        
+
         $item = $this->model::create($this->prepareForStore($validated));
 
         return $this->afterStore($item, $request);
@@ -120,11 +121,11 @@ abstract class BaseResourceController extends Controller
     public function update(Request $request, $id)
     {
         $item = $this->model::findOrFail($id);
-        
+
         $this->authorize('update', $item);
 
         $validated = $request->validate($this->getValidationRules('update'));
-        
+
         $item->update($this->prepareForUpdate($validated, $item));
 
         return $this->afterUpdate($item, $request);
@@ -136,11 +137,11 @@ abstract class BaseResourceController extends Controller
     public function destroy($id)
     {
         $item = $this->model::findOrFail($id);
-        
+
         $this->authorize('delete', $item);
 
         $this->beforeDestroy($item);
-        
+
         $item->delete();
 
         return $this->afterDestroy($item);
@@ -221,7 +222,7 @@ abstract class BaseResourceController extends Controller
     protected function getFilters(Request $request): array
     {
         $filters = ['search' => $request->input('search')];
-        
+
         foreach ($this->filterableFields as $field) {
             $filters[$field] = $request->input($field);
         }
@@ -242,8 +243,8 @@ abstract class BaseResourceController extends Controller
      */
     protected function afterStore(Model $item, Request $request)
     {
-        return redirect()->route($this->getRouteName() . '.show', $item)
-            ->with('success', ucfirst($this->getModelName()) . ' created successfully');
+        return redirect()->route($this->getRouteName().'.show', $item)
+            ->with('success', ucfirst($this->getModelName()).' created successfully');
     }
 
     /**
@@ -252,7 +253,7 @@ abstract class BaseResourceController extends Controller
     protected function afterUpdate(Model $item, Request $request)
     {
         return redirect()->back()
-            ->with('success', ucfirst($this->getModelName()) . ' updated successfully');
+            ->with('success', ucfirst($this->getModelName()).' updated successfully');
     }
 
     /**
@@ -268,8 +269,8 @@ abstract class BaseResourceController extends Controller
      */
     protected function afterDestroy(Model $item)
     {
-        return redirect()->route($this->getRouteName() . '.index')
-            ->with('success', ucfirst($this->getModelName()) . ' deleted successfully');
+        return redirect()->route($this->getRouteName().'.index')
+            ->with('success', ucfirst($this->getModelName()).' deleted successfully');
     }
 
     /**

@@ -30,4 +30,3 @@ class ImportService
         \App\Jobs\ProcessPulseDavFile::dispatch($file, $allTagIds)->onQueue('default');
     }
 }
-

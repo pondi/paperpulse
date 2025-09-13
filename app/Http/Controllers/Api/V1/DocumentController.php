@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseApiController;
-use App\Http\Resources\Api\V1\DocumentResource;
 use App\Http\Requests\Api\V1\StoreDocumentRequest;
 use App\Http\Requests\Api\V1\UpdateDocumentRequest;
+use App\Http\Resources\Api\V1\DocumentResource;
 use App\Models\Document;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -17,7 +17,7 @@ class DocumentController extends BaseApiController
         $documents = Document::with(['tags', 'category', 'file'])
             ->when($request->search, function ($query, $search) {
                 $query->where('title', 'like', "%{$search}%")
-                      ->orWhere('content', 'like', "%{$search}%");
+                    ->orWhere('content', 'like', "%{$search}%");
             })
             ->when($request->category_id, function ($query, $categoryId) {
                 $query->where('category_id', $categoryId);
@@ -34,9 +34,9 @@ class DocumentController extends BaseApiController
     public function show(Document $document)
     {
         $this->authorize('view', $document);
-        
+
         $document->load(['tags', 'category', 'file', 'shares.sharedWithUser']);
-        
+
         return $this->success(new DocumentResource($document));
     }
 
@@ -116,8 +116,8 @@ class DocumentController extends BaseApiController
     public function download(Document $document)
     {
         $this->authorize('view', $document);
-        
-        if (!$document->file) {
+
+        if (! $document->file) {
             return $this->notFound('File not found for this document');
         }
 

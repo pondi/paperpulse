@@ -34,14 +34,14 @@ class BetaRequestController extends Controller
 
         // Check if beta request already exists
         $existingRequest = BetaRequest::where('email', $validated['email'])->first();
-        
+
         if ($existingRequest) {
             if ($existingRequest->isInvited()) {
                 return response()->json([
                     'message' => 'An invitation has already been sent to this email address.',
                 ], 422);
             }
-            
+
             if ($existingRequest->isPending()) {
                 return response()->json([
                     'message' => 'A beta request for this email is already pending.',

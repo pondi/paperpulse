@@ -50,7 +50,7 @@ class ReceiptEnricherService implements ReceiptEnricherContract
 
         $merchant = new Merchant;
         $merchant->name = $merchantData['name'];
-        
+
         // Handle address - could be string or array from AI response
         $address = $merchantData['address'] ?? null;
         if (is_array($address)) {
@@ -58,7 +58,7 @@ class ReceiptEnricherService implements ReceiptEnricherContract
         } else {
             $merchant->address = $address;
         }
-        
+
         $merchant->vat_number = $merchantData['vat_number'] ?? null;
         $merchant->save();
 
@@ -81,6 +81,7 @@ class ReceiptEnricherService implements ReceiptEnricherContract
         Log::notice('[ReceiptEnricher] categorizeMerchant() is deprecated; relying on AI-provided categories', [
             'merchant_name' => $merchantName,
         ]);
+
         return null;
     }
 
@@ -116,7 +117,7 @@ class ReceiptEnricherService implements ReceiptEnricherContract
     {
         // Add merchant/receipt category if available from AI
         $aiCategory = $receiptData['merchant']['category'] ?? $receiptData['receipt_category'] ?? null;
-        if (!empty($aiCategory)) {
+        if (! empty($aiCategory)) {
             $receiptData['suggested_category'] = $aiCategory;
         }
 

@@ -21,7 +21,7 @@ return new class extends Migration
             $table->timestamp('invited_at')->nullable();
             $table->foreignId('invited_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
-            
+
             $table->index('email');
             $table->index('status');
             $table->index('created_at');

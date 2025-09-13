@@ -4,9 +4,8 @@ namespace App\Services\File;
 
 use App\Contracts\Services\FileMetadataContract;
 use App\Models\File;
-use Exception;
-use App\Services\Files\JobNameGenerator;
 use App\Services\Files\ImageMetadataExtractor;
+use App\Services\Files\JobNameGenerator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 
@@ -162,6 +161,7 @@ class FileMetadataService implements FileMetadataContract
                 'file_path' => $filePath,
             ]);
         }
+
         return $metadata;
     }
 }

@@ -47,7 +47,7 @@ trait ShareableController
         try {
             $item->shareWith($user, $validated['permission']);
 
-            return back()->with('success', ucfirst($this->getModelName()) . ' shared successfully');
+            return back()->with('success', ucfirst($this->getModelName()).' shared successfully');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -92,7 +92,7 @@ trait ShareableController
     public function shared(Request $request)
     {
         $shareableType = $this->getShareableType();
-        
+
         $query = $this->model::query()
             ->join('file_shares', function ($join) use ($shareableType) {
                 $join->on($this->getFileIdColumn(), '=', 'file_shares.file_id')
@@ -100,7 +100,7 @@ trait ShareableController
             })
             ->where('file_shares.shared_with_user_id', auth()->id())
             ->with(array_merge($this->indexWith ?? [], ['owner']))
-            ->select($this->getTableName() . '.*', 'file_shares.permission', 'file_shares.shared_at');
+            ->select($this->getTableName().'.*', 'file_shares.permission', 'file_shares.shared_at');
 
         // Apply search if provided
         if ($search = $request->input('search')) {
@@ -108,10 +108,10 @@ trait ShareableController
         }
 
         $items = $query->orderBy('file_shares.shared_at', 'desc')
-                      ->paginate($this->perPage ?? 20);
+            ->paginate($this->perPage ?? 20);
 
         return inertia("{$this->resource}/Shared", [
-            'items' => $items->through(fn($item) => $this->transformForSharedIndex($item)),
+            'items' => $items->through(fn ($item) => $this->transformForSharedIndex($item)),
             'filters' => $request->only(['search']),
         ]);
     }
@@ -125,7 +125,7 @@ trait ShareableController
         $transformed['owner'] = $item->owner?->only(['id', 'name', 'email']);
         $transformed['shared_permission'] = $item->permission;
         $transformed['shared_at'] = $item->shared_at;
-        
+
         return $transformed;
     }
 
@@ -139,7 +139,7 @@ trait ShareableController
      */
     protected function getFileIdColumn(): string
     {
-        return $this->getTableName() . '.file_id';
+        return $this->getTableName().'.file_id';
     }
 
     /**

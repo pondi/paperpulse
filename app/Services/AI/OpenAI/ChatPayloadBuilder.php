@@ -10,10 +10,9 @@ class ChatPayloadBuilder
     /**
      * Build payload for receipt extraction with JSON Schema.
      *
-     * @param array $promptData Output of PromptTemplateService::getPrompt
-     * @param string $model     Model name
-     * @param array $params     Overrides like max_tokens/temperature
-     * @return array
+     * @param  array  $promptData  Output of PromptTemplateService::getPrompt
+     * @param  string  $model  Model name
+     * @param  array  $params  Overrides like max_tokens/temperature
      */
     public static function forReceipt(array $promptData, string $model, array $params): array
     {
@@ -34,10 +33,6 @@ class ChatPayloadBuilder
 
     /**
      * Build payload for document analysis with JSON Schema.
-     *
-     * @param array $promptData
-     * @param string $model
-     * @return array
      */
     public static function forDocument(array $promptData, string $model): array
     {

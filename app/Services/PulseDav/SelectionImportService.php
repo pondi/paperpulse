@@ -38,6 +38,7 @@ class SelectionImportService
 
             if (! $item) {
                 $skipped++;
+
                 continue;
             }
 
@@ -73,4 +74,3 @@ class SelectionImportService
         return ['batch_id' => $batch->id, 'imported' => $imported];
     }
 }
-

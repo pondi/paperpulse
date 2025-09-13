@@ -15,4 +15,3 @@ class JobNameGenerator
         return sprintf('%s-%s-%s', $adjective, $noun, substr(md5(microtime()), rand(0, 26), 5));
     }
 }
-

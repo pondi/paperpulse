@@ -88,4 +88,3 @@ trait ShareableFilePolicy
         return $this->view($user, $model);
     }
 }
-

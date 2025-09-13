@@ -7,7 +7,6 @@ use App\Jobs\ProcessReceipt;
 use App\Services\AI\AIService;
 use App\Services\FileProcessingService;
 use App\Services\StorageService;
-use App\Services\TextExtractionService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;

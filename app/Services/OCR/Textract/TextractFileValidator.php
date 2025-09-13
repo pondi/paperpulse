@@ -71,6 +71,7 @@ class TextractFileValidator
 
         if (substr($header, 0, 4) !== '%PDF') {
             fclose($handle);
+
             return ['valid' => false, 'error' => 'Invalid PDF file - missing PDF header'];
         }
 
@@ -84,6 +85,7 @@ class TextractFileValidator
 
         if (strpos($header, '/Encrypt') !== false) {
             fclose($handle);
+
             return ['valid' => false, 'error' => 'PDF file is encrypted - Textract cannot process encrypted PDFs'];
         }
 
@@ -115,4 +117,3 @@ class TextractFileValidator
         return ['valid' => true, 'error' => null];
     }
 }
-

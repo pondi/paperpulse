@@ -11,31 +11,39 @@ class LineItemsCreator
     {
         $vendorIdCache = [];
         $resolveVendorId = function (?string $name) use (&$vendorIdCache) {
-            if (!$name) { return null; }
+            if (! $name) {
+                return null;
+            }
             $key = mb_strtolower(trim($name));
             if (isset($vendorIdCache[$key])) {
                 return $vendorIdCache[$key];
             }
             $vendor = \App\Models\Vendor::firstOrCreate(['name' => trim($name)]);
             $vendorIdCache[$key] = $vendor->id;
+
             return $vendor->id;
         };
 
-        $vendorSet = array_map(fn($v) => mb_strtolower(trim($v)), $vendors);
+        $vendorSet = array_map(fn ($v) => mb_strtolower(trim($v)), $vendors);
 
         foreach ($items as $item) {
             $itemName = $item['name'] ?? $item['description'] ?? '';
             $explicitVendor = $item['vendor'] ?? $item['brand'] ?? null;
 
             $vendorId = null;
-            if (!empty($explicitVendor)) {
+            if (! empty($explicitVendor)) {
                 $vendorId = $resolveVendorId($explicitVendor);
-            } elseif (!empty($itemName) && !empty($vendorSet)) {
+            } elseif (! empty($itemName) && ! empty($vendorSet)) {
                 $match = null;
                 foreach ($vendorSet as $v) {
-                    if ($v !== '' && mb_strpos(mb_strtolower($itemName), $v) !== false) { $match = $v; break; }
+                    if ($v !== '' && mb_strpos(mb_strtolower($itemName), $v) !== false) {
+                        $match = $v;
+                        break;
+                    }
                 }
-                if ($match) { $vendorId = $resolveVendorId($match); }
+                if ($match) {
+                    $vendorId = $resolveVendorId($match);
+                }
             }
 
             LineItem::create([
@@ -50,4 +58,3 @@ class LineItemsCreator
         }
     }
 }
-

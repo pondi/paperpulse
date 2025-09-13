@@ -5,15 +5,12 @@ namespace App\Http\Controllers\Documents;
 use App\Http\Controllers\BaseResourceController;
 use App\Models\Document;
 use App\Models\Tag;
-use App\Services\DocumentService;
-use App\Services\FileProcessingService;
-use App\Services\ConversionService;
 use App\Services\Documents\DocumentTransformer;
 use App\Services\Documents\DocumentUploadValidator;
+use App\Services\FileProcessingService;
 use App\Traits\ShareableController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,12 +19,15 @@ class DocumentController extends BaseResourceController
     use ShareableController;
 
     protected string $model = Document::class;
+
     protected string $resource = 'Documents';
 
     protected array $indexWith = ['category', 'tags', 'sharedUsers', 'file'];
+
     protected array $showWith = ['category', 'tags', 'sharedUsers', 'file'];
 
     protected array $searchableFields = ['title', 'content', 'summary'];
+
     protected array $filterableFields = ['category_id', 'tag'];
 
     protected array $validationRules = [
@@ -68,7 +68,7 @@ class DocumentController extends BaseResourceController
         $documents = $query->paginate($request->get('per_page', $this->perPage));
 
         return Inertia::render('Documents/Index', [
-            'documents' => $documents->through(fn($item) => DocumentTransformer::forIndex($item)),
+            'documents' => $documents->through(fn ($item) => DocumentTransformer::forIndex($item)),
             'categories' => auth()->user()->categories()->orderBy('name')->get(['id', 'name', 'color']),
             'filters' => $this->getFilters($request),
         ]);
@@ -193,7 +193,7 @@ class DocumentController extends BaseResourceController
     {
         $this->authorize('view', $document);
 
-        if (!$document->file || !$document->file->guid) {
+        if (! $document->file || ! $document->file->guid) {
             abort(404, 'Document file not found');
         }
 
@@ -217,7 +217,7 @@ class DocumentController extends BaseResourceController
 
             return response($content)
                 ->header('Content-Type', $document->file->mime_type ?? 'application/octet-stream')
-                ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+                ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
         } catch (\Exception $e) {
             Log::error('Failed to download document', [
                 'document_id' => $document->id,
@@ -275,6 +275,7 @@ class DocumentController extends BaseResourceController
             ->get()
             ->map(function ($category) {
                 $category->can_edit = $category->user_id === auth()->id();
+
                 return $category;
             });
 
@@ -329,7 +330,7 @@ class DocumentController extends BaseResourceController
         try {
             $fileProcessingService = app(FileProcessingService::class);
             $uploadedFiles = $request->file('files');
-            if (!is_array($uploadedFiles)) {
+            if (! is_array($uploadedFiles)) {
                 $uploadedFiles = [$uploadedFiles];
             }
 
@@ -340,21 +341,22 @@ class DocumentController extends BaseResourceController
                 $fileProcessingService
             );
 
-            if (!empty($result['errors'])) {
+            if (! empty($result['errors'])) {
                 $firstError = reset($result['errors']);
                 $firstFile = array_key_first($result['errors']);
+
                 return back()->with('error', 'File validation failed for "'.$firstFile.'": '.$firstError);
             }
 
             return redirect()->route($fileType === 'document' ? 'documents.index' : 'receipts.index')
-                ->with('success', count($result['processed']) . ' file(s) uploaded successfully');
+                ->with('success', count($result['processed']).' file(s) uploaded successfully');
         } catch (\Exception $e) {
             Log::error('Failed to upload document', [
                 'error' => $e->getMessage(),
                 'file_type' => $fileType,
             ]);
 
-            return back()->with('error', 'Failed to upload file: ' . $e->getMessage());
+            return back()->with('error', 'Failed to upload file: '.$e->getMessage());
         }
     }
 

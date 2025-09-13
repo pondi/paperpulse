@@ -3,15 +3,15 @@
 namespace App\Services\AI\Providers;
 
 use App\Services\AI\AIService;
+use App\Services\AI\OpenAI\ChatPayloadBuilder;
+use App\Services\AI\OpenAI\FallbackPayloadFactory;
+use App\Services\AI\OpenAI\ResponseParser;
 use App\Services\AI\PromptTemplateService;
 use App\Services\AI\Shared\AIDataNormalizer;
 use App\Services\AI\Shared\AIDebugLogger;
 use App\Services\AI\Shared\AIFallbackHandler;
 use Illuminate\Support\Facades\Log;
 use OpenAI\Laravel\Facades\OpenAI;
-use App\Services\AI\OpenAI\ChatPayloadBuilder;
-use App\Services\AI\OpenAI\ResponseParser;
-use App\Services\AI\OpenAI\FallbackPayloadFactory;
 
 /**
  * OpenAI-backed implementation of AIService.
@@ -35,9 +35,9 @@ class OpenAIProvider implements AIService
     /**
      * Analyze a receipt text and return structured data.
      *
-     * @param string $content OCR text
-     * @param array $options  Optional hints (merchant_hint, focus, include_confidence, examples)
-     * @return array          Standardized success/error payload
+     * @param  string  $content  OCR text
+     * @param  array  $options  Optional hints (merchant_hint, focus, include_confidence, examples)
+     * @return array Standardized success/error payload
      */
     public function analyzeReceipt(string $content, array $options = []): array
     {
@@ -182,9 +182,6 @@ class OpenAIProvider implements AIService
 
     /**
      * Extract merchant details from text.
-     *
-     * @param string $content
-     * @return array
      */
     public function extractMerchant(string $content): array
     {
@@ -213,10 +210,6 @@ class OpenAIProvider implements AIService
 
     /**
      * Generate a concise summary for content.
-     *
-     * @param string $content
-     * @param int $maxLength
-     * @return string
      */
     public function generateSummary(string $content, int $maxLength = 200): string
     {
@@ -244,8 +237,6 @@ class OpenAIProvider implements AIService
     /**
      * Suggest up to maxTags tags for content.
      *
-     * @param string $content
-     * @param int $maxTags
      * @return array<string>
      */
     public function suggestTags(string $content, int $maxTags = 5): array
@@ -288,6 +279,7 @@ class OpenAIProvider implements AIService
             ]);
 
             $result = \App\Services\AI\OpenAI\ResponseParser::jsonContent($response);
+
             return $result['tags'] ?? [];
         } catch (\Exception $e) {
             Log::error('Tag suggestion failed', ['error' => $e->getMessage()]);
@@ -299,7 +291,6 @@ class OpenAIProvider implements AIService
     /**
      * Classify document type from content.
      *
-     * @param string $content
      * @return string One of predefined types; 'other' on failure
      */
     public function classifyDocumentType(string $content): string
@@ -340,8 +331,7 @@ class OpenAIProvider implements AIService
     /**
      * Extract selected entity lists from content.
      *
-     * @param string $content
-     * @param array $types Subset of default: people, organizations, locations, dates, amounts
+     * @param  array  $types  Subset of default: people, organizations, locations, dates, amounts
      * @return array<string,array>
      */
     public function extractEntities(string $content, array $types = []): array
@@ -366,6 +356,7 @@ class OpenAIProvider implements AIService
                 'response_format' => ['type' => 'json_object'],
             ]);
             $result = \App\Services\AI\OpenAI\ResponseParser::jsonContent($response);
+
             return array_intersect_key($result, array_flip($types));
         } catch (\Exception $e) {
             Log::error('Entity extraction failed', ['error' => $e->getMessage()]);

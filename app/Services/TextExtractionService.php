@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Services\OCR\OCRServiceFactory;
 use App\Services\OCR\ExtractionCache;
 use App\Services\OCR\OcrErrorFormatter;
+use App\Services\OCR\OCRServiceFactory;
 use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -28,10 +28,11 @@ class TextExtractionService
     /**
      * Extract both text and structured data from a file using OCR providers.
      *
-     * @param string $filePath Absolute path to the working file
-     * @param string $fileType Either 'receipt' or 'document'
-     * @param string $fileGuid Unique file GUID for caching
+     * @param  string  $filePath  Absolute path to the working file
+     * @param  string  $fileType  Either 'receipt' or 'document'
+     * @param  string  $fileGuid  Unique file GUID for caching
      * @return array{text:string,structured_data:array,blocks:array,ocr_metadata:array,provider:string}
+     *
      * @throws Exception
      */
     public function extractWithStructuredData(string $filePath, string $fileType, string $fileGuid): array
@@ -42,6 +43,7 @@ class TextExtractionService
                 $cached = ExtractionCache::get($fileGuid);
                 if ($cached !== null) {
                     Log::debug('[TextExtractionService] Using cached text', ['file_guid' => $fileGuid]);
+
                     return [
                         'text' => $cached['text'],
                         'structured_data' => $cached['structured'],
@@ -162,23 +164,16 @@ class TextExtractionService
 
     /**
      * Extract text from a file using OCR providers.
-     *
-     * @param string $filePath
-     * @param string $fileType
-     * @param string $fileGuid
-     * @return string
      */
     public function extract(string $filePath, string $fileType, string $fileGuid): string
     {
         $result = $this->extractWithStructuredData($filePath, $fileType, $fileGuid);
+
         return $result['text'];
     }
 
     /**
      * Fallback PDF text extraction using a local parser, if available.
-     *
-     * @param string $filePath
-     * @return string
      */
     protected function extractPdfTextFallback(string $filePath): string
     {
@@ -211,8 +206,6 @@ class TextExtractionService
 
     /**
      * Clear cached OCR results for a file.
-     *
-     * @param string $fileGuid
      */
     public function clearCache(string $fileGuid): void
     {

@@ -9,4 +9,3 @@ class JobChainOrderResolver
         return \App\Jobs\JobOrder::getOrder($jobName);
     }
 }
-

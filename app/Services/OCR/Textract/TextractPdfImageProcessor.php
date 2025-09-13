@@ -17,14 +17,14 @@ class TextractPdfImageProcessor
 
         try {
             $pdfContent = $textractDisk->get($s3Path);
-            $localPdfPath = storage_path('app/temp/' . $fileGuid . '.pdf');
+            $localPdfPath = storage_path('app/temp/'.$fileGuid.'.pdf');
 
-            if (!is_dir(dirname($localPdfPath))) {
+            if (! is_dir(dirname($localPdfPath))) {
                 mkdir(dirname($localPdfPath), 0755, true);
             }
             file_put_contents($localPdfPath, $pdfContent);
 
-            if (!extension_loaded('imagick')) {
+            if (! extension_loaded('imagick')) {
                 Log::warning('[Textract] Imagick not available for PDF conversion');
                 throw new Exception('PDF format not supported and conversion tools unavailable.');
             }
@@ -46,7 +46,7 @@ class TextractPdfImageProcessor
             $processedPages = 0;
 
             $tempDir = storage_path('app/temp');
-            if (!is_dir($tempDir)) {
+            if (! is_dir($tempDir)) {
                 mkdir($tempDir, 0755, true);
             }
 
@@ -55,9 +55,9 @@ class TextractPdfImageProcessor
                     ->selectPage($page)
                     ->resolution(144)
                     ->quality(85)
-                    ->save($tempDir, $fileGuid . '_page_' . $page);
+                    ->save($tempDir, $fileGuid.'_page_'.$page);
 
-                $imagePath = $savedFiles[0]->path ?? storage_path('app/temp/' . $fileGuid . '_page_' . $page . '.jpg');
+                $imagePath = $savedFiles[0]->path ?? storage_path('app/temp/'.$fileGuid.'_page_'.$page.'.jpg');
                 $imageContent = file_get_contents($imagePath);
                 $imageS3Path = "temp/{$fileGuid}/page_{$page}.jpg";
                 $textractDisk->put($imageS3Path, $imageContent);
@@ -85,8 +85,13 @@ class TextractPdfImageProcessor
                     $totalConfidence += $pageResult['confidence'] ?? 0.0;
                     $processedPages++;
                 } finally {
-                    try { $textractDisk->delete($imageS3Path); } catch (Exception $e) {}
-                    if (file_exists($imagePath)) { @unlink($imagePath); }
+                    try {
+                        $textractDisk->delete($imageS3Path);
+                    } catch (Exception $e) {
+                    }
+                    if (file_exists($imagePath)) {
+                        @unlink($imagePath);
+                    }
                 }
             }
 
@@ -112,11 +117,12 @@ class TextractPdfImageProcessor
             ];
         } catch (Exception $e) {
             Log::error('[Textract] Failed to convert/process PDF', ['error' => $e->getMessage(), 's3_path' => $s3Path]);
-            foreach (glob(storage_path('app/temp/' . $fileGuid . '*')) as $tempFile) {
-                if (file_exists($tempFile)) { @unlink($tempFile); }
+            foreach (glob(storage_path('app/temp/'.$fileGuid.'*')) as $tempFile) {
+                if (file_exists($tempFile)) {
+                    @unlink($tempFile);
+                }
             }
             throw $e;
         }
     }
 }
-

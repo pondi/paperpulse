@@ -9,7 +9,6 @@ use App\Models\Receipt;
 use App\Services\Receipts\LineItemsCreator;
 use App\Services\Receipts\TotalsCalculator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Encapsulates the receipt analysis pipeline and DB writes.
@@ -26,18 +25,14 @@ class ReceiptAnalysisRunner
         protected ReceiptParserContract $parser,
         protected ReceiptValidatorContract $validator,
         protected ReceiptEnricherContract $enricher,
-    ) {
-    }
+    ) {}
 
     /**
      * Run the analysis pipeline and persist a new Receipt.
      *
-     * @param callable $parseFn       Closure returning ['data' => array, ...] from parser
-     * @param int $fileId
-     * @param int $userId
-     * @param string $content         OCR text content
-     * @param array|null $structuredData Optional OCR structured payload
-     * @return Receipt
+     * @param  callable  $parseFn  Closure returning ['data' => array, ...] from parser
+     * @param  string  $content  OCR text content
+     * @param  array|null  $structuredData  Optional OCR structured payload
      */
     public function run(callable $parseFn, int $fileId, int $userId, string $content, ?array $structuredData = null): Receipt
     {
@@ -48,21 +43,24 @@ class ReceiptAnalysisRunner
 
         try {
             $prefs = UserPreferencesLoader::load($userId);
-            if ($debug) { ReceiptAnalysisLogger::preferences($fileId, $prefs); }
+            if ($debug) {
+                ReceiptAnalysisLogger::preferences($fileId, $prefs);
+            }
 
             $analysis = $parseFn();
             [$data, $warnings] = ParsedDataValidator::validateAndSanitize($analysis['data'], $fileId, $this->validator);
-            if ($debug) { ReceiptAnalysisLogger::dataValidated($fileId, $warnings); }
+            if ($debug) {
+                ReceiptAnalysisLogger::dataValidated($fileId, $warnings);
+            }
 
             DB::beginTransaction();
 
             $merchant = MerchantResolver::resolve($data, $this->parser, $this->enricher);
-            if ($debug) { ReceiptAnalysisLogger::merchantProcessed($fileId, $merchant?->id, $merchant?->name); }
-
-            $dateTime = $this->parser->extractDateTime($data);
-            if (!$dateTime) {
-                throw new \Exception('Receipt date could not be extracted - this is required for processing');
+            if ($debug) {
+                ReceiptAnalysisLogger::merchantProcessed($fileId, $merchant?->id, $merchant?->name);
             }
+
+            $dateTime = DateExtractor::extract($data, $this->parser, $fileId);
 
             [$categoryName, $categoryId] = CategoryResolver::resolve(
                 $data,
@@ -93,13 +91,17 @@ class ReceiptAnalysisRunner
                 $prefs['default_currency']
             );
 
-            if ($debug) { ReceiptAnalysisLogger::creatingReceipt($fileId, $receiptPayload); }
+            if ($debug) {
+                ReceiptAnalysisLogger::creatingReceipt($fileId, $receiptPayload);
+            }
 
-            $receipt = Receipt::create($receiptPayload);
+            $receipt = ReceiptCreator::create($receiptPayload, $data, $this->parser);
 
             if ($prefs['extract_line_items']) {
                 LineItemsCreator::create($receipt, $items, $data['vendors'] ?? []);
-                if ($debug) { ReceiptAnalysisLogger::lineItemsCreated($receipt->id, count($items)); }
+                if ($debug) {
+                    ReceiptAnalysisLogger::lineItemsCreated($receipt->id, count($items));
+                }
             }
 
             DB::commit();

@@ -13,6 +13,7 @@ class ExtractionCache
         if ($text === null) {
             return null;
         }
+
         return [
             'text' => $text,
             'structured' => Cache::get("{$cacheKey}.structured", []),
@@ -39,4 +40,3 @@ class ExtractionCache
         return "text_extraction.{$fileGuid}";
     }
 }
-

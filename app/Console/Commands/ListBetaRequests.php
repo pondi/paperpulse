@@ -43,6 +43,7 @@ class ListBetaRequests extends Command
 
         if ($requests->isEmpty()) {
             $this->info('No beta requests found.');
+
             return 0;
         }
 
@@ -65,11 +66,11 @@ class ListBetaRequests extends Command
         // Show summary
         $this->newLine();
         $this->info('Summary:');
-        $this->line('Total: ' . $requests->count());
-        
+        $this->line('Total: '.$requests->count());
+
         $statusCounts = $requests->groupBy('status')->map->count();
         foreach ($statusCounts as $status => $count) {
-            $this->line(ucfirst($status) . ': ' . $count);
+            $this->line(ucfirst($status).': '.$count);
         }
 
         return 0;

@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use Illuminate\Auth\Access\HandlesAuthorization;
 use App\Policies\Concerns\OwnedResourcePolicy;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
 /**
  * CategoryPolicy

@@ -84,4 +84,3 @@ class ImageMetadataExtractor
         return 0.0;
     }
 }
-

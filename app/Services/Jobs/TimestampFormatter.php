@@ -17,4 +17,3 @@ class TimestampFormatter
             : Carbon::parse($timestamp)->toIso8601String();
     }
 }
-

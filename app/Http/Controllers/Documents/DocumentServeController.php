@@ -36,6 +36,7 @@ class DocumentServeController extends Controller
                 'type' => $type,
                 'extension' => $extension,
             ]);
+
             return response()->json(['error' => 'Document not found'], 404);
         }
 

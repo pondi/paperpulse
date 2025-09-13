@@ -50,4 +50,3 @@ class OcrErrorFormatter
         return "{$providerName} OCR processing failed: {$error}";
     }
 }
-

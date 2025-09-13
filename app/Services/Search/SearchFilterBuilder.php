@@ -28,4 +28,3 @@ class SearchFilterBuilder
         return $filters;
     }
 }
-

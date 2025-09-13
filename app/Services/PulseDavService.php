@@ -4,10 +4,10 @@ namespace App\Services;
 
 use App\Models\PulseDavFile;
 use App\Models\User;
+use App\Services\PulseDav\Support\FolderHierarchyBuilder;
+use App\Services\PulseDav\Support\S3ListService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use App\Services\PulseDav\Support\S3ListService;
-use App\Services\PulseDav\Support\FolderHierarchyBuilder;
 
 class PulseDavService
 {
@@ -30,6 +30,7 @@ class PulseDavService
     public function listUserFiles(User $user)
     {
         $prefix = \App\Services\PulseDav\Support\PathHelper::userPrefix($this->incomingPrefix, $user->id);
+
         return S3ListService::listUserFiles($this->s3Client, $this->bucket, $prefix);
     }
 
@@ -184,6 +185,7 @@ class PulseDavService
     public function listUserFilesWithFolders(User $user)
     {
         $prefix = \App\Services\PulseDav\Support\PathHelper::userPrefix($this->incomingPrefix, $user->id);
+
         return S3ListService::listUserFilesWithFolders($this->s3Client, $this->bucket, $prefix);
     }
 

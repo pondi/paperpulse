@@ -88,7 +88,7 @@ class DocumentTransformer
             'title' => $document->title,
             'summary' => $document->summary,
             'category_id' => $document->category_id,
-            'tags' => $document->tags?->map(fn($t) => [
+            'tags' => $document->tags?->map(fn ($t) => [
                 'id' => $t->id,
                 'name' => $t->name,
                 'color' => $t->color,
@@ -100,4 +100,3 @@ class DocumentTransformer
         ];
     }
 }
-

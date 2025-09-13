@@ -13,7 +13,7 @@ class TextractResponseParser
 
         foreach ($blocks as $block) {
             if (($block['BlockType'] ?? null) === 'LINE' && isset($block['Text'])) {
-                $text .= $block['Text'] . "\n";
+                $text .= $block['Text']."\n";
                 $confidence += $block['Confidence'] ?? 0;
                 $lineCount++;
             }
@@ -54,16 +54,17 @@ class TextractResponseParser
             usort($pageBlocks, function ($a, $b) {
                 $aTop = $a['Geometry']['BoundingBox']['Top'] ?? 0;
                 $bTop = $b['Geometry']['BoundingBox']['Top'] ?? 0;
+
                 return $aTop <=> $bTop;
             });
             foreach ($pageBlocks as $block) {
                 if (($block['BlockType'] ?? null) === 'LINE' && isset($block['Text'])) {
-                    $text .= $block['Text'] . "\n";
+                    $text .= $block['Text']."\n";
                     $confidence += $block['Confidence'] ?? 0;
                     $lineCount++;
                 } elseif (($block['BlockType'] ?? null) === 'TABLE') {
                     $tableData = self::parseTable($block, $blocksById);
-                    $text .= self::formatTableAsText($tableData) . "\n";
+                    $text .= self::formatTableAsText($tableData)."\n";
                 }
             }
         }
@@ -86,7 +87,7 @@ class TextractResponseParser
     {
         $blocks = $result['Blocks'] ?? [];
         $blocksById = array_column($blocks, null, 'Id');
-        
+
         $text = '';
         $forms = [];
         $tables = [];
@@ -95,7 +96,7 @@ class TextractResponseParser
 
         foreach ($blocks as $block) {
             if (($block['BlockType'] ?? null) === 'LINE' && isset($block['Text'])) {
-                $text .= $block['Text'] . "\n";
+                $text .= $block['Text']."\n";
                 $confidence += $block['Confidence'] ?? 0;
                 $lineCount++;
             }
@@ -158,16 +159,17 @@ class TextractResponseParser
         $text = '';
         foreach ($blockIds as $blockId) {
             if (isset($blocksById[$blockId]['Text'])) {
-                $text .= $blocksById[$blockId]['Text'] . ' ';
+                $text .= $blocksById[$blockId]['Text'].' ';
             }
         }
+
         return trim($text);
     }
 
     public static function parseTable(array $tableBlock, array $blocksById): array
     {
         $table = [];
-        if (!isset($tableBlock['Relationships'])) {
+        if (! isset($tableBlock['Relationships'])) {
             return $table;
         }
         foreach ($tableBlock['Relationships'] as $relationship) {
@@ -191,6 +193,7 @@ class TextractResponseParser
                 }
             }
         }
+
         return $table;
     }
 
@@ -202,10 +205,10 @@ class TextractResponseParser
         $text = '';
         foreach ($table as $row) {
             if (is_array($row)) {
-                $text .= implode(' | ', $row) . "\n";
+                $text .= implode(' | ', $row)."\n";
             }
         }
+
         return trim($text);
     }
 }
-

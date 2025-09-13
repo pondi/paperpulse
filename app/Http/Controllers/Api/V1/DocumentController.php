@@ -48,7 +48,7 @@ class DocumentController extends BaseApiController
 
         // Sync tags if provided
         if ($request->tag_ids) {
-            $document->tags()->sync($request->tag_ids);
+            \App\Services\Tags\TagAttachmentService::syncTags($document, $request->tag_ids, 'document');
         }
 
         $document->load(['tags', 'category', 'file']);
@@ -68,7 +68,7 @@ class DocumentController extends BaseApiController
 
         // Sync tags if provided
         if ($request->has('tag_ids')) {
-            $document->tags()->sync($request->tag_ids ?? []);
+            \App\Services\Tags\TagAttachmentService::syncTags($document, $request->tag_ids ?? [], 'document');
         }
 
         $document->load(['tags', 'category', 'file']);

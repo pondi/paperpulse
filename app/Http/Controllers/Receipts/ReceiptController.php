@@ -143,7 +143,7 @@ class ReceiptController extends BaseResourceController
 
         // Handle tags separately
         if (isset($validated['tags'])) {
-            $receipt->tags()->sync($validated['tags']);
+            \App\Services\Tags\TagAttachmentService::syncTags($receipt, $validated['tags'], 'receipt');
             unset($validated['tags']);
         }
 
@@ -313,7 +313,7 @@ class ReceiptController extends BaseResourceController
 
         // Sync tags if provided
         if (isset($validated['tags'])) {
-            $receipt->tags()->sync($validated['tags']);
+            \App\Services\Tags\TagAttachmentService::syncTags($receipt, $validated['tags'], 'receipt');
         }
 
         return redirect()->back()->with('success', 'Receipt updated successfully');

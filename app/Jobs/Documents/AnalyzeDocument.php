@@ -104,8 +104,8 @@ class AnalyzeDocument extends BaseJob
                         }
                     }
 
-                    // Sync tags with the document
-                    $document->tags()->sync($tagIds);
+                    // Sync tags with the document using proper file_type
+                    \App\Services\Tags\TagAttachmentService::syncTags($document, $tagIds, 'document');
                 }
 
                 // Handle entities extraction

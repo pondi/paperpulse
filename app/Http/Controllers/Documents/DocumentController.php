@@ -141,7 +141,7 @@ class DocumentController extends BaseResourceController
     {
         // Handle tags separately
         if (isset($validated['tags'])) {
-            $document->tags()->sync($validated['tags']);
+            \App\Services\Tags\TagAttachmentService::syncTags($document, $validated['tags'], 'document');
             unset($validated['tags']);
         }
 

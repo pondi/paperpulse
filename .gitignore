@@ -18,6 +18,7 @@ yarn-error.log
 /.idea
 /.vscode
 /.claude
+/.phpdoc
 
 # Logs directory with sensitive information
 logs/

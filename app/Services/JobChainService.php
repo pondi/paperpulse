@@ -114,19 +114,20 @@ class JobChainService
     }
 
     /**
-     * Get file metadata from cache or rebuild it from database
+     * Get file metadata from cache or database
      */
     protected function getOrRebuildFileMetadata(string $jobId, JobHistory $parentJob): ?array
     {
-        // Try to get from cache first
-        $metadata = Cache::get("job.{$jobId}.fileMetaData");
+        // Use the persistence service to get metadata
+        $metadata = \App\Services\Jobs\JobMetadataPersistence::retrieve($jobId);
+        
         if ($metadata) {
             return $metadata;
         }
 
-        Log::info('File metadata not in cache, rebuilding', ['job_id' => $jobId]);
+        Log::info('File metadata not found, attempting to rebuild', ['job_id' => $jobId]);
 
-        // Try to rebuild from database
+        // Try to rebuild from database as fallback for legacy jobs
         return $this->rebuildFileMetadata($jobId, $parentJob);
     }
 

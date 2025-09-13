@@ -144,11 +144,7 @@ abstract class BaseJob implements ShouldQueue
             throw new \RuntimeException('JobID cannot be empty');
         }
 
-        Cache::put(
-            "job.{$this->jobID}.fileMetaData",
-            $metadata,
-            now()->addMinutes(60)
-        );
+        \App\Services\Jobs\JobMetadataPersistence::store($this->jobID, $metadata);
     }
 
     /**
@@ -164,18 +160,7 @@ abstract class BaseJob implements ShouldQueue
             throw new \RuntimeException('JobID cannot be empty');
         }
 
-        $metadata = Cache::get("job.{$this->jobID}.fileMetaData");
-
-        if (! $metadata) {
-            Log::warning('No metadata found in cache', [
-                'job_id' => $this->jobID,
-                'class' => static::class,
-                'uuid' => $this->uuid,
-                'cache_key' => "job.{$this->jobID}.fileMetaData",
-            ]);
-        }
-
-        return $metadata;
+        return \App\Services\Jobs\JobMetadataPersistence::retrieve($this->jobID);
     }
 
     /**

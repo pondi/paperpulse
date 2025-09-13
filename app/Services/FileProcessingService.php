@@ -116,8 +116,18 @@ class FileProcessingService
                 $metadata
             );
 
-            // Cache metadata for job chain
-            Cache::put("job.{$jobId}.fileMetaData", $fileMetadata, now()->addHours(2));
+            // Store metadata persistently for job chain
+            \App\Services\Jobs\JobMetadataPersistence::store($jobId, $fileMetadata);
+            
+            // Create parent job history record
+            \App\Services\Jobs\JobHistoryCreator::createParentJob(
+                $jobId,
+                $jobName,
+                $fileType,
+                $fileMetadata,
+                $file->id,
+                $fileData['fileName'] ?? null
+            );
 
             // Dispatch appropriate job chain based on file type
             $this->jobChainDispatcher->dispatch($jobId, $fileType);

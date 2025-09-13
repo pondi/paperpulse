@@ -12,6 +12,11 @@ interface ReceiptParserContract
     public function parseReceipt(string $content, int $fileId): array;
 
     /**
+     * Parse receipt content using AI with structured OCR data (forms, tables, etc.)
+     */
+    public function parseReceiptWithStructuredData(string $content, array $structuredData, int $fileId): array;
+
+    /**
      * Extract merchant information from parsed data
      */
     public function extractMerchantData(array $data): array;

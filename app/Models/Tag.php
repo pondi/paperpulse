@@ -53,6 +53,7 @@ class Tag extends Model
     public function documents()
     {
         return $this->belongsToMany(Document::class, 'file_tags', 'tag_id', 'file_id')
+            ->withPivot('file_type')
             ->wherePivot('file_type', 'document')
             ->withTimestamps();
     }
@@ -63,6 +64,7 @@ class Tag extends Model
     public function receipts()
     {
         return $this->belongsToMany(Receipt::class, 'file_tags', 'tag_id', 'file_id')
+            ->withPivot('file_type')
             ->wherePivot('file_type', 'receipt')
             ->withTimestamps();
     }

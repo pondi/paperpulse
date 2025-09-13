@@ -13,6 +13,7 @@ trait TaggableModel
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class, 'file_tags', 'file_id', 'tag_id')
+            ->withPivot('file_type')
             ->wherePivot('file_type', $this->getTaggableType())
             ->withTimestamps();
     }

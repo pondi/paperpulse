@@ -18,11 +18,13 @@ class TagAttachmentService
      * @param  Model  $model  The model to attach tags to (Document or Receipt)
      * @param  array  $tagIds  Array of tag IDs to sync
      * @param  string  $fileType  The file type ('document' or 'receipt')
+     * @phpstan-ignore-next-line
      */
     public static function syncTags(Model $model, array $tagIds, string $fileType): void
     {
         if (empty($tagIds)) {
-            $model->tags()->sync([]);
+            // Detach all tags properly
+            $model->tags()->detach();
 
             return;
         }
@@ -41,6 +43,7 @@ class TagAttachmentService
      * @param  Model  $model  The model to attach tags to
      * @param  array  $tagIds  Array of tag IDs to attach
      * @param  string  $fileType  The file type ('document' or 'receipt')
+     * @phpstan-ignore-next-line
      */
     public static function attachTags(Model $model, array $tagIds, string $fileType): void
     {

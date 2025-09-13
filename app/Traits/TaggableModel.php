@@ -51,6 +51,13 @@ trait TaggableModel
      */
     public function syncTags(array $tagIds): void
     {
+        if (empty($tagIds)) {
+            // Detach all tags properly
+            $this->tags()->detach();
+
+            return;
+        }
+
         $pivotData = [];
         foreach ($tagIds as $tagId) {
             $pivotData[$tagId] = ['file_type' => $this->getTaggableType()];

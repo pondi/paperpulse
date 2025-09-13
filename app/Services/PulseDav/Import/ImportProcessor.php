@@ -35,12 +35,23 @@ class ImportProcessor
             return self::processFolderImport($file, $batch, $options);
         }
         
-        if (!$file->isProcessable()) {
-            Log::debug('[ImportProcessor] File not processable', [
+        // Check if file can be processed or needs re-processing
+        if ($file->status === 'completed') {
+            Log::debug('[ImportProcessor] File already completed', [
                 'file_id' => $file->id,
                 'status' => $file->status
             ]);
             return false;
+        }
+        
+        // If already processing but from a different batch, allow re-import
+        // This handles stuck files or re-imports
+        if ($file->status === 'processing' && $file->import_batch_id !== $batch->id) {
+            Log::info('[ImportProcessor] Re-importing file that was stuck in processing', [
+                'file_id' => $file->id,
+                'old_batch_id' => $file->import_batch_id,
+                'new_batch_id' => $batch->id
+            ]);
         }
         
         ImportService::importFile($file, $batch, $options['file_type'] ?? 'receipt', $options['tag_ids'] ?? []);

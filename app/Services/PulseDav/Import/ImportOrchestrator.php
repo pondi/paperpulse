@@ -16,6 +16,14 @@ class ImportOrchestrator
             'options' => $options
         ]);
         
+        // Smart sync - only sync the specific selections if needed
+        $synced = SmartSyncService::syncSelectionsIfNeeded($user, $selections);
+        if ($synced > 0) {
+            Log::info('[ImportOrchestrator] Smart sync created missing records', [
+                'synced' => $synced
+            ]);
+        }
+        
         $validated = ImportValidator::validateSelections($selections, $user);
         
         if (empty($validated['valid'])) {

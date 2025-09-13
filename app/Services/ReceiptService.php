@@ -86,7 +86,11 @@ class ReceiptService
 
             // Persist AI response (as stored in receipt_data) for auditing
             try {
-                $this->persistAiArtifacts($file->user_id, $fileGuid, $receipt->receipt_data ?? null);
+                // Convert array to JSON string if needed (receipt_data is cast as array in model)
+                $receiptDataJson = is_array($receipt->receipt_data) 
+                    ? json_encode($receipt->receipt_data) 
+                    : $receipt->receipt_data;
+                $this->persistAiArtifacts($file->user_id, $fileGuid, $receiptDataJson);
             } catch (\Exception $e) {
                 Log::warning('[ReceiptService] Failed to persist AI artifacts', [
                     'file_id' => $fileId,

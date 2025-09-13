@@ -16,13 +16,28 @@ class DateUpdateNotifier
      */
     public static function markForDateUpdate(Receipt $receipt): void
     {
-        // Add metadata to receipt_data to indicate date needs update
-        $receiptData = $receipt->receipt_data ?? [];
-        $receiptData['metadata'] = array_merge($receiptData['metadata'] ?? [], [
+        // Ensure receipt_data is an array
+        $receiptData = $receipt->receipt_data;
+        
+        // Handle different data types
+        if (is_string($receiptData)) {
+            $receiptData = json_decode($receiptData, true) ?? [];
+        } elseif (!is_array($receiptData)) {
+            $receiptData = [];
+        }
+        
+        // Initialize metadata if not exists
+        if (!isset($receiptData['metadata']) || !is_array($receiptData['metadata'])) {
+            $receiptData['metadata'] = [];
+        }
+        
+        // Add update flags
+        $receiptData['metadata'] = array_merge($receiptData['metadata'], [
             'needs_date_update' => true,
             'date_extraction_failed' => true,
             'fallback_date_used' => true,
         ]);
+        
         $receipt->receipt_data = $receiptData;
         $receipt->save();
 
@@ -37,7 +52,15 @@ class DateUpdateNotifier
      */
     public static function needsDateUpdate(Receipt $receipt): bool
     {
-        $receiptData = $receipt->receipt_data ?? [];
+        $receiptData = $receipt->receipt_data;
+        
+        // Handle different data types
+        if (is_string($receiptData)) {
+            $receiptData = json_decode($receiptData, true) ?? [];
+        } elseif (!is_array($receiptData)) {
+            $receiptData = [];
+        }
+        
         $metadata = $receiptData['metadata'] ?? [];
 
         return ($metadata['needs_date_update'] ?? false) === true;
@@ -48,8 +71,16 @@ class DateUpdateNotifier
      */
     public static function clearDateUpdateFlag(Receipt $receipt): void
     {
-        $receiptData = $receipt->receipt_data ?? [];
-        if (! empty($receiptData['metadata'])) {
+        $receiptData = $receipt->receipt_data;
+        
+        // Handle different data types
+        if (is_string($receiptData)) {
+            $receiptData = json_decode($receiptData, true) ?? [];
+        } elseif (!is_array($receiptData)) {
+            $receiptData = [];
+        }
+        
+        if (!empty($receiptData['metadata'])) {
             $metadata = $receiptData['metadata'];
             unset($metadata['needs_date_update']);
             unset($metadata['date_extraction_failed']);

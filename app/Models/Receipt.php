@@ -152,7 +152,8 @@ class Receipt extends Model
 
         // Add raw receipt data if available
         if ($this->receipt_data) {
-            $array['raw_data'] = json_decode($this->receipt_data, true);
+            // receipt_data is already cast as array
+            $array['raw_data'] = is_array($this->receipt_data) ? $this->receipt_data : json_decode($this->receipt_data, true);
         }
 
         return $array;

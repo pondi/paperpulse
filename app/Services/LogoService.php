@@ -122,7 +122,12 @@ readonly class LogoService
     public function getImageUrl(Model $model, mixed $logoData = null, ?string $mimeType = null): string
     {
         if (! $logoData) {
-            return 'https://ui-avatars.com/api/?name='.urlencode($model->name).'&color=7F9CF5&background=EBF4FF';
+            // Use internal logo generator instead of external service
+            if ($model instanceof Merchant) {
+                return route('merchants.logo', ['merchant' => $model->id]);
+            }
+            // For other models without ID or fallback
+            return route('merchants.logo.generate', ['name' => $model->name]);
         }
 
         $processedLogoData = is_resource($logoData)

@@ -29,7 +29,7 @@ class Merchant extends Model
     public function getLogoUrlAttribute(): string
     {
         return $this->logo?->getUrl()
-            ?? 'https://ui-avatars.com/api/?name='.urlencode($this->name).'&color=7F9CF5&background=EBF4FF';
+            ?? route('merchants.logo', ['merchant' => $this->id]);
     }
 
     public function receipts()

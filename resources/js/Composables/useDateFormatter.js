@@ -91,16 +91,42 @@ export function useDateFormatter() {
     
     const formatCurrency = (amount, currency = null) => {
         const user = page.props.auth?.user;
-        const userCurrency = currency || user?.preferences?.currency || 'NOK';
+        let userCurrency = currency || user?.preferences?.currency || 'NOK';
         const locale = user?.preferences?.language === 'nb' ? 'nb-NO' : 'en-US';
+        
+        // Handle invalid currency codes (e.g., "Kr" instead of "NOK")
+        const currencyMap = {
+            'Kr': 'NOK',
+            'kr': 'NOK',
+            '€': 'EUR',
+            '$': 'USD',
+            '£': 'GBP'
+        };
+        
+        // If currency is in the map, replace it with the proper ISO code
+        if (currencyMap[userCurrency]) {
+            userCurrency = currencyMap[userCurrency];
+        }
+        
+        // Validate currency code format (3 uppercase letters)
+        if (!/^[A-Z]{3}$/.test(userCurrency)) {
+            console.warn(`Invalid currency code: ${userCurrency}, defaulting to NOK`);
+            userCurrency = 'NOK';
+        }
         
         // Amounts are already in main currency unit (NOK, EUR, etc.)
         const actualAmount = amount || 0;
         
-        return new Intl.NumberFormat(locale, {
-            style: 'currency',
-            currency: userCurrency
-        }).format(actualAmount);
+        try {
+            return new Intl.NumberFormat(locale, {
+                style: 'currency',
+                currency: userCurrency
+            }).format(actualAmount);
+        } catch (error) {
+            console.error(`Currency formatting error: ${error.message}`);
+            // Fallback to simple number formatting with currency suffix
+            return `${actualAmount.toFixed(2)} ${userCurrency}`;
+        }
     };
     
     return {

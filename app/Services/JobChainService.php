@@ -54,7 +54,8 @@ class JobChainService
             }
 
             // Dispatch the new job chain
-            Bus::chain($newJobChain)->dispatch();
+            $queue = $fileMetadata['fileType'] === 'receipt' ? 'receipts' : 'documents';
+            Bus::chain($newJobChain)->onQueue($queue)->dispatch();
 
             Log::info('Job chain restarted successfully', [
                 'job_id' => $jobId,
@@ -135,32 +136,58 @@ class JobChainService
     protected function rebuildFileMetadata(string $jobId, JobHistory $parentJob): ?array
     {
         try {
-            // Find the file record associated with this job
-            $file = File::whereHas('receipts', function ($query) use ($parentJob) {
-                // Try to find via receipt
-                $receiptData = Cache::get("job.{$parentJob->uuid}.receiptMetaData");
-                if ($receiptData && isset($receiptData['receiptId'])) {
-                    $query->where('id', $receiptData['receiptId']);
+            // Multiple strategies to find the file
+            $file = null;
+            
+            // Strategy 1: Try to find by exact job_id in metadata (if stored)
+            if ($parentJob->metadata && isset($parentJob->metadata['file_id'])) {
+                $file = File::find($parentJob->metadata['file_id']);
+            }
+            
+            // Strategy 2: Search by parent job timestamp and user
+            if (!$file) {
+                // Get user_id from the first task if available
+                $firstTask = $parentJob->tasks()->orderBy('order_in_chain')->first();
+                $userId = null;
+                if ($firstTask && $firstTask->metadata && isset($firstTask->metadata['user_id'])) {
+                    $userId = $firstTask->metadata['user_id'];
                 }
-            })->orWhereHas('documents', function ($query) use ($parentJob) {
-                // Try to find via document
-                $query->whereRaw('created_at >= ? AND created_at <= ?', [
-                    $parentJob->created_at->subMinutes(5),
-                    $parentJob->created_at->addMinutes(5),
+                
+                // Find files created around the same time
+                $query = File::whereBetween('created_at', [
+                    $parentJob->created_at->subSeconds(30),
+                    $parentJob->created_at->addMinutes(2),
                 ]);
-            })->first();
+                
+                if ($userId) {
+                    $query->where('user_id', $userId);
+                }
+                
+                $file = $query->orderBy('created_at', 'desc')->first();
+            }
 
-            if (! $file) {
-                // Try a broader search by timestamp
+            // Strategy 3: Try to find via receipt relationship
+            if (!$file) {
+                $receipt = Receipt::whereBetween('created_at', [
+                    $parentJob->created_at,
+                    $parentJob->created_at->addMinutes(5),
+                ])->first();
+                
+                if ($receipt) {
+                    $file = $receipt->file;
+                }
+            }
+            
+            // Strategy 4: Find the most recent file that matches the time window
+            if (!$file) {
                 $file = File::whereBetween('created_at', [
                     $parentJob->created_at->subMinutes(10),
                     $parentJob->created_at->addMinutes(10),
-                ])->first();
+                ])->orderBy('created_at', 'desc')->first();
             }
 
-            if (! $file) {
+            if (!$file) {
                 Log::warning('Could not find file for job chain restart', ['job_id' => $jobId]);
-
                 return null;
             }
 
@@ -168,13 +195,15 @@ class JobChainService
             $metadata = [
                 'fileId' => $file->id,
                 'fileGuid' => $file->guid,
+                'fileName' => $file->fileName,
                 'filePath' => storage_path('app/uploads/'.$file->guid.'.'.$file->fileExtension),
                 'fileExtension' => $file->fileExtension,
+                'fileSize' => $file->fileSize,
                 'fileType' => $file->file_type,
                 'userId' => $file->user_id,
                 's3OriginalPath' => $file->s3_original_path,
                 'jobName' => $parentJob->name ?? 'Restarted Job',
-                'metadata' => [],
+                'metadata' => $file->meta ?? [],
             ];
 
             // Cache the rebuilt metadata
@@ -207,7 +236,10 @@ class JobChainService
         $fileType = $fileMetadata['fileType'];
         $queue = $fileType === 'receipt' ? 'receipts' : 'documents';
 
-        switch ($restartPoint['name']) {
+        // Normalize job name for comparison (handle both with and without spaces)
+        $jobName = str_replace(' ', '', $restartPoint['name']);
+        
+        switch ($jobName) {
             case 'ProcessFile':
                 $jobs[] = (new ProcessFile($jobId))->onQueue($queue);
                 // Fall through to add subsequent jobs

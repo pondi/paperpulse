@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BulkOperationsController;
+use App\Http\Controllers\Merchants\MerchantLogoController;
 use App\Http\Controllers\Receipts\LineItemController;
 use App\Http\Controllers\Receipts\ReceiptController;
 use Illuminate\Support\Facades\Route;
@@ -32,5 +33,11 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::post('/receipts/export/csv', [BulkOperationsController::class, 'bulkExportCsv'])->name('receipts.export.csv');
         Route::post('/receipts/export/pdf', [BulkOperationsController::class, 'bulkExportPdf'])->name('receipts.export.pdf');
         Route::post('/receipts/stats', [BulkOperationsController::class, 'getStats'])->name('receipts.stats');
+    });
+    
+    // Merchant logo routes
+    Route::prefix('merchants')->name('merchants.')->group(function () {
+        Route::get('/{merchant}/logo', [MerchantLogoController::class, 'show'])->name('logo');
+        Route::get('/logo/generate/{name}', [MerchantLogoController::class, 'generate'])->name('logo.generate');
     });
 });

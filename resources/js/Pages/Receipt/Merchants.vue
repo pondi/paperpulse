@@ -18,13 +18,13 @@
                                         :alt="merchant.name" 
                                         :class="[
                                             'rounded-lg bg-white dark:bg-gray-700 object-contain ring-1 ring-gray-900/10 dark:ring-gray-700',
-                                            merchant.imageUrl.includes('ui-avatars.com') 
+                                            merchant.imageUrl.includes('/merchants/') || merchant.imageUrl.includes('/logo/generate/')
                                                 ? 'h-12 w-12 flex-none' 
                                                 : 'h-12 w-full flex-1'
                                         ]" 
                                     />
                                     <div 
-                                        v-if="merchant.imageUrl.includes('ui-avatars.com')" 
+                                        v-if="merchant.imageUrl.includes('/merchants/') || merchant.imageUrl.includes('/logo/generate/')" 
                                         class="text-sm font-medium leading-6 text-gray-900 dark:text-gray-100 truncate"
                                     >
                                         {{ merchant.name }}

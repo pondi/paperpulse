@@ -6,6 +6,7 @@ use App\Contracts\Services\ReceiptEnricherContract;
 use App\Contracts\Services\ReceiptParserContract;
 use App\Contracts\Services\ReceiptValidatorContract;
 use App\Models\Receipt;
+use App\Services\Receipts\Deduplication\ReceiptDeduplicator;
 use App\Services\Receipts\LineItemsCreator;
 use App\Services\Receipts\TotalsCalculator;
 use Illuminate\Support\Facades\DB;
@@ -95,7 +96,7 @@ class ReceiptAnalysisRunner
                 ReceiptAnalysisLogger::creatingReceipt($fileId, $receiptPayload);
             }
 
-            $receipt = ReceiptCreator::create($receiptPayload, $data, $this->parser);
+            $receipt = ReceiptDeduplicator::getOrCreate($receiptPayload, $data, $this->parser);
 
             if ($prefs['extract_line_items']) {
                 LineItemsCreator::create($receipt, $items, $data['vendors'] ?? []);

@@ -3,9 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Tracks the lifecycle of a queued job chain and its tasks.
+ *
+ * Parent rows (order_in_chain = 0) represent the chain; child rows are tasks.
+ * Provides relationships for navigating parent/children and scopes for views.
+ */
 class JobHistory extends Model
 {
     protected $table = 'job_history';
@@ -21,12 +27,17 @@ class JobHistory extends Model
         'progress',
         'order_in_chain',
         'exception',
+        'metadata',
+        'file_name',
+        'file_type',
+        'file_id',
         'started_at',
-        'finished_at'
+        'finished_at',
     ];
 
     protected $casts = [
         'payload' => 'array',
+        'metadata' => 'array',
         'started_at' => 'datetime',
         'finished_at' => 'datetime',
     ];

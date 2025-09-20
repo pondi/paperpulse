@@ -14,7 +14,7 @@ class Logo extends Model
     protected $fillable = [
         'logo_data',
         'mime_type',
-        'hash'
+        'hash',
     ];
 
     /**
@@ -30,7 +30,7 @@ class Logo extends Model
      */
     public function getUrl(): string
     {
-        return "data:{$this->mime_type};base64," . base64_encode($this->logo_data);
+        return "data:{$this->mime_type};base64,".base64_encode($this->logo_data);
     }
 
     /**
@@ -60,7 +60,7 @@ class Logo extends Model
     ): static {
         /** @var LogoService $service */
         $service = app(LogoService::class);
-        
+
         return $service->findOrCreateLogo($logoData, $mimeType, $entityType, $entityName);
     }
 
@@ -72,6 +72,7 @@ class Logo extends Model
         if (is_resource($value)) {
             $value = stream_get_contents($value);
         }
+
         return $value;
     }
 
@@ -85,4 +86,4 @@ class Logo extends Model
         }
         $this->attributes['logo_data'] = $value;
     }
-} 
+}

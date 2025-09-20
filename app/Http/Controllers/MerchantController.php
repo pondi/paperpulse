@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Merchant;
 use App\Services\LogoService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
 
 class MerchantController extends Controller
 {
@@ -23,7 +23,10 @@ class MerchantController extends Controller
                 $join->on('merchants.id', '=', 'logos.logoable_id')
                     ->where('logos.logoable_type', '=', Merchant::class);
             })
-            ->join('receipts', 'merchants.id', '=', 'receipts.merchant_id')
+            ->join('receipts', function ($join) {
+                $join->on('merchants.id', '=', 'receipts.merchant_id')
+                    ->where('receipts.user_id', '=', auth()->id());
+            })
             ->select(
                 'merchants.id',
                 'merchants.name',
@@ -55,23 +58,32 @@ class MerchantController extends Controller
                 'name' => $merchant->name,
                 'imageUrl' => $this->logoService->getImageUrl($merchant, $merchant->logo_data, $merchant->mime_type),
                 'lastInvoice' => [
-                    'date' => $merchant->last_receipt_date 
-                        ? date('F j, Y', strtotime($merchant->last_receipt_date)) 
+                    'date' => $merchant->last_receipt_date
+                        ? date('F j, Y', strtotime($merchant->last_receipt_date))
                         : 'Ingen kvitteringer',
                     'dateTime' => $merchant->last_receipt_date,
-                    'amount' => number_format((float)$merchant->total_amount, 2, ',', ' ') . ' kr'
-                ]
+                    'amount' => number_format((float) $merchant->total_amount, 2, ',', ' ').' kr',
+                ],
             ]);
 
         return Inertia::render('Receipt/Merchants', [
-            'merchants' => $merchants
+            'merchants' => $merchants,
         ]);
     }
 
     public function updateLogo(Request $request, Merchant $merchant): RedirectResponse
     {
+        // Verify user has access to this merchant through their receipts
+        $hasAccess = $merchant->receipts()
+            ->where('user_id', auth()->id())
+            ->exists();
+
+        if (! $hasAccess) {
+            abort(403, 'Unauthorized access to merchant');
+        }
+
         $request->validate([
-            'logo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'logo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $file = $request->file('logo');

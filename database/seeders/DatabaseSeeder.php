@@ -20,6 +20,15 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
+        // Create an admin user in development
+        if (app()->environment('local', 'development')) {
+            User::factory()->create([
+                'name' => 'Admin User',
+                'email' => 'admin@example.com',
+                'is_admin' => true,
+            ]);
+        }
+
         $this->call([
             MerchantSeeder::class,
             VendorSeeder::class,

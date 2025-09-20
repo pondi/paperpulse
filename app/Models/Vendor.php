@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class Vendor extends Model
 {
@@ -17,7 +17,7 @@ class Vendor extends Model
         'website',
         'contact_email',
         'contact_phone',
-        'description'
+        'description',
     ];
 
     protected $appends = ['logo_url'];
@@ -29,8 +29,8 @@ class Vendor extends Model
 
     public function getLogoUrlAttribute(): string
     {
-        return $this->logo?->getUrl() 
-            ?? "https://ui-avatars.com/api/?name=" . urlencode($this->name) . "&color=7F9CF5&background=EBF4FF";
+        return $this->logo?->getUrl()
+            ?? route('merchants.logo.generate', ['name' => $this->name]);
     }
 
     public function lineItems(): HasMany
@@ -42,4 +42,4 @@ class Vendor extends Model
     {
         return $this->hasManyThrough(Receipt::class, LineItem::class);
     }
-} 
+}

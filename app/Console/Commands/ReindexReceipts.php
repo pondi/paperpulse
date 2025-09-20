@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class ReindexReceipts extends Command
 {
     protected $signature = 'receipts:reindex';
+
     protected $description = 'Reindex all receipts in Meilisearch';
 
     public function handle()
@@ -25,12 +26,12 @@ class ReindexReceipts extends Command
         // Reindex in chunks to avoid memory issues
         Receipt::with(['merchant', 'lineItems'])
             ->chunkById(100, function ($receipts) {
-                $receipts->searchable();
-                $this->info('Indexed ' . $receipts->count() . ' receipts');
+                $receipts->each->searchable();
+                $this->info('Indexed '.$receipts->count().' receipts');
             });
 
         $this->info('Reindexing completed successfully!');
-        
+
         return Command::SUCCESS;
     }
-} 
+}

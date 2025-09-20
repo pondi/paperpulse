@@ -4,12 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Vendor;
 use App\Services\LogoService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Date;
 
 class VendorController extends Controller
 {
@@ -25,7 +25,10 @@ class VendorController extends Controller
                     ->where('logos.logoable_type', '=', Vendor::class);
             })
             ->join('line_items', 'vendors.id', '=', 'line_items.vendor_id')
-            ->join('receipts', 'line_items.receipt_id', '=', 'receipts.id')
+            ->join('receipts', function ($join) {
+                $join->on('line_items.receipt_id', '=', 'receipts.id')
+                    ->where('receipts.user_id', '=', auth()->id());
+            })
             ->select([
                 'vendors.id',
                 'vendors.name',
@@ -37,7 +40,7 @@ class VendorController extends Controller
                 'logos.mime_type',
                 DB::raw('SUM(CAST((line_items.qty * line_items.price) AS DECIMAL(10,2))) as total_value'),
                 DB::raw('MAX(receipts.receipt_date) as last_item_date'),
-                DB::raw('COUNT(DISTINCT line_items.id) as total_items')
+                DB::raw('COUNT(DISTINCT line_items.id) as total_items'),
             ])
             ->groupBy([
                 'vendors.id',
@@ -47,7 +50,7 @@ class VendorController extends Controller
                 'vendors.contact_phone',
                 'vendors.description',
                 'logos.logo_data',
-                'logos.mime_type'
+                'logos.mime_type',
             ])
             ->get()
             ->map(fn (Vendor $vendor): array => [
@@ -57,39 +60,59 @@ class VendorController extends Controller
                 'website' => $vendor->website,
                 'contact' => [
                     'email' => $vendor->contact_email,
-                    'phone' => $vendor->contact_phone
+                    'phone' => $vendor->contact_phone,
                 ],
                 'stats' => [
-                    'date' => $vendor->last_item_date 
+                    'date' => $vendor->last_item_date
                         ? Date::parse($vendor->last_item_date)->format('F j, Y')
                         : 'No items',
                     'dateTime' => $vendor->last_item_date,
                     'totalItems' => $vendor->total_items,
-                    'totalValue' => $vendor->total_value 
-                        ? number_format((float)$vendor->total_value, 2) . ' kr' 
+                    'totalValue' => $vendor->total_value
+                        ? number_format((float) $vendor->total_value, 2).' kr'
                         : '0.00 kr',
-                    'status' => $vendor->total_items > 0 ? 'Active' : 'No items'
-                ]
+                    'status' => $vendor->total_items > 0 ? 'Active' : 'No items',
+                ],
             ]);
 
         return Inertia::render('Receipt/Vendors', [
-            'vendors' => $vendors
+            'vendors' => $vendors,
         ]);
     }
 
-    public function show(Vendor $vendor): Response
+    public function show(Vendor $vendor): RedirectResponse
     {
-        $vendor->load(['lineItems' => fn ($query) => $query->with('receipt')]);
+        // Verify user has access to this vendor through their receipts
+        $hasAccess = $vendor->lineItems()
+            ->whereHas('receipt', function ($query) {
+                $query->where('user_id', auth()->id());
+            })
+            ->exists();
 
-        return Inertia::render('Receipt/VendorDetails', [
-            'vendor' => $vendor
-        ]);
+        if (! $hasAccess) {
+            abort(403, 'Unauthorized access to vendor');
+        }
+
+        // No dedicated VendorDetails page exists. Redirect to vendors index,
+        // optionally passing focus parameter for UI to highlight if implemented.
+        return redirect()->route('vendors.index', ['focus' => $vendor->id]);
     }
 
     public function updateLogo(Request $request, Vendor $vendor): RedirectResponse
     {
+        // Verify user has access to this vendor through their receipts
+        $hasAccess = $vendor->lineItems()
+            ->whereHas('receipt', function ($query) {
+                $query->where('user_id', auth()->id());
+            })
+            ->exists();
+
+        if (! $hasAccess) {
+            abort(403, 'Unauthorized access to vendor');
+        }
+
         $validated = $request->validate([
-            'logo' => ['required', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048']
+            'logo' => ['required', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
         ]);
 
         $file = $request->file('logo');
@@ -97,4 +120,4 @@ class VendorController extends Controller
 
         return back();
     }
-} 
+}

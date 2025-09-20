@@ -3,8 +3,8 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
-use Inertia\Middleware;
 use Illuminate\Support\Facades\Lang;
+use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -18,7 +18,7 @@ class HandleInertiaRequests extends Middleware
     /**
      * Determine the current asset version.
      */
-    public function version(Request $request): string|null
+    public function version(Request $request): ?string
     {
         return parent::version($request);
     }
@@ -32,14 +32,30 @@ class HandleInertiaRequests extends Middleware
     {
         return array_merge(parent::share($request), [
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user() ? [
+                    'id' => $request->user()->id,
+                    'name' => $request->user()->name,
+                    'email' => $request->user()->email,
+                    'email_verified_at' => $request->user()->email_verified_at,
+                    'timezone' => $request->user()->timezone ?? 'UTC',
+                    'preferences' => $request->user()->preferences ? [
+                        'language' => $request->user()->preferences->language,
+                        'timezone' => $request->user()->preferences->timezone,
+                        'date_format' => $request->user()->preferences->date_format,
+                        'currency' => $request->user()->preferences->currency,
+                    ] : null,
+                ] : null,
             ],
             'language' => [
                 'messages' => $this->getTranslations(),
             ],
             'flash' => [
-                'success' => fn () => $request->session()->get('success'),
-                'error' => fn () => $request->session()->get('error'),
+                'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
+            ],
+            'features' => [
+                'beta' => config('features.beta.enabled'),
+                'documents' => config('features.beta.documents'),
             ],
         ]);
     }

@@ -182,16 +182,18 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['default'],
+            'queue' => ['default', 'receipts', 'documents'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
             'maxTime' => 0,
             'maxJobs' => 0,
-            'memory' => 128,
-            'tries' => 1,
-            'timeout' => 60,
+            'memory' => 256,
+            'tries' => 3,
+            'timeout' => 120,
             'nice' => 0,
+            'backoff' => [1, 5, 10],
+            'rest' => 0,
         ],
     ],
 

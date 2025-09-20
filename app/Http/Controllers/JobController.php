@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\System\RestartJobChain;
 use App\Models\JobHistory;
-use Carbon\Carbon;
-use Illuminate\Http\{Request, JsonResponse};
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\{DB, Log};
+use App\Models\PulseDavFile;
+use App\Services\JobChainService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Inertia\{Inertia, Response};
+use Inertia\Inertia;
+use Inertia\Response;
 
 class JobController extends Controller
 {
@@ -18,29 +22,7 @@ class JobController extends Controller
      */
     private function transformJob(JobHistory $job, bool $isChild = false): array
     {
-        $data = [
-            'id' => $job->uuid,
-            'name' => $job->name,
-            'status' => $job->status,
-            'queue' => $job->queue,
-            'started_at' => $job->started_at?->toDateTimeString(),
-            'finished_at' => $job->finished_at?->toDateTimeString(),
-            'progress' => (int) $job->progress,
-            'attempt' => $job->attempt,
-            'exception' => $job->exception,
-            'duration' => $job->finished_at?->diffInSeconds($job->started_at),
-            'order' => $job->order_in_chain,
-        ];
-
-        if (!$isChild) {
-            $data['tasks'] = $job->tasks()
-                ->orderBy('order_in_chain')
-                ->get()
-                ->map(fn(JobHistory $child): array => $this->transformJob($child, true))
-                ->all();
-        }
-
-        return $data;
+        return \App\Services\Jobs\JobHistoryTransformer::transform($job, $isChild);
     }
 
     /**
@@ -48,26 +30,7 @@ class JobController extends Controller
      */
     private function extractJobIDFromCommand(mixed $command): ?string
     {
-        if (!$command) {
-            return null;
-        }
-
-        try {
-            if (method_exists($command, 'getJobID')) {
-                return $command->getJobID();
-            }
-
-            $reflection = new \ReflectionClass($command);
-            $property = $reflection->getProperty('jobID');
-            $property->setAccessible(true);
-            return $property->getValue($command);
-        } catch (\Throwable $e) {
-            Log::warning('Failed to extract jobID from command', [
-                'command_class' => $command::class,
-                'error' => $e->getMessage()
-            ]);
-            return null;
-        }
+        return \App\Services\Jobs\JobCommandInspector::extractJobID($command);
     }
 
     /**
@@ -75,48 +38,7 @@ class JobController extends Controller
      */
     private function getPendingJobs(): Collection
     {
-        return DB::table('jobs')
-            ->select(['id', 'queue', 'payload', 'attempts', 'reserved_at', 'created_at'])
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function (object $job): ?array {
-                try {
-                    $payload = json_decode($job->payload, true, 512, JSON_THROW_ON_ERROR);
-                    
-                    if (!isset($payload['data']['command'])) {
-                        Log::warning('Invalid job payload structure - missing command', compact('payload'));
-                        return null;
-                    }
-                    
-                    $command = @unserialize($payload['data']['command']);
-                    $jobID = $this->extractJobIDFromCommand($command);
-                    
-                    $commandName = $payload['displayName'] 
-                        ?? $payload['data']['commandName'] 
-                        ?? ($command ? class_basename($command::class) : 'Unknown Job');
-                    
-                    return [
-                        'uuid' => $payload['uuid'] ?? Str::uuid()->toString(),
-                        'parent_uuid' => $jobID,
-                        'name' => $commandName,
-                        'status' => $job->reserved_at ? 'processing' : 'pending',
-                        'queue' => $job->queue,
-                        'started_at' => $this->formatTimestamp($job->reserved_at ?? $job->created_at),
-                        'progress' => 0,
-                        'attempt' => $job->attempts,
-                        'order_in_chain' => $this->getOrderInChain($commandName)
-                    ];
-                } catch (\Throwable $e) {
-                    Log::warning('Failed to process pending job', [
-                        'error' => $e->getMessage(),
-                        'job_id' => $job->id,
-                        'payload' => $job->payload ?? null
-                    ]);
-                    return null;
-                }
-            })
-            ->filter()
-            ->groupBy('parent_uuid');
+        return \App\Services\Jobs\PendingJobsReader::groupedByParent();
     }
 
     /**
@@ -124,13 +46,15 @@ class JobController extends Controller
      */
     private function formatTimestamp(string|int|null $timestamp): ?string
     {
-        if (!$timestamp) {
-            return null;
-        }
+        return \App\Services\Jobs\TimestampFormatter::format($timestamp);
+    }
 
-        return is_int($timestamp) 
-            ? Carbon::createFromTimestamp($timestamp)->toDateTimeString() 
-            : $timestamp;
+    /**
+     * Calculate the effective status of a parent job based on its children.
+     */
+    private function calculateParentJobStatus(JobHistory $parentJob): string
+    {
+        return \App\Services\Jobs\JobParentStatusCalculator::calculate($parentJob);
     }
 
     /**
@@ -138,14 +62,15 @@ class JobController extends Controller
      */
     private function getJobStats(): array
     {
-        $query = JobHistory::parentJobs();
-        
-        return [
-            'pending' => (clone $query)->where('status', 'pending')->count(),
-            'processing' => (clone $query)->where('status', 'processing')->count(),
-            'completed' => (clone $query)->where('status', 'completed')->count(),
-            'failed' => $query->where('status', 'failed')->count(),
-        ];
+        return \App\Services\Jobs\JobStatisticsProvider::overall();
+    }
+
+    /**
+     * Get PulseDav file processing statistics.
+     */
+    private function getPulseDavStats(): array
+    {
+        return \App\Services\Jobs\PulseDavStatisticsProvider::forUser(auth()->id());
     }
 
     /**
@@ -153,18 +78,41 @@ class JobController extends Controller
      */
     public function index(Request $request): Response
     {
+        // Restrict job visibility to administrators
+        if (! auth()->user()?->isAdmin()) {
+            abort(403, 'Unauthorized');
+        }
         $historyQuery = JobHistory::query()
             ->whereNull('parent_uuid')
             ->orderBy('created_at', 'desc')
-            ->when($request->filled('status'), fn(Builder $query) => $query->where('status', $request->status))
-            ->when($request->filled('queue'), fn(Builder $query) => $query->where('queue', $request->queue))
-            ->when($request->filled('search'), fn(Builder $query) => $query->where('name', 'like', "%{$request->search}%"));
+            ->when($request->filled('status'), fn (Builder $query) => $query->where('status', $request->status))
+            ->when($request->filled('queue'), fn (Builder $query) => $query->where('queue', $request->queue))
+            ->when($request->filled('search'), fn (Builder $query) => $query->where('name', 'like', "%{$request->search}%"));
 
         $historyJobs = $historyQuery->with('tasks')->paginate(50);
 
+        // Get recent PulseDav files with processing status
+        $recentPulseDavFiles = PulseDavFile::where('user_id', auth()->id())
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($file) {
+                return [
+                    'id' => $file->id,
+                    'filename' => $file->filename,
+                    'status' => $file->status,
+                    'uploaded_at' => $file->uploaded_at?->toIso8601String(),
+                    'processed_at' => $file->processed_at?->toIso8601String(),
+                    'error_message' => $file->error_message,
+                    'receipt_id' => $file->receipt_id,
+                ];
+            });
+
         return Inertia::render('Jobs/Index', [
-            'jobs' => $historyJobs->map(fn(JobHistory $job) => $this->transformJob($job))->all(),
+            'jobs' => $historyJobs->map(fn (JobHistory $job) => $this->transformJob($job))->all(),
             'stats' => $this->getJobStats(),
+            'pulseDavStats' => $this->getPulseDavStats(),
+            'recentPulseDavFiles' => $recentPulseDavFiles,
             'queues' => JobHistory::select('queue')
                 ->whereNull('parent_uuid')
                 ->distinct()
@@ -173,14 +121,14 @@ class JobController extends Controller
             'filters' => [
                 'status' => $request->input('status', ''),
                 'queue' => $request->input('queue', ''),
-                'search' => $request->input('search', '')
+                'search' => $request->input('search', ''),
             ],
             'pagination' => [
                 'current_page' => $historyJobs->currentPage(),
                 'last_page' => $historyJobs->lastPage(),
                 'per_page' => $historyJobs->perPage(),
-                'total' => $historyJobs->total()
-            ]
+                'total' => $historyJobs->total(),
+            ],
         ]);
     }
 
@@ -189,13 +137,16 @@ class JobController extends Controller
      */
     public function getStatus(Request $request): JsonResponse
     {
+        if (! auth()->user()?->isAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
         try {
             $pendingJobs = $this->getPendingJobs();
 
             $historyQuery = JobHistory::parentJobs()
-                ->when($request->status, fn(Builder $query) => $query->where('status', $request->status))
-                ->when($request->queue, fn(Builder $query) => $query->where('queue', $request->queue))
-                ->when($request->search, fn(Builder $query) => $query->where('name', 'like', "%{$request->search}%"));
+                ->when($request->status, fn (Builder $query) => $query->where('status', $request->status))
+                ->when($request->queue, fn (Builder $query) => $query->where('queue', $request->queue))
+                ->when($request->search, fn (Builder $query) => $query->where('name', 'like', "%{$request->search}%"));
 
             $historyJobs = $historyQuery
                 ->with('tasks')
@@ -203,40 +154,40 @@ class JobController extends Controller
                 ->paginate(50);
 
             return response()->json([
-                'data' => $historyJobs->map(function(JobHistory $job) use ($pendingJobs): array {
+                'data' => $historyJobs->map(function (JobHistory $job) use ($pendingJobs): array {
                     $jobData = $this->transformJob($job);
-                    
+
                     if (isset($pendingJobs[$job->uuid])) {
                         $pendingTasks = $pendingJobs[$job->uuid]->values();
-                        $jobData['tasks'] = collect($jobData['tasks'])
+                        $jobData['steps'] = collect($jobData['steps'])
                             ->concat($pendingTasks)
-                            ->sortBy('order_in_chain')
+                            ->sortBy('order')
                             ->values()
                             ->all();
                     }
-                    
+
                     return $jobData;
                 }),
                 'stats' => $this->getJobStats(),
-                'queues' => JobHistory::select('queue')->distinct()->pluck('queue'),
+                'queues' => JobHistory::whereNull('parent_uuid')->select('queue')->distinct()->pluck('queue'),
                 'pagination' => [
                     'total' => $historyJobs->total(),
                     'per_page' => $historyJobs->perPage(),
                     'current_page' => $historyJobs->currentPage(),
                     'last_page' => $historyJobs->lastPage(),
                 ],
-                'success' => true
+                'success' => true,
             ]);
         } catch (\Throwable $e) {
             Log::error('Failed to fetch job status:', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'message' => 'Could not fetch job status',
                 'error' => $e->getMessage(),
-                'success' => false
+                'success' => false,
             ], 500);
         }
     }
@@ -246,12 +197,227 @@ class JobController extends Controller
      */
     private function getOrderInChain(string $jobName): int
     {
-        return match (class_basename($jobName)) {
-            'ProcessFile' => 1,
-            'ProcessReceipt' => 2,
-            'MatchMerchant' => 3,
-            'DeleteWorkingFiles' => 4,
-            default => 0,
-        };
+        return \App\Services\Jobs\JobChainOrderResolver::resolve($jobName);
     }
-} 
+
+    /**
+     * Restart a failed job chain
+     */
+    public function restart(Request $request, string $jobId)
+    {
+        if (! auth()->user()?->isAdmin()) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+            abort(403, 'Unauthorized');
+        }
+
+        try {
+            // Validate that the job exists and can be restarted
+            $jobChainService = app(JobChainService::class);
+            $status = $jobChainService->getJobChainStatus($jobId);
+
+            if (! $status['found']) {
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Job chain not found',
+                    ], 404);
+                }
+
+                return back()->with('error', 'Job chain not found');
+            }
+
+            if (! $status['can_restart']) {
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Job chain cannot be restarted - no failed tasks found',
+                    ], 400);
+                }
+
+                return back()->with('error', 'Job chain cannot be restarted - no failed tasks found');
+            }
+
+            // Generate a new job ID for the restart operation
+            $restartJobId = (string) Str::uuid();
+
+            // Dispatch the restart job to the default queue
+            dispatch(new RestartJobChain($restartJobId, $jobId))->onQueue('default');
+
+            Log::info('Job chain restart requested', [
+                'original_job_id' => $jobId,
+                'restart_job_id' => $restartJobId,
+                'user_id' => auth()->id(),
+            ]);
+
+            // For Inertia requests, redirect back with success message
+            if ($request->header('X-Inertia')) {
+                return redirect()->route('jobs.index')->with('success', 'Job chain restart initiated');
+            }
+
+            // For API requests, return JSON
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Job chain restart initiated',
+                    'restart_job_id' => $restartJobId,
+                ]);
+            }
+
+            // Default redirect for web requests
+            return redirect()->route('jobs.index')->with('success', 'Job chain restart initiated');
+
+        } catch (\Exception $e) {
+            Log::error('Failed to restart job chain', [
+                'job_id' => $jobId,
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to restart job chain: '.$e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', 'Failed to restart job chain: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Restart multiple job chains
+     */
+    public function restartMultiple(Request $request): JsonResponse
+    {
+        if (! auth()->user()?->isAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+        $request->validate([
+            'job_ids' => 'required|array|min:1|max:10',
+            'job_ids.*' => 'required|string|uuid',
+        ]);
+
+        try {
+            $jobChainService = app(JobChainService::class);
+            $results = [];
+            $successCount = 0;
+            $failureCount = 0;
+
+            foreach ($request->job_ids as $jobId) {
+                try {
+                    // Check if job can be restarted
+                    $status = $jobChainService->getJobChainStatus($jobId);
+
+                    if (! $status['found']) {
+                        $results[$jobId] = [
+                            'success' => false,
+                            'message' => 'Job chain not found',
+                        ];
+                        $failureCount++;
+
+                        continue;
+                    }
+
+                    if (! $status['can_restart']) {
+                        $results[$jobId] = [
+                            'success' => false,
+                            'message' => 'Job chain cannot be restarted - no failed tasks found',
+                        ];
+                        $failureCount++;
+
+                        continue;
+                    }
+
+                    // Generate a new job ID for the restart operation
+                    $restartJobId = (string) Str::uuid();
+
+                    // Dispatch the restart job to the default queue
+                    dispatch(new RestartJobChain($restartJobId, $jobId))->onQueue('default');
+
+                    $results[$jobId] = [
+                        'success' => true,
+                        'message' => 'Job chain restart initiated',
+                        'restart_job_id' => $restartJobId,
+                    ];
+                    $successCount++;
+
+                } catch (\Exception $e) {
+                    $results[$jobId] = [
+                        'success' => false,
+                        'message' => $e->getMessage(),
+                    ];
+                    $failureCount++;
+                }
+            }
+
+            Log::info('Bulk job chain restart requested', [
+                'job_ids' => $request->job_ids,
+                'success_count' => $successCount,
+                'failure_count' => $failureCount,
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => $failureCount === 0,
+                'message' => "Restarted {$successCount} job chains, {$failureCount} failed",
+                'results' => $results,
+                'summary' => [
+                    'success_count' => $successCount,
+                    'failure_count' => $failureCount,
+                    'total_count' => count($request->job_ids),
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to restart multiple job chains', [
+                'job_ids' => $request->job_ids ?? [],
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to restart job chains: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get detailed status for a specific job chain
+     */
+    public function show(string $jobId): JsonResponse
+    {
+        if (! auth()->user()?->isAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+        try {
+            $jobChainService = app(JobChainService::class);
+            $status = $jobChainService->getJobChainStatus($jobId);
+
+            if (! $status['found']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Job chain not found',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $status,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get job chain status', [
+                'job_id' => $jobId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get job chain status: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+}

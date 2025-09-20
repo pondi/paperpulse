@@ -1,15 +1,10 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\FileController;
-use App\Http\Controllers\MerchantController;
-use App\Http\Controllers\ReceiptController;
-use App\Http\Controllers\VendorController;
-use App\Http\Controllers\JobController;
-use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\SearchController;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -27,47 +22,55 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified', 'web'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
-    // Profile routes
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-    // Merchant routes
-    Route::get('/merchants', [MerchantController::class, 'index'])->name('merchants.index');
-    Route::post('/merchants/{merchant}/logo', [MerchantController::class, 'updateLogo'])->name('merchants.updateLogo');
-    
-    // Vendor routes
-    Route::get('/vendors', [VendorController::class, 'index'])->name('vendors.index');
-    Route::get('/vendors/{vendor}', [VendorController::class, 'show'])->name('vendors.show');
-    Route::post('/vendors/{vendor}/logo', [VendorController::class, 'updateLogo'])->name('vendors.updateLogo');
-
-    // Document routes
-    Route::get('/documents/upload', function () {
-        return Inertia::render('Documents/Upload');
-    })->name('documents.upload');
-    Route::post('/documents/store', [DocumentController::class, 'store'])->name('documents.store');
-    Route::get('/documents/serve', [DocumentController::class, 'serve'])->name('documents.serve');
-    Route::get('/documents/url', [DocumentController::class, 'getSecureUrl'])->name('documents.url');
-
-    // Receipt routes
-    Route::get('/receipts', [ReceiptController::class, 'index'])->name('receipts.index');
-    Route::get('/receipts/{receipt}', [ReceiptController::class, 'show'])->name('receipts.show');
-    Route::get('/receipts/{receipt}/image', [ReceiptController::class, 'showImage'])->name('receipts.showImage');
-    Route::get('/receipts/{receipt}/pdf', [ReceiptController::class, 'showPdf'])->name('receipts.showPdf');
-    Route::get('/receipts/merchant/{merchant}', [ReceiptController::class, 'byMerchant'])->name('receipts.byMerchant');
-    Route::delete('/receipts/{receipt}', [ReceiptController::class, 'destroy'])->name('receipts.destroy');
-    Route::patch('/receipts/{receipt}', [ReceiptController::class, 'update'])->name('receipts.update');
-    Route::post('/receipts/{receipt}/line-items', [ReceiptController::class, 'addLineItem'])->name('receipts.line-items.store');
-    Route::patch('/receipts/{receipt}/line-items/{lineItem}', [ReceiptController::class, 'updateLineItem'])->name('receipts.line-items.update');
-    Route::delete('/receipts/{receipt}/line-items/{lineItem}', [ReceiptController::class, 'deleteLineItem'])->name('receipts.line-items.destroy');
-
-    // Jobs routes
-    Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');
-    Route::get('/jobs/status', [JobController::class, 'getStatus'])->name('jobs.status');
-
-    // Search routes
-    Route::get('/search', [SearchController::class, 'search'])->name('search');
 });
 
+// Health check endpoint for Docker/Kubernetes
+Route::get('/up', function () {
+    $status = 'ok';
+    $checks = [];
+
+    // Check database connection
+    try {
+        DB::connection()->getPdo();
+        $checks['database'] = true;
+    } catch (\Exception $e) {
+        $status = 'error';
+        $checks['database'] = false;
+    }
+
+    // Check Redis connection
+    try {
+        Cache::store('redis')->get('health-check');
+        $checks['redis'] = true;
+    } catch (\Exception $e) {
+        $status = 'error';
+        $checks['redis'] = false;
+    }
+
+    // Check if migrations are up to date
+    try {
+        $pendingMigrations = collect(DB::select('SELECT migration FROM migrations'))
+            ->pluck('migration')
+            ->diff(collect(File::files(database_path('migrations')))
+                ->map(fn ($file) => str_replace('.php', '', $file->getFilename()))
+            )
+            ->isEmpty();
+        $checks['migrations'] = $pendingMigrations;
+    } catch (\Exception $e) {
+        $checks['migrations'] = false;
+    }
+
+    return response()->json([
+        'status' => $status,
+        'timestamp' => now()->toIso8601String(),
+        'checks' => $checks,
+    ], $status === 'ok' ? 200 : 503);
+})->name('health');
+
+// Include domain-specific routes
 require __DIR__.'/auth.php';
+require __DIR__.'/web/documents.php';
+require __DIR__.'/web/receipts.php';
+require __DIR__.'/web/profile.php';
+require __DIR__.'/web/admin.php';
+require __DIR__.'/web/integrations.php';

@@ -18,13 +18,13 @@
                                         :alt="merchant.name" 
                                         :class="[
                                             'rounded-lg bg-white dark:bg-gray-700 object-contain ring-1 ring-gray-900/10 dark:ring-gray-700',
-                                            merchant.imageUrl.includes('ui-avatars.com') 
+                                            merchant.imageUrl.includes('/merchants/') || merchant.imageUrl.includes('/logo/generate/')
                                                 ? 'h-12 w-12 flex-none' 
                                                 : 'h-12 w-full flex-1'
                                         ]" 
                                     />
                                     <div 
-                                        v-if="merchant.imageUrl.includes('ui-avatars.com')" 
+                                        v-if="merchant.imageUrl.includes('/merchants/') || merchant.imageUrl.includes('/logo/generate/')" 
                                         class="text-sm font-medium leading-6 text-gray-900 dark:text-gray-100 truncate"
                                     >
                                         {{ merchant.name }}
@@ -83,11 +83,11 @@
                     </ul>
                 </template>
                 <template v-else>
-                    <div class="bg-gray-900 px-6 py-24 sm:py-32 lg:px-8">
+                    <div class="bg-gray-50 dark:bg-gray-900 px-6 py-24 sm:py-32 lg:px-8">
                         <div class="mx-auto max-w-2xl text-center">
                             <p class="text-base/7 font-semibold text-indigo-600">No merchants found</p>
-                            <h2 class="text-5xl font-semibold tracking-tight text-white sm:text-7xl">Upload your first receipt</h2>
-                            <p class="mt-6 text-lg leading-8 text-gray-300">Merchants will appear here after you upload your first receipt.</p>
+                            <h2 class="text-5xl font-semibold tracking-tight text-gray-900 dark:text-white sm:text-7xl">Upload your first receipt</h2>
+                            <p class="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-300">Merchants will appear here after you upload your first receipt.</p>
                             <Link 
                                 :href="route('documents.upload')" 
                                 class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"

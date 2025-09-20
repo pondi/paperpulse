@@ -3,7 +3,20 @@
 
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('receipts') }}</h2>
+      <div class="flex items-center justify-between">
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">{{ __('receipts') }}</h2>
+        <div v-if="receipts.length > 0" class="flex items-center space-x-4">
+          <label class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+            <input
+              type="checkbox"
+              class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
+              :checked="allSelected"
+              @change="toggleAllSelection"
+            />
+            <span class="ml-2">Select All</span>
+          </label>
+        </div>
+      </div>
     </template>
 
     <div class="py-12">
@@ -24,6 +37,15 @@
           <template v-if="receipts.length > 0">
             <ul role="list" class="divide-y divide-gray-100 dark:divide-gray-800">
               <li v-for="receipt in receipts" :key="receipt.id" class="relative flex items-center space-x-4 py-4">
+                <div class="flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    :value="receipt.id"
+                    :checked="selectedReceipts.includes(receipt.id)"
+                    @change="toggleSelection(receipt.id)"
+                  />
+                </div>
                 <div class="min-w-0 flex-auto">
                   <div class="flex items-center gap-x-3">
                     <div :class="[getStatusClass(receipt), 'flex-none rounded-full p-1']">
@@ -45,6 +67,17 @@
                     </svg>
                     <p class="whitespace-nowrap">{{ formatDate(receipt.receipt_date) }}</p>
                   </div>
+                  <!-- Tags -->
+                  <div v-if="receipt.tags && receipt.tags.length > 0" class="mt-2 flex flex-wrap gap-1">
+                    <span
+                      v-for="tag in receipt.tags"
+                      :key="tag.id"
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                      :style="{ backgroundColor: tag.color + '20', color: tag.color }"
+                    >
+                      {{ tag.name }}
+                    </span>
+                  </div>
                 </div>
                 <div :class="[getCategoryClass(receipt.receipt_category), 'flex-none rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset']">
                   {{ receipt.receipt_category || __('uncategorized') }}
@@ -54,11 +87,11 @@
             </ul>
           </template>
           <template v-else>
-            <div class="bg-gray-900 px-6 py-24 sm:py-32 lg:px-8">
+            <div class="bg-gray-50 dark:bg-gray-900 px-6 py-24 sm:py-32 lg:px-8">
               <div class="mx-auto max-w-2xl text-center">
                 <p class="text-base font-semibold text-indigo-600">{{ __('no_receipts_found') }}</p>
-                <h2 class="text-4xl font-bold tracking-tight text-white sm:text-6xl">{{ __('upload_first_receipts') }}</h2>
-                <p class="mt-6 text-lg leading-8 text-gray-300">{{ __('no_receipts_description') }}</p>
+                <h2 class="text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-6xl">{{ __('upload_first_receipts') }}</h2>
+                <p class="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-300">{{ __('no_receipts_description') }}</p>
                 <div class="mt-10 flex items-center justify-center gap-x-6">
                   <Link :href="route('documents.upload')" class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
                     {{ __('upload_receipts') }}
@@ -70,6 +103,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Bulk Operations Bar -->
+    <BulkOperations
+      :selected-count="selectedReceipts.length"
+      :selected-ids="selectedReceipts"
+      :categories="categories"
+      @clear-selection="clearSelection"
+    />
 
     <!-- Receipt Drawer -->
     <TransitionRoot as="template" :show="isDrawerOpen">
@@ -109,7 +150,8 @@
                         <div class="flex justify-center bg-white">
                           <div class="w-[400px]">
                             <template v-if="selectedReceipt?.file?.url">
-                              <img 
+                              <!-- Always show image (backend handles preview generation for PDFs) -->
+                              <img
                                 :src="selectedReceipt.file.url"
                                 class="w-full h-auto"
                                 :alt="__('receipt_image')"
@@ -315,15 +357,15 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import BulkOperations from '@/Components/Domain/BulkOperations.vue';
 import { ChevronRightIcon, EllipsisVerticalIcon } from '@heroicons/vue/20/solid';
 import { 
   XMarkIcon, 
-  ReceiptRefundIcon, 
   ArrowTopRightOnSquareIcon, 
   ExclamationTriangleIcon,
   ExclamationCircleIcon,
   ReceiptPercentIcon,
-  CheckCircleIcon 
+  CheckCircleIcon
 } from '@heroicons/vue/24/outline';
 import {
   Dialog,
@@ -336,6 +378,7 @@ import {
   TransitionRoot,
   DialogTitle,
 } from '@headlessui/vue';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 const page = usePage();
 const __ = (key) => {
@@ -350,11 +393,16 @@ const __ = (key) => {
   
   return value || key.split('.').pop();
 };
+const { formatDate, formatCurrency } = useDateFormatter();
 
 const props = defineProps({
   receipts: {
     type: Array,
     required: true
+  },
+  categories: {
+    type: Array,
+    default: () => []
   }
 });
 
@@ -362,6 +410,7 @@ const isDrawerOpen = ref(false);
 const selectedReceipt = ref(null);
 const showDeleteConfirm = ref(false);
 const imageError = ref(false);
+const selectedReceipts = ref([]);
 
 const drawerRef = ref(null);
 const DRAWER_GAP = 8;
@@ -372,6 +421,10 @@ const containerStyle = computed(() => ({
   maxWidth: '100vw',
   transition: 'padding-right 500ms ease-in-out'
 }));
+
+const allSelected = computed(() => {
+  return props.receipts.length > 0 && selectedReceipts.value.length === props.receipts.length;
+});
 
 const updateContainerStyle = () => {
   if (isDrawerOpen.value) {
@@ -403,6 +456,27 @@ const deleteReceipt = () => {
   });
 };
 
+const toggleSelection = (receiptId) => {
+  const index = selectedReceipts.value.indexOf(receiptId);
+  if (index === -1) {
+    selectedReceipts.value.push(receiptId);
+  } else {
+    selectedReceipts.value.splice(index, 1);
+  }
+};
+
+const toggleAllSelection = () => {
+  if (allSelected.value) {
+    selectedReceipts.value = [];
+  } else {
+    selectedReceipts.value = props.receipts.map(r => r.id);
+  }
+};
+
+const clearSelection = () => {
+  selectedReceipts.value = [];
+};
+
 const getStatusClass = (receipt) => {
   if (!receipt?.merchant_id) return 'text-gray-500 bg-gray-100/10'
   if (receipt?.total_amount === null) return 'text-rose-400 bg-rose-400/10'
@@ -418,22 +492,7 @@ const getCategoryClass = (category) => {
   return classes[category] || classes.default
 }
 
-const formatDate = (date) => {
-  if (!date) return __('no_date')
-  return new Date(date).toLocaleDateString('nb-NO', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
-const formatCurrency = (amount, currency) => {
-  if (!amount) return '0,00'
-  return new Intl.NumberFormat('nb-NO', {
-    style: 'currency',
-    currency: currency || 'NOK'
-  }).format(amount)
-}
+// formatDate and formatCurrency are now imported from useDateFormatter
 
 const openPdf = (url) => {
   window.open(url, '_blank', 'noopener,noreferrer')
@@ -458,4 +517,4 @@ onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyDown);
   window.removeEventListener('resize', updateContainerStyle);
 });
-</script> 
+</script>

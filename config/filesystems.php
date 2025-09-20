@@ -44,6 +44,67 @@ return [
             'throw' => false,
         ],
 
+        // PulseDav incoming bucket for WebDAV uploads
+        'pulsedav' => [
+            'driver' => 's3',
+            'key' => env('S3_KEY'),
+            'secret' => env('S3_SECRET'),
+            'region' => env('S3_REGION'),
+            'bucket' => env('AWS_INCOMING_BUCKET'),
+            'url' => env('S3_URL'),
+            'endpoint' => env('S3_ENDPOINT'),
+            'use_path_style_endpoint' => env('S3_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'throw' => true,
+            'options' => [
+                'ACL' => 'private',
+                // Fix for RequestTimeTooSkewed error
+                'http' => [
+                    'synchronous' => false,
+                ],
+            ],
+            'client' => [
+                'http' => [
+                    'verify' => false,
+                    'synchronous' => false,
+                ],
+                // Allow for clock skew
+                'signature_version' => 'v4',
+                'use_aws_shared_config_files' => false,
+            ],
+        ],
+
+        // PaperPulse permanent storage bucket
+        'paperpulse' => [
+            'driver' => 's3',
+            'key' => env('S3_KEY'),
+            'secret' => env('S3_SECRET'),
+            'region' => env('S3_REGION'),
+            'bucket' => env('AWS_BUCKET'),
+            'url' => env('S3_URL'),
+            'endpoint' => env('S3_ENDPOINT'),
+            'use_path_style_endpoint' => env('S3_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'throw' => true,
+            'options' => [
+                'ACL' => 'private',
+                // Fix for RequestTimeTooSkewed error
+                'http' => [
+                    'synchronous' => false,
+                ],
+            ],
+            'client' => [
+                'http' => [
+                    'verify' => false,
+                    'synchronous' => false,
+                ],
+                // Allow for clock skew
+                'signature_version' => 'v4',
+                'use_aws_shared_config_files' => false,
+            ],
+        ],
+
+        // Textract temporary storage
         'textract' => [
             'driver' => 's3',
             'key' => env('TEXTRACT_KEY'),
@@ -51,21 +112,6 @@ return [
             'region' => env('TEXTRACT_REGION'),
             'bucket' => env('TEXTRACT_BUCKET'),
             'throw' => true,
-        ],
-
-        'documents' => [
-            'driver' => env('DOCUMENTS_STORAGE_DRIVER', 'local'),
-            'root' => env('DOCUMENTS_STORAGE_ROOT', storage_path('app/documents')),
-            'url' => env('DOCUMENTS_AWS_URL'),
-            'endpoint' => env('DOCUMENTS_AWS_ENDPOINT'),
-            'use_path_style_endpoint' => env('DOCUMENTS_AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => true,
-            'visibility' => 'private',
-            'key' => env('DOCUMENTS_AWS_ACCESS_KEY_ID'),
-            'secret' => env('DOCUMENTS_AWS_SECRET_ACCESS_KEY'),
-            'region' => env('DOCUMENTS_AWS_DEFAULT_REGION'),
-            'bucket' => env('DOCUMENTS_AWS_BUCKET'),
-            'root' => '',
         ],
 
     ],
@@ -84,5 +130,16 @@ return [
     'links' => [
         public_path('storage') => storage_path('app/public'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | S3 Bucket Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for dual S3 bucket setup for document processing
+    |
+    */
+
+    'incoming_prefix' => env('S3_INCOMING_PREFIX', 'incoming/'),
 
 ];

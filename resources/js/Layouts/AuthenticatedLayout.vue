@@ -18,10 +18,11 @@
                   </div>
                 </TransitionChild>
                 <!-- Sidebar component, swap this element with another sidebar if you like -->
-                <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6 ring-1 ring-white/10">
+                <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-gray-900 px-6 ring-1 ring-gray-900/5 dark:ring-white/10">
                   <div class="flex h-16 shrink-0 items-center">
-                    <Link :href="route('dashboard')">
-                      <ApplicationLogo class="h-8 w-auto fill-current text-gray-200" />
+                    <Link :href="route('dashboard')" class="flex items-center gap-2">
+                      <ApplicationLogo class="h-10 w-10" />
+                      <span class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">PaperPulse</span>
                     </Link>
                   </div>
                   <nav class="flex flex-1 flex-col">
@@ -29,7 +30,7 @@
                       <li>
                         <ul role="list" class="-mx-2 space-y-1">
                           <li v-for="item in navigation" :key="item.name">
-                            <Link :href="item.href" :class="[item.current ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white', 'group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold']">
+                            <Link :href="item.href" :class="[item.current ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white', 'group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold']">
                               <component :is="item.icon" class="size-6 shrink-0" aria-hidden="true" />
                               {{ __(item.name.toLowerCase()) }}
                             </Link>
@@ -38,7 +39,7 @@
                                 v-for="child in item.children"
                                 :key="child.name"
                                 :href="child.href"
-                                :class="[child.current ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white', 'group flex gap-x-3 rounded-md py-1 pl-11 pr-2 text-sm/6 font-medium']"
+                                :class="[child.current ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white', 'group flex gap-x-3 rounded-md py-1 pl-11 pr-2 text-sm/6 font-medium']"
                               >
                                 {{ __(child.name.toLowerCase()) }}
                               </Link>
@@ -48,7 +49,7 @@
                       </li>
                       <li class="-mx-6 mt-auto">
                         <Menu as="div" class="relative w-full">
-                          <MenuButton class="flex w-full items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-white hover:bg-gray-800">
+                          <MenuButton class="flex w-full items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800">
                             <span class="sr-only">Open user menu</span>
                             <span class="flex items-center gap-x-4">
                               <span class="flex-1">{{ $page.props.auth.user.name }}</span>
@@ -56,9 +57,9 @@
                             </span>
                           </MenuButton>
                           <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
-                            <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-gray-800 py-2 shadow-lg ring-1 ring-gray-700 focus:outline-none">
+                            <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-white dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 dark:ring-gray-700 focus:outline-none">
                               <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
-                                <Link :href="item.href" :method="item.method" :class="[active ? 'bg-gray-700 text-gray-100' : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100', 'block px-3 py-1 text-sm/6']">
+                                <Link :href="item.href" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-100', 'block px-3 py-1 text-sm/6', item.method ? 'w-full text-left' : '']">
                                   {{ __(item.name.toLowerCase()) }}
                                 </Link>
                               </MenuItem>
@@ -78,10 +79,11 @@
       <!-- Static sidebar for desktop -->
       <div class="hidden xl:fixed xl:inset-y-0 xl:z-50 xl:flex xl:w-72 xl:flex-col">
         <!-- Sidebar component, swap this element with another sidebar if you like -->
-        <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-black/10 px-6 ring-1 ring-white/5">
+        <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-gray-900 px-6 ring-1 ring-gray-900/5 dark:ring-white/10">
           <div class="flex h-16 shrink-0 items-center">
-            <Link :href="route('dashboard')">
-              <ApplicationLogo class="h-8 w-auto fill-current text-gray-200" />
+            <Link :href="route('dashboard')" class="flex items-center gap-2">
+              <ApplicationLogo class="h-10 w-10" />
+              <span class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">PaperPulse</span>
             </Link>
           </div>
           <nav class="flex flex-1 flex-col">
@@ -89,7 +91,7 @@
               <li>
                 <ul role="list" class="-mx-2 space-y-1">
                   <li v-for="item in navigation" :key="item.name">
-                    <Link :href="item.href" :class="[item.current ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white', 'group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold']">
+                    <Link :href="item.href" :class="[item.current ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white', 'group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold']">
                       <component :is="item.icon" class="size-6 shrink-0" aria-hidden="true" />
                       {{ __(item.name.toLowerCase()) }}
                     </Link>
@@ -98,7 +100,7 @@
                         v-for="child in item.children"
                         :key="child.name"
                         :href="child.href"
-                        :class="[child.current ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white', 'group flex gap-x-3 rounded-md py-1 pl-11 pr-2 text-sm/6 font-medium']"
+                        :class="[child.current ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white', 'group flex gap-x-3 rounded-md py-1 pl-11 pr-2 text-sm/6 font-medium']"
                       >
                         {{ __(child.name.toLowerCase()) }}
                       </Link>
@@ -108,7 +110,7 @@
               </li>
               <li class="-mx-6 mt-auto">
                 <Menu as="div" class="relative w-full">
-                  <MenuButton class="flex w-full items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-white hover:bg-gray-800">
+                  <MenuButton class="flex w-full items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800">
                     <span class="sr-only">Open user menu</span>
                     <span class="flex items-center gap-x-4">
                       <span class="flex-1">{{ $page.props.auth.user.name }}</span>
@@ -116,9 +118,9 @@
                     </span>
                   </MenuButton>
                   <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
-                    <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-gray-800 py-2 shadow-lg ring-1 ring-gray-700 focus:outline-none">
+                    <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-white dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 dark:ring-gray-700 focus:outline-none">
                       <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
-                        <Link :href="item.href" :method="item.method" :class="[active ? 'bg-gray-700 text-gray-100' : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100', 'block px-3 py-1 text-sm/6']">
+                        <Link :href="item.href" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-100', 'block px-3 py-1 text-sm/6', item.method ? 'w-full text-left' : '']">
                           {{ __(item.name.toLowerCase()) }}
                         </Link>
                       </MenuItem>
@@ -131,10 +133,10 @@
         </div>
       </div>
 
-      <div class="xl:pl-72">
+      <div class="xl:pl-72 bg-gray-50 dark:bg-gray-900">
         <!-- Sticky search header -->
-        <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-6 border-b border-white/5 bg-gray-900 px-4 shadow-sm sm:px-6 lg:px-8">
-          <button type="button" class="-m-2.5 p-2.5 text-white xl:hidden" @click="sidebarOpen = true">
+        <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-6 border-b border-gray-200 bg-white px-4 shadow-sm sm:px-6 lg:px-8 dark:border-white/5 dark:bg-gray-900">
+          <button type="button" class="-m-2.5 p-2.5 text-gray-700 xl:hidden dark:text-white" @click="sidebarOpen = true">
             <span class="sr-only">Open sidebar</span>
             <Bars3Icon class="size-5" aria-hidden="true" />
           </button>
@@ -142,6 +144,46 @@
           <div class="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
             <div class="flex flex-1 items-center">
               <SearchBar />
+            </div>
+            <div class="flex items-center gap-x-4 lg:gap-x-6">
+              <NotificationBell />
+              <ThemeToggle />
+              <!-- Profile dropdown -->
+              <Menu as="div" class="relative">
+                <MenuButton class="-m-1.5 flex items-center p-1.5">
+                  <span class="sr-only">Open user menu</span>
+                  <div class="flex items-center">
+                    <span class="hidden lg:flex lg:items-center">
+                      <span class="text-sm font-semibold text-gray-700 dark:text-gray-300" aria-hidden="true">{{ $page.props.auth.user.name }}</span>
+                      <ChevronDownIcon class="ml-2 h-5 w-5 text-gray-400" aria-hidden="true" />
+                    </span>
+                    <span class="lg:hidden">
+                      <UserCircleIcon class="h-6 w-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                    </span>
+                  </div>
+                </MenuButton>
+                <transition
+                  enter-active-class="transition ease-out duration-100"
+                  enter-from-class="transform opacity-0 scale-95"
+                  enter-to-class="transform opacity-100 scale-100"
+                  leave-active-class="transition ease-in duration-75"
+                  leave-from-class="transform opacity-100 scale-100"
+                  leave-to-class="transform opacity-0 scale-95"
+                >
+                  <MenuItems class="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 dark:ring-gray-700 focus:outline-none">
+                    <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
+                      <Link
+                        :href="item.href"
+                        :method="item.method"
+                        :as="item.method ? 'button' : 'a'"
+                        :class="[active ? 'bg-gray-50 dark:bg-gray-700' : '', 'block px-3 py-1 text-sm text-gray-900 dark:text-gray-100', item.method ? 'w-full text-left' : '']"
+                      >
+                        {{ __(item.name.toLowerCase()) }}
+                      </Link>
+                    </MenuItem>
+                  </MenuItems>
+                </transition>
+              </Menu>
             </div>
           </div>
         </div>
@@ -181,22 +223,33 @@ import {
   HomeIcon,
   UsersIcon,
   XMarkIcon,
+  CloudArrowDownIcon,
+  CloudArrowUpIcon,
+  ChartBarIcon,
+  UserCircleIcon,
+  TagIcon,
 } from '@heroicons/vue/24/outline'
 import { ChevronDownIcon } from '@heroicons/vue/20/solid'
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import SearchBar from '@/Components/SearchBar.vue';
+import ApplicationLogo from '@/Components/Common/ApplicationLogo.vue';
+import SearchBar from '@/Components/Features/SearchBar.vue';
+import NotificationBell from '@/Components/Features/NotificationBell.vue';
+import ThemeToggle from '@/Components/Common/ThemeToggle.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
 const sidebarOpen = ref(false)
 const page = usePage();
 const __ = (key) => page.props.language.messages[key] || key;
 
-const navigation = [
+// Check if beta features are enabled
+const isBetaEnabled = page.props.features?.beta || false;
+const isDocumentsEnabled = page.props.features?.documents || false;
+
+const navigationItems = [
   { name: 'dashboard', href: route('dashboard'), icon: HomeIcon, current: route().current('dashboard') },
-  { 
-    name: 'receipts', 
-    href: route('receipts.index'), 
-    icon: DocumentDuplicateIcon, 
+  {
+    name: 'receipts',
+    href: route('receipts.index'),
+    icon: DocumentDuplicateIcon,
     current: route().current('receipts.*') || route().current('merchants.*') || route().current('vendors.*'),
     children: [
       { name: 'all_receipts', href: route('receipts.index'), current: route().current('receipts.index') },
@@ -204,12 +257,45 @@ const navigation = [
       { name: 'vendors', href: route('vendors.index'), current: route().current('vendors.index') },
     ]
   },
-  { name: 'upload', href: route('documents.upload'), icon: FolderIcon, current: route().current('documents.upload') },
-  { name: 'job_status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index') },
-]
+];
+
+// Only add documents menu if beta feature is enabled
+if (isDocumentsEnabled) {
+  navigationItems.push({
+    name: 'documents',
+    href: route('documents.index'),
+    icon: FolderIcon,
+    current: route().current('documents.*') && !route().current('documents.upload'),
+    children: [
+      { name: 'all_documents', href: route('documents.index'), current: route().current('documents.index') },
+      { name: 'shared_with_me', href: route('documents.shared'), current: route().current('documents.shared') },
+      { name: 'categories', href: route('documents.categories'), current: route().current('documents.categories') },
+    ]
+  });
+}
+
+navigationItems.push(
+  { name: 'analytics', href: route('analytics.index'), icon: ChartBarIcon, current: route().current('analytics.*') },
+  { name: 'tags', href: route('tags.index'), icon: TagIcon, current: route().current('tags.*') }
+);
+
+// Only add documents upload if beta feature is enabled
+if (isDocumentsEnabled) {
+  navigationItems.push(
+    { name: 'upload', href: route('documents.upload'), icon: CloudArrowUpIcon, current: route().current('documents.upload') }
+  );
+}
+
+navigationItems.push(
+  { name: 'scanner_imports', href: route('pulsedav.index'), icon: CloudArrowDownIcon, current: route().current('pulsedav.*') },
+  { name: 'job_status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index') }
+);
+
+const navigation = navigationItems;
 
 const userNavigation = [
   { name: 'profile', href: route('profile.edit') },
+  { name: 'preferences', href: route('preferences.index') },
   { name: 'logout', href: route('logout'), method: 'post' }
 ]
 </script>

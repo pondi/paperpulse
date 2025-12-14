@@ -4,6 +4,7 @@ namespace App\Services\PulseDav\Import;
 
 use App\Models\PulseDavFile;
 use App\Models\User;
+use Exception;
 use Illuminate\Support\Facades\Log;
 
 class SmartSyncService
@@ -32,7 +33,7 @@ class SmartSyncService
                     Log::info('[SmartSyncService] Created missing file record', [
                         's3_path' => $selection['s3_path'],
                     ]);
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     Log::error('[SmartSyncService] Failed to create file record', [
                         's3_path' => $selection['s3_path'],
                         'error' => $e->getMessage(),

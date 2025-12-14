@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 /**
@@ -16,13 +19,13 @@ use Illuminate\Support\Str;
  * @property int $shared_with_user_id
  * @property string $permission
  * @property string|null $share_token
- * @property \Carbon\Carbon|null $expires_at
- * @property \Carbon\Carbon|null $accessed_at
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @property-read \App\Models\File $file
- * @property-read \App\Models\User $sharedBy
- * @property-read \App\Models\User $sharedWithUser
+ * @property Carbon|null $expires_at
+ * @property Carbon|null $accessed_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property-read File $file
+ * @property-read User $sharedBy
+ * @property-read User $sharedWithUser
  */
 class FileShare extends Model
 {
@@ -42,8 +45,9 @@ class FileShare extends Model
         'permission',
         'shared_at',
         'expires_at',
+        'accessed_at',
     ];
-    
+
 
     /**
      * The attributes that should be cast.
@@ -65,7 +69,7 @@ class FileShare extends Model
     /**
      * Get the file that is being shared.
      */
-    public function file(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function file(): BelongsTo
     {
         return $this->belongsTo(File::class);
     }
@@ -73,7 +77,7 @@ class FileShare extends Model
     /**
      * Get the user who created the share.
      */
-    public function sharedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function sharedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'shared_by_user_id');
     }
@@ -81,7 +85,7 @@ class FileShare extends Model
     /**
      * Get the user the file is shared with.
      */
-    public function sharedWithUser(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function sharedWithUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'shared_with_user_id');
     }
@@ -89,22 +93,22 @@ class FileShare extends Model
     /**
      * Get the shareable item (Document or Receipt).
      */
-    public function shareable(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function shareable(): BelongsTo
     {
         // Use file_type to determine the model
         if ($this->file_type === 'document') {
-            return $this->belongsTo(\App\Models\Document::class, 'file_id', 'file_id');
+            return $this->belongsTo(Document::class, 'file_id', 'file_id');
         }
 
         // Default to receipt when type is not explicitly 'document'
-        return $this->belongsTo(\App\Models\Receipt::class, 'file_id', 'file_id');
+        return $this->belongsTo(Receipt::class, 'file_id', 'file_id');
     }
 
     /**
      * Scope a query to only include active shares.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  Builder  $query
+     * @return Builder
      */
     public function scopeActive($query)
     {
@@ -117,8 +121,8 @@ class FileShare extends Model
     /**
      * Scope a query to only include expired shares.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  Builder  $query
+     * @return Builder
      */
     public function scopeExpired($query)
     {
@@ -129,9 +133,9 @@ class FileShare extends Model
     /**
      * Scope a query to filter by permission.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  Builder  $query
      * @param  string  $permission
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @return Builder
      */
     public function scopeWithPermission($query, $permission)
     {
@@ -141,9 +145,9 @@ class FileShare extends Model
     /**
      * Scope a query to filter shares for a specific user.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  Builder  $query
      * @param  int  $userId
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @return Builder
      */
     public function scopeSharedWith($query, $userId)
     {

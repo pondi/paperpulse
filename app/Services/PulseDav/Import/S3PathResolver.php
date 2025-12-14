@@ -4,6 +4,7 @@ namespace App\Services\PulseDav\Import;
 
 use App\Models\PulseDavFile;
 use App\Models\User;
+use Storage;
 
 class S3PathResolver
 {
@@ -16,6 +17,6 @@ class S3PathResolver
 
     public static function pathExists(string $s3Path): bool
     {
-        return \Storage::disk('pulsedav')->exists($s3Path);
+        return Storage::disk('pulsedav')->exists($s3Path);
     }
 }

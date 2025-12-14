@@ -6,6 +6,7 @@ use App\Models\PulseDavFile;
 use App\Models\PulseDavImportBatch;
 use App\Models\User;
 use App\Services\PulseDav\ImportService;
+use Exception;
 use Illuminate\Support\Facades\Log;
 
 class ImportProcessor
@@ -22,7 +23,7 @@ class ImportProcessor
 
             try {
                 $file = FileRecordCreator::createFromS3Path($selection['s3_path'], $user);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('[ImportProcessor] Failed to create file record', [
                     's3_path' => $selection['s3_path'],
                     'error' => $e->getMessage(),
@@ -56,7 +57,13 @@ class ImportProcessor
             ]);
         }
 
-        ImportService::importFile($file, $batch, $options['file_type'] ?? 'receipt', $options['tag_ids'] ?? []);
+        ImportService::importFile(
+            $file,
+            $batch,
+            $options['file_type'] ?? 'receipt',
+            $options['tag_ids'] ?? [],
+            $options['notes'] ?? null
+        );
 
         return true;
     }
@@ -71,7 +78,13 @@ class ImportProcessor
 
         $imported = 0;
         foreach ($files as $file) {
-            ImportService::importFile($file, $batch, $options['file_type'] ?? 'receipt', $options['tag_ids'] ?? []);
+            ImportService::importFile(
+                $file,
+                $batch,
+                $options['file_type'] ?? 'receipt',
+                $options['tag_ids'] ?? [],
+                $options['notes'] ?? null
+            );
             $imported++;
         }
 

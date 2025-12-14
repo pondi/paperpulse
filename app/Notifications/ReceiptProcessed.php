@@ -84,21 +84,37 @@ class ReceiptProcessed extends TemplatedNotification
     protected function getFallbackMail($notifiable): MailMessage
     {
         if ($this->success) {
+            $content = view('emails.receipt-processed', [
+                'merchant_name' => $this->receiptData['merchant_name'],
+                'amount' => number_format($this->receiptData['total_amount'], 2),
+                'currency' => $this->receiptData['currency'],
+                'receipt_url' => route('receipts.show', $this->receiptData['id']),
+            ])->render();
+
+            $htmlContent = view('emails.layouts.base', [
+                'content' => $content,
+                'app_name' => config('app.name'),
+                'app_url' => config('app.url'),
+            ])->render();
+
             return (new MailMessage)
                 ->subject('Receipt Processed Successfully')
-                ->line('Your receipt has been processed successfully.')
-                ->line('Merchant: '.$this->receiptData['merchant_name'])
-                ->line('Amount: '.number_format($this->receiptData['total_amount'], 2).' '.$this->receiptData['currency'])
-                ->action('View Receipt', route('receipts.show', $this->receiptData['id']))
-                ->line('Thank you for using PaperPulse!');
+                ->view('emails.templated-html', ['htmlContent' => $htmlContent]);
         } else {
+            $content = view('emails.receipt-failed-content', [
+                'error_message' => $this->errorMessage ?? 'Unknown error',
+                'upload_url' => route('documents.upload'),
+            ])->render();
+
+            $htmlContent = view('emails.layouts.base', [
+                'content' => $content,
+                'app_name' => config('app.name'),
+                'app_url' => config('app.url'),
+            ])->render();
+
             return (new MailMessage)
                 ->subject('Receipt Processing Failed')
-                ->error()
-                ->line('We encountered an error while processing your receipt.')
-                ->line('Error: '.($this->errorMessage ?? 'Unknown error'))
-                ->line('Please try uploading the receipt again or contact support if the issue persists.')
-                ->action('Upload New Receipt', route('documents.upload'));
+                ->view('emails.templated-html', ['htmlContent' => $htmlContent]);
         }
     }
 

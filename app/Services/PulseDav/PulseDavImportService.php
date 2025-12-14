@@ -3,6 +3,7 @@
 namespace App\Services\PulseDav;
 
 use App\Contracts\Services\PulseDavImportContract;
+use App\Jobs\PulseDav\ProcessPulseDavFile;
 use App\Models\PulseDavFile;
 use App\Models\PulseDavImportBatch;
 use App\Models\User;
@@ -152,6 +153,7 @@ class PulseDavImportService implements PulseDavImportContract
             's3_path' => $file->s3_path,
             'file_type' => $fileType,
             'tag_ids' => $tagIds,
+            'note' => $batch->notes,
         ]);
 
         // Get inherited tags from folders
@@ -174,10 +176,11 @@ class PulseDavImportService implements PulseDavImportContract
         Log::info('[PulseDavImport] Dispatching ProcessPulseDavFile job', [
             'file_id' => $file->id,
             'all_tag_ids' => $allTagIds,
+            'note' => $batch->notes,
         ]);
 
-        // Dispatch processing job with tags
-        \App\Jobs\PulseDav\ProcessPulseDavFile::dispatch($file, $allTagIds)
+        // Dispatch processing job with tags and note from batch
+        ProcessPulseDavFile::dispatch($file, $allTagIds, $batch->notes)
             ->onQueue('default');
     }
 
@@ -237,12 +240,12 @@ class PulseDavImportService implements PulseDavImportContract
                 'error_message' => null,
             ]);
 
-            // Get the original tags from the batch
+            // Get the original tags and note from the batch
             $tagIds = $batch->tag_ids ?? [];
             $inheritedTags = $file->inherited_tags->pluck('id')->toArray();
             $allTagIds = array_unique(array_merge($tagIds, $inheritedTags));
 
-            \App\Jobs\PulseDav\ProcessPulseDavFile::dispatch($file, $allTagIds)
+            ProcessPulseDavFile::dispatch($file, $allTagIds, $batch->notes)
                 ->onQueue('default');
 
             $retried++;

@@ -4,6 +4,8 @@ namespace App\Services\PulseDav\Import;
 
 use App\Models\PulseDavFile;
 use App\Models\User;
+use Carbon\Carbon;
+use Exception;
 use Illuminate\Support\Facades\Storage;
 
 class FileRecordCreator
@@ -44,10 +46,10 @@ class FileRecordCreator
             return [
                 'size' => Storage::disk('pulsedav')->size($s3Path) ?? 0,
                 'modified' => Storage::disk('pulsedav')->lastModified($s3Path)
-                    ? \Carbon\Carbon::createFromTimestamp(Storage::disk('pulsedav')->lastModified($s3Path))
+                    ? Carbon::createFromTimestamp(Storage::disk('pulsedav')->lastModified($s3Path))
                     : now(),
             ];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return ['size' => 0, 'modified' => now()];
         }
     }

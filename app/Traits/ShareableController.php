@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use App\Models\User;
 use App\Services\SharingService;
+use Exception;
 use Illuminate\Http\Request;
 
 trait ShareableController
@@ -48,7 +49,7 @@ trait ShareableController
             $item->shareWith($user, $validated['permission']);
 
             return back()->with('success', ucfirst($this->getModelName()).' shared successfully');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return back()->with('error', $e->getMessage());
         }
     }
@@ -67,7 +68,7 @@ trait ShareableController
             $item->unshareWith($user);
 
             return back()->with('success', 'Share removed successfully');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return back()->with('error', 'Failed to remove share');
         }
     }

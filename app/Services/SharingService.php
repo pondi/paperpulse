@@ -8,10 +8,15 @@ use App\Models\Receipt;
 use App\Models\User;
 use App\Notifications\DocumentSharedNotification;
 use App\Notifications\ReceiptSharedNotification;
+use Cache;
 use Carbon\Carbon;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use InvalidArgumentException;
+use Str;
 
 class SharingService
 {
@@ -22,12 +27,12 @@ class SharingService
     {
         // Validate the file is shareable
         if (! in_array(get_class($file), [Receipt::class, Document::class])) {
-            throw new \InvalidArgumentException('Only receipts and documents can be shared');
+            throw new InvalidArgumentException('Only receipts and documents can be shared');
         }
 
         // Check if the current user owns the file
         if ($file->user_id !== auth()->id()) {
-            throw new \Illuminate\Auth\Access\AuthorizationException('You can only share files you own');
+            throw new AuthorizationException('You can only share files you own');
         }
 
         // Check if already shared
@@ -91,7 +96,7 @@ class SharingService
     {
         // Check if the current user owns the file
         if ($file->user_id !== auth()->id()) {
-            throw new \Illuminate\Auth\Access\AuthorizationException('You can only unshare files you own');
+            throw new AuthorizationException('You can only unshare files you own');
         }
 
         $fileType = $file instanceof Document ? 'document' : 'receipt';
@@ -106,7 +111,7 @@ class SharingService
     /**
      * Get all shares for a file
      */
-    public function getShares(Receipt|Document $file): \Illuminate\Support\Collection
+    public function getShares(Receipt|Document $file): Collection
     {
         $fileType = $file instanceof Document ? 'document' : 'receipt';
 
@@ -121,7 +126,7 @@ class SharingService
     /**
      * Get all files shared with a user
      */
-    public function getSharedWithUser(User $user, ?string $type = null): \Illuminate\Support\Collection
+    public function getSharedWithUser(User $user, ?string $type = null): Collection
     {
         $query = FileShare::where('shared_with_user_id', $user->id)
             ->where(function ($q) {
@@ -183,7 +188,7 @@ class SharingService
     /**
      * Get shareable users (exclude current user and already shared users)
      */
-    public function getShareableUsers(Receipt|Document $file): \Illuminate\Support\Collection
+    public function getShareableUsers(Receipt|Document $file): Collection
     {
         $fileType = $file instanceof Document ? 'document' : 'receipt';
         $sharedUserIds = FileShare::where([
@@ -205,35 +210,12 @@ class SharingService
         // Get the file and verify ownership
         $file = $share->shareable();
         if (! $file || $file->user_id !== auth()->id()) {
-            throw new \Illuminate\Auth\Access\AuthorizationException('You can only update shares for files you own');
+            throw new AuthorizationException('You can only update shares for files you own');
         }
 
         $share->update(['permission' => $permission]);
 
         return $share;
-    }
-
-    /**
-     * Create a shareable link
-     */
-    public function createShareableLink(Receipt|Document $file, array $options = []): string
-    {
-        // Create a unique token and store it
-        $token = \Str::random(32);
-
-        // Store the token in cache or database
-        \Cache::put(
-            "share_link_{$token}",
-            [
-                'file_type' => get_class($file),
-                'file_id' => $file->id,
-                'expires_at' => $options['expires_at'] ?? Carbon::now()->addDays(7),
-                'permission' => $options['permission'] ?? 'view',
-            ],
-            $options['expires_at'] ?? Carbon::now()->addDays(7)
-        );
-
-        return route('share.link', ['token' => $token]);
     }
 
     /**
@@ -256,7 +238,7 @@ class SharingService
         $targetUser = User::where('email', $email)->firstOrFail();
 
         if ($targetUser->id === auth()->id()) {
-            throw new \InvalidArgumentException('You cannot share a document with yourself');
+            throw new InvalidArgumentException('You cannot share a document with yourself');
         }
 
         return $this->shareFile($document, $targetUser, ['permission' => $permission]);

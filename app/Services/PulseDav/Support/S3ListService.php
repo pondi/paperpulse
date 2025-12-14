@@ -2,6 +2,7 @@
 
 namespace App\Services\PulseDav\Support;
 
+use Exception;
 use Illuminate\Support\Facades\Log;
 
 class S3ListService
@@ -26,7 +27,7 @@ class S3ListService
             }
 
             return $files;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to list S3 files', ['prefix' => $prefix, 'error' => $e->getMessage()]);
 
             return [];
@@ -82,7 +83,7 @@ class S3ListService
             }
 
             return array_merge(array_values($folders), $items);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to list S3 files with folders', ['prefix' => $prefix, 'error' => $e->getMessage()]);
 
             return [];

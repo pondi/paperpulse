@@ -6,6 +6,7 @@ use App\Models\FileShare;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use InvalidArgumentException;
 
 trait ShareableModel
 {
@@ -36,7 +37,7 @@ trait ShareableModel
     public function shareWith(User $user, string $permission = FileShare::PERMISSION_VIEW): void
     {
         if ($this->user_id === $user->id) {
-            throw new \InvalidArgumentException('Cannot share with owner');
+            throw new InvalidArgumentException('Cannot share with owner');
         }
 
         $this->shares()->updateOrCreate([

@@ -28,9 +28,16 @@ abstract class TemplatedNotification extends Notification implements ShouldQueue
             // Render using template
             $rendered = $template->render($this->getAllVariables($variables, $notifiable));
 
+            // Wrap the body content in the email layout
+            $htmlContent = view('emails.layouts.base', [
+                'content' => $rendered['body'],
+                'app_name' => config('app.name'),
+                'app_url' => config('app.url'),
+            ])->render();
+
             return (new MailMessage)
                 ->subject($rendered['subject'])
-                ->line($rendered['body']);
+                ->view('emails.templated-html', ['htmlContent' => $htmlContent]);
         } else {
             // Fall back to original method if template doesn't exist
             Log::warning("Email template not found for notification: {$templateKey}");

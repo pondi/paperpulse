@@ -7,12 +7,15 @@ use App\Services\OCR\OCRService;
 use App\Services\OCR\Textract\TextractFileValidator;
 use App\Services\OCR\Textract\TextractPdfImageProcessor;
 use App\Services\OCR\Textract\TextractResponseParser;
+use App\Services\OCR\TextractStorageBridge;
 use App\Services\StorageService;
+use Aws\Exception\AwsException;
 use Aws\Textract\TextractClient;
 // PDF handling is delegated to TextractPdfImageProcessor
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class TextractProvider implements OCRService
 {
@@ -22,9 +25,14 @@ class TextractProvider implements OCRService
 
     protected StorageService $storageService;
 
-    public function __construct(StorageService $storageService)
-    {
+    protected TextractStorageBridge $storageBridge;
+
+    public function __construct(
+        StorageService $storageService,
+        TextractStorageBridge $storageBridge
+    ) {
         $this->storageService = $storageService;
+        $this->storageBridge = $storageBridge;
         $this->initializeClient();
     }
 
@@ -84,7 +92,7 @@ class TextractProvider implements OCRService
                         'document' => $this->extractDocumentText($textractPath, $options),
                         default => throw new Exception("Unknown file type: {$fileType}"),
                     };
-                } catch (\Throwable $matchError) {
+                } catch (Throwable $matchError) {
                     // Handle any error including array to string conversion
                     $errorMsg = $matchError->getMessage();
                     if (is_array($errorMsg)) {
@@ -124,7 +132,7 @@ class TextractProvider implements OCRService
         } catch (Exception $e) {
             // Handle AWS exceptions that might have array messages
             $errorMessage = $e->getMessage();
-            if ($e instanceof \Aws\Exception\AwsException) {
+            if ($e instanceof AwsException) {
                 $errorMessage = $e->getAwsErrorMessage() ?: $e->getMessage();
             }
             if (is_array($errorMessage)) {
@@ -170,20 +178,37 @@ class TextractProvider implements OCRService
         }
 
         $fileSize = $textractDisk->size($s3Path);
-        Log::info('[TextractProvider] Calling Textract AnalyzeDocument', [
+
+        if ($fileSize === 0) {
+            throw new Exception('File is empty in S3 bucket');
+        }
+
+        // Use async API for multi-page documents (PDFs) to support unlimited pages
+        // Sync API (analyzeDocument) only supports single page
+        $useAsync = str_ends_with(strtolower($s3Path), '.pdf') || ($options['force_async'] ?? false);
+
+        if ($useAsync) {
+            Log::info('[TextractProvider] Using async API for multi-page document', [
+                's3_path' => $s3Path,
+                'bucket' => $this->bucket,
+                'file_size' => $fileSize,
+                'feature_types' => $featureTypes,
+            ]);
+
+            return $this->extractDocumentTextAsync($s3Path, $featureTypes, $options);
+        }
+
+        // Sync API for single-page images
+        Log::info('[TextractProvider] Using sync API for single-page document', [
             's3_path' => $s3Path,
             'bucket' => $this->bucket,
             'file_size' => $fileSize,
             'feature_types' => $featureTypes,
         ]);
 
-        // Check if file size is within Textract limits
-        if ($fileSize > 10 * 1024 * 1024) { // 10MB limit
-            throw new Exception("File size ({$fileSize} bytes) exceeds Textract limit of 10MB");
-        }
-
-        if ($fileSize === 0) {
-            throw new Exception('File is empty in S3 bucket');
+        // Check if file size is within sync API limits
+        if ($fileSize > 10 * 1024 * 1024) { // 10MB limit for sync API
+            throw new Exception("File size ({$fileSize} bytes) exceeds Textract sync API limit of 10MB");
         }
 
         try {
@@ -198,7 +223,7 @@ class TextractProvider implements OCRService
             ]);
 
             return TextractResponseParser::parseDocument($result->toArray());
-        } catch (\Aws\Exception\AwsException $e) {
+        } catch (AwsException $e) {
             Log::error('[TextractProvider] AWS Textract error details', [
                 's3_path' => $s3Path,
                 'bucket' => $this->bucket,
@@ -225,6 +250,125 @@ class TextractProvider implements OCRService
                 $errorMessage = json_encode($errorMessage);
             }
             throw new Exception($errorMessage);
+        }
+    }
+
+    /**
+     * Extract text from multi-page documents using async Textract API
+     */
+    protected function extractDocumentTextAsync(string $s3Path, array $featureTypes, array $options = []): array
+    {
+        try {
+            // Start async document analysis job
+            $result = $this->client->startDocumentAnalysis([
+                'DocumentLocation' => [
+                    'S3Object' => [
+                        'Bucket' => $this->bucket,
+                        'Name' => $s3Path,
+                    ],
+                ],
+                'FeatureTypes' => $featureTypes,
+            ]);
+
+            $jobId = $result->get('JobId');
+
+            Log::info('[TextractProvider] Async job started', [
+                'job_id' => $jobId,
+                's3_path' => $s3Path,
+                'bucket' => $this->bucket,
+            ]);
+
+            // Poll for completion
+            $maxAttempts = config('ai.ocr.providers.textract.max_polling_attempts', 60); // 60 attempts = 10 minutes at 10s intervals
+            $pollingInterval = config('ai.ocr.providers.textract.polling_interval', 10); // 10 seconds
+            $attempt = 0;
+
+            while ($attempt < $maxAttempts) {
+                sleep($pollingInterval);
+                $attempt++;
+
+                $response = $this->client->getDocumentAnalysis([
+                    'JobId' => $jobId,
+                ]);
+
+                $status = $response->get('JobStatus');
+
+                Log::debug('[TextractProvider] Polling async job', [
+                    'job_id' => $jobId,
+                    'status' => $status,
+                    'attempt' => $attempt,
+                    'max_attempts' => $maxAttempts,
+                ]);
+
+                if ($status === 'SUCCEEDED') {
+                    Log::info('[TextractProvider] Async job completed successfully', [
+                        'job_id' => $jobId,
+                        'attempts' => $attempt,
+                        'total_time_seconds' => $attempt * $pollingInterval,
+                    ]);
+
+                    // Get all pages if there are multiple
+                    $allBlocks = $response->get('Blocks');
+                    $nextToken = $response->get('NextToken');
+
+                    // If there are more pages, fetch them
+                    while ($nextToken) {
+                        $nextResponse = $this->client->getDocumentAnalysis([
+                            'JobId' => $jobId,
+                            'NextToken' => $nextToken,
+                        ]);
+
+                        $allBlocks = array_merge($allBlocks, $nextResponse->get('Blocks'));
+                        $nextToken = $nextResponse->get('NextToken');
+
+                        Log::debug('[TextractProvider] Fetched additional page', [
+                            'job_id' => $jobId,
+                            'total_blocks' => count($allBlocks),
+                        ]);
+                    }
+
+                    // Parse the complete response
+                    return TextractResponseParser::parseDocument([
+                        'Blocks' => $allBlocks,
+                        'DocumentMetadata' => $response->get('DocumentMetadata'),
+                    ]);
+
+                } elseif ($status === 'FAILED') {
+                    $statusMessage = $response->get('StatusMessage') ?? 'Unknown error';
+                    Log::error('[TextractProvider] Async job failed', [
+                        'job_id' => $jobId,
+                        'status_message' => $statusMessage,
+                    ]);
+                    throw new Exception("Textract async job failed: {$statusMessage}");
+
+                } elseif ($status === 'PARTIAL_SUCCESS') {
+                    Log::warning('[TextractProvider] Async job partially succeeded', [
+                        'job_id' => $jobId,
+                    ]);
+                    // Continue to get results - partial success is still usable
+                    $allBlocks = $response->get('Blocks');
+                    return TextractResponseParser::parseDocument([
+                        'Blocks' => $allBlocks,
+                        'DocumentMetadata' => $response->get('DocumentMetadata'),
+                    ]);
+                }
+
+                // Status is IN_PROGRESS, continue polling
+            }
+
+            // Max attempts reached
+            $totalSeconds = $maxAttempts * $pollingInterval;
+            throw new Exception("Textract async job timed out after {$maxAttempts} attempts ({$totalSeconds} seconds). Job ID: {$jobId}");
+
+        } catch (AwsException $e) {
+            Log::error('[TextractProvider] Async Textract error', [
+                's3_path' => $s3Path,
+                'bucket' => $this->bucket,
+                'aws_error_code' => $e->getAwsErrorCode(),
+                'aws_error_message' => $e->getAwsErrorMessage(),
+            ]);
+
+            throw new Exception("Textract async API error: " . ($e->getAwsErrorMessage() ?: $e->getMessage()));
         }
     }
 

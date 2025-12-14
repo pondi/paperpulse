@@ -35,7 +35,7 @@ interface FileMetadataContract
     /**
      * Prepare file metadata for job processing
      */
-    public function prepareFileMetadata(File $file, string $fileGuid, array $fileData, string $workingPath, string $s3Path, string $jobName, array $metadata = []): array;
+    public function prepareFileMetadata(File $file, string $fileGuid, array $fileData, ?string $workingPath, string $s3Path, string $jobName, array $metadata = []): array;
 
     /**
      * Update file record with S3 path

@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use App\Traits\BelongsToUser;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Laravel\Scout\Searchable;
 
 /**
  * App\\Models\\File
@@ -19,7 +19,9 @@ use Laravel\Scout\Searchable;
  * @property string|null $guid
  * @property int|null $file_size
  * @property bool|null $has_image_preview
- * @property \Carbon\Carbon|null $uploaded_at
+ * @property Carbon|null $uploaded_at
+ * @property Carbon|null $file_created_at
+ * @property Carbon|null $file_modified_at
  */
 class File extends Model
 {
@@ -34,6 +36,8 @@ class File extends Model
         'size',
         'data',
         'uploaded_at',
+        'file_created_at',
+        'file_modified_at',
         'file_path',
         'original_filename',
         'file_size',
@@ -48,6 +52,7 @@ class File extends Model
         'file_type',
         's3_original_path',
         's3_processed_path',
+        's3_converted_path',
         's3_image_path',
         'has_image_preview',
         'image_generation_error',
@@ -57,6 +62,8 @@ class File extends Model
     protected $casts = [
         'meta' => 'array',
         'uploaded_at' => 'datetime',
+        'file_created_at' => 'datetime',
+        'file_modified_at' => 'datetime',
     ];
 
     public function user()
@@ -72,6 +79,11 @@ class File extends Model
     public function documents()
     {
         return $this->hasMany(Document::class);
+    }
+
+    public function conversion()
+    {
+        return $this->hasOne(FileConversion::class);
     }
 
     public function shares()
@@ -97,7 +109,7 @@ class File extends Model
      * Get the active share for a specific user.
      *
      * @param  int  $userId
-     * @return \App\Models\FileShare|null
+     * @return FileShare|null
      */
     public function getShareFor($userId)
     {

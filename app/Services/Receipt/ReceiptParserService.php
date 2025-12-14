@@ -6,6 +6,7 @@ use App\Contracts\Services\ReceiptParserContract;
 use App\Services\AI\AIService;
 use App\Services\AI\AIServiceFactory;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Support\Facades\Log;
 
 class ReceiptParserService implements ReceiptParserContract
@@ -62,11 +63,11 @@ class ReceiptParserService implements ReceiptParserContract
             }
 
             if (! $analysis['success']) {
-                throw new \Exception($analysis['error'] ?? 'Receipt analysis failed');
+                throw new Exception($analysis['error'] ?? 'Receipt analysis failed');
             }
 
             return $analysis;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[ReceiptParser] Parsing with structured data failed', [
                 'error' => $e->getMessage(),
                 'file_id' => $fileId,
@@ -112,11 +113,11 @@ class ReceiptParserService implements ReceiptParserContract
             }
 
             if (! $analysis['success']) {
-                throw new \Exception($analysis['error'] ?? 'Receipt analysis failed');
+                throw new Exception($analysis['error'] ?? 'Receipt analysis failed');
             }
 
             return $analysis;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[ReceiptParser] Parsing failed', [
                 'error' => $e->getMessage(),
                 'file_id' => $fileId,
@@ -309,7 +310,7 @@ class ReceiptParserService implements ReceiptParserContract
                     ]);
                     break;
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Continue to next format
                 continue;
             }
@@ -323,7 +324,7 @@ class ReceiptParserService implements ReceiptParserContract
                     'original_date' => $date,
                     'parsed_date' => $dateTime->toDateString(),
                 ]);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::warning('[ReceiptParser] Failed to parse date with all methods', [
                     'date' => $date,
                     'error' => $e->getMessage(),
@@ -349,7 +350,7 @@ class ReceiptParserService implements ReceiptParserContract
                         ]);
                         break;
                     }
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     continue;
                 }
             }

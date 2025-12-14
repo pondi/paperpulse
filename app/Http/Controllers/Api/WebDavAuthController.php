@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -14,7 +15,7 @@ class WebDavAuthController extends Controller
     /**
      * Authenticate PulseDav users
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function authenticate(Request $request)
     {
@@ -30,7 +31,7 @@ class WebDavAuthController extends Controller
                 'username' => 'required|email|max:255',
                 'password' => 'required|string|min:8|max:255',
             ]);
-        } catch (ValidationException $e) {
+        } catch (ValidationException) {
             return response()->json([
                 'error' => 'Invalid request format',
             ], 422);

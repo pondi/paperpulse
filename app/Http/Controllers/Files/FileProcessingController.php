@@ -7,6 +7,7 @@ use App\Services\ConversionService;
 use App\Services\Documents\DocumentUploadHandler;
 use App\Services\Documents\DocumentUploadValidator;
 use App\Services\FileProcessingService;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -29,14 +30,18 @@ class FileProcessingController extends Controller
         if ($fileType === 'document') {
             $request->validate([
                 'files' => 'required',
-                'files.*' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif|max:10240', // 10MB - Textract supported formats only
+                // Office documents + images + PDFs
+                'files.*' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif,doc,docx,xls,xlsx,ppt,pptx,odt,ods,odp,rtf,txt,html,csv|max:102400', // 100MB
                 'file_type' => 'required|in:receipt,document',
+                'note' => 'nullable|string|max:1000',
             ]);
         } else {
             $request->validate([
                 'files' => 'required',
-                'files.*' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif|max:10240', // 10MB - Textract supported formats only
+                // Receipts: only images and PDFs
+                'files.*' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif|max:102400', // 100MB
                 'file_type' => 'required|in:receipt,document',
+                'note' => 'nullable|string|max:1000',
             ]);
         }
 
@@ -63,7 +68,10 @@ class FileProcessingController extends Controller
                 $uploadedFiles,
                 $fileType,
                 auth()->id(),
-                $fileProcessingService
+                $fileProcessingService,
+                [
+                    'note' => $request->input('note'),
+                ]
             );
 
             if (! empty($result['errors'])) {
@@ -75,7 +83,7 @@ class FileProcessingController extends Controller
 
             return redirect()->route($fileType === 'document' ? 'documents.index' : 'receipts.index')
                 ->with('success', count($result['processed']).' file(s) uploaded successfully');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('(FileProcessingController) [store] - Failed to upload document', [
                 'error' => $e->getMessage(),
                 'file_type' => $fileType,
@@ -85,11 +93,4 @@ class FileProcessingController extends Controller
         }
     }
 
-    /**
-     * Validate an uploaded file for OCR processing
-     */
-    protected function validateUploadedFile($uploadedFile): array
-    {
-        return DocumentUploadValidator::validate($uploadedFile);
-    }
 }

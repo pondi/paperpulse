@@ -4,6 +4,7 @@ namespace App\Services\Merchants;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Imagick;
 
 /**
  * Handles caching and storage of generated merchant logos.
@@ -58,7 +59,7 @@ class LogoCacheService
 
         // Convert to PNG using Imagick if available
         if (extension_loaded('imagick')) {
-            $image = new \Imagick;
+            $image = new Imagick;
             $image->readImageBlob($svg);
             $image->setImageFormat('png');
 

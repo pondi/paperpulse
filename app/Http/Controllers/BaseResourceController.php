@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -67,7 +68,7 @@ abstract class BaseResourceController extends Controller
         // scope the query to the authenticated user. Models using
         // BelongsToUser already have a global scope; this reinforces it
         // and prevents accidental leakage if the global scope is bypassed.
-        if (auth()->check() && in_array(\App\Traits\BelongsToUser::class, class_uses_recursive($this->model))) {
+        if (auth()->check() && in_array(BelongsToUser::class, class_uses_recursive($this->model))) {
             // Use the dedicated scope for clarity and consistency
             $query->forUser(auth()->id());
         }

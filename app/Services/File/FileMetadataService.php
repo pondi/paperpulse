@@ -4,6 +4,7 @@ namespace App\Services\File;
 
 use App\Contracts\Services\FileMetadataContract;
 use App\Models\File;
+use App\Services\Files\DocumentMetadataExtractor;
 use App\Services\Files\ImageMetadataExtractor;
 use App\Services\Files\JobNameGenerator;
 use Illuminate\Http\UploadedFile;
@@ -31,16 +32,23 @@ class FileMetadataService implements FileMetadataContract
      */
     public function createFileRecordFromUpload(UploadedFile $uploadedFile, string $fileGuid, string $fileType, int $userId): File
     {
+        // Extract file timestamps from document metadata
+        $filePath = $uploadedFile->getRealPath();
+        $extension = $uploadedFile->getClientOriginalExtension();
+        $dates = DocumentMetadataExtractor::extractDates($filePath, $extension);
+
         $file = new File;
         $file->user_id = $userId;
         $file->fileName = $uploadedFile->getClientOriginalName();
-        $file->fileExtension = $uploadedFile->getClientOriginalExtension();
+        $file->fileExtension = $extension;
         $file->fileType = $uploadedFile->getClientMimeType();
         $file->fileSize = $uploadedFile->getSize();
         $file->guid = $fileGuid;
         $file->file_type = $fileType;
         $file->processing_type = $fileType;
         $file->uploaded_at = now();
+        $file->file_created_at = $dates['created_at'];
+        $file->file_modified_at = $dates['modified_at'];
         $file->save();
 
         Log::debug('[FileMetadataService] File record created from upload', [
@@ -48,6 +56,8 @@ class FileMetadataService implements FileMetadataContract
             'file_guid' => $fileGuid,
             'file_type' => $fileType,
             'source' => 'upload',
+            'file_created_at' => $dates['created_at']?->toDateTimeString(),
+            'file_modified_at' => $dates['modified_at']?->toDateTimeString(),
         ]);
 
         return $file;
@@ -68,6 +78,8 @@ class FileMetadataService implements FileMetadataContract
         $file->file_type = $fileType;
         $file->processing_type = $fileType;
         $file->uploaded_at = now();
+        $file->file_created_at = $fileData['file_created_at'] ?? null;
+        $file->file_modified_at = $fileData['file_modified_at'] ?? null;
         $file->save();
 
         Log::debug('[FileMetadataService] File record created from data', [
@@ -75,6 +87,8 @@ class FileMetadataService implements FileMetadataContract
             'file_guid' => $fileGuid,
             'file_type' => $fileType,
             'source' => $fileData['source'] ?? 'unknown',
+            'file_created_at' => $file->file_created_at?->toDateTimeString(),
+            'file_modified_at' => $file->file_modified_at?->toDateTimeString(),
         ]);
 
         return $file;
@@ -85,15 +99,30 @@ class FileMetadataService implements FileMetadataContract
      */
     public function extractFileDataFromUpload(UploadedFile $uploadedFile, string $source = 'upload'): array
     {
-        $content = file_get_contents($uploadedFile->getRealPath());
+        $filePath = $uploadedFile->getRealPath();
+        $content = file_get_contents($filePath);
+        $extension = $uploadedFile->getClientOriginalExtension();
+
+        // Extract file timestamps from document metadata
+        $dates = DocumentMetadataExtractor::extractDates($filePath, $extension);
+
+        Log::debug('[FileMetadataService] Extracted file metadata dates', [
+            'filename' => $uploadedFile->getClientOriginalName(),
+            'extension' => $extension,
+            'file_created_at' => $dates['created_at']?->toDateTimeString(),
+            'file_modified_at' => $dates['modified_at']?->toDateTimeString(),
+            'source' => $source,
+        ]);
 
         return [
             'fileName' => $uploadedFile->getClientOriginalName(),
-            'extension' => $uploadedFile->getClientOriginalExtension(),
+            'extension' => $extension,
             'mimeType' => $uploadedFile->getClientMimeType(),
             'size' => $uploadedFile->getSize(),
             'content' => $content,
             'source' => $source,
+            'file_created_at' => $dates['created_at'],
+            'file_modified_at' => $dates['modified_at'],
         ];
     }
 
@@ -118,14 +147,17 @@ class FileMetadataService implements FileMetadataContract
 
     /**
      * Prepare file metadata for job processing
+     *
+     * Note: filePath is optional and may be null in distributed environments.
+     * Workers should download from S3 (s3OriginalPath) as needed.
      */
-    public function prepareFileMetadata(File $file, string $fileGuid, array $fileData, string $workingPath, string $s3Path, string $jobName, array $metadata = []): array
+    public function prepareFileMetadata(File $file, string $fileGuid, array $fileData, ?string $workingPath, string $s3Path, string $jobName, array $metadata = []): array
     {
         return [
             'fileId' => $file->id,
             'fileGuid' => $fileGuid,
             'fileName' => $fileData['fileName'],
-            'filePath' => $workingPath,
+            'filePath' => $workingPath, // May be null - workers download from S3
             'fileExtension' => $fileData['extension'],
             'fileSize' => $fileData['size'],
             'fileType' => $file->file_type,

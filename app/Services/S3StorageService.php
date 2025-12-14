@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Aws\S3\S3Client;
+use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use League\Flysystem\UnableToReadFile;
@@ -102,7 +103,7 @@ class S3StorageService
             // Now read the file normally
             return Storage::disk($disk)->get($path);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[S3StorageService] Failed to handle chunked encoding', [
                 'error' => $e->getMessage(),
                 'disk' => $disk,

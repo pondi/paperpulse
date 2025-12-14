@@ -3,6 +3,7 @@
 namespace App\Services\Receipt;
 
 use App\Contracts\Services\ReceiptEnricherContract;
+use App\Models\Category;
 use App\Models\Merchant;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
@@ -88,7 +89,7 @@ class ReceiptEnricherService implements ReceiptEnricherContract
     /**
      * Find user's category by name
      */
-    public function findUserCategory(User $user, string $categoryName): ?\App\Models\Category
+    public function findUserCategory(User $user, string $categoryName): ?Category
     {
         if (empty($categoryName)) {
             return null;

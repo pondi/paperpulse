@@ -6,7 +6,6 @@ use App\Services\OCR\ExtractionCache;
 use App\Services\OCR\OcrErrorFormatter;
 use App\Services\OCR\OCRServiceFactory;
 use Exception;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -90,7 +89,7 @@ class TextExtractionService
                             'error' => $result->error,
                         ]);
                     }
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     $lastError = $e->getMessage();
                     Log::warning('[TextExtractionService] OCR provider exception, trying next', [
                         'file_guid' => $fileGuid,
@@ -178,8 +177,8 @@ class TextExtractionService
     protected function extractPdfTextFallback(string $filePath): string
     {
         try {
-            if (class_exists(\Smalot\PdfParser\Parser::class)) {
-                $parser = new \Smalot\PdfParser\Parser;
+            if (class_exists(Parser::class)) {
+                $parser = new Parser;
                 $pdf = $parser->parseFile($filePath);
                 $text = $pdf->getText();
 

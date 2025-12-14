@@ -6,113 +6,89 @@ return [
     | Document Processing Configuration
     |--------------------------------------------------------------------------
     |
-    | Settings for document processing including supported file formats,
-    | size limits, and processing options for different document types.
+    | This file contains configuration for document and receipt processing,
+    | including supported formats, file size limits, and conversion settings.
     |
     */
+
     'documents' => [
+        /*
+        | Supported file formats by type
+        */
         'supported_formats' => [
-            'receipts' => explode(',', env('SUPPORTED_RECEIPT_FORMATS', 'jpg,jpeg,png,gif,bmp,pdf')),
-            'documents' => explode(',', env('SUPPORTED_DOCUMENT_FORMATS', 'doc,docx,xls,xlsx,ppt,pptx,odt,ods,odp,pdf,rtf')),
+            'receipts' => explode(',', env('SUPPORTED_RECEIPT_FORMATS', 'jpg,jpeg,png,pdf,tiff,tif')),
+            'documents' => explode(',', env('SUPPORTED_DOCUMENT_FORMATS',
+                'doc,docx,xls,xlsx,ppt,pptx,odt,ods,odp,pdf,rtf,txt,html')),
         ],
 
+        /*
+        | Office document formats that require conversion to PDF
+        */
+        'office_formats' => [
+            'word' => ['doc', 'docx', 'odt', 'rtf'],
+            'spreadsheet' => ['xls', 'xlsx', 'ods'],
+            'presentation' => ['ppt', 'pptx', 'odp'],
+            'other' => ['txt', 'html'],
+        ],
+
+        /*
+        | Maximum file size in MB
+        */
         'max_file_size' => [
-            'receipts' => env('MAX_RECEIPT_SIZE', 10), // MB
-            'documents' => env('MAX_DOCUMENT_SIZE', 50), // MB
-        ],
-
-        'processing' => [
-            'extract_text' => env('DOCUMENT_EXTRACT_TEXT', true),
-            'generate_thumbnails' => env('DOCUMENT_GENERATE_THUMBNAILS', true),
-            'thumbnail_sizes' => [150, 300, 600],
-        ],
-
-        'storage' => [
-            'disk' => env('DOCUMENT_STORAGE_DISK', 's3'),
-            'retention_days' => env('DOCUMENT_RETENTION_DAYS', 0), // 0 = forever
+            'receipts' => (int) env('MAX_RECEIPT_FILE_SIZE', 100),  // MB
+            'documents' => (int) env('MAX_DOCUMENT_FILE_SIZE', 100), // MB
         ],
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Receipt Processing Configuration
+    | Office Document Conversion Configuration
     |--------------------------------------------------------------------------
     |
-    | Specific settings for receipt analysis, validation, and merchant
-    | matching functionality including confidence thresholds.
+    | Settings for converting office documents (.docx, .xlsx, etc.) to PDF/A
+    | format using Gotenberg and Redis job queue.
     |
     */
-    'receipts' => [
-        'analysis' => [
-            'extract_line_items' => env('RECEIPT_EXTRACT_ITEMS', true),
-            'match_merchants' => env('RECEIPT_MATCH_MERCHANTS', true),
-            'auto_categorize' => env('RECEIPT_AUTO_CATEGORIZE', true),
-            'confidence_threshold' => env('RECEIPT_CONFIDENCE_THRESHOLD', 0.85),
-        ],
 
-        'validation' => [
-            'required_fields' => ['total', 'date'],
-            'min_total_amount' => env('RECEIPT_MIN_TOTAL', 0.01),
-            'max_total_amount' => env('RECEIPT_MAX_TOTAL', 999999.99),
-        ],
+    'conversion' => [
+        /*
+        | Enable/disable office document conversion
+        */
+        'enabled' => env('OFFICE_CONVERSION_ENABLED', true),
 
-        'merchant_matching' => [
-            'fuzzy_threshold' => env('MERCHANT_FUZZY_THRESHOLD', 0.8),
-            'auto_create_merchants' => env('AUTO_CREATE_MERCHANTS', true),
-        ],
+        /*
+        | Gotenberg service URL
+        */
+        'service_url' => env('GOTENBERG_URL', 'http://gotenberg:3000'),
 
-        'parsing' => [
-            'use_forgiving_number_parser' => env('USE_FORGIVING_NUMBER_PARSER', true),
-        ],
-    ],
+        /*
+        | Conversion timeout in seconds
+        */
+        'timeout' => (int) env('CONVERSION_TIMEOUT', 120),
 
-    /*
-    |--------------------------------------------------------------------------
-    | File Processing Jobs Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Settings for background job processing including timeouts, retries,
-    | and batch processing configuration for file operations.
-    |
-    */
-    'jobs' => [
-        'timeout' => env('PROCESSING_JOB_TIMEOUT', 300), // 5 minutes
-        'max_retries' => env('PROCESSING_MAX_RETRIES', 3),
-        'batch_size' => env('PROCESSING_BATCH_SIZE', 10),
-        'backoff' => env('JOB_BACKOFF', 10),
-    ],
+        /*
+        | Maximum number of retry attempts for failed conversions
+        */
+        'max_retries' => (int) env('CONVERSION_MAX_RETRIES', 3),
 
-    /*
-    |--------------------------------------------------------------------------
-    | Storage and Temporary Files
-    |--------------------------------------------------------------------------
-    |
-    | Configuration for temporary file handling during processing and
-    | cleanup policies for intermediate files.
-    |
-    */
-    'storage' => [
-        'temp_disk' => env('TEMP_STORAGE_DISK', 'local'),
-        'working_directory' => env('WORKING_DIRECTORY', 'temp/processing'),
-        'cleanup_after_hours' => env('CLEANUP_AFTER_HOURS', 24),
-    ],
+        /*
+        | Polling interval in seconds (how often to check conversion status)
+        */
+        'polling_interval' => (float) env('CONVERSION_POLLING_INTERVAL', 1),
 
-    /*
-    |--------------------------------------------------------------------------
-    | Textract Integration
-    |--------------------------------------------------------------------------
-    |
-    | AWS Textract specific configuration for OCR processing that was
-    | previously in the receipt-scanner config file.
-    |
-    */
-    'textract' => [
-        'timeout' => env('TEXTRACT_TIMEOUT', 120),
-        'polling_interval' => env('TEXTRACT_POLLING_INTERVAL', 10),
-        'disk' => env('TEXTRACT_DISK'),
-        'region' => env('TEXTRACT_REGION'),
-        'version' => env('TEXTRACT_VERSION', '2018-06-27'),
-        'key' => env('TEXTRACT_KEY'),
-        'secret' => env('TEXTRACT_SECRET'),
+        /*
+        | Redis queue name for pending conversions
+        */
+        'redis_queue' => env('CONVERSION_REDIS_QUEUE', 'conversion:pending'),
+
+        /*
+        | Redis queue name for processing conversions
+        */
+        'redis_processing_queue' => env('CONVERSION_PROCESSING_QUEUE', 'conversion:processing'),
+
+        /*
+        | Redis queue name for failed conversions
+        */
+        'redis_failed_queue' => env('CONVERSION_FAILED_QUEUE', 'conversion:failed'),
     ],
 ];

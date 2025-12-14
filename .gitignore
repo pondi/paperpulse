@@ -4,6 +4,7 @@
 /public/hot
 /public/storage
 public/docs/
+/storage/debugbar
 /storage/*.key
 /vendor
 .env
@@ -20,6 +21,7 @@ yarn-error.log
 /.vscode
 /.claude
 /.phpdoc
+.DS_Store
 
 # Logs directory with sensitive information
 logs/

@@ -61,7 +61,7 @@ class AnalyticsController extends Controller
             ->limit(10)
             ->get()
             ->map(function ($item) {
-                /** @var \App\Models\Receipt $item */
+                /** @var Receipt $item */
                 return [
                     'merchant' => $item->merchant?->name ?: 'Unknown',
                     'receipt_count' => $item->receipt_count,

@@ -7,6 +7,7 @@ use App\Contracts\Services\ReceiptParserContract;
 use App\Contracts\Services\ReceiptValidatorContract;
 use App\Models\Receipt;
 use App\Services\Receipts\Analysis\ReceiptAnalysisOrchestrator;
+use Exception;
 
 class ReceiptAnalysisService
 {
@@ -29,21 +30,21 @@ class ReceiptAnalysisService
     /**
      * Analyze receipt content with structured data and create receipt with line items
      */
-    public function analyzeAndCreateReceiptWithStructuredData(string $content, array $structuredData, int $fileId, int $userId): Receipt
+    public function analyzeAndCreateReceiptWithStructuredData(string $content, array $structuredData, int $fileId, int $userId, ?string $note = null): Receipt
     {
         $orchestrator = new ReceiptAnalysisOrchestrator($this->parser, $this->validator, $this->enricher);
 
-        return $orchestrator->analyzeAndCreateReceiptWithStructuredData($content, $structuredData, $fileId, $userId);
+        return $orchestrator->analyzeAndCreateReceiptWithStructuredData($content, $structuredData, $fileId, $userId, $note);
     }
 
     /**
      * Analyze receipt content and create receipt with line items
      */
-    public function analyzeAndCreateReceipt(string $content, int $fileId, int $userId): Receipt
+    public function analyzeAndCreateReceipt(string $content, int $fileId, int $userId, ?string $note = null): Receipt
     {
         $orchestrator = new ReceiptAnalysisOrchestrator($this->parser, $this->validator, $this->enricher);
 
-        return $orchestrator->analyzeAndCreateReceipt($content, $fileId, $userId);
+        return $orchestrator->analyzeAndCreateReceipt($content, $fileId, $userId, $note);
     }
 
     /**
@@ -66,7 +67,7 @@ class ReceiptAnalysisService
         }
 
         if (! $rawText) {
-            throw new \Exception('No raw text available for reanalysis');
+            throw new Exception('No raw text available for reanalysis');
         }
 
         // Store the original receipt information
@@ -100,7 +101,7 @@ class ReceiptAnalysisService
 
             return $newReceipt;
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
             throw $e;
         }

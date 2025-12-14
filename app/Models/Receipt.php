@@ -5,6 +5,9 @@ namespace App\Models;
 use App\Traits\BelongsToUser;
 use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Laravel\Scout\Searchable;
@@ -17,25 +20,27 @@ use Laravel\Scout\Searchable;
  * @property int $user_id
  * @property int|null $merchant_id
  * @property int|null $category_id
- * @property \Carbon\Carbon|null $receipt_date
+ * @property Carbon|null $receipt_date
  * @property float|null $tax_amount
  * @property float|null $total_amount
  * @property string|null $currency
  * @property string|null $receipt_category
  * @property string|null $receipt_description
+ * @property string|null $note
+ * @property string|null $summary
  * @property array|null $receipt_data
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @property-read \App\Models\File $file
- * @property-read \App\Models\User $user
- * @property-read \App\Models\Merchant|null $merchant
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\LineItem[] $lineItems
- * @property-read \App\Models\Category|null $category
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Tag[] $tags
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property-read File $file
+ * @property-read User $user
+ * @property-read Merchant|null $merchant
+ * @property-read Collection|LineItem[] $lineItems
+ * @property-read Category|null $category
+ * @property-read Collection|Tag[] $tags
  *
- * @method static \Illuminate\Database\Eloquent\Builder|Receipt newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder|Receipt newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder|Receipt query()
+ * @method static Builder|Receipt newModelQuery()
+ * @method static Builder|Receipt newQuery()
+ * @method static Builder|Receipt query()
  */
 use App\Contracts\Taggable;
 
@@ -58,6 +63,8 @@ class Receipt extends Model implements Taggable
         'currency',
         'receipt_category',
         'receipt_description',
+        'note',
+        'summary',
         'receipt_data',
     ];
 
@@ -66,6 +73,8 @@ class Receipt extends Model implements Taggable
         'receipt_date' => 'date',
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'note' => 'string',
+        'summary' => 'string',
     ];
 
     public function file()
@@ -128,6 +137,8 @@ class Receipt extends Model implements Taggable
             'currency' => $this->currency,
             'receipt_category' => $this->receipt_category,
             'receipt_description' => $this->receipt_description,
+            'note' => $this->note,
+            'summary' => $this->summary,
             'merchant_name' => $this->merchant?->name,
             'merchant_address' => $this->merchant?->address,
             'merchant_vat_id' => $this->merchant?->vat_id,

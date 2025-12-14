@@ -3,13 +3,18 @@
 namespace App\Http\Controllers\Receipts;
 
 use App\Http\Controllers\BaseResourceController;
+use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Models\Tag;
 use App\Services\DocumentService;
+use App\Services\Receipts\Analysis\DateUpdateNotifier;
+use App\Services\Receipts\ReceiptSortApplier;
 use App\Services\Receipts\ReceiptTransformer;
 use App\Services\ReceiptService;
+use App\Services\Tags\TagAttachmentService;
 use App\Traits\SanitizesInput;
 use App\Traits\ShareableController;
+use Exception;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -26,7 +31,7 @@ class ReceiptController extends BaseResourceController
 
     protected array $showWith = ['merchant', 'file', 'lineItems', 'tags', 'sharedUsers'];
 
-    protected array $searchableFields = ['receipt_description'];
+    protected array $searchableFields = ['receipt_description', 'note'];
 
     protected array $filterableFields = ['category_id', 'merchant_id'];
 
@@ -37,6 +42,7 @@ class ReceiptController extends BaseResourceController
         'currency' => 'required|string|size:3',
         'receipt_category' => 'nullable|string|max:255',
         'receipt_description' => 'nullable|string|max:1000',
+        'note' => 'nullable|string|max:1000',
         'merchant_id' => 'nullable|exists:merchants,id',
         'tags' => 'sometimes|array',
         'tags.*' => 'integer|exists:tags,id',
@@ -139,17 +145,17 @@ class ReceiptController extends BaseResourceController
     protected function prepareForUpdate(array $validated, $receipt): array
     {
         // Sanitize string inputs
-        $validated = $this->sanitizeData($validated, ['receipt_category', 'receipt_description']);
+        $validated = $this->sanitizeData($validated, ['receipt_category', 'receipt_description', 'note']);
 
         // Handle tags separately
         if (isset($validated['tags'])) {
-            \App\Services\Tags\TagAttachmentService::syncTags($receipt, $validated['tags'], 'receipt');
+            TagAttachmentService::syncTags($receipt, $validated['tags'], 'receipt');
             unset($validated['tags']);
         }
 
         // Clear date update flag if date was updated
-        if (isset($validated['receipt_date']) && \App\Services\Receipts\Analysis\DateUpdateNotifier::needsDateUpdate($receipt)) {
-            \App\Services\Receipts\Analysis\DateUpdateNotifier::clearDateUpdateFlag($receipt);
+        if (isset($validated['receipt_date']) && DateUpdateNotifier::needsDateUpdate($receipt)) {
+            DateUpdateNotifier::clearDateUpdateFlag($receipt);
         }
 
         return $validated;
@@ -163,7 +169,7 @@ class ReceiptController extends BaseResourceController
         $receiptService = app(ReceiptService::class);
 
         if (! $receiptService->deleteReceipt($receipt)) {
-            throw new \Exception('Could not delete the receipt');
+            throw new Exception('Could not delete the receipt');
         }
     }
 
@@ -172,7 +178,7 @@ class ReceiptController extends BaseResourceController
      */
     protected function applySortOption($query, string $sortOption): void
     {
-        \App\Services\Receipts\ReceiptSortApplier::apply($query, $sortOption);
+        ReceiptSortApplier::apply($query, $sortOption);
     }
 
     /**
@@ -280,7 +286,7 @@ class ReceiptController extends BaseResourceController
     public function byMerchant($merchant)
     {
         // Validate merchant ID
-        $merchantModel = \App\Models\Merchant::findOrFail($merchant);
+        $merchantModel = Merchant::findOrFail($merchant);
 
         // Verify user has access to this merchant through their receipts
         $hasAccess = Receipt::where('merchant_id', $merchantModel->id)
@@ -316,14 +322,14 @@ class ReceiptController extends BaseResourceController
         $validated = $request->validate($this->validationRules);
 
         // Sanitize string inputs
-        $validated = $this->sanitizeData($validated, ['receipt_category', 'receipt_description']);
+        $validated = $this->sanitizeData($validated, ['receipt_category', 'receipt_description', 'note']);
 
         // Update receipt
         $receipt->update(array_diff_key($validated, ['tags' => '']));
 
         // Sync tags if provided
         if (isset($validated['tags'])) {
-            \App\Services\Tags\TagAttachmentService::syncTags($receipt, $validated['tags'], 'receipt');
+            TagAttachmentService::syncTags($receipt, $validated['tags'], 'receipt');
         }
 
         return redirect()->back()->with('success', 'Receipt updated successfully');

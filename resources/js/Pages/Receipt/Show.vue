@@ -337,7 +337,9 @@ const receiptFields = computed(() => [
     { value: 'transport', label: __('transport') },
     { value: null, label: __('uncategorized') }
   ]},
-  { key: 'receipt_description', label: __('description'), type: 'text' }
+  { key: 'receipt_description', label: __('description'), type: 'text' },
+  { key: 'summary', label: __('summary'), type: 'text' },
+  { key: 'note', label: __('note'), type: 'text' }
 ]);
 
 const lineItemFields = computed(() => [

@@ -61,7 +61,9 @@
                     </h2>
                   </div>
                   <div class="mt-3 flex items-center gap-x-2.5 text-xs text-gray-500 dark:text-gray-400">
-                    <p class="truncate">{{ receipt.receipt_description || __('no_description') }}</p>
+                    <p class="truncate">
+                      {{ receipt.note || receipt.receipt_description || __('no_description') }}
+                    </p>
                     <svg viewBox="0 0 2 2" class="size-0.5 flex-none fill-gray-300">
                       <circle cx="1" cy="1" r="1" />
                     </svg>

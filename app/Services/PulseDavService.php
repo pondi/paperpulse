@@ -2,10 +2,15 @@
 
 namespace App\Services;
 
+use App\Jobs\PulseDav\ProcessPulseDavFile;
 use App\Models\PulseDavFile;
 use App\Models\User;
+use App\Services\PulseDav\ScannerImportNotifier;
+use App\Services\PulseDav\SelectionImportService;
 use App\Services\PulseDav\Support\FolderHierarchyBuilder;
+use App\Services\PulseDav\Support\PathHelper;
 use App\Services\PulseDav\Support\S3ListService;
+use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -29,7 +34,7 @@ class PulseDavService
      */
     public function listUserFiles(User $user)
     {
-        $prefix = \App\Services\PulseDav\Support\PathHelper::userPrefix($this->incomingPrefix, $user->id);
+        $prefix = PathHelper::userPrefix($this->incomingPrefix, $user->id);
 
         return S3ListService::listUserFiles($this->s3Client, $this->bucket, $prefix);
     }
@@ -63,7 +68,7 @@ class PulseDavService
         }
 
         // Notify if preference allows
-        \App\Services\PulseDav\ScannerImportNotifier::maybeNotify($user, $synced);
+        ScannerImportNotifier::maybeNotify($user, $synced);
 
         return $synced;
     }
@@ -75,7 +80,7 @@ class PulseDavService
     {
         try {
             return Storage::disk('pulsedav')->get($s3Path);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to download S3 file', [
                 's3_path' => $s3Path,
                 'error' => $e->getMessage(),
@@ -106,7 +111,7 @@ class PulseDavService
             Storage::disk('pulsedav')->delete($s3File->s3_path);
 
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to delete S3 file', [
                 's3_file_id' => $s3File->id,
                 'error' => $e->getMessage(),
@@ -148,7 +153,7 @@ class PulseDavService
             $file->update(['file_type' => $fileType]);
 
             // Dispatch job to process this file
-            \App\Jobs\PulseDav\ProcessPulseDavFile::dispatch($file);
+            ProcessPulseDavFile::dispatch($file);
             $file->markAsProcessing();
             $queued++;
         }
@@ -170,7 +175,7 @@ class PulseDavService
             $request = $this->s3Client->createPresignedRequest($command, "+{$expiration} minutes");
 
             return (string) $request->getUri();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to generate temporary URL', [
                 's3_file_id' => $s3File->id,
                 'error' => $e->getMessage(),
@@ -184,7 +189,7 @@ class PulseDavService
      */
     public function listUserFilesWithFolders(User $user)
     {
-        $prefix = \App\Services\PulseDav\Support\PathHelper::userPrefix($this->incomingPrefix, $user->id);
+        $prefix = PathHelper::userPrefix($this->incomingPrefix, $user->id);
 
         return S3ListService::listUserFilesWithFolders($this->s3Client, $this->bucket, $prefix);
     }
@@ -254,7 +259,7 @@ class PulseDavService
             }
 
             return $items;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to get folder contents', [
                 'user_id' => $user->id,
                 'folder_path' => $folderPath,
@@ -320,7 +325,7 @@ class PulseDavService
                     Log::debug('[PulseDavService] Created PulseDavFile record', [
                         's3_path' => $itemData['s3_path'],
                     ]);
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     Log::error('[PulseDavService] Failed to create PulseDavFile record', [
                         's3_path' => $itemData['s3_path'],
                         'error' => $e->getMessage(),
@@ -349,7 +354,7 @@ class PulseDavService
      */
     public function importSelections(User $user, array $selections, array $options = [])
     {
-        return \App\Services\PulseDav\SelectionImportService::importSelected($user, $selections, $options);
+        return SelectionImportService::importSelected($user, $selections, $options);
     }
 
     /**
@@ -371,7 +376,7 @@ class PulseDavService
             // Create virtual folder entry
             $folder = PulseDavFile::create([
                 'user_id' => $user->id,
-                's3_path' => \App\Services\PulseDav\Support\PathHelper::folderS3Path($this->incomingPrefix, $user->id, $folderPath),
+                's3_path' => PathHelper::folderS3Path($this->incomingPrefix, $user->id, $folderPath),
                 'filename' => basename($folderPath),
                 'folder_path' => $folderPath,
                 'parent_folder' => dirname($folderPath) !== '.' ? dirname($folderPath) : null,

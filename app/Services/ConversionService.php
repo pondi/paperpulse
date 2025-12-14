@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Spatie\PdfToImage\Exceptions\InvalidFormat;
+use Spatie\PdfToImage\Exceptions\PageDoesNotExist;
 use Spatie\PdfToImage\Pdf;
 
 class ConversionService
@@ -80,12 +83,12 @@ class ConversionService
 
             // Verify output file was created
             if (! file_exists($outputPath)) {
-                throw new \Exception('PDF conversion completed but output file was not created');
+                throw new Exception('PDF conversion completed but output file was not created');
             }
 
             $outputSize = filesize($outputPath);
             if ($outputSize === 0) {
-                throw new \Exception('PDF conversion produced empty output file');
+                throw new Exception('PDF conversion produced empty output file');
             }
 
             Log::info('(ConversionService) [pdfToImage] - PDF converted to image successfully', [
@@ -117,7 +120,7 @@ class ConversionService
 
             return true;
 
-        } catch (\Spatie\PdfToImage\Exceptions\InvalidFormat $e) {
+        } catch (InvalidFormat $e) {
             Log::error('(ConversionService) [pdfToImage] - Invalid PDF format', [
                 'file_guid' => $fileGUID,
                 'error' => $e->getMessage(),
@@ -125,7 +128,7 @@ class ConversionService
             ]);
 
             return false;
-        } catch (\Spatie\PdfToImage\Exceptions\PageDoesNotExist $e) {
+        } catch (PageDoesNotExist $e) {
             Log::error('(ConversionService) [pdfToImage] - PDF page does not exist', [
                 'file_guid' => $fileGUID,
                 'error' => $e->getMessage(),
@@ -133,7 +136,7 @@ class ConversionService
             ]);
 
             return false;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('(ConversionService) [pdfToImage] - Error converting PDF to image', [
                 'file_guid' => $fileGUID,
                 'error' => $e->getMessage(),

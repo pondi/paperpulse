@@ -15,6 +15,7 @@ class Logo extends Model
         'logo_data',
         'mime_type',
         'hash',
+        'logoable_type',
     ];
 
     /**

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Services\Files\StoragePathBuilder;
 use Exception;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -337,7 +338,7 @@ class StorageService
     /**
      * Get the storage disk instance.
      *
-     * @return \Illuminate\Contracts\Filesystem\Filesystem
+     * @return Filesystem
      */
     public function getStorageDisk()
     {
@@ -347,7 +348,7 @@ class StorageService
     /**
      * Get the incoming disk instance.
      *
-     * @return \Illuminate\Contracts\Filesystem\Filesystem
+     * @return Filesystem
      */
     public function getIncomingDisk()
     {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Laravel\Scout\Searchable;
@@ -15,9 +16,9 @@ use Laravel\Scout\Searchable;
  * @property string|null $sku
  * @property float|null $qty
  * @property float|null $price
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @property-read \App\Models\Receipt $receipt
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property-read Receipt $receipt
  */
 class LineItem extends Model
 {

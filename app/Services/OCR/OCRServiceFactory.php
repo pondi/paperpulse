@@ -5,6 +5,7 @@ namespace App\Services\OCR;
 use App\Services\OCR\Providers\TesseractProvider;
 use App\Services\OCR\Providers\TextractProvider;
 use App\Services\StorageService;
+use Exception;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
@@ -27,7 +28,10 @@ class OCRServiceFactory
         Log::info('Creating OCR provider instance', ['provider' => $provider]);
 
         $instance = match ($provider) {
-            'textract' => new TextractProvider(app(StorageService::class)),
+            'textract' => new TextractProvider(
+                app(StorageService::class),
+                app(TextractStorageBridge::class)
+            ),
             'tesseract' => new TesseractProvider,
             default => throw new InvalidArgumentException("Unsupported OCR provider: {$provider}")
         };
@@ -51,7 +55,7 @@ class OCRServiceFactory
                 if ($provider->canHandle($filePath)) {
                     return $provider;
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::debug("OCR provider {$providerName} cannot handle file", [
                     'file' => $filePath,
                     'error' => $e->getMessage(),
@@ -82,7 +86,7 @@ class OCRServiceFactory
             $service = self::create($provider);
 
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return false;
         }
     }

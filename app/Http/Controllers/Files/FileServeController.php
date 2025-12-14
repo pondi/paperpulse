@@ -18,15 +18,17 @@ class FileServeController extends Controller
             'guid' => 'required|string|regex:/^[a-f0-9\-]{36}$/i',
             'type' => 'required|string|in:receipts,image,pdf,documents,preview',
             'extension' => 'required|string|in:jpg,jpeg,png,gif,pdf,JPG,JPEG,PNG,GIF,PDF',
+            'variant' => 'nullable|string|in:original,archive,preview',
         ]);
 
         $guid = $request->input('guid');
         $type = $request->input('type');
         $extension = $request->input('extension');
+        $requestedVariant = $request->input('variant');
 
         // Determine file type and variant
         $fileType = in_array($type, ['receipts', 'receipt', 'image']) ? 'receipt' : 'document';
-        $variant = 'original';
+        $variant = $requestedVariant ?? 'original';
 
         // Check if requesting preview
         if ($type === 'preview' || ($type === 'image' && strtolower($extension) === 'jpg')) {

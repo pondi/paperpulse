@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\File;
 use App\Models\Receipt;
+use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -42,7 +44,7 @@ class ReceiptService
      * @param  string  $filePath  Absolute working path
      * @return array{receiptId:int,merchantName:string,merchantAddress:string,merchantVatID:string}
      */
-    public function processReceiptData(int $fileId, string $fileGuid, string $filePath): array
+    public function processReceiptData(int $fileId, string $fileGuid, string $filePath, ?string $note = null): array
     {
         try {
             Log::info('Processing receipt data', [
@@ -51,7 +53,30 @@ class ReceiptService
             ]);
 
             // Get the file model to get user ID
-            $file = \App\Models\File::findOrFail($fileId);
+            $file = File::findOrFail($fileId);
+
+            // Check if we're reprocessing - delete existing receipt if so
+            $isReprocessing = $file->meta['metadata']['reprocessing'] ?? false;
+            if ($isReprocessing) {
+                $existingReceipt = Receipt::where('file_id', $fileId)->first();
+                if ($existingReceipt) {
+                    Log::info('[ReceiptService] Deleting existing receipt during reprocessing', [
+                        'file_id' => $fileId,
+                        'receipt_id' => $existingReceipt->id,
+                        'line_items_count' => $existingReceipt->lineItems()->count(),
+                    ]);
+
+                    // Delete line items first
+                    $existingReceipt->lineItems()->delete();
+
+                    // Delete the receipt
+                    $existingReceipt->delete();
+
+                    Log::info('[ReceiptService] Existing receipt deleted successfully', [
+                        'file_id' => $fileId,
+                    ]);
+                }
+            }
 
             // Extract text and structured data from the file using TextExtractionService
             $ocrData = $this->textExtractionService->extractWithStructuredData($filePath, 'receipt', $fileGuid);
@@ -59,7 +84,7 @@ class ReceiptService
             $structuredData = $ocrData['structured_data'] ?? [];
 
             if (empty($ocrText)) {
-                throw new \Exception('No text could be extracted from the file');
+                throw new Exception('No text could be extracted from the file');
             }
 
             Log::debug('Text and structured data extracted from receipt', [
@@ -77,7 +102,8 @@ class ReceiptService
                 $ocrText,
                 $structuredData,
                 $fileId,
-                $file->user_id
+                $file->user_id,
+                $note
             );
 
             // Make the receipt searchable after all relations are saved
@@ -91,7 +117,7 @@ class ReceiptService
                     ? json_encode($receipt->receipt_data)
                     : $receipt->receipt_data;
                 $this->persistAiArtifacts($file->user_id, $fileGuid, $receiptDataJson);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::warning('[ReceiptService] Failed to persist AI artifacts', [
                     'file_id' => $fileId,
                     'file_guid' => $fileGuid,
@@ -112,7 +138,7 @@ class ReceiptService
                 'merchantVatID' => $receipt->merchant?->vat_number ?? '',
             ];
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Receipt data processing failed', [
                 'error' => $e->getMessage(),
                 'file_id' => $fileId,
@@ -151,7 +177,7 @@ class ReceiptService
             // Delete the file record after the receipt is deleted
             // This is safe now because the receipt no longer references it
             if ($fileId) {
-                $file = \App\Models\File::find($fileId);
+                $file = File::find($fileId);
                 if ($file) {
                     $file->delete();
                 }
@@ -160,7 +186,7 @@ class ReceiptService
             DB::commit();
 
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
             Log::error('[ReceiptService] Receipt deletion failed', [
                 'error' => $e->getMessage(),
@@ -199,14 +225,14 @@ class ReceiptService
             }
 
             // Update File.meta with artifact references
-            $file = \App\Models\File::where('guid', $fileGuid)->first();
+            $file = File::where('guid', $fileGuid)->first();
             if ($file) {
                 $meta = $file->meta ?? [];
                 $meta['artifacts'] = array_merge($meta['artifacts'] ?? [], $paths);
                 $file->meta = $meta;
                 $file->save();
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::warning('[ReceiptService] Persist OCR artifacts failed', [
                 'file_guid' => $fileGuid,
                 'error' => $e->getMessage(),
@@ -225,7 +251,7 @@ class ReceiptService
 
         $path = $this->storageService->storeFile($receiptDataJson, $userId, $fileGuid, 'receipt', 'ai_response', 'json');
 
-        $file = \App\Models\File::where('guid', $fileGuid)->first();
+        $file = File::where('guid', $fileGuid)->first();
         if ($file) {
             $meta = $file->meta ?? [];
             $meta['artifacts'] = array_merge($meta['artifacts'] ?? [], [

@@ -6,6 +6,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class PendingJobsReader
 {
@@ -42,7 +43,7 @@ class PendingJobsReader
                         'attempt' => $job->attempts,
                         'order_in_chain' => JobChainOrderResolver::resolve($commandName),
                     ];
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     Log::warning('Failed to process pending job', [
                         'error' => $e->getMessage(),
                         'job_id' => $job->id,

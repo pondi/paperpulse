@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\User;
 use App\Services\SharingService;
+use Exception;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -59,7 +60,7 @@ class CategoryController extends Controller
             'description' => 'nullable|string|max:500',
         ]);
 
-        $category = auth()->user()->categories()->create([
+        auth()->user()->categories()->create([
             'name' => $request->name,
             'slug' => Category::generateUniqueSlug($request->name, auth()->id()),
             'color' => $request->color ?? '#6B7280',
@@ -190,14 +191,14 @@ class CategoryController extends Controller
                 return back()->with('error', 'You cannot share with yourself');
             }
 
-            $share = $this->sharingService->shareCategory(
+            $this->sharingService->shareCategory(
                 $category,
                 $validated['email'],
                 $validated['permission']
             );
 
             return back()->with('success', 'Category shared successfully');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return back()->with('error', $e->getMessage());
         }
     }
@@ -213,7 +214,7 @@ class CategoryController extends Controller
             $this->sharingService->unshareCategory($category, $userId);
 
             return back()->with('success', 'Share removed successfully');
-        } catch (\Exception $e) {
+        } catch (Exception) {
             return back()->with('error', 'Failed to remove share');
         }
     }

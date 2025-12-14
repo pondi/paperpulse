@@ -3,6 +3,8 @@
 namespace App\Services\Jobs;
 
 use Illuminate\Support\Facades\Log;
+use ReflectionClass;
+use Throwable;
 
 class JobCommandInspector
 {
@@ -17,12 +19,12 @@ class JobCommandInspector
                 return $command->getJobID();
             }
 
-            $reflection = new \ReflectionClass($command);
+            $reflection = new ReflectionClass($command);
             $property = $reflection->getProperty('jobID');
             $property->setAccessible(true);
 
             return $property->getValue($command);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::warning('Failed to extract jobID from command', [
                 'command_class' => is_object($command) ? $command::class : gettype($command),
                 'error' => $e->getMessage(),

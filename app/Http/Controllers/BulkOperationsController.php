@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Receipt;
 use App\Notifications\BulkOperationCompleted;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
@@ -32,7 +34,7 @@ class BulkOperationsController extends Controller
         if ($user->preferences && $user->preferences->notify_bulk_complete) {
             try {
                 $user->notify(new BulkOperationCompleted('delete', $deletedCount));
-            } catch (\Exception $e) {
+            } catch (Exception) {
                 // Log but don't fail the operation
             }
         }
@@ -62,7 +64,7 @@ class BulkOperationsController extends Controller
         $data = [];
         if ($request->category_id) {
             // Verify user owns the category
-            $category = \App\Models\Category::find($request->category_id);
+            $category = Category::find($request->category_id);
             if ($category && $category->user_id !== auth()->id()) {
                 abort(403);
             }
@@ -83,7 +85,7 @@ class BulkOperationsController extends Controller
         if ($user->preferences && $user->preferences->notify_bulk_complete) {
             try {
                 $user->notify(new BulkOperationCompleted('categorize', $updatedCount));
-            } catch (\Exception $e) {
+            } catch (Exception) {
                 // Log but don't fail the operation
             }
         }

@@ -2,6 +2,8 @@
 
 namespace App\Services\AI\Shared;
 
+use Exception;
+
 /**
  * Centralized helpers for AI fallback decisions and standardized results.
  */
@@ -10,7 +12,7 @@ class AIFallbackHandler
     /**
      * Determine if an exception should trigger a fallback attempt.
      */
-    public static function shouldAttemptFallback(\Exception $e): bool
+    public static function shouldAttemptFallback(Exception $e): bool
     {
         $message = $e->getMessage();
 
@@ -80,7 +82,7 @@ class AIFallbackHandler
     /**
      * Build a standardized error result.
      */
-    public static function createErrorResult(string $provider, \Exception $e, float $startTime, array $context = []): array
+    public static function createErrorResult(string $provider, Exception $e, float $startTime, array $context = []): array
     {
         $processingTime = microtime(true) - $startTime;
 

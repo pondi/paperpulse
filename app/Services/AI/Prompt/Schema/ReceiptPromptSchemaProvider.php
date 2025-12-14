@@ -121,6 +121,10 @@ class ReceiptPromptSchemaProvider
                     'description' => 'Distinct list of identified product vendors/brands present on this receipt',
                     'items' => ['type' => 'string'],
                 ],
+                'summary' => [
+                    'type' => 'string',
+                    'description' => 'A brief, natural language summary of this receipt (1-2 sentences) describing what was purchased and the context',
+                ],
             ],
             'required' => ['merchant', 'totals', 'receipt_info'],
             'additionalProperties' => $strictMode ? false : true,

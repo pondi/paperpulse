@@ -105,6 +105,14 @@ Follow the JSON schema carefully but be flexible with missing information. If in
 - Also return a top-level `vendors` array containing unique vendor/brand names present across items
 - Do not guess; only include vendors that are explicit or highly likely from the text
 
+## Summary Generation:
+- Generate a brief, natural language summary (1-2 sentences) in the `summary` field
+- The summary should describe what was purchased in a human-friendly way
+- Include context like: merchant name, main items or categories, total amount, and date
+- Example: "Grocery shopping at Rema 1000 on 2024-03-15 for 487.50 NOK, including fresh produce, dairy products, and household items."
+- Example: "Electronics purchase at Elkjøp for 2,499 NOK on 2024-03-10, bought a Philips electric toothbrush."
+- Keep it concise but informative and natural sounding
+
 @if(isset($debug) && $debug)
 Also include a 'debug' section with processing notes.
 @endif

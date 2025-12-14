@@ -10,6 +10,7 @@ use App\Services\AI\PromptTemplateService;
 use App\Services\AI\Shared\AIDataNormalizer;
 use App\Services\AI\Shared\AIDebugLogger;
 use App\Services\AI\Shared\AIFallbackHandler;
+use Exception;
 use Illuminate\Support\Facades\Log;
 use OpenAI\Laravel\Facades\OpenAI;
 
@@ -97,7 +98,7 @@ class OpenAIProvider implements AIService
             AIDebugLogger::analysisComplete('OpenAI', $finalResult, $startTime);
 
             return $finalResult;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             AIDebugLogger::analysisError('OpenAI', $e, $startTime, [
                 'model' => $model ?? 'unknown',
                 'content_length' => strlen($content),
@@ -131,7 +132,7 @@ class OpenAIProvider implements AIService
                     AIDebugLogger::fallbackSuccess('OpenAI', $startTime, $fallbackResult);
 
                     return $fallbackResult;
-                } catch (\Exception $fallbackError) {
+                } catch (Exception $fallbackError) {
                     AIDebugLogger::analysisError('OpenAI', $fallbackError, $startTime, [
                         'error_context' => 'fallback_failed',
                     ]);
@@ -170,7 +171,7 @@ class OpenAIProvider implements AIService
                 'template' => $promptData['template_name'],
                 'tokens_used' => $response->usage->totalTokens ?? 0,
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('OpenAI document analysis failed', [
                 'error' => $e->getMessage(),
                 'content_length' => strlen($content),
@@ -200,8 +201,8 @@ class OpenAIProvider implements AIService
                 'response_format' => ['type' => 'json_object'],
             ]);
 
-            return \App\Services\AI\OpenAI\ResponseParser::jsonContent($response);
-        } catch (\Exception $e) {
+            return ResponseParser::jsonContent($response);
+        } catch (Exception $e) {
             Log::error('Merchant extraction failed', ['error' => $e->getMessage()]);
 
             return [];
@@ -227,7 +228,7 @@ class OpenAIProvider implements AIService
             ]);
 
             return trim($response->choices[0]->message->content);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Summary generation failed', ['error' => $e->getMessage()]);
 
             return 'Summary generation failed';
@@ -278,10 +279,10 @@ class OpenAIProvider implements AIService
                 ],
             ]);
 
-            $result = \App\Services\AI\OpenAI\ResponseParser::jsonContent($response);
+            $result = ResponseParser::jsonContent($response);
 
             return $result['tags'] ?? [];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Tag suggestion failed', ['error' => $e->getMessage()]);
 
             return [];
@@ -321,7 +322,7 @@ class OpenAIProvider implements AIService
             $type = strtolower(trim($response->choices[0]->message->content));
 
             return in_array($type, $types) ? $type : 'other';
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Document classification failed', ['error' => $e->getMessage()]);
 
             return 'other';
@@ -355,10 +356,10 @@ class OpenAIProvider implements AIService
                 'temperature' => 0.1,
                 'response_format' => ['type' => 'json_object'],
             ]);
-            $result = \App\Services\AI\OpenAI\ResponseParser::jsonContent($response);
+            $result = ResponseParser::jsonContent($response);
 
             return array_intersect_key($result, array_flip($types));
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Entity extraction failed', ['error' => $e->getMessage()]);
 
             return array_fill_keys($types, []);

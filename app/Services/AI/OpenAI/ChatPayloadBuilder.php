@@ -47,7 +47,7 @@ class ChatPayloadBuilder
                     'name' => 'document_analysis',
                     'description' => 'Structured document metadata extraction',
                     'schema' => $promptData['schema'],
-                    'strict' => true,
+                    'strict' => (bool) config('ai.options.strict_json_schema', false),
                 ],
             ],
         ];

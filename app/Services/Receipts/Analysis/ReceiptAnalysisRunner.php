@@ -9,6 +9,7 @@ use App\Models\Receipt;
 use App\Services\Receipts\Deduplication\ReceiptDeduplicator;
 use App\Services\Receipts\LineItemsCreator;
 use App\Services\Receipts\TotalsCalculator;
+use Exception;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -35,7 +36,7 @@ class ReceiptAnalysisRunner
      * @param  string  $content  OCR text content
      * @param  array|null  $structuredData  Optional OCR structured payload
      */
-    public function run(callable $parseFn, int $fileId, int $userId, string $content, ?array $structuredData = null): Receipt
+    public function run(callable $parseFn, int $fileId, int $userId, string $content, ?array $structuredData = null, ?string $note = null): Receipt
     {
         $debug = config('app.debug');
         $start = microtime(true);
@@ -76,6 +77,9 @@ class ReceiptAnalysisRunner
             $items = $this->parser->extractItems($data);
             $totals = TotalsCalculator::calculate($items, $data, $this->parser);
 
+            // Extract AI-generated summary from analysis
+            $summary = $data['summary'] ?? null;
+
             $receiptPayload = ReceiptPayloadBuilder::build(
                 $analysis,
                 $data,
@@ -89,7 +93,9 @@ class ReceiptAnalysisRunner
                 $categoryId,
                 $categoryName,
                 $this->enricher,
-                $prefs['default_currency']
+                $prefs['default_currency'],
+                $note,
+                $summary
             );
 
             if ($debug) {
@@ -116,7 +122,7 @@ class ReceiptAnalysisRunner
             );
 
             return $receipt;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
             ReceiptAnalysisLogger::failed($fileId, $e->getMessage(), round((microtime(true) - $start) * 1000, 2));
             throw $e;

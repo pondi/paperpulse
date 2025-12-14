@@ -3,6 +3,7 @@
 namespace App\Services\Receipts\Analysis;
 
 use App\Contracts\Services\ReceiptValidatorContract;
+use Exception;
 
 class ParsedDataValidator
 {
@@ -10,11 +11,11 @@ class ParsedDataValidator
     {
         $validation = $validator->validateParsedData($analysisData, $fileId);
         if (! $validation['valid']) {
-            throw new \Exception('Receipt data validation failed: '.implode(', ', $validation['errors']));
+            throw new Exception('Receipt data validation failed: '.implode(', ', $validation['errors']));
         }
 
         if (! $validator->hasEssentialData($analysisData)) {
-            throw new \Exception('AI analysis failed to extract essential merchant information');
+            throw new Exception('AI analysis failed to extract essential merchant information');
         }
 
         $data = $validator->sanitizeData($analysisData);

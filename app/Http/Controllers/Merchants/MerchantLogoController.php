@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Merchants;
 use App\Http\Controllers\Controller;
 use App\Models\Merchant;
 use App\Services\Merchants\LogoCacheService;
+use App\Services\Merchants\LogoGenerator;
 use Illuminate\Http\Response;
 
 /**
@@ -46,7 +47,7 @@ class MerchantLogoController extends Controller
             $name = 'Unknown';
         }
 
-        $svg = \App\Services\Merchants\LogoGenerator::generateSvg($name);
+        $svg = LogoGenerator::generateSvg($name);
 
         return response($svg)
             ->header('Content-Type', 'image/svg+xml')

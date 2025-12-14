@@ -24,11 +24,18 @@ class ReceiptAnalysisOrchestrator
      *
      * @param  string  $content  OCR-extracted text
      */
-    public function analyzeAndCreateReceipt(string $content, int $fileId, int $userId): Receipt
+    public function analyzeAndCreateReceipt(string $content, int $fileId, int $userId, ?string $note = null): Receipt
     {
         $runner = new ReceiptAnalysisRunner($this->parser, $this->validator, $this->enricher);
 
-        return $runner->run(fn () => $this->parser->parseReceipt($content, $fileId), $fileId, $userId, $content);
+        return $runner->run(
+            fn () => $this->parser->parseReceipt($content, $fileId),
+            $fileId,
+            $userId,
+            $content,
+            null,
+            $note
+        );
     }
 
     /**
@@ -37,11 +44,18 @@ class ReceiptAnalysisOrchestrator
      * @param  string  $content  OCR-extracted text
      * @param  array  $structuredData  Provider-specific OCR structured payload
      */
-    public function analyzeAndCreateReceiptWithStructuredData(string $content, array $structuredData, int $fileId, int $userId): Receipt
+    public function analyzeAndCreateReceiptWithStructuredData(string $content, array $structuredData, int $fileId, int $userId, ?string $note = null): Receipt
     {
         $runner = new ReceiptAnalysisRunner($this->parser, $this->validator, $this->enricher);
 
-        return $runner->run(fn () => $this->parser->parseReceiptWithStructuredData($content, $structuredData, $fileId), $fileId, $userId, $content, $structuredData);
+        return $runner->run(
+            fn () => $this->parser->parseReceiptWithStructuredData($content, $structuredData, $fileId),
+            $fileId,
+            $userId,
+            $content,
+            $structuredData,
+            $note
+        );
     }
 
     // Core pipeline moved to ReceiptAnalysisRunner

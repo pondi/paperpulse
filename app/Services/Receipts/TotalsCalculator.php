@@ -8,6 +8,19 @@ class TotalsCalculator
 {
     public static function calculate(array $items, array $data, $parser): array
     {
+        [$calculatedTotal, $validItemsCount, $itemValidationErrors] = self::calculateLineItemTotals($items);
+
+        $aiTotals = $parser->extractTotals($data);
+        $aiTotal = (float) ($aiTotals['total_amount'] ?? 0);
+        $aiTax = (float) ($aiTotals['tax_amount'] ?? 0);
+
+        self::logItemValidationErrors($itemValidationErrors, $items, $validItemsCount);
+
+        return self::decideTotalsSource($calculatedTotal, $validItemsCount, $aiTotal, $aiTax, $items);
+    }
+
+    private static function calculateLineItemTotals(array $items): array
+    {
         $calculatedTotal = 0.0;
         $validItemsCount = 0;
         $itemValidationErrors = [];
@@ -39,19 +52,31 @@ class TotalsCalculator
             }
         }
 
-        $aiTotals = $parser->extractTotals($data);
-        $aiTotal = (float) ($aiTotals['total_amount'] ?? 0);
-        $aiTax = (float) ($aiTotals['tax_amount'] ?? 0);
+        return [$calculatedTotal, $validItemsCount, $itemValidationErrors];
+    }
 
-        if (! empty($itemValidationErrors)) {
-            Log::warning('[ReceiptAnalysis] Line item calculation mismatches found', [
-                'validation_errors' => $itemValidationErrors,
-                'total_items' => count($items),
-                'valid_items' => $validItemsCount,
-            ]);
+    private static function logItemValidationErrors(array $itemValidationErrors, array $items, int $validItemsCount): void
+    {
+        if (empty($itemValidationErrors)) {
+            return;
         }
 
+        Log::warning('[ReceiptAnalysis] Line item calculation mismatches found', [
+            'validation_errors' => $itemValidationErrors,
+            'total_items' => count($items),
+            'valid_items' => $validItemsCount,
+        ]);
+    }
+
+    private static function decideTotalsSource(
+        float $calculatedTotal,
+        int $validItemsCount,
+        float $aiTotal,
+        float $aiTax,
+        array $items
+    ): array {
         $tolerance = 0.02;
+
         if ($calculatedTotal > 0 && $validItemsCount > 0) {
             $difference = abs($calculatedTotal - $aiTotal);
             $percentDifference = $aiTotal > 0 ? ($difference / $aiTotal) : 0;

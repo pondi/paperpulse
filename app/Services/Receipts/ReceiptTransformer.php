@@ -19,6 +19,7 @@ class ReceiptTransformer
             'currency' => $receipt->currency,
             'receipt_category' => $receipt->receipt_category,
             'receipt_description' => $receipt->receipt_description,
+            'note' => $receipt->note,
             'file' => $receipt->file ? [
                 'id' => $receipt->file->id,
                 'url' => route('receipts.showImage', $receipt->id),
@@ -83,6 +84,7 @@ class ReceiptTransformer
             'currency' => $receipt->currency,
             'receipt_category' => $receipt->receipt_category,
             'receipt_description' => $receipt->receipt_description,
+            'note' => $receipt->note,
             'file' => $fileInfo,
             'lineItems' => $receipt->lineItems ? $receipt->lineItems->map(function ($item) {
                 return [

@@ -4,47 +4,18 @@ namespace App\Services\Receipts;
 
 use App\Models\LineItem;
 use App\Models\Receipt;
+use App\Models\Vendor;
 
 class LineItemsCreator
 {
     public static function create(Receipt $receipt, array $items, array $vendors = []): void
     {
         $vendorIdCache = [];
-        $resolveVendorId = function (?string $name) use (&$vendorIdCache) {
-            if (! $name) {
-                return null;
-            }
-            $key = mb_strtolower(trim($name));
-            if (isset($vendorIdCache[$key])) {
-                return $vendorIdCache[$key];
-            }
-            $vendor = \App\Models\Vendor::firstOrCreate(['name' => trim($name)]);
-            $vendorIdCache[$key] = $vendor->id;
-
-            return $vendor->id;
-        };
-
-        $vendorSet = array_map(fn ($v) => mb_strtolower(trim($v)), $vendors);
+        $vendorSet = self::normalizeVendorNames($vendors);
 
         foreach ($items as $item) {
             $itemName = $item['name'] ?? $item['description'] ?? '';
-            $explicitVendor = $item['vendor'] ?? $item['brand'] ?? null;
-
-            $vendorId = null;
-            if (! empty($explicitVendor)) {
-                $vendorId = $resolveVendorId($explicitVendor);
-            } elseif (! empty($itemName) && ! empty($vendorSet)) {
-                $match = null;
-                foreach ($vendorSet as $v) {
-                    if ($v !== '' && mb_strpos(mb_strtolower($itemName), $v) !== false) {
-                        $match = $v;
-                        break;
-                    }
-                }
-                if ($match) {
-                    $vendorId = $resolveVendorId($match);
-                }
-            }
+            $vendorId = self::resolveVendorForItem($item, $itemName, $vendorSet, $vendorIdCache);
 
             LineItem::create([
                 'receipt_id' => $receipt->id,
@@ -56,5 +27,57 @@ class LineItemsCreator
                 'total' => $item['total_price'] ?? $item['total'] ?? (($item['unit_price'] ?? $item['price'] ?? 0) * ($item['quantity'] ?? 1)),
             ]);
         }
+    }
+
+    private static function normalizeVendorNames(array $vendors): array
+    {
+        return array_map(
+            static fn ($v) => mb_strtolower(trim((string) $v)),
+            $vendors
+        );
+    }
+
+    private static function resolveVendorForItem(
+        array $item,
+        string $itemName,
+        array $vendorSet,
+        array &$vendorIdCache
+    ): ?int {
+        $explicitVendor = $item['vendor'] ?? $item['brand'] ?? null;
+
+        if (! empty($explicitVendor)) {
+            return self::resolveVendorId($explicitVendor, $vendorIdCache);
+        }
+
+        if ($itemName === '' || empty($vendorSet)) {
+            return null;
+        }
+
+        $match = null;
+        foreach ($vendorSet as $v) {
+            if ($v !== '' && mb_strpos(mb_strtolower($itemName), $v) !== false) {
+                $match = $v;
+                break;
+            }
+        }
+
+        return $match ? self::resolveVendorId($match, $vendorIdCache) : null;
+    }
+
+    private static function resolveVendorId(?string $name, array &$vendorIdCache): ?int
+    {
+        if (! $name) {
+            return null;
+        }
+
+        $key = mb_strtolower(trim($name));
+        if (isset($vendorIdCache[$key])) {
+            return $vendorIdCache[$key];
+        }
+
+        $vendor = Vendor::firstOrCreate(['name' => trim($name)]);
+        $vendorIdCache[$key] = $vendor->id;
+
+        return $vendor->id;
     }
 }

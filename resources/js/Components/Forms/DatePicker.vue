@@ -37,7 +37,7 @@
         </div>
 
         <!-- Calendar Dropdown -->
-        <Teleport to="body">
+        <Teleport v-if="isMounted" to="body">
             <Transition
                 enter-active-class="transition ease-out duration-200"
                 enter-from-class="opacity-0 translate-y-1"
@@ -209,6 +209,7 @@ const emit = defineEmits(['update:modelValue']);
 
 const input = ref(null);
 const calendar = ref(null);
+const isMounted = ref(false);
 const showCalendar = ref(false);
 const currentMonth = ref(new Date().getMonth());
 const currentYear = ref(new Date().getFullYear());
@@ -366,6 +367,10 @@ const toggleCalendar = () => {
         window.removeEventListener('resize', calculatePosition);
     }
 };
+
+onMounted(() => {
+    isMounted.value = true;
+});
 
 // Close calendar
 const closeCalendar = () => {

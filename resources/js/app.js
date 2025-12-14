@@ -12,10 +12,20 @@ createInertiaApp({
     title: (title) => `${title} - ${appName}`,
     resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
-        return createApp({ render: () => h(App, props) })
-            .use(plugin)
-            .use(ZiggyVue)
-            .mount(el);
+        const app = createApp({ render: () => h(App, props) });
+
+        app.config.errorHandler = (error, instance, info) => {
+            // Surface rich error context in the browser console for production debugging
+            // without breaking Vue's default error handling.
+            // eslint-disable-next-line no-console
+            console.error('[Vue error]', error, {
+                info,
+                component: instance?.type?.name,
+                props: instance?.props,
+            });
+        };
+
+        return app.use(plugin).use(ZiggyVue).mount(el);
     },
     progress: {
         color: '#4B5563',

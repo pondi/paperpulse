@@ -1,23 +1,19 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
-import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
-import DangerButton from '@/Components/Buttons/DangerButton.vue';
-import TextInput from '@/Components/Forms/TextInput.vue';
-import InputLabel from '@/Components/Forms/InputLabel.vue';
-import InputError from '@/Components/Forms/InputError.vue';
 import Modal from '@/Components/Common/Modal.vue';
 import TagManager from '@/Components/Domain/TagManager.vue';
 import SharingControls from '@/Components/Domain/SharingControls.vue';
-import { 
+import DocumentImage from '@/Components/Domain/DocumentImage.vue';
+import {
     DocumentIcon,
     FolderIcon,
     ArrowDownTrayIcon,
     TrashIcon,
     PencilIcon,
-    XMarkIcon
+    CheckIcon,
+    ArrowLeftIcon
 } from '@heroicons/vue/24/outline';
 
 interface Tag {
@@ -44,16 +40,23 @@ interface FileInfo {
     id: number;
     url: string;
     pdfUrl: string | null;
+    previewUrl?: string | null;
     extension: string;
     mime_type?: string;
     size?: number;
     guid?: string;
+    has_preview?: boolean;
+    is_pdf?: boolean;
+    uploaded_at?: string | null;
+    file_created_at?: string | null;
+    file_modified_at?: string | null;
 }
 
 interface Document {
     id: number;
     title: string;
     summary: string | null;
+    note: string | null;
     category_id: number | null;
     tags: Tag[];
     shared_users: SharedUser[];
@@ -73,17 +76,15 @@ const props = defineProps<Props>();
 const isEditing = ref(false);
 const showDeleteModal = ref(false);
 const documentTags = ref(props.document.tags);
-
-const form = useForm({
+const editedDocument = ref({
     title: props.document.title,
     summary: props.document.summary,
+    note: props.document.note,
     category_id: props.document.category_id,
-    tags: props.document.tags.map(t => t.id),
 });
 
-
 const selectedCategory = computed(() => {
-    return props.categories.find(c => c.id === form.category_id);
+    return props.categories.find(c => c.id === editedDocument.value.category_id);
 });
 
 const formatFileSize = (bytes: number) => {
@@ -94,7 +95,8 @@ const formatFileSize = (bytes: number) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-const formatDate = (date: string) => {
+const formatDate = (date: string | null) => {
+    if (!date) return 'N/A';
     return new Date(date).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
@@ -104,78 +106,58 @@ const formatDate = (date: string) => {
     });
 };
 
-const saveDocument = () => {
-    // Update tags to be the array of tag IDs
-    form.tags = documentTags.value.map(t => t.id);
-    
-    form.patch(route('documents.update', props.document.id), {
-        onSuccess: () => {
-            isEditing.value = false;
-        }
-    });
-};
+// Auto-save when exiting edit mode
+watch(isEditing, (newValue) => {
+    if (!newValue) {
+        // Exiting edit mode - save changes
+        router.patch(route('documents.update', props.document.id), {
+            ...editedDocument.value,
+            tags: documentTags.value.map(t => t.id)
+        }, {
+            preserveScroll: true
+        });
+    } else {
+        // Entering edit mode - reset form
+        editedDocument.value = {
+            title: props.document.title,
+            summary: props.document.summary,
+            note: props.document.note,
+            category_id: props.document.category_id,
+        };
+    }
+});
 
 const deleteDocument = () => {
-    router.delete(route('documents.destroy', props.document.id), {
-        onSuccess: () => {
-            // Redirect handled by controller
-        }
-    });
+    router.delete(route('documents.destroy', props.document.id));
 };
 
 const downloadDocument = () => {
     window.location.href = route('documents.download', props.document.id);
 };
 
-const imageError = ref(false);
-const handleImageError = () => {
-    imageError.value = true;
-};
-
-const openPdf = (url: string) => {
-    window.open(url, '_blank', 'noopener');
-};
-
 const handleTagAdded = (tag: Tag) => {
-    // When in edit mode, just update the form data
     if (isEditing.value) {
-        form.tags.push(tag.id);
+        documentTags.value = [...documentTags.value, tag];
     } else {
-        // When not editing, immediately save to server
         router.post(route('documents.tags.store', props.document.id), {
             name: tag.name
         }, {
-            preserveScroll: true,
-            onSuccess: () => {
-                documentTags.value = [...documentTags.value, tag];
-            }
+            preserveScroll: true
         });
     }
 };
 
 const handleTagRemoved = (tag: Tag) => {
-    // When in edit mode, just update the form data
     if (isEditing.value) {
-        form.tags = form.tags.filter(id => id !== tag.id);
+        documentTags.value = documentTags.value.filter(t => t.id !== tag.id);
     } else {
-        // When not editing, immediately remove from server
         router.delete(route('documents.tags.destroy', [props.document.id, tag.id]), {
-            preserveScroll: true,
-            onSuccess: () => {
-                documentTags.value = documentTags.value.filter(t => t.id !== tag.id);
-            }
+            preserveScroll: true
         });
     }
 };
 
-
-const getFileIcon = (fileType: string) => {
-    // This would be expanded to show different icons based on file type
-    return DocumentIcon;
-};
-
 const handleSharesUpdated = (shares: any[]) => {
-    // Normalize shares into simplified user list for this page
     props.document.shared_users = (shares || []).map((s: any) => ({
         id: s.shared_with_user?.id ?? s.id,
         name: s.shared_with_user?.name ?? s.name,
@@ -185,7 +167,6 @@ const handleSharesUpdated = (shares: any[]) => {
     }));
 };
 
-// Adapt shared users for SharingControls expected shape
 const sharingControlShares = computed(() => {
     const users = (props.document.shared_users || []) as any[];
     return users.map((u: any) => ({
@@ -195,17 +176,8 @@ const sharingControlShares = computed(() => {
     }));
 });
 
-// Remove share from the list (fallback in addition to SharingControls)
-const removeShare = (userId: number) => {
-    if (!confirm('Remove access for this user?')) return;
-    router.delete(route('documents.unshare', [props.document.id, userId]), {
-        preserveScroll: true,
-        onSuccess: () => {
-            props.document.shared_users = (props.document.shared_users || []).filter(
-                (u: any) => u.id !== userId
-            );
-        },
-    });
+const getDocumentTypeClass = () => {
+    return 'text-blue-400 bg-blue-400/10';
 };
 </script>
 
@@ -214,26 +186,17 @@ const removeShare = (userId: number) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                    <Link
-                        :href="route('documents.index')"
-                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                    >
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                        </svg>
-                    </Link>
-                    <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                        {{ document.title }}
-                    </h2>
-                </div>
-                <div class="flex items-center space-x-2">
+            <div class="flex justify-between items-center">
+                <h2 class="font-semibold text-xl text-gray-900 dark:text-gray-200 leading-tight flex items-center gap-x-2">
+                    <DocumentIcon class="size-6" />
+                    {{ document.title }}
+                </h2>
+                <div class="flex items-center gap-x-4">
                     <button
                         @click="downloadDocument"
-                        class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        class="inline-flex items-center gap-x-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
-                        <ArrowDownTrayIcon class="h-4 w-4 mr-2" />
+                        <ArrowDownTrayIcon class="h-4 w-4" />
                         Download
                     </button>
                     <SharingControls
@@ -242,240 +205,185 @@ const removeShare = (userId: number) => {
                         :current-shares="sharingControlShares"
                         @shares-updated="handleSharesUpdated"
                     />
-                    <button
-                        v-if="!isEditing"
-                        @click="isEditing = true"
-                        class="inline-flex items-center px-3 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700"
+                    <Link
+                        :href="route('documents.index')"
+                        class="inline-flex items-center gap-x-2 px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700"
                     >
-                        <PencilIcon class="h-4 w-4 mr-2" />
-                        Edit
-                    </button>
+                        <ArrowLeftIcon class="size-4" />
+                        Back to Documents
+                    </Link>
                 </div>
             </div>
         </template>
 
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Document Viewer -->
-                    <div class="lg:col-span-2">
-                        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="p-6">
-                                <div class="aspect-[8.5/11] bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden relative">
-                                    <template v-if="document.file?.url">
-                                        <!-- Show image if not PDF -->
-                                        <img
-                                            v-if="document.file.extension !== 'pdf'"
-                                            :src="document.file.url"
-                                            class="w-full h-auto"
-                                            :alt="document.title"
-                                            @error="handleImageError"
-                                            :class="{ 'hidden': imageError }"
-                                        />
-                                        <div v-if="imageError && document.file.extension !== 'pdf'" class="text-center text-gray-500 dark:text-gray-300">
-                                            Unable to load image
-                                        </div>
-
-                                        <!-- For PDFs, open in new tab -->
-                                        <div v-if="document.file.extension === 'pdf'" class="text-center">
-                                            <button
-                                                @click="openPdf(document.file.pdfUrl || document.file.url)"
-                                                class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700"
-                                            >
-                                                Open PDF
-                                            </button>
-                                        </div>
-                                    </template>
-                                    <template v-else>
-                                        <div class="text-center">
-                                            <component :is="getFileIcon('document')" class="h-24 w-24 text-gray-400 mx-auto mb-4" />
-                                            <p class="text-gray-500 dark:text-gray-400">No file available</p>
-                                        </div>
-                                    </template>
-
-                                    <!-- Quick PDF button -->
-                                    <div v-if="document.file?.pdfUrl" class="absolute bottom-4 right-4">
-                                        <button
-                                            @click="openPdf(document.file.pdfUrl)"
-                                            class="inline-flex items-center gap-x-2 px-3 py-2 bg-gray-800 rounded-md text-sm font-semibold text-white hover:bg-gray-700"
-                                        >
-                                            <DocumentIcon class="h-4 w-4" /> View PDF
-                                        </button>
-                                    </div>
+        <div class="flex h-[calc(100vh-9rem)] overflow-hidden">
+            <!-- Left Panel - Document Details -->
+            <div class="w-1/2 p-6 overflow-y-auto border-r border-gray-200 dark:border-gray-700">
+                <div class="space-y-8">
+                    <!-- Document Status/Type Badge -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-x-3">
+                                <div :class="[getDocumentTypeClass(), 'flex-none rounded-full p-1']">
+                                    <div class="size-2 rounded-full bg-current" />
                                 </div>
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-200">Document Details</h3>
                             </div>
+                            <button
+                                @click="isEditing = !isEditing"
+                                class="inline-flex items-center gap-x-2 px-3 py-2 text-sm font-semibold rounded-md"
+                                :class="isEditing ? 'text-gray-900 bg-gray-100 hover:bg-gray-200 dark:text-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600' : 'text-gray-100 bg-gray-700 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500'"
+                            >
+                                <PencilIcon v-if="!isEditing" class="size-4" />
+                                <CheckIcon v-else class="size-4" />
+                                {{ isEditing ? 'Save Changes' : 'Edit Document' }}
+                            </button>
                         </div>
+
+                        <dl class="mt-6 space-y-6">
+                            <!-- Title -->
+                            <div class="flex flex-col">
+                                <dt class="text-sm font-medium text-gray-500">Title</dt>
+                                <dd v-if="!isEditing" class="mt-1 text-sm text-gray-700 dark:text-gray-200">
+                                    {{ document.title }}
+                                </dd>
+                                <input
+                                    v-else
+                                    v-model="editedDocument.title"
+                                    type="text"
+                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                                />
+                            </div>
+
+                            <!-- Summary -->
+                            <div class="flex flex-col">
+                                <dt class="text-sm font-medium text-gray-500">Summary</dt>
+                                <dd v-if="!isEditing" class="mt-1 text-sm text-gray-700 dark:text-gray-200">
+                                    {{ document.summary || 'No summary available' }}
+                                </dd>
+                                <textarea
+                                    v-else
+                                    v-model="editedDocument.summary"
+                                    rows="3"
+                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                                />
+                            </div>
+
+                            <!-- Document Note -->
+                            <div class="flex flex-col">
+                                <dt class="text-sm font-medium text-gray-500">Document Note</dt>
+                                <dd v-if="!isEditing" class="mt-1 text-sm text-gray-700 dark:text-gray-200">
+                                    {{ document.note || 'No note added' }}
+                                </dd>
+                                <textarea
+                                    v-else
+                                    v-model="editedDocument.note"
+                                    rows="2"
+                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                                />
+                            </div>
+
+                            <!-- Category -->
+                            <div class="flex flex-col">
+                                <dt class="text-sm font-medium text-gray-500">Category</dt>
+                                <dd v-if="!isEditing">
+                                    <span
+                                        v-if="selectedCategory"
+                                        class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+                                        :style="{ backgroundColor: selectedCategory.color + '20', color: selectedCategory.color }"
+                                    >
+                                        <FolderIcon class="h-4 w-4 mr-1" />
+                                        {{ selectedCategory.name }}
+                                    </span>
+                                    <p v-else class="mt-1 text-sm text-gray-500">No category</p>
+                                </dd>
+                                <select
+                                    v-else
+                                    v-model="editedDocument.category_id"
+                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                                >
+                                    <option :value="null">No category</option>
+                                    <option v-for="category in categories" :key="category.id" :value="category.id">
+                                        {{ category.name }}
+                                    </option>
+                                </select>
+                            </div>
+                        </dl>
                     </div>
 
-                    <!-- Document Details -->
-                    <div class="space-y-6">
-                        <!-- Metadata -->
-                        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="p-6">
-                                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                                    Document Details
-                                </h3>
-                                
-                                <div class="space-y-4">
-                                    <!-- Title -->
-                                    <div>
-                                        <InputLabel value="Title" />
-                                        <TextInput
-                                            v-if="isEditing"
-                                            v-model="form.title"
-                                            type="text"
-                                            class="mt-1 block w-full"
-                                        />
-                                        <p v-else class="mt-1 text-sm text-gray-900 dark:text-white">
-                                            {{ document.title }}
-                                        </p>
-                                        <InputError :message="form.errors.title" class="mt-2" />
-                                    </div>
+                    <!-- Tags -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-200 mb-4">Tags</h3>
+                        <TagManager
+                            v-model="documentTags"
+                            :readonly="!isEditing"
+                            @tag-added="handleTagAdded"
+                            @tag-removed="handleTagRemoved"
+                        />
+                    </div>
 
-                                    <!-- Summary -->
-                                    <div>
-                                        <InputLabel value="Summary" />
-                                        <textarea
-                                            v-if="isEditing"
-                                            v-model="form.summary"
-                                            rows="3"
-                                            class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
-                                        />
-                                        <p v-else class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                                            {{ document.summary || 'No summary available' }}
-                                        </p>
-                                        <InputError :message="form.errors.summary" class="mt-2" />
-                                    </div>
-
-                                    <!-- Category -->
-                                    <div>
-                                        <InputLabel value="Category" />
-                                        <select
-                                            v-if="isEditing"
-                                            v-model="form.category_id"
-                                            class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
-                                        >
-                                            <option :value="null">No category</option>
-                                            <option v-for="category in categories" :key="category.id" :value="category.id">
-                                                {{ category.name }}
-                                            </option>
-                                        </select>
-                                        <div v-else class="mt-1">
-                                            <span 
-                                                v-if="selectedCategory"
-                                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
-                                                :style="{
-                                                    backgroundColor: selectedCategory.color + '20',
-                                                    color: selectedCategory.color
-                                                }"
-                                            >
-                                                <FolderIcon class="h-4 w-4 mr-1" />
-                                                {{ selectedCategory.name }}
-                                            </span>
-                                            <p v-else class="text-sm text-gray-500 dark:text-gray-400">
-                                                No category
-                                            </p>
-                                        </div>
-                                        <InputError :message="form.errors.category_id" class="mt-2" />
-                                    </div>
-
-                                    <!-- Tags -->
-                                    <div>
-                                        <InputLabel value="Tags" />
-                                        <div class="mt-1">
-                                            <TagManager
-                                                v-model="documentTags"
-                                                :readonly="!isEditing"
-                                                @tag-added="handleTagAdded"
-                                                @tag-removed="handleTagRemoved"
-                                            />
-                                        </div>
-                                        <InputError :message="form.errors.tags" class="mt-2" />
-                                    </div>
-
-                                    <!-- Timestamps -->
-                                    <div class="pt-4 border-t dark:border-gray-700">
-                                        <dl class="space-y-2">
-                                            <div>
-                                                <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                                                    Created
-                                                </dt>
-                                                <dd class="text-sm text-gray-900 dark:text-white">
-                                                    {{ formatDate(document.created_at) }}
-                                                </dd>
-                                            </div>
-                                            <div>
-                                                <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                                                    Last modified
-                                                </dt>
-                                                <dd class="text-sm text-gray-900 dark:text-white">
-                                                    {{ formatDate(document.updated_at) }}
-                                                </dd>
-                                            </div>
-                                        </dl>
-                                    </div>
-
-                                    <!-- Action Buttons -->
-                                    <div v-if="isEditing" class="flex justify-end space-x-2 pt-4">
-                                        <SecondaryButton @click="isEditing = false">
-                                            Cancel
-                                        </SecondaryButton>
-                                        <PrimaryButton @click="saveDocument">
-                                            Save Changes
-                                        </PrimaryButton>
-                                    </div>
-                                </div>
+                    <!-- File Metadata -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-200 mb-4">File Information</h3>
+                        <dl class="space-y-3">
+                            <div>
+                                <dt class="text-xs font-medium text-gray-500">File Size</dt>
+                                <dd class="text-sm text-gray-900 dark:text-white">
+                                    {{ formatFileSize(document.file?.size || 0) }}
+                                </dd>
                             </div>
-                        </div>
-
-                        <!-- Shared Users -->
-                        <div v-if="document.shared_users.length > 0" class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="p-6">
-                                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                                    Shared With
-                                </h3>
-                                <div class="space-y-3">
-                                    <div 
-                                        v-for="user in document.shared_users" 
-                                        :key="user.id"
-                                        class="flex items-center justify-between"
-                                    >
-                                        <div>
-                                            <p class="text-sm font-medium text-gray-900 dark:text-white">
-                                                {{ user.name }}
-                                            </p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">
-                                                {{ user.email }} • {{ user.permission }}
-                                            </p>
-                                        </div>
-                                        <button
-                                            @click="removeShare(user.id)"
-                                            class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                                        >
-                                            <XMarkIcon class="h-5 w-5" />
-                                        </button>
-                                    </div>
-                                </div>
+                            <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
+                                <dt class="text-xs font-medium text-gray-500">Uploaded to PaperPulse</dt>
+                                <dd class="text-sm text-gray-900 dark:text-white">
+                                    {{ formatDate(document.file?.uploaded_at || document.created_at) }}
+                                </dd>
                             </div>
-                        </div>
-
-                        <!-- Delete Button -->
-                        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="p-6">
-                                <button
-                                    @click="showDeleteModal = true"
-                                    class="w-full inline-flex justify-center items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700"
-                                >
-                                    <TrashIcon class="h-4 w-4 mr-2" />
-                                    Delete Document
-                                </button>
+                            <div v-if="document.file?.file_created_at">
+                                <dt class="text-xs font-medium text-gray-500">Original File Created</dt>
+                                <dd class="text-sm text-gray-900 dark:text-white">
+                                    {{ formatDate(document.file.file_created_at) }}
+                                </dd>
                             </div>
-                        </div>
+                            <div v-if="document.file?.file_modified_at">
+                                <dt class="text-xs font-medium text-gray-500">Original File Modified</dt>
+                                <dd class="text-sm text-gray-900 dark:text-white">
+                                    {{ formatDate(document.file.file_modified_at) }}
+                                </dd>
+                            </div>
+                            <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
+                                <dt class="text-xs font-medium text-gray-500">Last Updated in PaperPulse</dt>
+                                <dd class="text-sm text-gray-900 dark:text-white">
+                                    {{ formatDate(document.updated_at) }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </div>
+
+                    <!-- Delete Button -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+                        <button
+                            @click="showDeleteModal = true"
+                            class="w-full inline-flex justify-center items-center gap-x-2 px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700"
+                        >
+                            <TrashIcon class="h-4 w-4" />
+                            Delete Document
+                        </button>
                     </div>
                 </div>
             </div>
-        </div>
 
+            <!-- Right Panel - Document Preview -->
+            <div class="w-1/2 bg-gray-50 dark:bg-gray-900 overflow-auto">
+                <DocumentImage
+                    :file="document.file"
+                    :alt-text="document.title"
+                    error-message="Failed to load document preview"
+                    no-image-message="No document preview available"
+                    :show-pdf-button="true"
+                    pdf-button-position="fixed bottom-6 right-6"
+                />
+            </div>
+        </div>
 
         <!-- Delete Confirmation Modal -->
         <Modal :show="showDeleteModal" @close="showDeleteModal = false">
@@ -487,12 +395,18 @@ const removeShare = (userId: number) => {
                     Are you sure you want to delete this document? This action cannot be undone.
                 </p>
                 <div class="mt-6 flex justify-end space-x-3">
-                    <SecondaryButton @click="showDeleteModal = false">
+                    <button
+                        @click="showDeleteModal = false"
+                        class="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
                         Cancel
-                    </SecondaryButton>
-                    <DangerButton @click="deleteDocument">
+                    </button>
+                    <button
+                        @click="deleteDocument"
+                        class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700"
+                    >
                         Delete
-                    </DangerButton>
+                    </button>
                 </div>
             </div>
         </Modal>

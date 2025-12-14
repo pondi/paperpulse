@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Traits\BelongsToUser;
 use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Laravel\Scout\Searchable;
@@ -18,6 +20,8 @@ use Laravel\Scout\Searchable;
  * @property int|null $category_id
  * @property string $title
  * @property string|null $description
+ * @property string|null $note
+ * @property string|null $summary
  * @property string $document_type
  * @property string|null $content
  * @property array|null $extracted_text
@@ -25,14 +29,14 @@ use Laravel\Scout\Searchable;
  * @property array|null $ai_entities
  * @property array|null $metadata
  * @property string|null $language
- * @property \Carbon\Carbon|null $document_date
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @property-read \App\Models\File $file
- * @property-read \App\Models\User $user
- * @property-read \App\Models\Category|null $category
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Tag[] $tags
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\FileShare[] $shares
+ * @property Carbon|null $document_date
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property-read File $file
+ * @property-read User $user
+ * @property-read Category|null $category
+ * @property-read Collection|Tag[] $tags
+ * @property-read Collection|FileShare[] $shares
  */
 use App\Contracts\Taggable;
 
@@ -55,18 +59,17 @@ class Document extends Model implements Taggable
         'category_id',
         'title',
         'description',
+        'note',
+        'summary',
         'content',
         'document_type',
         'extracted_text',
         'entities',
         'ai_entities',
-        'ai_summary',
         'metadata',
         'language',
         'document_date',
         'page_count',
-        'tags',
-        'shared_with',
     ];
 
     /**
@@ -79,9 +82,9 @@ class Document extends Model implements Taggable
         'entities' => 'array',
         'ai_entities' => 'array',
         'metadata' => 'array',
-        'tags' => 'array',
-        'shared_with' => 'array',
         'document_date' => 'datetime',
+        'note' => 'string',
+        'summary' => 'string',
     ];
 
     /**
@@ -139,7 +142,16 @@ class Document extends Model implements Taggable
      */
     public function toSearchableArray()
     {
-        $this->load(['category', 'tags', 'file']);
+        // Load relationships if not already loaded
+        if (!$this->relationLoaded('category')) {
+            $this->load('category');
+        }
+        if (!$this->relationLoaded('tags')) {
+            $this->load('tags');
+        }
+        if (!$this->relationLoaded('file')) {
+            $this->load('file');
+        }
 
         return [
             // Ensure search engine can filter by user
@@ -147,13 +159,15 @@ class Document extends Model implements Taggable
             'id' => $this->id,
             'title' => $this->title,
             'description' => $this->description,
+            'note' => $this->note,
+            'summary' => $this->summary,
             'document_type' => $this->document_type,
             'extracted_text' => $this->extracted_text,
             'entities' => $this->entities,
             'language' => $this->language,
             'document_date' => $this->document_date?->format('Y-m-d'),
             'category_name' => $this->category?->name,
-            'tags' => $this->tags->pluck('name')->toArray(),
+            'tags' => $this->tags?->pluck('name')->toArray() ?? [],
             'file_name' => $this->file?->original_filename,
             'file_type' => $this->file?->mime_type,
             'file_size' => $this->file?->file_size,

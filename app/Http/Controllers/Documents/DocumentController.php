@@ -6,9 +6,13 @@ use App\Http\Controllers\BaseResourceController;
 use App\Models\Document;
 use App\Models\Tag;
 use App\Services\Documents\DocumentTransformer;
+use App\Services\Documents\DocumentUploadHandler;
 use App\Services\Documents\DocumentUploadValidator;
 use App\Services\FileProcessingService;
+use App\Services\StorageService;
+use App\Services\Tags\TagAttachmentService;
 use App\Traits\ShareableController;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -26,13 +30,14 @@ class DocumentController extends BaseResourceController
 
     protected array $showWith = ['category', 'tags', 'sharedUsers', 'file'];
 
-    protected array $searchableFields = ['title', 'content', 'summary'];
+    protected array $searchableFields = ['title', 'content', 'summary', 'note'];
 
     protected array $filterableFields = ['category_id', 'tag'];
 
     protected array $validationRules = [
         'title' => 'sometimes|string|max:255',
         'summary' => 'nullable|string|max:1000',
+        'note' => 'nullable|string|max:1000',
         'category_id' => 'nullable|exists:categories,id',
         'tags' => 'sometimes|array',
         'tags.*' => 'integer|exists:tags,id',
@@ -141,7 +146,7 @@ class DocumentController extends BaseResourceController
     {
         // Handle tags separately
         if (isset($validated['tags'])) {
-            \App\Services\Tags\TagAttachmentService::syncTags($document, $validated['tags'], 'document');
+            TagAttachmentService::syncTags($document, $validated['tags'], 'document');
             unset($validated['tags']);
         }
 
@@ -156,13 +161,13 @@ class DocumentController extends BaseResourceController
         try {
             // If file has a GUID, delete the original variant using StorageService pathing
             if ($document->file && $document->file->guid) {
-                $storageService = app(\App\Services\StorageService::class);
+                $storageService = app(StorageService::class);
                 $extension = $document->file->fileExtension ?? 'pdf';
                 // Build path: documents/{user_id}/{guid}/original.{extension}
                 $fullPath = 'documents/'.$document->user_id.'/'.$document->file->guid.'/original.'.$extension;
                 $storageService->deleteFile($fullPath);
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to delete document file', [
                 'document_id' => $document->id,
                 'error' => $e->getMessage(),
@@ -198,7 +203,7 @@ class DocumentController extends BaseResourceController
         }
 
         try {
-            $storageService = app(\App\Services\StorageService::class);
+            $storageService = app(StorageService::class);
             $extension = $document->file->fileExtension ?? 'pdf';
             $content = $storageService->getFileByUserAndGuid(
                 $document->user_id,
@@ -218,7 +223,7 @@ class DocumentController extends BaseResourceController
             return response($content)
                 ->header('Content-Type', $document->file->mime_type ?? 'application/octet-stream')
                 ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to download document', [
                 'document_id' => $document->id,
                 'error' => $e->getMessage(),
@@ -323,8 +328,9 @@ class DocumentController extends BaseResourceController
 
         $request->validate([
             'files' => 'required',
-            'files.*' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif|max:10240',
+            'files.*' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif|max:102400', // 100MB
             'file_type' => 'required|in:receipt,document',
+            'note' => 'nullable|string|max:1000',
         ]);
 
         try {
@@ -334,11 +340,14 @@ class DocumentController extends BaseResourceController
                 $uploadedFiles = [$uploadedFiles];
             }
 
-            $result = \App\Services\Documents\DocumentUploadHandler::processUploads(
+            $result = DocumentUploadHandler::processUploads(
                 $uploadedFiles,
                 $fileType,
                 auth()->id(),
-                $fileProcessingService
+                $fileProcessingService,
+                [
+                    'note' => $request->input('note'),
+                ]
             );
 
             if (! empty($result['errors'])) {
@@ -350,7 +359,7 @@ class DocumentController extends BaseResourceController
 
             return redirect()->route($fileType === 'document' ? 'documents.index' : 'receipts.index')
                 ->with('success', count($result['processed']).' file(s) uploaded successfully');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to upload document', [
                 'error' => $e->getMessage(),
                 'file_type' => $fileType,
@@ -360,11 +369,4 @@ class DocumentController extends BaseResourceController
         }
     }
 
-    /**
-     * Validate an uploaded file for OCR processing.
-     */
-    protected function validateUploadedFile($uploadedFile): array
-    {
-        return DocumentUploadValidator::validate($uploadedFile);
-    }
 }

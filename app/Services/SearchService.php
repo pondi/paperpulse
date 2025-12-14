@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Document;
 use App\Models\Receipt;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -50,6 +51,9 @@ class SearchService
     protected function searchReceipts(string $query, array $filters): Collection
     {
         $searchQuery = Receipt::search($query)
+            ->options([
+                'showRankingScore' => true,
+            ])
             // Scope search results to current user
             ->where('user_id', auth()->id());
 
@@ -89,12 +93,14 @@ class SearchService
 
         $results = $searchQuery
             ->query(function ($builder) {
-                $builder->with(['merchant', 'lineItems']);
+                $builder->with(['merchant', 'lineItems', 'file', 'tags']);
             })
             ->get();
 
         return $results->map(function ($receipt) {
-            $description = $this->buildReceiptDescription($receipt);
+            $metadata = method_exists($receipt, 'scoutMetadata') ? $receipt->scoutMetadata() : [];
+
+            $description = $receipt->note ?: $receipt->summary ?: $this->buildReceiptDescription($receipt);
 
             return [
                 'id' => $receipt->id,
@@ -105,11 +111,20 @@ class SearchService
                 'date' => $this->formatDate($receipt->receipt_date),
                 'total' => $receipt->total_amount ? number_format($receipt->total_amount, 2).' '.$receipt->currency : null,
                 'category' => $receipt->receipt_category,
-                'tags' => [],
-                'items' => $receipt->lineItems->take(3)->map(function ($item) {
-                    return $item->text;
-                })->join(', '),
-                'score' => $receipt->_rankingScore ?? null,
+                'tags' => $receipt->tags ? $receipt->tags->pluck('name')->all() : [],
+                'items' => $receipt->lineItems ? $receipt->lineItems->take(3)->map(function ($item) use ($receipt) {
+                    return [
+                        'description' => $item->text ?? '',
+                        'quantity' => $item->qty ?? 0,
+                        'price' => number_format($item->price ?? 0, 2).' '.($receipt->currency ?? ''),
+                    ];
+                })->all() : [],
+                'file' => $receipt->file ? [
+                    'url' => route('receipts.showImage', $receipt->id),
+                    'pdfUrl' => $receipt->file->guid && $receipt->file->fileExtension === 'pdf' ? route('receipts.showPdf', $receipt->id) : null,
+                    'previewUrl' => $receipt->file->has_image_preview ? route('receipts.showImage', $receipt->id) : null,
+                ] : null,
+                '_rankingScore' => $metadata['_rankingScore'] ?? null,
             ];
         });
     }
@@ -120,6 +135,9 @@ class SearchService
     protected function searchDocuments(string $query, array $filters): Collection
     {
         $searchQuery = Document::search($query)
+            ->options([
+                'showRankingScore' => true,
+            ])
             // Scope search results to current user
             ->where('user_id', auth()->id());
 
@@ -155,18 +173,70 @@ class SearchService
             ->get();
 
         return $results->map(function ($document) {
+            $metadata = method_exists($document, 'scoutMetadata') ? $document->scoutMetadata() : [];
+
+            $description = $document->note ?: $document->summary ?: $document->description;
+
+            if (! $description) {
+                $text = $document->extracted_text;
+                if (is_array($text)) {
+                    $text = implode(' ', $text);
+                }
+                if (is_string($text)) {
+                    $description = $this->truncateText($text, 150);
+                }
+            }
+
+            // Build file info similar to DocumentTransformer
+            $fileInfo = null;
+            if ($document->file && $document->file->guid) {
+                $extension = $document->file->fileExtension ?? 'pdf';
+                $typeFolder = 'documents';
+                $hasConvertedPdf = ! empty($document->file->s3_converted_path);
+
+                $pdfUrl = null;
+                if ($hasConvertedPdf || strtolower($extension) === 'pdf') {
+                    $pdfUrl = route('documents.serve', [
+                        'guid' => $document->file->guid,
+                        'type' => $typeFolder,
+                        'extension' => 'pdf',
+                        'variant' => $hasConvertedPdf ? 'archive' : 'original',
+                    ]);
+                }
+
+                $previewUrl = null;
+                if ($document->file->has_image_preview && $document->file->s3_image_path) {
+                    $previewUrl = route('documents.serve', [
+                        'guid' => $document->file->guid,
+                        'type' => 'preview',
+                        'extension' => 'jpg',
+                    ]);
+                }
+
+                $fileInfo = [
+                    'url' => route('documents.serve', [
+                        'guid' => $document->file->guid,
+                        'type' => $typeFolder,
+                        'extension' => $extension,
+                    ]),
+                    'pdfUrl' => $pdfUrl,
+                    'previewUrl' => $previewUrl,
+                ];
+            }
+
             return [
                 'id' => $document->id,
                 'type' => 'document',
-                'title' => $document->title,
-                'description' => $document->description ?? $this->truncateText($document->extracted_text, 150),
+                'title' => $document->title ?? 'Untitled Document',
+                'description' => $description,
                 'url' => route('documents.show', $document->id),
-                'date' => $this->formatDate($document->created_at),
+                'date' => $this->formatDate($document->document_date ?? $document->created_at),
                 'document_type' => $document->document_type,
-                'category' => $document->category,
-                'tags' => $document->tags->pluck('name')->all(),
+                'category' => $document->category?->name ?? null,
+                'tags' => $document->tags ? $document->tags->pluck('name')->all() : [],
                 'entities' => $document->entities ?? [],
-                'score' => $document->_rankingScore ?? null,
+                'file' => $fileInfo,
+                '_rankingScore' => $metadata['_rankingScore'] ?? null,
             ];
         });
     }
@@ -176,26 +246,42 @@ class SearchService
      */
     protected function buildFacets(string $query, array $filters): array
     {
-        $facets = [
-            'types' => [],
-            'categories' => [],
-            'tags' => [],
-            'date_ranges' => [],
+        // Simple facet counts
+        if (empty($query) && empty(array_filter($filters))) {
+            return [
+                'total' => 0,
+                'receipts' => 0,
+                'documents' => 0,
+            ];
+        }
+
+        // Get type counts with filters applied
+        $receiptQuery = Receipt::search($query)->where('user_id', auth()->id());
+        $documentQuery = Document::search($query)->where('user_id', auth()->id());
+
+        // Apply filters to facet queries
+        if (isset($filters['date_from'])) {
+            $receiptQuery->where('receipt_date', '>=', $filters['date_from']);
+            $documentQuery->where('created_at', '>=', $filters['date_from']);
+        }
+        if (isset($filters['date_to'])) {
+            $receiptQuery->where('receipt_date', '<=', $filters['date_to']);
+            $documentQuery->where('created_at', '<=', $filters['date_to']);
+        }
+
+        try {
+            $receiptCount = $receiptQuery->raw()['estimatedTotalHits'] ?? 0;
+            $documentCount = $documentQuery->raw()['estimatedTotalHits'] ?? 0;
+        } catch (\Exception $e) {
+            $receiptCount = 0;
+            $documentCount = 0;
+        }
+
+        return [
+            'total' => $receiptCount + $documentCount,
+            'receipts' => $receiptCount,
+            'documents' => $documentCount,
         ];
-
-        // Get type counts
-        $receiptCount = Receipt::search($query)->raw()['estimatedTotalHits'] ?? 0;
-        $documentCount = Document::search($query)->raw()['estimatedTotalHits'] ?? 0;
-
-        $facets['types'] = [
-            ['value' => 'receipt', 'count' => $receiptCount, 'label' => 'Receipts'],
-            ['value' => 'document', 'count' => $documentCount, 'label' => 'Documents'],
-        ];
-
-        // Get categories (would need aggregation queries)
-        // This is simplified - in production you'd want proper faceted search
-
-        return $facets;
     }
 
     /**

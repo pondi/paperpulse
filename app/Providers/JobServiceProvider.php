@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Jobs\JobOrder;
 use App\Models\JobHistory;
+use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
+use ReflectionClass;
 
 class JobServiceProvider extends ServiceProvider
 {
@@ -23,12 +26,12 @@ class JobServiceProvider extends ServiceProvider
 
         // Try to access protected property through reflection
         try {
-            $reflection = new \ReflectionClass($command);
+            $reflection = new ReflectionClass($command);
             $property = $reflection->getProperty('jobID');
             $property->setAccessible(true);
 
             return $property->getValue($command);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return null;
         }
     }
@@ -82,7 +85,7 @@ class JobServiceProvider extends ServiceProvider
             $metadata = Cache::get("job.{$jobID}.fileMetaData");
 
             // Set order in chain based on job type using centralized helper
-            $orderInChain = \App\Jobs\JobOrder::getOrder($commandName ?? class_basename($command));
+            $orderInChain = JobOrder::getOrder($commandName ?? class_basename($command));
 
             return [
                 'name' => $commandName,
@@ -94,7 +97,7 @@ class JobServiceProvider extends ServiceProvider
                 'command_data' => $payload['data'] ?? [],
             ];
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to get job details', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -260,7 +263,7 @@ class JobServiceProvider extends ServiceProvider
                     'attempt' => $event->job->attempts(),
                     'command_class' => get_class($command),
                 ]);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to process job start', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -299,7 +302,7 @@ class JobServiceProvider extends ServiceProvider
                         'parent_uuid' => $jobHistory->parent_uuid,
                     ]);
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to process job completion', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -343,7 +346,7 @@ class JobServiceProvider extends ServiceProvider
                         'parent_uuid' => $jobHistory->parent_uuid,
                     ]);
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to process job failure', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -362,7 +365,7 @@ class JobServiceProvider extends ServiceProvider
                         'exception' => 'Job timeout - exceeded 1 hour',
                         'finished_at' => now(),
                     ]);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed in queue loop', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -438,7 +441,7 @@ class JobServiceProvider extends ServiceProvider
                 'progress' => $progress,
                 'status' => $status,
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to update parent progress', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -69,7 +70,7 @@ class QueueHealthCheck extends Command
                 'masters_count' => count($masters),
                 'status' => ! empty($masters) ? 'healthy' : 'stopped',
             ];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return [
                 'running' => false,
                 'error' => $e->getMessage(),
@@ -93,7 +94,7 @@ class QueueHealthCheck extends Command
             }
 
             return $supervisors;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return ['error' => $e->getMessage()];
         }
     }
@@ -116,7 +117,7 @@ class QueueHealthCheck extends Command
                     'processing' => $processing,
                     'status' => $size > 100 ? 'overloaded' : ($size > 10 ? 'busy' : 'normal'),
                 ];
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $queueStats[$queue] = [
                     'error' => $e->getMessage(),
                     'status' => 'error',
@@ -148,7 +149,7 @@ class QueueHealthCheck extends Command
                 'by_queue' => $failedByQueue,
                 'status' => $recentFailed > 5 ? 'critical' : ($totalFailed > 10 ? 'warning' : 'healthy'),
             ];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return ['error' => $e->getMessage(), 'status' => 'error'];
         }
     }
@@ -165,7 +166,7 @@ class QueueHealthCheck extends Command
                 'connected_clients' => $info['connected_clients'] ?? 'unknown',
                 'status' => $ping === 'PONG' ? 'healthy' : 'error',
             ];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return [
                 'connected' => false,
                 'error' => $e->getMessage(),
@@ -192,7 +193,7 @@ class QueueHealthCheck extends Command
                 ->toArray();
 
             return $errors;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return [['error' => $e->getMessage()]];
         }
     }
@@ -218,7 +219,7 @@ class QueueHealthCheck extends Command
                 'success_rate' => round($successRate, 2),
                 'status' => $successRate > 95 ? 'excellent' : ($successRate > 85 ? 'good' : 'poor'),
             ];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return ['error' => $e->getMessage()];
         }
     }

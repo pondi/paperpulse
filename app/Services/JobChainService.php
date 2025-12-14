@@ -12,6 +12,8 @@ use App\Jobs\System\ApplyTags;
 use App\Models\File;
 use App\Models\JobHistory;
 use App\Models\Receipt;
+use App\Services\Jobs\JobMetadataPersistence;
+use Exception;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -29,7 +31,7 @@ class JobChainService
             // Get the parent job and all its tasks
             $parentJob = JobHistory::where('uuid', $jobId)->first();
             if (! $parentJob) {
-                throw new \Exception("Job chain not found: {$jobId}");
+                throw new Exception("Job chain not found: {$jobId}");
             }
 
             $tasks = $parentJob->tasks()->orderBy('order_in_chain')->get();
@@ -38,20 +40,20 @@ class JobChainService
             $restartPoint = $this->findRestartPoint($tasks);
 
             if (! $restartPoint) {
-                throw new \Exception('No restart point found - all tasks may already be completed');
+                throw new Exception('No restart point found - all tasks may already be completed');
             }
 
             // Get file metadata from cache or rebuild it
             $fileMetadata = $this->getOrRebuildFileMetadata($jobId, $parentJob);
             if (! $fileMetadata) {
-                throw new \Exception('Could not retrieve file metadata for job chain restart');
+                throw new Exception('Could not retrieve file metadata for job chain restart');
             }
 
             // Build the job chain from the restart point
             $newJobChain = $this->buildJobChainFromRestartPoint($restartPoint, $fileMetadata, $jobId);
 
             if (empty($newJobChain)) {
-                throw new \Exception('No jobs to restart');
+                throw new Exception('No jobs to restart');
             }
 
             // Dispatch the new job chain
@@ -71,7 +73,7 @@ class JobChainService
                 'jobs_count' => count($newJobChain),
             ];
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Job chain restart failed', [
                 'job_id' => $jobId,
                 'error' => $e->getMessage(),
@@ -120,7 +122,7 @@ class JobChainService
     protected function getOrRebuildFileMetadata(string $jobId, JobHistory $parentJob): ?array
     {
         // Use the persistence service to get metadata
-        $metadata = \App\Services\Jobs\JobMetadataPersistence::retrieve($jobId);
+        $metadata = JobMetadataPersistence::retrieve($jobId);
 
         if ($metadata) {
             return $metadata;
@@ -227,7 +229,7 @@ class JobChainService
 
             return $metadata;
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to rebuild file metadata', [
                 'job_id' => $jobId,
                 'error' => $e->getMessage(),
@@ -242,82 +244,16 @@ class JobChainService
      */
     protected function buildJobChainFromRestartPoint(array $restartPoint, array $fileMetadata, string $jobId): array
     {
-        $jobs = [];
         $fileType = $fileMetadata['fileType'];
         $queue = $fileType === 'receipt' ? 'receipts' : 'documents';
 
         // Normalize job name for comparison (handle both with and without spaces)
         $jobName = str_replace(' ', '', $restartPoint['name']);
 
-        switch ($jobName) {
-            case 'ProcessFile':
-                $jobs[] = (new ProcessFile($jobId))->onQueue($queue);
-                // Fall through to add subsequent jobs
-                if ($fileType === 'receipt') {
-                    $jobs[] = (new ProcessReceipt($jobId))->onQueue($queue);
-                    $jobs[] = (new MatchMerchant($jobId))->onQueue($queue);
-                } else {
-                    $jobs[] = (new ProcessDocument($jobId))->onQueue($queue);
-                    $jobs[] = (new AnalyzeDocument($jobId))->onQueue($queue);
-                }
-                break;
+        $jobs = $this->buildCoreRestartJobs($jobName, $fileType, $queue, $jobId);
 
-            case 'ProcessReceipt':
-                if ($fileType === 'receipt') {
-                    $jobs[] = (new ProcessReceipt($jobId))->onQueue($queue);
-                    $jobs[] = (new MatchMerchant($jobId))->onQueue($queue);
-                }
-                break;
-
-            case 'ProcessDocument':
-                if ($fileType === 'document') {
-                    $jobs[] = (new ProcessDocument($jobId))->onQueue($queue);
-                    $jobs[] = (new AnalyzeDocument($jobId))->onQueue($queue);
-                }
-                break;
-
-            case 'MatchMerchant':
-                if ($fileType === 'receipt') {
-                    // Try to get receipt data for merchant matching
-                    $receiptData = Cache::get("job.{$jobId}.receiptMetaData");
-                    if ($receiptData) {
-                        $jobs[] = (new MatchMerchant(
-                            $jobId,
-                            $receiptData['receiptId'],
-                            $receiptData['merchantName'] ?? '',
-                            $receiptData['merchantAddress'] ?? '',
-                            $receiptData['merchantVatID'] ?? ''
-                        ))->onQueue($queue);
-                    } else {
-                        Log::warning('Cannot restart MatchMerchant without receipt data', ['job_id' => $jobId]);
-                    }
-                }
-                break;
-
-            case 'AnalyzeDocument':
-                if ($fileType === 'document') {
-                    $jobs[] = (new AnalyzeDocument($jobId))->onQueue($queue);
-                }
-                break;
-
-            case 'ApplyTags':
-                // Tags will be re-applied at the end of the chain
-                break;
-        }
-
-        // Add ApplyTags job if there are tags to apply
-        $tagIds = $fileMetadata['metadata']['tagIds'] ?? [];
-        if (! empty($tagIds) && isset($fileMetadata['fileId'])) {
-            $file = \App\Models\File::find($fileMetadata['fileId']);
-            if ($file) {
-                $jobs[] = (new ApplyTags($jobId, $file, $tagIds))->onQueue($queue);
-            }
-        }
-
-        // Always add cleanup job at the end
-        if (! empty($jobs)) {
-            $jobs[] = (new DeleteWorkingFiles($jobId))->onQueue($queue);
-        }
+        $this->appendTagJobs($jobs, $fileMetadata, $queue, $jobId);
+        $this->appendCleanupJob($jobs, $queue, $jobId);
 
         return $jobs;
     }
@@ -377,5 +313,98 @@ class JobChainService
         }
 
         return $results;
+    }
+
+    /**
+     * Build the primary job sequence for a restarted chain.
+     */
+    protected function buildCoreRestartJobs(string $jobName, string $fileType, string $queue, string $jobId): array
+    {
+        $jobs = [];
+
+        switch ($jobName) {
+            case 'ProcessFile':
+                $jobs[] = (new ProcessFile($jobId))->onQueue($queue);
+
+                if ($fileType === 'receipt') {
+                    $jobs[] = (new ProcessReceipt($jobId))->onQueue($queue);
+                    $jobs[] = (new MatchMerchant($jobId))->onQueue($queue);
+                } else {
+                    $jobs[] = (new ProcessDocument($jobId))->onQueue($queue);
+                    $jobs[] = (new AnalyzeDocument($jobId))->onQueue($queue);
+                }
+                break;
+
+            case 'ProcessReceipt':
+                if ($fileType === 'receipt') {
+                    $jobs[] = (new ProcessReceipt($jobId))->onQueue($queue);
+                    $jobs[] = (new MatchMerchant($jobId))->onQueue($queue);
+                }
+                break;
+
+            case 'ProcessDocument':
+                if ($fileType === 'document') {
+                    $jobs[] = (new ProcessDocument($jobId))->onQueue($queue);
+                    $jobs[] = (new AnalyzeDocument($jobId))->onQueue($queue);
+                }
+                break;
+
+            case 'MatchMerchant':
+                if ($fileType === 'receipt') {
+                    $receiptData = Cache::get("job.{$jobId}.receiptMetaData");
+                    if ($receiptData) {
+                        $jobs[] = (new MatchMerchant(
+                            $jobId,
+                            $receiptData['receiptId'],
+                            $receiptData['merchantName'] ?? '',
+                            $receiptData['merchantAddress'] ?? '',
+                            $receiptData['merchantVatID'] ?? ''
+                        ))->onQueue($queue);
+                    } else {
+                        Log::warning('Cannot restart MatchMerchant without receipt data', ['job_id' => $jobId]);
+                    }
+                }
+                break;
+
+            case 'AnalyzeDocument':
+                if ($fileType === 'document') {
+                    $jobs[] = (new AnalyzeDocument($jobId))->onQueue($queue);
+                }
+                break;
+
+            case 'ApplyTags':
+                // Tags will be re-applied at the end of the chain
+                break;
+        }
+
+        return $jobs;
+    }
+
+    /**
+     * Append tag application job when needed.
+     */
+    protected function appendTagJobs(array &$jobs, array $fileMetadata, string $queue, string $jobId): void
+    {
+        $tagIds = $fileMetadata['metadata']['tagIds'] ?? [];
+        if (empty($tagIds) || ! isset($fileMetadata['fileId'])) {
+            return;
+        }
+
+        $file = File::find($fileMetadata['fileId']);
+        if ($file) {
+            $jobs[] = (new ApplyTags($jobId, $file, $tagIds))->onQueue($queue);
+        }
+    }
+
+    /**
+     * Always append cleanup job at the end of a rebuilt chain.
+     */
+    protected function appendCleanupJob(array &$jobs, string $queue, string $jobId): void
+    {
+        if (empty($jobs)) {
+            return;
+        }
+
+        $jobs[] = (new DeleteWorkingFiles($jobId))->onQueue($queue);
     }
 }

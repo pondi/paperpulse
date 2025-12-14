@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\BatchProcessingService;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -59,7 +60,7 @@ class BatchProcessingController extends Controller
                 ],
             ]);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
@@ -80,7 +81,7 @@ class BatchProcessingController extends Controller
                 'status' => $status,
             ]);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
@@ -101,7 +102,7 @@ class BatchProcessingController extends Controller
                 'message' => $cancelled ? 'Batch cancelled successfully' : 'Batch could not be cancelled',
             ]);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserPreference;
+use DateTimeZone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Inertia\Inertia;
@@ -119,20 +120,20 @@ class PreferencesController extends Controller
     {
         $timezones = [];
         $regions = [
-            'Africa' => \DateTimeZone::AFRICA,
-            'America' => \DateTimeZone::AMERICA,
-            'Antarctica' => \DateTimeZone::ANTARCTICA,
-            'Arctic' => \DateTimeZone::ARCTIC,
-            'Asia' => \DateTimeZone::ASIA,
-            'Atlantic' => \DateTimeZone::ATLANTIC,
-            'Australia' => \DateTimeZone::AUSTRALIA,
-            'Europe' => \DateTimeZone::EUROPE,
-            'Indian' => \DateTimeZone::INDIAN,
-            'Pacific' => \DateTimeZone::PACIFIC,
+            'Africa' => DateTimeZone::AFRICA,
+            'America' => DateTimeZone::AMERICA,
+            'Antarctica' => DateTimeZone::ANTARCTICA,
+            'Arctic' => DateTimeZone::ARCTIC,
+            'Asia' => DateTimeZone::ASIA,
+            'Atlantic' => DateTimeZone::ATLANTIC,
+            'Australia' => DateTimeZone::AUSTRALIA,
+            'Europe' => DateTimeZone::EUROPE,
+            'Indian' => DateTimeZone::INDIAN,
+            'Pacific' => DateTimeZone::PACIFIC,
         ];
 
         foreach ($regions as $name => $mask) {
-            $zones = \DateTimeZone::listIdentifiers($mask);
+            $zones = DateTimeZone::listIdentifiers($mask);
             foreach ($zones as $timezone) {
                 $timezones[] = [
                     'value' => $timezone,

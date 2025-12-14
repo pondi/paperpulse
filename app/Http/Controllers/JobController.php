@@ -6,6 +6,11 @@ use App\Jobs\System\RestartJobChain;
 use App\Models\JobHistory;
 use App\Models\PulseDavFile;
 use App\Services\JobChainService;
+use App\Services\Jobs\JobHistoryTransformer;
+use App\Services\Jobs\JobStatisticsProvider;
+use App\Services\Jobs\PendingJobsReader;
+use App\Services\Jobs\PulseDavStatisticsProvider;
+use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class JobController extends Controller
 {
@@ -22,15 +28,7 @@ class JobController extends Controller
      */
     private function transformJob(JobHistory $job, bool $isChild = false): array
     {
-        return \App\Services\Jobs\JobHistoryTransformer::transform($job, $isChild);
-    }
-
-    /**
-     * Extract jobID from a command using reflection.
-     */
-    private function extractJobIDFromCommand(mixed $command): ?string
-    {
-        return \App\Services\Jobs\JobCommandInspector::extractJobID($command);
+        return JobHistoryTransformer::transform($job, $isChild);
     }
 
     /**
@@ -38,23 +36,7 @@ class JobController extends Controller
      */
     private function getPendingJobs(): Collection
     {
-        return \App\Services\Jobs\PendingJobsReader::groupedByParent();
-    }
-
-    /**
-     * Format a timestamp to a consistent datetime string.
-     */
-    private function formatTimestamp(string|int|null $timestamp): ?string
-    {
-        return \App\Services\Jobs\TimestampFormatter::format($timestamp);
-    }
-
-    /**
-     * Calculate the effective status of a parent job based on its children.
-     */
-    private function calculateParentJobStatus(JobHistory $parentJob): string
-    {
-        return \App\Services\Jobs\JobParentStatusCalculator::calculate($parentJob);
+        return PendingJobsReader::groupedByParent();
     }
 
     /**
@@ -62,7 +44,7 @@ class JobController extends Controller
      */
     private function getJobStats(): array
     {
-        return \App\Services\Jobs\JobStatisticsProvider::overall();
+        return JobStatisticsProvider::overall();
     }
 
     /**
@@ -70,7 +52,7 @@ class JobController extends Controller
      */
     private function getPulseDavStats(): array
     {
-        return \App\Services\Jobs\PulseDavStatisticsProvider::forUser(auth()->id());
+        return PulseDavStatisticsProvider::forUser(auth()->id());
     }
 
     /**
@@ -178,7 +160,7 @@ class JobController extends Controller
                 ],
                 'success' => true,
             ]);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('Failed to fetch job status:', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -190,14 +172,6 @@ class JobController extends Controller
                 'success' => false,
             ], 500);
         }
-    }
-
-    /**
-     * Get the order in the job chain for a given job type.
-     */
-    private function getOrderInChain(string $jobName): int
-    {
-        return \App\Services\Jobs\JobChainOrderResolver::resolve($jobName);
     }
 
     /**
@@ -268,7 +242,7 @@ class JobController extends Controller
             // Default redirect for web requests
             return redirect()->route('jobs.index')->with('success', 'Job chain restart initiated');
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to restart job chain', [
                 'job_id' => $jobId,
                 'error' => $e->getMessage(),
@@ -343,7 +317,7 @@ class JobController extends Controller
                     ];
                     $successCount++;
 
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     $results[$jobId] = [
                         'success' => false,
                         'message' => $e->getMessage(),
@@ -370,7 +344,7 @@ class JobController extends Controller
                 ],
             ]);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to restart multiple job chains', [
                 'job_ids' => $request->job_ids ?? [],
                 'error' => $e->getMessage(),
@@ -408,7 +382,7 @@ class JobController extends Controller
                 'data' => $status,
             ]);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to get job chain status', [
                 'job_id' => $jobId,
                 'error' => $e->getMessage(),

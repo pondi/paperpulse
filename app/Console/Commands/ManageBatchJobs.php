@@ -4,11 +4,12 @@ namespace App\Console\Commands;
 
 use App\Models\BatchJob;
 use App\Services\BatchProcessingService;
+use Exception;
 use Illuminate\Console\Command;
 
 class ManageBatchJobs extends Command
 {
-    protected $signature = 'batch:manage 
+    protected $signature = 'batch:manage
                            {action : Action (list, status, cancel, cleanup)}
                            {--id= : Batch job ID}
                            {--user= : Filter by user ID}
@@ -100,7 +101,7 @@ class ManageBatchJobs extends Command
 
             return self::SUCCESS;
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error("Failed to get status: {$e->getMessage()}");
 
             return self::FAILURE;
@@ -131,7 +132,7 @@ class ManageBatchJobs extends Command
                 return self::FAILURE;
             }
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error("Failed to cancel batch: {$e->getMessage()}");
 
             return self::FAILURE;

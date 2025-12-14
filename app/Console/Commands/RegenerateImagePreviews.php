@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\File;
 use App\Services\Files\FilePreviewManager;
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -104,7 +105,7 @@ class RegenerateImagePreviews extends Command
                         'guid' => $file->guid,
                     ]);
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $failed++;
                 Log::error('[RegenerateImagePreviews] Exception processing file', [
                     'file_id' => $file->id,

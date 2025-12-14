@@ -103,6 +103,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Document Analysis Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Smart token limiting for document analysis to reduce OpenAI costs.
+    | Large documents are truncated to beginning + end sections.
+    |
+    */
+    'document_analysis' => [
+        // Max characters to send to AI for analysis (~4000 tokens)
+        // Prevents expensive API calls for very large documents
+        'max_chars' => env('AI_DOCUMENT_MAX_CHARS', 16000),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Processing Limits
     |--------------------------------------------------------------------------
     |

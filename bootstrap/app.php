@@ -1,8 +1,18 @@
 <?php
 
+use App\Http\Middleware\Api\ApiRateLimit;
+use App\Http\Middleware\Api\ApiRequestLogger;
+use App\Http\Middleware\Api\ApiVersion;
+use App\Http\Middleware\ApiSecurityHeaders;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\PostTooLargeException;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Validation\ValidationException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,27 +22,38 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Trust all proxies for Kubernetes environments
+        $middleware->trustProxies(
+            at: '*',
+            headers: Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
+                     Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |
+                     Illuminate\Http\Request::HEADER_X_FORWARDED_PORT |
+                     Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO |
+                     Illuminate\Http\Request::HEADER_X_FORWARDED_AWS_ELB
+        );
+
         $middleware->web(append: [
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
-            \App\Http\Middleware\SetLocale::class,
-            \App\Http\Middleware\SecurityHeaders::class,
+            HandleInertiaRequests::class,
+            AddLinkHeadersForPreloadedAssets::class,
+            SetLocale::class,
+            SecurityHeaders::class,
         ]);
 
         $middleware->api(append: [
-            \App\Http\Middleware\ApiSecurityHeaders::class,
+            ApiSecurityHeaders::class,
+            ApiRequestLogger::class,
         ]);
 
         // Register API middleware aliases
         $middleware->alias([
-            'api.version' => \App\Http\Middleware\Api\ApiVersion::class,
-            'api.rate_limit' => \App\Http\Middleware\Api\ApiRateLimit::class,
+            'api.version' => ApiVersion::class,
+            'api.rate_limit' => ApiRateLimit::class,
         ]);
 
         //
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
+        $exceptions->render(function (ValidationException $e, $request) {
             if ($request->expectsJson()) {
                 $response = [
                     'message' => $e->getMessage(),
@@ -40,8 +61,25 @@ return Application::configure(basePath: dirname(__DIR__))
                 ];
 
                 if (config('app.debug')) {
+                    $validatorData = $e->validator->getData();
+
+                    $sensitiveKeys = [
+                        'password',
+                        'password_confirmation',
+                        'current_password',
+                        'token',
+                        'access_token',
+                        'refresh_token',
+                    ];
+
+                    foreach ($sensitiveKeys as $key) {
+                        if (array_key_exists($key, $validatorData)) {
+                            $validatorData[$key] = '*** redacted ***';
+                        }
+                    }
+
                     $response['debug'] = [
-                        'validator_data' => $e->validator->getData(),
+                        'validator_data' => $validatorData,
                         'failed_rules' => $e->validator->failed(),
                     ];
                 }
@@ -50,7 +88,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        $exceptions->render(function (\Exception $e, $request) {
+        $exceptions->render(function (Exception $e, $request) {
             if ($request->expectsJson() && config('app.debug')) {
                 return response()->json([
                     'message' => $e->getMessage(),
@@ -59,6 +97,16 @@ return Application::configure(basePath: dirname(__DIR__))
                     'line' => $e->getLine(),
                     'trace' => collect($e->getTrace())->take(5)->toArray(),
                 ], 500);
+            }
+        });
+
+        $exceptions->render(function (PostTooLargeException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'The uploaded payload exceeds the allowed size.',
+                    'timestamp' => now()->toISOString(),
+                ], 413);
             }
         });
     })->create();

@@ -12,25 +12,27 @@ class ListInvitations extends Command
      *
      * @var string
      */
-    protected $signature = 'invite:list {--pending : Show only pending invitations}';
+    protected $signature = 'invite:list {--status= : Filter by status (pending, sent, rejected)} {--pending : Show only pending requests}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'List all invitations';
+    protected $description = 'List all invitation requests and sent invitations';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $query = Invitation::with('invitedBy');
+        $query = Invitation::orderBy('created_at', 'desc');
 
-        if ($this->option('pending')) {
-            $query->where('expires_at', '>', now())
-                ->whereNull('used_at');
+        // Filter by status
+        if ($status = $this->option('status')) {
+            $query->where('status', $status);
+        } elseif ($this->option('pending')) {
+            $query->where('status', 'pending');
         }
 
         $invitations = $query->get();
@@ -41,28 +43,32 @@ class ListInvitations extends Command
             return 0;
         }
 
-        $headers = ['Email', 'Status', 'Invited By', 'Created', 'Expires', 'Used At'];
+        $headers = ['Name', 'Email', 'Company', 'Status', 'Created', 'Sent At', 'Used At'];
         $data = [];
 
         foreach ($invitations as $invitation) {
-            $status = 'Expired';
-            if ($invitation->isUsed()) {
-                $status = 'Used';
-            } elseif ($invitation->isValid()) {
-                $status = 'Pending';
-            }
-
             $data[] = [
+                $invitation->name ?? '-',
                 $invitation->email,
-                $status,
-                $invitation->invitedBy->name ?? 'Unknown',
-                $invitation->created_at->format('Y-m-d H:i:s'),
-                $invitation->expires_at->format('Y-m-d H:i:s'),
-                $invitation->used_at?->format('Y-m-d H:i:s') ?? '-',
+                $invitation->company ?? '-',
+                ucfirst($invitation->status),
+                $invitation->created_at->format('Y-m-d H:i'),
+                $invitation->sent_at?->format('Y-m-d H:i') ?? '-',
+                $invitation->used_at?->format('Y-m-d H:i') ?? '-',
             ];
         }
 
         $this->table($headers, $data);
+
+        // Show summary
+        $this->newLine();
+        $this->info('Summary:');
+        $this->line('Total: '.$invitations->count());
+
+        $statusCounts = $invitations->groupBy('status')->map->count();
+        foreach ($statusCounts as $status => $count) {
+            $this->line(ucfirst($status).': '.$count);
+        }
 
         return 0;
     }

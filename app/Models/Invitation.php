@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 class Invitation extends Model
@@ -13,14 +12,20 @@ class Invitation extends Model
 
     protected $fillable = [
         'email',
+        'name',
+        'company',
+        'status',
+        'notes',
         'token',
         'expires_at',
-        'invited_by_user_id',
+        'sent_at',
+        'used_at',
     ];
 
     protected $casts = [
         'expires_at' => 'datetime',
         'used_at' => 'datetime',
+        'sent_at' => 'datetime',
     ];
 
     protected $hidden = [
@@ -32,19 +37,18 @@ class Invitation extends Model
         parent::boot();
 
         static::creating(function ($invitation) {
-            $invitation->token = Str::random(64);
-            $invitation->expires_at = now()->addDays(7);
+            // Only generate token and expiry if status is 'sent' (when admin approves)
+            // For initial requests, these remain null until approved
+            if ($invitation->status === 'sent' && ! $invitation->token) {
+                $invitation->token = Str::random(64);
+                $invitation->expires_at = now()->addDays(7);
+            }
         });
-    }
-
-    public function invitedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'invited_by_user_id');
     }
 
     public function isExpired(): bool
     {
-        return $this->expires_at->isPast();
+        return $this->expires_at && $this->expires_at->isPast();
     }
 
     public function isUsed(): bool
@@ -54,7 +58,22 @@ class Invitation extends Model
 
     public function isValid(): bool
     {
-        return ! $this->isExpired() && ! $this->isUsed();
+        return ! $this->isExpired() && ! $this->isUsed() && $this->status === 'sent';
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isSent(): bool
+    {
+        return $this->status === 'sent';
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
     }
 
     public function markAsUsed(): void
@@ -62,11 +81,25 @@ class Invitation extends Model
         $this->update(['used_at' => now()]);
     }
 
-    public static function createForEmail(string $email, ?int $invitedByUserId): self
+    public function markAsSent(): void
+    {
+        $this->update([
+            'status' => 'sent',
+            'sent_at' => now(),
+            'token' => $this->token ?? Str::random(64),
+            'expires_at' => $this->expires_at ?? now()->addDays(7),
+        ]);
+    }
+
+    public function markAsRejected(): void
+    {
+        $this->update(['status' => 'rejected']);
+    }
+
+    public static function createForEmail(string $email): self
     {
         return self::create([
             'email' => $email,
-            'invited_by_user_id' => $invitedByUserId,
         ]);
     }
 

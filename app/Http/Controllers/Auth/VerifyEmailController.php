@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Auth\Events\Verified;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\RedirectResponse;
 
@@ -20,7 +21,7 @@ class VerifyEmailController extends Controller
 
         if ($request->user()->markEmailAsVerified()) {
             $user = $request->user();
-            if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail) {
+            if ($user instanceof MustVerifyEmail) {
                 event(new Verified($user));
             }
         }

@@ -10,6 +10,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 abstract class BaseMail extends Mailable implements ShouldQueue
 {
@@ -145,9 +146,13 @@ abstract class BaseMail extends Mailable implements ShouldQueue
     /**
      * Set additional template variables
      */
-    public function with(array $variables): self
+    public function with($key, $value = null): self
     {
-        $this->templateVariables = array_merge($this->templateVariables, $variables);
+        if (is_array($key)) {
+            $this->templateVariables = array_merge($this->templateVariables, $key);
+        } else {
+            $this->templateVariables[$key] = $value;
+        }
 
         return $this;
     }
@@ -155,7 +160,7 @@ abstract class BaseMail extends Mailable implements ShouldQueue
     /**
      * Handle job failure
      */
-    public function failed(\Throwable $exception): void
+    public function failed(Throwable $exception): void
     {
         Log::error('Email sending failed', [
             'template' => $this->templateKey,

@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Mail\WelcomeMail;
 use App\Models\UserPreference;
+use Exception;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -27,7 +28,7 @@ class CreateUserPreferences
                 'user_id' => $event->user->id,
                 'email' => $event->user->email,
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to send welcome email', [
                 'user_id' => $event->user->id,
                 'email' => $event->user->email,

@@ -1,5 +1,10 @@
 <?php
 
+use App\Http\Controllers\Api\InvitationRequestController;
+use App\Http\Controllers\Api\WebDavAuthController;
+use App\Http\Controllers\BatchProcessingController;
+use App\Http\Controllers\Documents\DocumentController;
+use App\Http\Controllers\Receipts\ReceiptController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -23,8 +28,8 @@ Route::get('health', function () {
     ]);
 });
 
-// Beta requests (public endpoint)
-Route::post('/beta-request', [\App\Http\Controllers\Api\BetaRequestController::class, 'store'])
+// Invitation requests (public endpoint)
+Route::post('/invitation-request', [InvitationRequestController::class, 'store'])
     ->middleware('throttle:10,1');
 
 // V1 API routes
@@ -38,21 +43,21 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 // PulseDav Authentication
-Route::post('/webdav/auth', [\App\Http\Controllers\Api\WebDavAuthController::class, 'authenticate'])
+Route::post('/webdav/auth', [WebDavAuthController::class, 'authenticate'])
     ->middleware('throttle:pulsedav-auth');
 
 // File Sharing API
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/documents/{document}/shares', [\App\Http\Controllers\Documents\DocumentController::class, 'getShares']);
-    Route::get('/receipts/{receipt}/shares', [\App\Http\Controllers\Receipts\ReceiptController::class, 'getShares']);
+    Route::get('/documents/{document}/shares', [DocumentController::class, 'getShares']);
+    Route::get('/receipts/{receipt}/shares', [ReceiptController::class, 'getShares']);
 });
 
 // Batch Processing API
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('batch')->group(function () {
-        Route::post('/', [\App\Http\Controllers\BatchProcessingController::class, 'create']);
-        Route::get('/', [\App\Http\Controllers\BatchProcessingController::class, 'list']);
-        Route::get('/{batchJob}/status', [\App\Http\Controllers\BatchProcessingController::class, 'status']);
-        Route::post('/{batchJob}/cancel', [\App\Http\Controllers\BatchProcessingController::class, 'cancel']);
+        Route::post('/', [BatchProcessingController::class, 'create']);
+        Route::get('/', [BatchProcessingController::class, 'list']);
+        Route::get('/{batchJob}/status', [BatchProcessingController::class, 'status']);
+        Route::post('/{batchJob}/cancel', [BatchProcessingController::class, 'cancel']);
     });
 });

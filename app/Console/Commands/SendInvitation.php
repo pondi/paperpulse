@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Mail\InvitationMail;
 use App\Models\Invitation;
 use App\Models\User;
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
 
@@ -15,14 +16,14 @@ class SendInvitation extends Command
      *
      * @var string
      */
-    protected $signature = 'invite:send {email} {--invited-by=}';
+    protected $signature = 'invite:send {email} {--reject}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Send an invitation to register';
+    protected $description = 'Send an invitation to register or approve/reject a pending request';
 
     /**
      * Execute the console command.
@@ -30,18 +31,35 @@ class SendInvitation extends Command
     public function handle()
     {
         $email = $this->argument('email');
-        $invitedByUserIdOption = $this->option('invited-by');
-        $invitedByUserId = $invitedByUserIdOption !== null && $invitedByUserIdOption !== ''
-            ? (int) $invitedByUserIdOption
-            : null;
+        $reject = $this->option('reject');
 
-        // If no invited-by is provided and no users exist, allow creating first user
-        if (! $invitedByUserId && User::count() === 0) {
-            $invitedByUserId = null;
-        } elseif (! $invitedByUserId) {
-            $this->error('The --invited-by option is required when users already exist.');
+        // Check for existing invitation request first
+        $existingInvitation = Invitation::where('email', $email)->first();
 
-            return 1;
+        // Handle rejection
+        if ($reject) {
+            if (! $existingInvitation) {
+                $this->error("No invitation request found for email: {$email}");
+
+                return 1;
+            }
+
+            if ($existingInvitation->isRejected()) {
+                $this->error("Invitation request for {$email} has already been rejected.");
+
+                return 1;
+            }
+
+            if ($existingInvitation->isSent()) {
+                $this->error("Invitation for {$email} has already been sent. Cannot reject.");
+
+                return 1;
+            }
+
+            $existingInvitation->markAsRejected();
+            $this->info("Invitation request for {$email} has been rejected.");
+
+            return 0;
         }
 
         // Check if user already exists
@@ -51,29 +69,39 @@ class SendInvitation extends Command
             return 1;
         }
 
-        // Check if invitation already exists and is valid
-        $existingInvitation = Invitation::where('email', $email)
-            ->where('expires_at', '>', now())
-            ->whereNull('used_at')
-            ->first();
-
+        // If invitation request exists, approve it; otherwise create new one
         if ($existingInvitation) {
-            $this->error("A valid invitation for {$email} already exists.");
+            if ($existingInvitation->isSent()) {
+                $this->error("Invitation for {$email} has already been sent.");
 
-            return 1;
+                return 1;
+            }
+
+            if ($existingInvitation->isRejected()) {
+                $this->error("Invitation request for {$email} has been rejected. Cannot send.");
+
+                return 1;
+            }
+
+            // Approve the pending request
+            $existingInvitation->markAsSent();
+            $invitation = $existingInvitation->fresh();
+            $this->info("Pending invitation request approved!");
+        } else {
+            // Create new invitation directly
+            $invitation = Invitation::create([
+                'email' => $email,
+                'status' => 'sent',
+            ]);
+            $invitation->markAsSent();
+            $invitation = $invitation->fresh();
         }
-
-        // Create invitation
-        $invitation = Invitation::createForEmail($email, $invitedByUserId);
-
-        // Get inviter user if provided
-        $inviter = $invitedByUserId ? User::find($invitedByUserId) : null;
 
         // Send invitation email
         try {
-            Mail::to($email)->send(new InvitationMail($invitation, $inviter));
+            Mail::to($email)->send(new InvitationMail($invitation));
             $this->info('Invitation email sent successfully!');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('Failed to send invitation email: '.$e->getMessage());
             $this->warn('However, the invitation record has been created.');
         }
@@ -81,14 +109,16 @@ class SendInvitation extends Command
         // Generate registration URL
         $registrationUrl = route('register', ['token' => $invitation->token]);
 
-        $this->info('Invitation created successfully!');
+        $this->info('Invitation sent successfully!');
+        if ($invitation->name) {
+            $this->line("Name: {$invitation->name}");
+        }
         $this->line("Email: {$email}");
+        if ($invitation->company) {
+            $this->line("Company: {$invitation->company}");
+        }
         $this->line("Registration URL: {$registrationUrl}");
         $this->line("Expires: {$invitation->expires_at->format('Y-m-d H:i:s')}");
-
-        if ($inviter) {
-            $this->line("Invited by: {$inviter->name}");
-        }
 
         return 0;
     }

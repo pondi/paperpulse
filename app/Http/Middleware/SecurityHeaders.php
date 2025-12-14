@@ -11,7 +11,7 @@ class SecurityHeaders
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param Closure(Request): (Response) $next
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -40,9 +40,11 @@ class SecurityHeaders
             $viteServer = ' '.$viteUrl;
         }
 
+        $appOrigin = 'https://paperpulse.app';
+
         $csp = "default-src 'self'{$viteServer}; ".
-               "script-src 'self' 'unsafe-inline' 'unsafe-eval'{$viteServer}; ".
-               "style-src 'self' 'unsafe-inline' https://fonts.bunny.net; ".
+               "script-src 'self' 'unsafe-inline' 'unsafe-eval' {$appOrigin}{$viteServer}; ".
+               "style-src 'self' 'unsafe-inline' https://fonts.bunny.net {$appOrigin}; ".
                "img-src 'self' data: blob:; ".
                "font-src 'self' data: https://fonts.bunny.net; ".
                "connect-src 'self'{$viteServer} ws://localhost:* wss://localhost:* ws://paperpulse.test:* wss://paperpulse.test:*; ".
@@ -50,7 +52,8 @@ class SecurityHeaders
                "object-src 'none'; ".
                "base-uri 'self'; ".
                "form-action 'self'; ".
-               "frame-ancestors 'self';";
+               "frame-ancestors 'self'; ".
+               'upgrade-insecure-requests;';
 
         $response->headers->set('Content-Security-Policy', $csp);
 

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -82,7 +83,7 @@ class RunSafeMigrations extends Command
             try {
                 DB::connection()->getPdo();
                 $this->info('Database connection verified.');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $this->error('Database connection failed: '.$e->getMessage());
 
                 return 1;
@@ -134,7 +135,7 @@ class RunSafeMigrations extends Command
 
             return 0;
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('Migration error: '.$e->getMessage());
 
             return 1;

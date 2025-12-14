@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\File;
 use App\Services\FileProcessingService;
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -15,7 +16,7 @@ class ReprocessAllFiles extends Command
      *
      * @var string
      */
-    protected $signature = 'files:reprocess-all 
+    protected $signature = 'files:reprocess-all
                             {--type= : File type to reprocess (receipt/document/all)}
                             {--user= : User ID to filter by}
                             {--limit=100 : Maximum number of files to reprocess}
@@ -140,7 +141,7 @@ class ReprocessAllFiles extends Command
                     $failed++;
                 }
 
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $this->error("\n✗ Error reprocessing {$file->original_filename}: ".$e->getMessage());
                 Log::error('File reprocessing failed', [
                     'file_id' => $file->id,

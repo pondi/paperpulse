@@ -9,6 +9,8 @@ use App\Services\AI\AIService;
 use App\Services\FileProcessingService;
 use App\Services\StorageService;
 use App\Services\TextExtractionService;
+use DB;
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -124,14 +126,14 @@ class DiagnoseFileProcessing extends Command
             } else {
                 $this->error('   ❌ S3 read/write test failed');
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('   ❌ S3 connection failed: '.$e->getMessage());
         }
 
         // Test Textract Connection
         $this->line('Testing AWS Textract connection...');
         try {
-            $textExtractionService = app(TextExtractionService::class);
+            app(TextExtractionService::class);
 
             // Check configuration via config()
             $textractKey = config('ai.ocr.providers.textract.key');
@@ -142,7 +144,7 @@ class DiagnoseFileProcessing extends Command
             } else {
                 $this->error('   ❌ Textract configuration missing or service initialization failed');
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('   ❌ Textract connection failed: '.$e->getMessage());
         }
 
@@ -162,7 +164,7 @@ class DiagnoseFileProcessing extends Command
                 $this->error('   ❌ AI Service returned unexpected format');
                 $this->line('     Response: '.json_encode($result));
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('   ❌ AI Service failed: '.$e->getMessage());
         }
 
@@ -183,7 +185,7 @@ class DiagnoseFileProcessing extends Command
             } else {
                 $this->error('   ❌ Cache test failed');
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('   ❌ Cache connection failed: '.$e->getMessage());
             if (str_contains($e->getMessage(), 'Redis')) {
                 $this->line('     💡 Install PHP Redis extension: pecl install redis');
@@ -223,7 +225,7 @@ class DiagnoseFileProcessing extends Command
             );
 
             $this->processFileUpload($uploadedFile, $user);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('Upload failed: '.$e->getMessage());
             $this->line($e->getTraceAsString());
         }
@@ -274,7 +276,7 @@ class DiagnoseFileProcessing extends Command
             // Clean up
             @unlink($tempPath);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('Test file creation failed: '.$e->getMessage());
             $this->line($e->getTraceAsString());
         }
@@ -341,7 +343,7 @@ class DiagnoseFileProcessing extends Command
             $this->newLine();
             $this->line('🔍 Checking job queue...');
 
-            $jobs = \DB::table('jobs')->where('payload', 'like', "%{$result['jobId']}%")->get();
+            $jobs = DB::table('jobs')->where('payload', 'like', "%{$result['jobId']}%")->get();
 
             if ($jobs->count() > 0) {
                 $this->info("✅ Found {$jobs->count()} jobs in queue");
@@ -381,7 +383,7 @@ class DiagnoseFileProcessing extends Command
                 $this->warn('⚠️ No job history records found');
             }
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('❌ Upload process failed: '.$e->getMessage());
             $this->line($e->getTraceAsString());
         }

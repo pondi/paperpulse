@@ -10,6 +10,7 @@ use App\Jobs\PulseDav\UpdatePulseDavFileStatus;
 use App\Jobs\Receipts\MatchMerchant;
 use App\Jobs\Receipts\ProcessReceipt;
 use App\Jobs\System\ApplyTags;
+use App\Models\File;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -63,7 +64,7 @@ class FileJobChainDispatcher
         }
 
         if (! empty($tagIds) && isset($metadata['fileId'])) {
-            $file = \App\Models\File::find($metadata['fileId']);
+            $file = File::find($metadata['fileId']);
             if ($file) {
                 $jobs[] = (new ApplyTags($jobId, $file, $tagIds))->onQueue($queue);
             }
@@ -72,7 +73,7 @@ class FileJobChainDispatcher
         $jobs[] = (new DeleteWorkingFiles($jobId))->onQueue($queue);
 
         if ($source === 'pulsedav' && $pulseDavFileId && isset($metadata['fileId'])) {
-            $file = \App\Models\File::find($metadata['fileId']);
+            $file = File::find($metadata['fileId']);
             if ($file) {
                 $jobs[] = (new UpdatePulseDavFileStatus($jobId, $file, $pulseDavFileId, $fileType))->onQueue($queue);
             }

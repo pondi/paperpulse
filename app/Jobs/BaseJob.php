@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\JobHistory;
+use App\Services\Jobs\JobMetadataPersistence;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -10,6 +11,9 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
+use RuntimeException;
+use Throwable;
 
 /**
  * Base job providing common queue behavior and job history tracking.
@@ -51,7 +55,7 @@ abstract class BaseJob implements ShouldQueue
     public function __construct(string $jobID)
     {
         if (empty($jobID)) {
-            throw new \InvalidArgumentException('JobID cannot be empty');
+            throw new InvalidArgumentException('JobID cannot be empty');
         }
         $this->jobID = $jobID;
         $this->jobName = class_basename($this);
@@ -91,7 +95,7 @@ abstract class BaseJob implements ShouldQueue
                 'class' => static::class,
                 'uuid' => $this->uuid,
             ]);
-            throw new \RuntimeException('JobID cannot be empty');
+            throw new RuntimeException('JobID cannot be empty');
         }
 
         // Ensure we have a UUID
@@ -105,7 +109,7 @@ abstract class BaseJob implements ShouldQueue
         try {
             $this->handleJob();
             $this->markAsCompleted();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->failed($e);
             throw $e;
         }
@@ -140,10 +144,10 @@ abstract class BaseJob implements ShouldQueue
                 'class' => static::class,
                 'uuid' => $this->uuid,
             ]);
-            throw new \RuntimeException('JobID cannot be empty');
+            throw new RuntimeException('JobID cannot be empty');
         }
 
-        \App\Services\Jobs\JobMetadataPersistence::store($this->jobID, $metadata);
+        JobMetadataPersistence::store($this->jobID, $metadata);
     }
 
     /**
@@ -156,10 +160,10 @@ abstract class BaseJob implements ShouldQueue
                 'class' => static::class,
                 'uuid' => $this->uuid,
             ]);
-            throw new \RuntimeException('JobID cannot be empty');
+            throw new RuntimeException('JobID cannot be empty');
         }
 
-        return \App\Services\Jobs\JobMetadataPersistence::retrieve($this->jobID);
+        return JobMetadataPersistence::retrieve($this->jobID);
     }
 
     /**
@@ -244,7 +248,7 @@ abstract class BaseJob implements ShouldQueue
      */
     protected function getOrderInChain(): int
     {
-        return \App\Jobs\JobOrder::getOrder($this->jobName);
+        return JobOrder::getOrder($this->jobName);
     }
 
     /**
@@ -332,7 +336,7 @@ abstract class BaseJob implements ShouldQueue
     /**
      * Mark the job as failed and update parent status.
      */
-    public function failed(\Throwable $exception): void
+    public function failed(Throwable $exception): void
     {
         if (! $this->uuid) {
             $this->uuid = (string) Str::uuid();

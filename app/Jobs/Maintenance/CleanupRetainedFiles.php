@@ -5,14 +5,16 @@ namespace App\Jobs\Maintenance;
 use App\Jobs\BaseJob;
 use App\Models\Receipt;
 use App\Models\User;
+use Exception;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class CleanupRetainedFiles extends BaseJob
 {
     public function __construct()
     {
-        parent::__construct(\Illuminate\Support\Str::uuid());
+        parent::__construct(Str::uuid());
         $this->jobName = 'Cleanup Retained Files';
     }
 
@@ -56,7 +58,7 @@ class CleanupRetainedFiles extends BaseJob
                             'file_id' => $receipt->file->id,
                             'user_id' => $user->id,
                         ]);
-                    } catch (\Exception $e) {
+                    } catch (Exception $e) {
                         Log::error('Failed to delete retained file', [
                             'receipt_id' => $receipt->id,
                             'file_id' => $receipt->file->id,

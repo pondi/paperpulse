@@ -4,6 +4,7 @@ namespace App\Jobs\System;
 
 use App\Jobs\BaseJob;
 use App\Services\JobChainService;
+use Exception;
 use Illuminate\Support\Facades\Log;
 
 class RestartJobChain extends BaseJob
@@ -45,7 +46,7 @@ class RestartJobChain extends BaseJob
             $result = $jobChainService->restartJobChain($this->originalJobId);
 
             if (! $result['success']) {
-                throw new \Exception($result['message']);
+                throw new Exception($result['message']);
             }
 
             $this->updateProgress(100);
@@ -56,7 +57,7 @@ class RestartJobChain extends BaseJob
                 'result' => $result,
             ]);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[RestartJobChain] Job chain restart failed', [
                 'job_id' => $this->jobID,
                 'original_job_id' => $this->originalJobId,

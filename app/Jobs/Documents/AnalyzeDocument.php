@@ -5,9 +5,10 @@ namespace App\Jobs\Documents;
 use App\Jobs\BaseJob;
 use App\Models\Category;
 use App\Models\Document;
-use App\Models\File;
 use App\Models\Tag;
 use App\Services\DocumentAnalysisService;
+use App\Services\Tags\TagAttachmentService;
+use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -42,7 +43,7 @@ class AnalyzeDocument extends BaseJob
         try {
             $metadata = $this->getMetadata();
             if (! $metadata) {
-                throw new \Exception('No metadata found for job');
+                throw new Exception('No metadata found for job');
             }
 
             $fileId = $metadata['fileId'];
@@ -57,7 +58,7 @@ class AnalyzeDocument extends BaseJob
             $document = Document::where('file_id', $fileId)->first();
 
             if (! $document) {
-                throw new \Exception("Document not found for file ID: {$fileId}");
+                throw new Exception("Document not found for file ID: {$fileId}");
             }
 
             $this->updateProgress(25);
@@ -70,7 +71,7 @@ class AnalyzeDocument extends BaseJob
             $this->updateProgress(50);
 
             if (! $analysis) {
-                throw new \Exception('Document analysis failed - no response from AI service');
+                throw new Exception('Document analysis failed - no response from AI service');
             }
 
             DB::transaction(function () use ($document, $analysis) {
@@ -105,7 +106,7 @@ class AnalyzeDocument extends BaseJob
                     }
 
                     // Sync tags with the document using proper file_type
-                    \App\Services\Tags\TagAttachmentService::syncTags($document, $tagIds, 'document');
+                    TagAttachmentService::syncTags($document, $tagIds, 'document');
                 }
 
                 // Handle entities extraction
@@ -129,7 +130,7 @@ class AnalyzeDocument extends BaseJob
 
             $this->updateProgress(100);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Document analysis job failed', [
                 'job_id' => $this->jobID,
                 'task_id' => $this->uuid,
@@ -157,21 +158,26 @@ class AnalyzeDocument extends BaseJob
                 $colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
                 $color = $colors[array_rand($colors)];
 
+                // Generate a unique slug for this category
+                $slug = Category::generateUniqueSlug($categoryName, $userId);
+
                 $category = Category::create([
                     'user_id' => $userId,
                     'name' => $categoryName,
+                    'slug' => $slug,
                     'color' => $color,
                 ]);
 
                 Log::info('Created new category from AI suggestion', [
                     'category_id' => $category->id,
                     'name' => $categoryName,
+                    'slug' => $slug,
                     'user_id' => $userId,
                 ]);
             }
 
             return $category;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to find or create category', [
                 'category_name' => $categoryName,
                 'user_id' => $userId,
@@ -215,7 +221,7 @@ class AnalyzeDocument extends BaseJob
             }
 
             return $tag;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to find or create tag', [
                 'tag_name' => $tagName,
                 'user_id' => $userId,

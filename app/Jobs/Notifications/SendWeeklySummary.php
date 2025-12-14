@@ -6,14 +6,16 @@ use App\Jobs\BaseJob;
 use App\Models\Receipt;
 use App\Models\User;
 use App\Notifications\WeeklySummary;
+use Exception;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class SendWeeklySummary extends BaseJob
 {
     public function __construct()
     {
-        parent::__construct(\Illuminate\Support\Str::uuid());
+        parent::__construct(Str::uuid());
         $this->jobName = 'Send Weekly Summary';
     }
 
@@ -72,7 +74,7 @@ class SendWeeklySummary extends BaseJob
                     'total_amount' => $summaryData['total_amount'],
                 ]);
 
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to send weekly summary', [
                     'user_id' => $user->id,
                     'error' => $e->getMessage(),

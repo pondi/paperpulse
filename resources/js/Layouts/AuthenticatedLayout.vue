@@ -22,7 +22,7 @@
                   <div class="flex h-16 shrink-0 items-center">
                     <Link :href="route('dashboard')" class="flex items-center gap-2">
                       <ApplicationLogo class="h-10 w-10" />
-                      <span class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">PaperPulse</span>
+                      <span class="text-xl font-bold text-zinc-900 dark:text-zinc-100">PaperPulse</span>
                     </Link>
                   </div>
                   <nav class="flex flex-1 flex-col">
@@ -83,7 +83,7 @@
           <div class="flex h-16 shrink-0 items-center">
             <Link :href="route('dashboard')" class="flex items-center gap-2">
               <ApplicationLogo class="h-10 w-10" />
-              <span class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">PaperPulse</span>
+              <span class="text-xl font-bold text-zinc-900 dark:text-zinc-100">PaperPulse</span>
             </Link>
           </div>
           <nav class="flex flex-1 flex-col">
@@ -143,7 +143,7 @@
 
           <div class="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
             <div class="flex flex-1 items-center">
-              <SearchBar />
+              <SearchBar @preview="openPreview" />
             </div>
             <div class="flex items-center gap-x-4 lg:gap-x-6">
               <NotificationBell />
@@ -200,6 +200,13 @@
           </div>
         </main>
       </div>
+
+      <!-- Global Preview Modal -->
+      <FilePreviewModal
+        :show="showPreviewModal"
+        :item="previewItem"
+        @close="closePreview"
+      />
     </div>
 </template>
 
@@ -217,6 +224,7 @@ import {
 } from '@headlessui/vue'
 import {
   Bars3Icon,
+  MagnifyingGlassIcon,
   ChartPieIcon,
   DocumentDuplicateIcon,
   FolderIcon,
@@ -234,18 +242,28 @@ import ApplicationLogo from '@/Components/Common/ApplicationLogo.vue';
 import SearchBar from '@/Components/Features/SearchBar.vue';
 import NotificationBell from '@/Components/Features/NotificationBell.vue';
 import ThemeToggle from '@/Components/Common/ThemeToggle.vue';
+import FilePreviewModal from '@/Components/Common/FilePreviewModal.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
 const sidebarOpen = ref(false)
+const showPreviewModal = ref(false)
+const previewItem = ref(null)
 const page = usePage();
 const __ = (key) => page.props.language.messages[key] || key;
 
-// Check if beta features are enabled
-const isBetaEnabled = page.props.features?.beta || false;
-const isDocumentsEnabled = page.props.features?.documents || false;
+const openPreview = (item) => {
+  previewItem.value = item
+  showPreviewModal.value = true
+}
+
+const closePreview = () => {
+  showPreviewModal.value = false
+  previewItem.value = null
+}
 
 const navigationItems = [
   { name: 'dashboard', href: route('dashboard'), icon: HomeIcon, current: route().current('dashboard') },
+  { name: 'search', href: route('search'), icon: MagnifyingGlassIcon, current: route().current('search') },
   {
     name: 'receipts',
     href: route('receipts.index'),
@@ -257,11 +275,7 @@ const navigationItems = [
       { name: 'vendors', href: route('vendors.index'), current: route().current('vendors.index') },
     ]
   },
-];
-
-// Only add documents menu if beta feature is enabled
-if (isDocumentsEnabled) {
-  navigationItems.push({
+  {
     name: 'documents',
     href: route('documents.index'),
     icon: FolderIcon,
@@ -271,25 +285,13 @@ if (isDocumentsEnabled) {
       { name: 'shared_with_me', href: route('documents.shared'), current: route().current('documents.shared') },
       { name: 'categories', href: route('documents.categories'), current: route().current('documents.categories') },
     ]
-  });
-}
-
-navigationItems.push(
+  },
   { name: 'analytics', href: route('analytics.index'), icon: ChartBarIcon, current: route().current('analytics.*') },
-  { name: 'tags', href: route('tags.index'), icon: TagIcon, current: route().current('tags.*') }
-);
-
-// Only add documents upload if beta feature is enabled
-if (isDocumentsEnabled) {
-  navigationItems.push(
-    { name: 'upload', href: route('documents.upload'), icon: CloudArrowUpIcon, current: route().current('documents.upload') }
-  );
-}
-
-navigationItems.push(
+  { name: 'tags', href: route('tags.index'), icon: TagIcon, current: route().current('tags.*') },
+  { name: 'upload', href: route('documents.upload'), icon: CloudArrowUpIcon, current: route().current('documents.upload') },
   { name: 'scanner_imports', href: route('pulsedav.index'), icon: CloudArrowDownIcon, current: route().current('pulsedav.*') },
   { name: 'job_status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index') }
-);
+];
 
 const navigation = navigationItems;
 

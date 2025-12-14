@@ -14,6 +14,7 @@ return [
     'scanner_imports' => 'Scanner Imports',
     'job_status' => 'Job Status',
     'dashboard' => 'Dashboard',
+    'search' => 'Search',
     'profile' => 'Profile',
     'logout' => 'Log Out',
     'product_vendors' => 'Product Vendors',

@@ -14,6 +14,7 @@ return [
     'scanner_imports' => 'Skanner Importer',
     'job_status' => 'Jobbstatus',
     'dashboard' => 'Oversikt',
+    'search' => 'Søk',
     'profile' => 'Profil',
     'logout' => 'Logg ut',
     'product_vendors' => 'Produktleverandører',

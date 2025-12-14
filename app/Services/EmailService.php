@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Mail\TemplatedMail;
 use App\Models\EmailTemplate;
 use App\Models\User;
+use Exception;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -38,7 +41,7 @@ class EmailService
             }
 
             // Create a generic mailable
-            $mailable = new \App\Mail\TemplatedMail($templateKey, $variables);
+            $mailable = new TemplatedMail($templateKey, $variables);
 
             if ($mailer) {
                 Mail::mailer($mailer)->to($to)->send($mailable);
@@ -52,7 +55,7 @@ class EmailService
             ]);
 
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to send email', [
                 'template' => $templateKey,
                 'to' => $to,
@@ -129,7 +132,7 @@ class EmailService
     /**
      * Get all available templates
      */
-    public function getAvailableTemplates(): \Illuminate\Database\Eloquent\Collection
+    public function getAvailableTemplates(): Collection
     {
         return EmailTemplate::where('is_active', true)->orderBy('name')->get();
     }

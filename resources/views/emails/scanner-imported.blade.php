@@ -1,18 +1,13 @@
-@component('mail::message')
-# Scanner Files Imported
+<h1>Scanner Files Imported</h1>
 
-New files have been imported from your scanner.
+<p>New files have been imported from your scanner and are ready for processing.</p>
 
-@component('mail::panel')
-**Files Imported:** {{ $fileCount }}
-@endcomponent
+<div class="accent-box">
+    <p style="margin: 0;"><strong>Files Imported:</strong> {{ $fileCount }}</p>
+</div>
 
-These files are now ready for processing.
+<p>You can view and manage these files from your scanner imports dashboard.</p>
 
-@component('mail::button', ['url' => route('pulsedav.index')])
-View Scanner Imports
-@endcomponent
-
-Thanks,<br>
-{{ config('app.name') }}
-@endcomponent
+<div class="text-center">
+    <a href="{{ route('pulsedav.index') }}" class="btn btn-accent">View Scanner Imports</a>
+</div>

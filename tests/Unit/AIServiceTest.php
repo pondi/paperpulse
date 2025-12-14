@@ -2,10 +2,12 @@
 
 namespace Tests\Unit;
 
+use App\Services\AI\AIService;
 use App\Services\AI\AIServiceFactory;
 use App\Services\AI\Providers\OpenAIProvider;
 use App\Services\DocumentAnalysisService;
 use App\Services\ReceiptAnalysisService;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 class AIServiceTest extends TestCase
@@ -24,7 +26,7 @@ class AIServiceTest extends TestCase
     {
         config(['ai.provider' => 'invalid']);
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
 
         AIServiceFactory::create();
     }
@@ -50,7 +52,7 @@ class AIServiceTest extends TestCase
         $content = 'This is a test document with some content that needs to be summarized. It contains multiple sentences and paragraphs that should be condensed into a brief summary.';
 
         // Mock the AI service response
-        $this->mock(\App\Services\AI\AIService::class, function ($mock) {
+        $this->mock(AIService::class, function ($mock) {
             $mock->shouldReceive('generateSummary')
                 ->once()
                 ->andReturn('Test document summary');
@@ -69,7 +71,7 @@ class AIServiceTest extends TestCase
         $content = 'This is a legal contract between Company A and Company B regarding software licensing.';
 
         // Mock the AI service response
-        $this->mock(\App\Services\AI\AIService::class, function ($mock) {
+        $this->mock(AIService::class, function ($mock) {
             $mock->shouldReceive('suggestTags')
                 ->once()
                 ->andReturn(['legal', 'contract', 'software', 'licensing']);

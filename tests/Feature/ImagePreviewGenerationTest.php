@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\File;
+use App\Models\Receipt;
 use App\Models\User;
 use App\Services\Files\FilePreviewManager;
 use App\Services\Files\ImagePreviewGenerator;
 use App\Services\Files\StoragePathBuilder;
+use App\Services\Receipts\ReceiptTransformer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -139,7 +141,7 @@ class ImagePreviewGenerationTest extends TestCase
             'has_image_preview' => true,
         ]);
 
-        $receipt = \App\Models\Receipt::create([
+        $receipt = Receipt::create([
             'user_id' => $this->user->id,
             'file_id' => $file->id,
             'receipt_date' => now(),
@@ -148,7 +150,7 @@ class ImagePreviewGenerationTest extends TestCase
         ]);
 
         $receipt->load('file');
-        $transformed = \App\Services\Receipts\ReceiptTransformer::forShow($receipt);
+        $transformed = ReceiptTransformer::forShow($receipt);
 
         $this->assertArrayHasKey('file', $transformed);
         $this->assertTrue($transformed['file']['has_preview']);

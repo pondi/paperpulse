@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Contracts\Services\ReceiptEnricherContract;
+use App\Contracts\Services\ReceiptParserContract;
+use App\Contracts\Services\ReceiptValidatorContract;
 use App\Listeners\CreateUserPreferences;
 use App\Models\Category;
 use App\Models\Document;
@@ -15,6 +18,25 @@ use App\Policies\ReceiptPolicy;
 use App\Policies\TagPolicy;
 use App\Services\AI\AIService;
 use App\Services\AI\AIServiceFactory;
+use App\Services\AI\PromptTemplateService;
+use App\Services\DocumentAnalysisService;
+use App\Services\DocumentService;
+use App\Services\File\FileMetadataService;
+use App\Services\File\FileStorageService;
+use App\Services\File\FileValidationService;
+use App\Services\FileProcessingService;
+use App\Services\Files\FileJobChainDispatcher;
+use App\Services\Files\FilePreviewManager;
+use App\Services\Files\ImagePreviewStorage;
+use App\Services\OCR\TextractStorageBridge;
+use App\Services\Receipt\ReceiptEnricherService;
+use App\Services\Receipt\ReceiptParserService;
+use App\Services\Receipt\ReceiptValidatorService;
+use App\Services\ReceiptAnalysisService;
+use App\Services\SearchService;
+use App\Services\SharingService;
+use App\Services\StorageService;
+use App\Services\TextExtractionService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -31,43 +53,43 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Register services as singletons for better performance
-        $this->app->singleton(\App\Services\StorageService::class, function ($app) {
-            return new \App\Services\StorageService;
+        $this->app->singleton(StorageService::class, function ($app) {
+            return new StorageService;
         });
 
-        $this->app->singleton(\App\Services\TextExtractionService::class, function ($app) {
-            return new \App\Services\TextExtractionService(
-                $app->make(\App\Services\StorageService::class)
+        $this->app->singleton(TextExtractionService::class, function ($app) {
+            return new TextExtractionService(
+                $app->make(StorageService::class)
             );
         });
 
-        $this->app->singleton(\App\Services\File\FileStorageService::class, function ($app) {
-            return new \App\Services\File\FileStorageService(
-                $app->make(\App\Services\StorageService::class)
+        $this->app->singleton(FileStorageService::class, function ($app) {
+            return new FileStorageService(
+                $app->make(StorageService::class)
             );
         });
 
-        $this->app->singleton(\App\Services\File\FileMetadataService::class, function ($app) {
-            return new \App\Services\File\FileMetadataService(
-                $app->make(\App\Services\File\FileValidationService::class)
+        $this->app->singleton(FileMetadataService::class, function ($app) {
+            return new FileMetadataService(
+                $app->make(FileValidationService::class)
             );
         });
 
-        $this->app->singleton(\App\Services\File\FileValidationService::class, function ($app) {
-            return new \App\Services\File\FileValidationService;
+        $this->app->singleton(FileValidationService::class, function ($app) {
+            return new FileValidationService;
         });
 
-        $this->app->singleton(\App\Services\Files\FileJobChainDispatcher::class, function ($app) {
-            return new \App\Services\Files\FileJobChainDispatcher;
+        $this->app->singleton(FileJobChainDispatcher::class, function ($app) {
+            return new FileJobChainDispatcher;
         });
 
-        $this->app->singleton(\App\Services\FileProcessingService::class, function ($app) {
-            return new \App\Services\FileProcessingService(
-                $app->make(\App\Services\File\FileStorageService::class),
-                $app->make(\App\Services\File\FileMetadataService::class),
-                $app->make(\App\Services\File\FileValidationService::class),
-                $app->make(\App\Services\TextExtractionService::class),
-                $app->make(\App\Services\Files\FileJobChainDispatcher::class)
+        $this->app->singleton(FileProcessingService::class, function ($app) {
+            return new FileProcessingService(
+                $app->make(FileStorageService::class),
+                $app->make(FileMetadataService::class),
+                $app->make(FileValidationService::class),
+                $app->make(TextExtractionService::class),
+                $app->make(FileJobChainDispatcher::class)
             );
         });
 
@@ -77,55 +99,63 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Register Receipt service contracts
-        $this->app->bind(\App\Contracts\Services\ReceiptParserContract::class, \App\Services\Receipt\ReceiptParserService::class);
-        $this->app->bind(\App\Contracts\Services\ReceiptValidatorContract::class, \App\Services\Receipt\ReceiptValidatorService::class);
-        $this->app->bind(\App\Contracts\Services\ReceiptEnricherContract::class, \App\Services\Receipt\ReceiptEnricherService::class);
+        $this->app->bind(ReceiptParserContract::class, ReceiptParserService::class);
+        $this->app->bind(ReceiptValidatorContract::class, ReceiptValidatorService::class);
+        $this->app->bind(ReceiptEnricherContract::class, ReceiptEnricherService::class);
 
-        $this->app->singleton(\App\Services\ReceiptAnalysisService::class, function ($app) {
-            return new \App\Services\ReceiptAnalysisService(
-                $app->make(\App\Contracts\Services\ReceiptParserContract::class),
-                $app->make(\App\Contracts\Services\ReceiptValidatorContract::class),
-                $app->make(\App\Contracts\Services\ReceiptEnricherContract::class)
+        $this->app->singleton(ReceiptAnalysisService::class, function ($app) {
+            return new ReceiptAnalysisService(
+                $app->make(ReceiptParserContract::class),
+                $app->make(ReceiptValidatorContract::class),
+                $app->make(ReceiptEnricherContract::class)
             );
         });
 
-        $this->app->singleton(\App\Services\DocumentAnalysisService::class, function ($app) {
-            return new \App\Services\DocumentAnalysisService(
+        $this->app->singleton(DocumentAnalysisService::class, function ($app) {
+            return new DocumentAnalysisService(
                 $app->make(AIService::class)
             );
         });
 
         // Register SharingService
-        $this->app->singleton(\App\Services\SharingService::class, function ($app) {
-            return new \App\Services\SharingService;
+        $this->app->singleton(SharingService::class, function ($app) {
+            return new SharingService;
         });
 
         // Register SearchService
-        $this->app->singleton(\App\Services\SearchService::class, function ($app) {
-            return new \App\Services\SearchService;
+        $this->app->singleton(SearchService::class, function ($app) {
+            return new SearchService;
         });
 
         // Register DocumentService
-        $this->app->singleton(\App\Services\DocumentService::class, function ($app) {
-            return new \App\Services\DocumentService(
-                $app->make(\App\Services\FileProcessingService::class),
-                $app->make(\App\Services\StorageService::class)
+        $this->app->singleton(DocumentService::class, function ($app) {
+            return new DocumentService(
+                $app->make(FileProcessingService::class),
+                $app->make(StorageService::class)
             );
         });
 
         // Register AI template service
-        $this->app->singleton(\App\Services\AI\PromptTemplateService::class);
+        $this->app->singleton(PromptTemplateService::class);
 
         // Register Image Preview services
-        $this->app->singleton(\App\Services\Files\ImagePreviewStorage::class, function ($app) {
-            return new \App\Services\Files\ImagePreviewStorage(
-                $app->make(\App\Services\StorageService::class)
+        $this->app->singleton(ImagePreviewStorage::class, function ($app) {
+            return new ImagePreviewStorage(
+                $app->make(StorageService::class)
             );
         });
 
-        $this->app->singleton(\App\Services\Files\FilePreviewManager::class, function ($app) {
-            return new \App\Services\Files\FilePreviewManager(
-                $app->make(\App\Services\Files\ImagePreviewStorage::class)
+        $this->app->singleton(FilePreviewManager::class, function ($app) {
+            return new FilePreviewManager(
+                $app->make(ImagePreviewStorage::class)
+            );
+        });
+
+        // Register TextractStorageBridge
+        $this->app->singleton(TextractStorageBridge::class, function ($app) {
+            return new TextractStorageBridge(
+                $app->make(StorageService::class),
+                $app->make(FileStorageService::class)
             );
         });
     }

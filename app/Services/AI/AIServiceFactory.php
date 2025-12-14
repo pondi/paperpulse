@@ -3,6 +3,7 @@
 namespace App\Services\AI;
 
 use App\Services\AI\Providers\OpenAIProvider;
+use InvalidArgumentException;
 
 /**
  * Factory for creating configured AIService implementations.
@@ -32,7 +33,7 @@ class AIServiceFactory
         $provider = $provider ?? config('ai.provider', 'openai');
 
         if ($provider !== 'openai') {
-            throw new \InvalidArgumentException("Unsupported AI provider: {$provider}. Only 'openai' is supported in the simplified core.");
+            throw new InvalidArgumentException("Unsupported AI provider: {$provider}. Only 'openai' is supported in the simplified core.");
         }
 
         $instanceKey = 'openai_core';

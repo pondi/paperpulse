@@ -2,6 +2,7 @@
 
 namespace App\Services\AI\Shared;
 
+use Exception;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -147,7 +148,7 @@ class AIDebugLogger
     /**
      * Log an analysis error with timing and optional stack trace.
      */
-    public static function analysisError(string $provider, \Exception $e, float $startTime, array $context = []): void
+    public static function analysisError(string $provider, Exception $e, float $startTime, array $context = []): void
     {
         $processingTime = microtime(true) - $startTime;
 

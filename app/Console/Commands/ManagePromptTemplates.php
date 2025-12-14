@@ -3,12 +3,13 @@
 namespace App\Console\Commands;
 
 use App\Services\AI\PromptTemplateService;
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
 class ManagePromptTemplates extends Command
 {
-    protected $signature = 'prompts:manage 
+    protected $signature = 'prompts:manage
                            {action : Action to perform (list, create, validate)}
                            {--name= : Template name}
                            {--type= : Template type}';
@@ -84,7 +85,7 @@ class ManagePromptTemplates extends Command
                     $errors[] = "Template {$template}: No schema defined";
                 }
 
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $errors[] = "Template {$template}: {$e->getMessage()}";
             }
         }

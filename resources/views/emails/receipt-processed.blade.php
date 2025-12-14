@@ -1,21 +1,16 @@
-@component('mail::message')
-# Receipt Processed Successfully
+<h1>Receipt Processed Successfully</h1>
 
-Your receipt has been processed successfully.
+<p>Great news! Your receipt has been processed successfully and is now available in your account.</p>
 
-@component('mail::panel')
-**Merchant:** {{ $receipt->merchant->name ?? 'Unknown' }}  
-**Date:** {{ $receipt->receipt_date ? \Carbon\Carbon::parse($receipt->receipt_date)->format('F j, Y') : 'No date' }}  
-**Total:** {{ number_format($receipt->total_amount ?? 0, 2) }} {{ $receipt->currency ?? $receipt->user->preference('currency', 'NOK') }}  
-@if($receipt->receipt_category)
-**Category:** {{ $receipt->receipt_category }}
-@endif
-@endcomponent
+<div class="accent-box">
+    <p style="margin: 0 0 8px 0;"><strong>Merchant:</strong> {{ $merchant_name }}</p>
+    <p style="margin: 0;"><strong>Amount:</strong> {{ $amount }} {{ $currency }}</p>
+</div>
 
-@component('mail::button', ['url' => route('receipts.show', $receipt->id)])
-View Receipt
-@endcomponent
+<p>You can now view, search, and manage this receipt from your dashboard.</p>
 
-Thanks,<br>
-{{ config('app.name') }}
-@endcomponent
+<div class="text-center">
+    <a href="{{ $receipt_url }}" class="btn btn-accent">View Receipt</a>
+</div>
+
+<p>Thank you for using PaperPulse!</p>

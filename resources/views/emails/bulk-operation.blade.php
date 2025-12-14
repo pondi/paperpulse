@@ -1,17 +1,14 @@
-@component('mail::message')
-# Bulk Operation Completed
+<h1>Bulk Operation Completed</h1>
 
-Your bulk operation has been completed successfully.
+<p>Your bulk operation has been completed successfully.</p>
 
-@component('mail::panel')
-**Operation:** {{ ucfirst($operation) }}  
-**Items Processed:** {{ $count }}
-@endcomponent
+<div class="accent-box">
+    <p style="margin: 0 0 8px 0;"><strong>Operation:</strong> {{ ucfirst($operation) }}</p>
+    <p style="margin: 0;"><strong>Items Processed:</strong> {{ $count }}</p>
+</div>
 
-@component('mail::button', ['url' => route('receipts.index')])
-View Receipts
-@endcomponent
+<p>All items have been processed and are now available in your account.</p>
 
-Thanks,<br>
-{{ config('app.name') }}
-@endcomponent
+<div class="text-center">
+    <a href="{{ route('receipts.index') }}" class="btn btn-accent">View Receipts</a>
+</div>

@@ -1,9 +1,8 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -12,111 +11,68 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('email_templates', function (Blueprint $table) {
-            $table->id();
-            $table->string('key')->unique()->index();
-            $table->string('name');
-            $table->string('subject');
-            $table->text('body');
-            $table->json('variables')->nullable();
-            $table->text('description')->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-        });
-
-        // Insert default templates
-        DB::table('email_templates')->insert([
+        $templates = [
             [
                 'key' => 'invitation',
-                'name' => 'Invitation Email',
                 'subject' => 'You\'re invited to join {{ app_name }}',
                 'body' => '<h1>You\'re Invited!</h1><p><strong>{{ inviter_name }}</strong> has invited you to join {{ app_name }}.</p><p>PaperPulse helps you transform receipts and documents into organized, searchable intelligence using AI-powered OCR.</p><div class="text-center"><a href="{{ invitation_url }}" class="btn btn-accent">Accept Invitation</a></div><div class="accent-box"><p style="margin: 0;"><strong>Note:</strong> This invitation expires on {{ expires_at }}.</p></div>',
-                'variables' => json_encode(['app_name', 'inviter_name', 'invitation_url', 'expires_at']),
-                'description' => 'Email sent when a user is invited to join the application',
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'key' => 'welcome',
-                'name' => 'Welcome Email',
                 'subject' => 'Welcome to {{ app_name }}!',
                 'body' => '<h1>Welcome to {{ app_name }}, {{ user_name }}!</h1><p>Thank you for joining us. We\'re excited to help you organize your receipts and documents with AI-powered intelligence.</p><h2>Get Started</h2><p>Here\'s what you can do:</p><div class="accent-box"><p style="margin: 0 0 8px 0;">📸 <strong>Snap receipts</strong> with your phone</p><p style="margin: 0 0 8px 0;">🤖 <strong>AI extracts</strong> merchant, amounts, and line items</p><p style="margin: 0;">🔍 <strong>Search instantly</strong> and export for taxes</p></div><div class="text-center"><a href="{{ dashboard_url }}" class="btn btn-accent">Go to Dashboard</a></div><p>If you have any questions, feel free to reach out to our support team.</p>',
-                'variables' => json_encode(['app_name', 'user_name', 'dashboard_url']),
-                'description' => 'Email sent to new users after registration',
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'key' => 'receipt_processed_success',
-                'name' => 'Receipt Processed Successfully',
                 'subject' => 'Receipt Processed Successfully',
                 'body' => '<h1>Receipt Processed Successfully</h1><p>Great news! Your receipt has been processed successfully and is now available in your account.</p><div class="accent-box"><p style="margin: 0 0 8px 0;"><strong>Merchant:</strong> {{ merchant_name }}</p><p style="margin: 0;"><strong>Amount:</strong> {{ amount }} {{ currency }}</p></div><p>You can now view, search, and manage this receipt from your dashboard.</p><div class="text-center"><a href="{{ receipt_url }}" class="btn btn-accent">View Receipt</a></div><p>Thank you for using PaperPulse!</p>',
-                'variables' => json_encode(['merchant_name', 'amount', 'currency', 'receipt_url']),
-                'description' => 'Email sent when a receipt is successfully processed',
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'key' => 'receipt_processed_failed',
-                'name' => 'Receipt Processing Failed',
                 'subject' => 'Receipt Processing Failed',
                 'body' => '<h1>Receipt Processing Failed</h1><p>We encountered an error while processing your receipt.</p><div class="accent-box"><p style="margin: 0;"><strong>Error:</strong> {{ error_message }}</p></div><p>Please try uploading the receipt again or contact support if the issue persists.</p><div class="text-center"><a href="{{ upload_url }}" class="btn btn-accent">Upload New Receipt</a></div>',
-                'variables' => json_encode(['error_message', 'upload_url']),
-                'description' => 'Email sent when receipt processing fails',
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'key' => 'bulk_operation_completed',
-                'name' => 'Bulk Operation Completed',
                 'subject' => 'Bulk {{ operation_type }} completed',
                 'body' => '<h1>Bulk Operation Completed</h1><p>Your bulk {{ operation_type }} operation has been completed successfully.</p><div class="accent-box"><p style="margin: 0;"><strong>Items Processed:</strong> {{ count }}</p></div><p>All items have been processed and are now available in your account.</p><div class="text-center"><a href="{{ dashboard_url }}" class="btn btn-accent">View Results</a></div>',
-                'variables' => json_encode(['operation_type', 'count', 'dashboard_url']),
-                'description' => 'Email sent when a bulk operation completes',
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'key' => 'scanner_files_imported',
-                'name' => 'Scanner Files Imported',
                 'subject' => '{{ count }} new files imported from scanner',
                 'body' => '<h1>Scanner Files Imported</h1><p>New files have been imported from your scanner and are ready for processing.</p><div class="accent-box"><p style="margin: 0;"><strong>Files Imported:</strong> {{ count }}</p></div><p>You can view and manage these files from your scanner imports dashboard.</p><div class="text-center"><a href="{{ dashboard_url }}" class="btn btn-accent">View Scanner Imports</a></div>',
-                'variables' => json_encode(['count', 'dashboard_url']),
-                'description' => 'Email sent when files are imported from scanner',
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'key' => 'weekly_summary',
-                'name' => 'Weekly Summary',
                 'subject' => 'Your weekly receipt summary ({{ week_start }} - {{ week_end }})',
                 'body' => '<h1>Weekly Summary</h1><p>Here\'s your weekly receipt summary for <strong>{{ week_start }} - {{ week_end }}</strong>:</p><div class="accent-box"><p style="margin: 0 0 8px 0;"><strong>{{ total_receipts }}</strong> receipts processed</p><p style="margin: 0 0 8px 0;"><strong>{{ total_amount }}</strong> total spending</p><p style="margin: 0;"><strong>{{ average_amount }}</strong> average per receipt</p></div>{{ categories_summary }}{{ merchants_summary }}<div class="text-center"><a href="{{ receipts_url }}" class="btn btn-accent">View All Receipts</a></div>',
-                'variables' => json_encode(['week_start', 'week_end', 'total_receipts', 'total_amount', 'average_amount', 'categories_summary', 'merchants_summary', 'receipts_url']),
-                'description' => 'Weekly summary email with receipt statistics',
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'key' => 'document_shared',
-                'name' => 'Document Shared',
                 'subject' => 'Document shared: {{ document_title }}',
                 'body' => '<h1>Document Shared With You</h1><p><strong>{{ shared_by_name }}</strong> has shared a document with you.</p><div class="accent-box"><p style="margin: 0 0 8px 0;"><strong>Document:</strong> {{ document_title }}</p><p style="margin: 0;"><strong>Permission:</strong> {{ permission }}</p></div>{{ expires_info }}<div class="text-center"><a href="{{ document_url }}" class="btn btn-accent">View Document</a></div>',
-                'variables' => json_encode(['shared_by_name', 'document_title', 'permission', 'expires_info', 'document_url']),
-                'description' => 'Email sent when a document is shared',
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'key' => 'receipt_shared',
-                'name' => 'Receipt Shared',
                 'subject' => 'Receipt shared: {{ merchant_name }}',
                 'body' => '<h1>Receipt Shared With You</h1><p><strong>{{ shared_by_name }}</strong> has shared a receipt with you.</p><div class="accent-box"><p style="margin: 0 0 8px 0;"><strong>Merchant:</strong> {{ merchant_name }}</p><p style="margin: 0 0 8px 0;"><strong>Amount:</strong> {{ amount }} {{ currency }}</p><p style="margin: 0;"><strong>Permission:</strong> {{ permission }}</p></div>{{ expires_info }}<div class="text-center"><a href="{{ receipt_url }}" class="btn btn-accent">View Receipt</a></div>',
-                'variables' => json_encode(['shared_by_name', 'merchant_name', 'amount', 'currency', 'permission', 'expires_info', 'receipt_url']),
-                'description' => 'Email sent when a receipt is shared',
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
-        ]);
+        ];
+
+        foreach ($templates as $template) {
+            DB::table('email_templates')
+                ->where('key', $template['key'])
+                ->update([
+                    'subject' => $template['subject'],
+                    'body' => $template['body'],
+                    'updated_at' => now(),
+                ]);
+        }
+
+        // Clear email template cache
+        DB::table('email_templates')->get()->each(function ($template) {
+            Cache::forget("email_template_{$template->key}");
+        });
     }
 
     /**
@@ -124,6 +80,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('email_templates');
+        // No rollback needed - keeping the new templates is safe
     }
 };

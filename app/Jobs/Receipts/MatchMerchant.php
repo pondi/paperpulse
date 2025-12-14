@@ -5,8 +5,10 @@ namespace App\Jobs\Receipts;
 use App\Jobs\BaseJob;
 use App\Models\Merchant;
 use App\Models\Receipt;
+use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class MatchMerchant extends BaseJob
 {
@@ -117,7 +119,7 @@ class MatchMerchant extends BaseJob
             $this->updateMerchant($matchedMerchantId);
             $this->updateProgress(100);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Merchant matching failed', [
                 'job_id' => $this->jobID,
                 'task_id' => $this->uuid,
@@ -140,7 +142,7 @@ class MatchMerchant extends BaseJob
                 'fileMetaData_exists' => $fileMetaData !== null,
                 'receiptMetaData_exists' => $receiptMetaData !== null,
             ]);
-            throw new \RuntimeException("Required cache data missing for job {$this->jobID}");
+            throw new RuntimeException("Required cache data missing for job {$this->jobID}");
         }
 
         // Validate required fields are present
@@ -153,7 +155,7 @@ class MatchMerchant extends BaseJob
                     'jobID' => $this->jobID,
                     'missing_field' => $field,
                 ]);
-                throw new \RuntimeException("Required file metadata field {$field} missing for job {$this->jobID}");
+                throw new RuntimeException("Required file metadata field {$field} missing for job {$this->jobID}");
             }
         }
 
@@ -163,7 +165,7 @@ class MatchMerchant extends BaseJob
                     'jobID' => $this->jobID,
                     'missing_field' => $field,
                 ]);
-                throw new \RuntimeException("Required receipt metadata field {$field} missing for job {$this->jobID}");
+                throw new RuntimeException("Required receipt metadata field {$field} missing for job {$this->jobID}");
             }
         }
 
@@ -203,7 +205,7 @@ class MatchMerchant extends BaseJob
 
             return $bestMatch;
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error("(MatchMerchant) [{$this->jobName}] - Merchant matching failed", [
                 'merchant_name' => $this->merchantName,
                 'error' => $e->getMessage(),

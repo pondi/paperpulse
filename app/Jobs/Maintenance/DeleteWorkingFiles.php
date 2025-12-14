@@ -3,6 +3,7 @@
 namespace App\Jobs\Maintenance;
 
 use App\Jobs\BaseJob;
+use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -122,7 +123,7 @@ class DeleteWorkingFiles extends BaseJob
                 'files_deleted' => $deletedCount,
             ]);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Working files cleanup failed', [
                 'job_id' => $this->jobID,
                 'task_id' => $this->uuid,

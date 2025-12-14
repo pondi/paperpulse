@@ -20,27 +20,34 @@ class FilePreviewManager
     }
 
     /**
-     * Generate and store image preview for a PDF file.
+     * Generate and store image preview for a file (PDF or image).
      *
      * @param  File  $file  File model instance
-     * @param  string  $pdfPath  Path to the PDF file
+     * @param  string  $filePath  Path to the file (use this file's actual extension, not the original)
      * @return bool True if preview was generated successfully
      */
-    public function generatePreviewForFile(File $file, string $pdfPath): bool
+    public function generatePreviewForFile(File $file, string $filePath): bool
     {
         try {
-            // Skip if not a PDF
-            if (strtolower($file->fileExtension ?? '') !== 'pdf') {
-                Log::info('[FilePreviewManager] Skipping preview - not a PDF', [
+            // Use the actual file extension from the path (important for converted files)
+            $pathExtension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+            $extension = $pathExtension ?: strtolower($file->fileExtension ?? '');
+            $supportedTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+
+            // Skip if unsupported file type
+            if (! in_array($extension, $supportedTypes)) {
+                Log::info('[FilePreviewManager] Skipping preview - unsupported file type', [
                     'file_id' => $file->id,
-                    'extension' => $file->fileExtension,
+                    'extension' => $extension,
+                    'original_extension' => $file->fileExtension,
+                    'file_path' => $filePath,
                 ]);
 
                 return false;
             }
 
             // Generate preview image
-            $imageData = ImagePreviewGenerator::generateFromPdf($pdfPath);
+            $imageData = ImagePreviewGenerator::generatePreview($filePath, $extension);
 
             // Store preview
             $previewPath = $this->previewStorage->storePreview(

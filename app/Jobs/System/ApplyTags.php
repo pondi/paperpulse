@@ -6,6 +6,7 @@ use App\Jobs\BaseJob;
 use App\Models\Document;
 use App\Models\File;
 use App\Models\Receipt;
+use Exception;
 use Illuminate\Support\Facades\Log;
 
 class ApplyTags extends BaseJob
@@ -134,7 +135,7 @@ class ApplyTags extends BaseJob
                     Log::warning('[ApplyTags] No receipt found for file', ['file_id' => $this->file->id]);
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[ApplyTags] Failed to apply tags - Exception details', [
                 'file_id' => $this->file->id,
                 'file_type' => $this->file->file_type,

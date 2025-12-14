@@ -5,6 +5,7 @@ namespace App\Jobs\PulseDav;
 use App\Models\User;
 use App\Notifications\ScannerFilesImported;
 use App\Services\PulseDavService;
+use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -47,7 +48,7 @@ class SyncPulseDavFiles implements ShouldQueue
                             ->get();
 
                         foreach ($unprocessedFiles as $file) {
-                            \App\Jobs\PulseDav\ProcessPulseDavFile::dispatch($file);
+                            ProcessPulseDavFile::dispatch($file);
                         }
 
                         Log::info('Auto-processing queued for scanner files', [
@@ -61,7 +62,7 @@ class SyncPulseDavFiles implements ShouldQueue
                         $user->notify(new ScannerFilesImported($synced));
                     }
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to sync PulseDav files for user', [
                     'user_id' => $user->id,
                     'error' => $e->getMessage(),

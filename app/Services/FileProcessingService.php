@@ -8,6 +8,8 @@ use App\Contracts\Services\FileValidationContract;
 use App\Jobs\Files\ProcessFile;
 use App\Models\File;
 use App\Services\Files\FileJobChainDispatcher;
+use App\Services\Jobs\JobHistoryCreator;
+use App\Services\Jobs\JobMetadataPersistence;
 use Exception;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -63,6 +65,8 @@ class FileProcessingService
      */
     public function processFile(array $fileData, string $fileType, int $userId, array $metadata = []): array
     {
+        $workingPath = null;
+
         try {
             // Generate unique identifiers
             $jobId = $metadata['jobId'] ?? (string) Str::uuid();
@@ -82,7 +86,7 @@ class FileProcessingService
                 throw new Exception('File validation failed: '.implode(', ', $validation['errors']));
             }
 
-            // Store working file locally
+            // Store working file locally (temporary)
             $workingPath = $this->fileStorage->storeWorkingContent(
                 $fileData['content'],
                 $fileGuid,
@@ -92,7 +96,7 @@ class FileProcessingService
             // Create file record in database
             $file = $this->fileMetadata->createFileRecordFromData($fileData, $fileGuid, $fileType, $userId);
 
-            // Store original file to S3 storage bucket
+            // Store original file to S3 storage bucket (permanent)
             $s3Path = $this->fileStorage->storeToS3(
                 $fileData['content'],
                 $userId,
@@ -105,22 +109,48 @@ class FileProcessingService
             // Update file record with S3 path
             $this->fileMetadata->updateFileWithS3Path($file, $s3Path);
 
+            Log::info("[FileProcessing] [{$jobName}] File stored to S3, cleaning up local file", [
+                'file_guid' => $fileGuid,
+                's3_path' => $s3Path,
+                'local_path' => $workingPath,
+            ]);
+
+            // Clean up local file after successful S3 upload
+            // Workers will download from S3 as needed
+            if ($workingPath && file_exists($workingPath)) {
+                try {
+                    $this->fileStorage->deleteWorkingFile($workingPath);
+                    Log::debug("[FileProcessing] [{$jobName}] Local working file cleaned up", [
+                        'file_guid' => $fileGuid,
+                        'local_path' => $workingPath,
+                    ]);
+                    $workingPath = null; // Mark as cleaned up
+                } catch (Exception $e) {
+                    Log::warning("[FileProcessing] [{$jobName}] Failed to clean up local file", [
+                        'file_guid' => $fileGuid,
+                        'local_path' => $workingPath,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             // Prepare metadata for job chain
+            // Note: We no longer pass the local filePath since workers will download from S3
             $fileMetadata = $this->fileMetadata->prepareFileMetadata(
                 $file,
                 $fileGuid,
                 $fileData,
-                $workingPath,
+                null, // No local path - workers will download from S3
                 $s3Path,
                 $jobName,
                 $metadata
             );
 
             // Store metadata persistently for job chain
-            \App\Services\Jobs\JobMetadataPersistence::store($jobId, $fileMetadata);
+            JobMetadataPersistence::store($jobId, $fileMetadata);
 
             // Create parent job history record
-            \App\Services\Jobs\JobHistoryCreator::createParentJob(
+            JobHistoryCreator::createParentJob(
                 $jobId,
                 $jobName,
                 $fileType,
@@ -136,6 +166,7 @@ class FileProcessingService
                 'job_id' => $jobId,
                 'file_id' => $file->id,
                 'file_guid' => $fileGuid,
+                's3_path' => $s3Path,
             ]);
 
             return [
@@ -146,6 +177,21 @@ class FileProcessingService
                 'jobName' => $jobName,
             ];
         } catch (Exception $e) {
+            // Clean up local file if it still exists and upload failed
+            if ($workingPath && file_exists($workingPath)) {
+                try {
+                    $this->fileStorage->deleteWorkingFile($workingPath);
+                    Log::debug('[FileProcessing] Cleaned up local file after failure', [
+                        'local_path' => $workingPath,
+                    ]);
+                } catch (Exception $cleanupError) {
+                    Log::warning('[FileProcessing] Failed to clean up local file after failure', [
+                        'local_path' => $workingPath,
+                        'error' => $cleanupError->getMessage(),
+                    ]);
+                }
+            }
+
             Log::error('[FileProcessing] File processing failed', [
                 'error' => $e->getMessage(),
                 'file_name' => $fileData['fileName'] ?? 'unknown',
@@ -216,7 +262,7 @@ class FileProcessingService
                     'incoming_path' => $incomingPath,
                     'disk' => 'pulsedav',
                 ]);
-                throw new \Exception("File not found in PulseDav bucket: {$incomingPath}");
+                throw new Exception("File not found in PulseDav bucket: {$incomingPath}");
             }
 
             // Download file content from incoming bucket

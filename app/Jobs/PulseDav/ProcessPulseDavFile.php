@@ -6,8 +6,10 @@ use App\Jobs\BaseJob;
 use App\Models\PulseDavFile;
 use App\Services\FileProcessingService;
 use App\Services\PulseDavService;
+use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class ProcessPulseDavFile extends BaseJob
 {
@@ -21,10 +23,12 @@ class ProcessPulseDavFile extends BaseJob
 
     protected $tagIds;
 
+    protected $note;
+
     /**
      * Create a new job instance.
      */
-    public function __construct(PulseDavFile $pulseDavFile, array $tagIds = [])
+    public function __construct(PulseDavFile $pulseDavFile, array $tagIds = [], ?string $note = null)
     {
         // Generate a unique job ID for this processing chain
         $jobID = (string) Str::uuid();
@@ -32,6 +36,7 @@ class ProcessPulseDavFile extends BaseJob
 
         $this->pulseDavFile = $pulseDavFile;
         $this->tagIds = $tagIds;
+        $this->note = $note;
         $this->jobName = 'Process PulseDav File';
     }
 
@@ -50,6 +55,7 @@ class ProcessPulseDavFile extends BaseJob
                 's3_path' => $this->pulseDavFile->s3_path,
                 'file_type' => $this->pulseDavFile->file_type,
                 'tag_ids' => $this->tagIds,
+                'note' => $this->note,
                 'filename' => $this->pulseDavFile->filename,
                 'status' => $this->pulseDavFile->status,
             ]);
@@ -61,6 +67,7 @@ class ProcessPulseDavFile extends BaseJob
                 'method' => 'processPulseDavFile',
                 's3_path' => $this->pulseDavFile->s3_path,
                 'user_id' => $this->pulseDavFile->user_id,
+                'note' => $this->note,
             ]);
 
             // Use the unified FileProcessingService to process the file
@@ -70,6 +77,7 @@ class ProcessPulseDavFile extends BaseJob
                 $this->pulseDavFile->user_id,
                 [
                     'tagIds' => $this->tagIds,
+                    'note' => $this->note,
                     'pulseDavFileId' => $this->pulseDavFile->id,
                     'source' => 'pulsedav',
                     'originalFilename' => $this->pulseDavFile->filename,
@@ -94,7 +102,7 @@ class ProcessPulseDavFile extends BaseJob
                 'file_id' => $result['fileId'] ?? null,
             ]);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[ProcessPulseDavFile] Job failed', [
                 'job_id' => $this->jobID,
                 'pulsedav_file_id' => $this->pulseDavFile->id,
@@ -111,7 +119,7 @@ class ProcessPulseDavFile extends BaseJob
     /**
      * Handle a job failure.
      */
-    public function failed(\Throwable $exception): void
+    public function failed(Throwable $exception): void
     {
         parent::failed($exception);
         $this->pulseDavFile->markAsFailed($exception->getMessage());

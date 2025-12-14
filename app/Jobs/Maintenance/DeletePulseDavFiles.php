@@ -5,6 +5,7 @@ namespace App\Jobs\Maintenance;
 use App\Models\PulseDavFile;
 use App\Services\PulseDavService;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -53,7 +54,7 @@ class DeletePulseDavFiles implements ShouldQueue
                     'filename' => $file->filename,
                     'processed_at' => $file->processed_at,
                 ]);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $failedCount++;
                 Log::error('Failed to delete PulseDav file', [
                     'pulsedav_file_id' => $file->id,

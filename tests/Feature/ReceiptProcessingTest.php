@@ -13,6 +13,7 @@ use App\Models\Receipt;
 use App\Models\User;
 use App\Services\ConversionService;
 use App\Services\ReceiptService;
+use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
@@ -40,18 +41,18 @@ class ReceiptProcessingTest extends TestCase
         Bus::fake();
 
         $user = User::factory()->create();
-        $this->actingAs($user);
+        $this->actingAs($user, 'sanctum');
 
         // Create a fake image file
         $file = UploadedFile::fake()->image('receipt.jpg', 600, 800);
 
         // Upload the file
-        $response = $this->post(route('files.store'), [
+        $response = $this->post(route('api.files.store'), [
             'file' => $file,
         ]);
 
-        $response->assertStatus(200);
-        $response->assertJson(['message' => 'File uploaded successfully']);
+        $response->assertStatus(201);
+        $response->assertJson(['message' => 'File uploaded for processing']);
 
         // Verify file was created in database
         $fileModel = File::where('user_id', $user->id)->first();
@@ -76,18 +77,18 @@ class ReceiptProcessingTest extends TestCase
         Bus::fake();
 
         $user = User::factory()->create();
-        $this->actingAs($user);
+        $this->actingAs($user, 'sanctum');
 
         // Create a fake PDF file
         $file = UploadedFile::fake()->create('receipt.pdf', 500, 'application/pdf');
 
         // Upload the file
-        $response = $this->post(route('files.store'), [
+        $response = $this->post(route('api.files.store'), [
             'file' => $file,
         ]);
 
-        $response->assertStatus(200);
-        $response->assertJson(['message' => 'File uploaded successfully']);
+        $response->assertStatus(201);
+        $response->assertJson(['message' => 'File uploaded for processing']);
 
         // Verify file was created in database
         $fileModel = File::where('user_id', $user->id)->first();
@@ -268,7 +269,7 @@ class ReceiptProcessingTest extends TestCase
         try {
             $job = new ProcessFile($jobId);
             $job->handle();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Expected to fail
         }
 
@@ -283,13 +284,13 @@ class ReceiptProcessingTest extends TestCase
     public function test_upload_rejects_invalid_file_types()
     {
         $user = User::factory()->create();
-        $this->actingAs($user);
+        $this->actingAs($user, 'sanctum');
 
         // Create an invalid file type
         $file = UploadedFile::fake()->create('document.txt', 100, 'text/plain');
 
         // Try to upload the file
-        $response = $this->post(route('files.store'), [
+        $response = $this->post(route('api.files.store'), [
             'file' => $file,
         ]);
 
@@ -303,13 +304,13 @@ class ReceiptProcessingTest extends TestCase
     public function test_upload_rejects_oversized_files()
     {
         $user = User::factory()->create();
-        $this->actingAs($user);
+        $this->actingAs($user, 'sanctum');
 
         // Create a file that exceeds 2MB limit
         $file = UploadedFile::fake()->image('large-receipt.jpg')->size(3000); // 3MB
 
         // Try to upload the file
-        $response = $this->post(route('files.store'), [
+        $response = $this->post(route('api.files.store'), [
             'file' => $file,
         ]);
 
@@ -325,7 +326,7 @@ class ReceiptProcessingTest extends TestCase
         Bus::fake();
 
         $user = User::factory()->create();
-        $this->actingAs($user);
+        $this->actingAs($user, 'sanctum');
 
         // Upload multiple files concurrently
         $files = [];
@@ -334,10 +335,10 @@ class ReceiptProcessingTest extends TestCase
         }
 
         foreach ($files as $file) {
-            $response = $this->post(route('files.store'), [
+            $response = $this->post(route('api.files.store'), [
                 'file' => $file,
             ]);
-            $response->assertStatus(200);
+            $response->assertStatus(201);
         }
 
         // Verify all files were created

@@ -14,6 +14,7 @@ use App\Services\AIService;
 use App\Services\StorageService;
 use App\Services\TextExtractionService;
 use Aws\MockHandler;
+use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -445,7 +446,7 @@ class FileProcessingPipelineTest extends TestCase
     {
         $textExtractionService = Mockery::mock(TextExtractionService::class);
         $textExtractionService->shouldReceive('extractTextFromImage')
-            ->andThrow(new \Exception('Textract service unavailable'));
+            ->andThrow(new Exception('Textract service unavailable'));
 
         $this->app->instance(TextExtractionService::class, $textExtractionService);
     }
@@ -514,7 +515,7 @@ class FileProcessingPipelineTest extends TestCase
     {
         $aiService = Mockery::mock(AIService::class);
         $aiService->shouldReceive('analyzeReceipt')
-            ->andThrow(new \Exception('OpenAI API error'));
+            ->andThrow(new Exception('OpenAI API error'));
 
         $this->app->instance(AIService::class, $aiService);
     }

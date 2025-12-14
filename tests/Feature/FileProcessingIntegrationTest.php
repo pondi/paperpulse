@@ -6,7 +6,14 @@ use App\Jobs\MatchMerchant;
 use App\Jobs\ProcessFile;
 use App\Jobs\ProcessReceipt;
 use App\Models\File;
+use App\Models\JobHistory;
+use App\Models\Receipt;
 use App\Models\User;
+use App\Services\AIService;
+use App\Services\StorageService;
+use App\Services\TextExtractionService;
+use DB;
+use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
@@ -143,7 +150,7 @@ class FileProcessingIntegrationTest extends TestCase
             $this->testProcessReceiptJob($jobId, $fileRecord);
             $this->testMatchMerchantJob($jobId, $fileRecord);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Integration test failed', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -167,13 +174,13 @@ class FileProcessingIntegrationTest extends TestCase
             $fileRecord->refresh();
             $this->assertEquals('processing', $fileRecord->status);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('ProcessFile failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            throw new \Exception("ProcessFile job failed: {$e->getMessage()}");
+            throw new Exception("ProcessFile job failed: {$e->getMessage()}");
         }
     }
 
@@ -190,7 +197,7 @@ class FileProcessingIntegrationTest extends TestCase
             // Verify receipt created
             $receipt = $fileRecord->fileable;
             $this->assertNotNull($receipt, 'Receipt not created');
-            $this->assertInstanceOf(\App\Models\Receipt::class, $receipt);
+            $this->assertInstanceOf(Receipt::class, $receipt);
 
             // Check receipt data
             Log::info('Receipt created', [
@@ -200,7 +207,7 @@ class FileProcessingIntegrationTest extends TestCase
                 'line_items_count' => $receipt->lineItems()->count(),
             ]);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('ProcessReceipt failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -208,11 +215,11 @@ class FileProcessingIntegrationTest extends TestCase
 
             // Check specific error types
             if (str_contains($e->getMessage(), 'Textract')) {
-                throw new \Exception("Textract error: {$e->getMessage()}. Check AWS credentials and permissions.");
+                throw new Exception("Textract error: {$e->getMessage()}. Check AWS credentials and permissions.");
             } elseif (str_contains($e->getMessage(), 'OpenAI') || str_contains($e->getMessage(), 'AI')) {
-                throw new \Exception("AI service error: {$e->getMessage()}. Check AI provider configuration.");
+                throw new Exception("AI service error: {$e->getMessage()}. Check AI provider configuration.");
             } else {
-                throw new \Exception("ProcessReceipt job failed: {$e->getMessage()}");
+                throw new Exception("ProcessReceipt job failed: {$e->getMessage()}");
             }
         }
     }
@@ -238,7 +245,7 @@ class FileProcessingIntegrationTest extends TestCase
                 ]);
             }
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('MatchMerchant failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -254,7 +261,7 @@ class FileProcessingIntegrationTest extends TestCase
     {
         // Test StorageService
         try {
-            $storageService = app(\App\Services\StorageService::class);
+            $storageService = app(StorageService::class);
             $this->assertNotNull($storageService, 'StorageService not available');
 
             // Test S3 connection
@@ -272,23 +279,23 @@ class FileProcessingIntegrationTest extends TestCase
 
             Log::info('S3 connection successful');
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->fail("S3 connection failed: {$e->getMessage()}. Check AWS credentials.");
         }
 
         // Test TextExtractionService
         try {
-            $textExtractionService = app(\App\Services\TextExtractionService::class);
+            $textExtractionService = app(TextExtractionService::class);
             $this->assertNotNull($textExtractionService, 'TextExtractionService not available');
             Log::info('TextExtractionService available');
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->fail("TextExtractionService initialization failed: {$e->getMessage()}");
         }
 
         // Test AIService
         try {
-            $aiService = app(\App\Services\AIService::class);
+            $aiService = app(AIService::class);
             $this->assertNotNull($aiService, 'AIService not available');
 
             // Test simple AI call
@@ -297,7 +304,7 @@ class FileProcessingIntegrationTest extends TestCase
 
             Log::info('AIService test successful');
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->fail("AIService test failed: {$e->getMessage()}. Check AI provider configuration.");
         }
     }
@@ -327,7 +334,7 @@ class FileProcessingIntegrationTest extends TestCase
         $jobId = $response->json('job_id');
 
         // Check jobs table
-        $jobs = \DB::table('jobs')->get();
+        $jobs = DB::table('jobs')->get();
         Log::info('Queued jobs', ['count' => $jobs->count(), 'jobs' => $jobs->toArray()]);
 
         // Process each job manually
@@ -342,7 +349,7 @@ class FileProcessingIntegrationTest extends TestCase
 
                 Log::info('Job processed', ['output' => Artisan::output()]);
 
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Job processing failed', [
                     'job_id' => $job->id,
                     'error' => $e->getMessage(),
@@ -359,7 +366,7 @@ class FileProcessingIntegrationTest extends TestCase
         ]);
 
         // Check job histories
-        $histories = \App\Models\JobHistory::where('job_id', $jobId)->get();
+        $histories = JobHistory::where('job_id', $jobId)->get();
         foreach ($histories as $history) {
             Log::info('Job history', [
                 'job_name' => $history->job_name,

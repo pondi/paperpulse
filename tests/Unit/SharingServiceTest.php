@@ -10,6 +10,7 @@ use App\Services\SharingService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use UnauthorizedHttpException;
 
 class SharingServiceTest extends TestCase
 {
@@ -85,7 +86,7 @@ class SharingServiceTest extends TestCase
 
         $receipt = Receipt::factory()->create(['user_id' => $owner->id]);
 
-        $this->expectException(\UnauthorizedHttpException::class);
+        $this->expectException(UnauthorizedHttpException::class);
 
         $this->sharingService->shareFile($receipt, $targetUser);
     }

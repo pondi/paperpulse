@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import SearchBar from '@/Components/Features/SearchBar.vue';
@@ -7,6 +7,7 @@ import Dropdown from '@/Components/Navigation/Dropdown.vue';
 import DropdownLink from '@/Components/Navigation/DropdownLink.vue';
 import Checkbox from '@/Components/Forms/Checkbox.vue';
 import Modal from '@/Components/Common/Modal.vue';
+import PdfViewer from '@/Components/Common/PdfViewer.vue';
 import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
 import DangerButton from '@/Components/Buttons/DangerButton.vue';
 import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
@@ -27,6 +28,7 @@ import {
 interface Document {
     id: number;
     title: string;
+    note?: string | null;
     file_name: string;
     file_type: string;
     size: number;
@@ -46,8 +48,11 @@ interface Document {
         id: number;
         url: string;
         pdfUrl: string | null;
+        previewUrl?: string | null;
         extension: string;
         size?: number;
+        has_preview?: boolean;
+        is_pdf?: boolean;
     } | null;
 }
 
@@ -73,12 +78,18 @@ interface Props {
 
 const props = defineProps<Props>();
 
+const isMounted = ref(false);
 const selectedDocuments = ref<number[]>([]);
 const showDeleteModal = ref(false);
 const showFilters = ref(false);
 const viewMode = ref<'grid' | 'list'>('grid');
 const showDocumentDrawer = ref(false);
+const showPdfViewer = ref(false);
 const selectedDocument = ref<Document | null>(null);
+
+onMounted(() => {
+    isMounted.value = true;
+});
 
 const allSelected = computed(() => {
     return selectedDocuments.value.length === props.documents.data.length && props.documents.data.length > 0;
@@ -123,7 +134,13 @@ const toggleDocument = (id: number) => {
 
 const viewDocument = (document: Document) => {
     selectedDocument.value = document;
-    showDocumentDrawer.value = true;
+    // Show PDF viewer if document has a PDF URL (for PDFs and documents with PDF conversions)
+    if (document.file?.pdfUrl || document.file?.is_pdf) {
+        showPdfViewer.value = true;
+    } else {
+        // Show drawer for image previews
+        showDocumentDrawer.value = true;
+    }
 };
 
 const deleteSelected = () => {
@@ -145,6 +162,12 @@ const applyFilter = (filters: any) => {
         preserveState: true,
         preserveScroll: true
     });
+};
+
+const thumbnailErrors = ref<Set<number>>(new Set());
+
+const handleThumbnailError = (documentId: number) => {
+    thumbnailErrors.value.add(documentId);
 };
 </script>
 
@@ -251,7 +274,7 @@ const applyFilter = (filters: any) => {
                 </div>
 
                 <!-- Documents Grid/List -->
-                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="bg-white dark:bg-gray-800 overflow-visible shadow-sm sm:rounded-lg">
                     <!-- Empty State -->
                     <div v-if="documents.data.length === 0" class="p-12 text-center">
                         <DocumentIcon class="mx-auto h-12 w-12 text-gray-400" />
@@ -281,30 +304,51 @@ const applyFilter = (filters: any) => {
                                     @change="toggleDocument(document.id)"
                                 />
                             </div>
-                            
+
                             <div @click="viewDocument(document)" class="cursor-pointer">
-                                <DocumentIcon class="h-12 w-12 text-gray-400 mb-3" />
+                                <!-- Thumbnail Preview -->
+                                <div class="aspect-[8.5/11] bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden relative mb-3">
+                                    <!-- Show preview if available and no error -->
+                                    <template v-if="document.file?.has_preview && !thumbnailErrors.has(document.id)">
+                                        <img
+                                            :src="document.file.previewUrl || document.file.url"
+                                            :alt="document.title"
+                                            class="w-full h-full object-cover"
+                                            @error="handleThumbnailError(document.id)"
+                                        />
+                                    </template>
+
+                                    <!-- Fallback to icon -->
+                                    <template v-else>
+                                        <div class="flex items-center justify-center h-full">
+                                            <DocumentIcon class="h-16 w-16 text-gray-400" />
+                                        </div>
+                                    </template>
+
+                                    <!-- Category badge overlay -->
+                                    <div v-if="document.category" class="absolute top-2 right-2">
+                                        <span
+                                            class="inline-flex items-center px-2 py-1 rounded text-xs font-medium"
+                                            :style="{ backgroundColor: document.category.color + '20', color: document.category.color }"
+                                        >
+                                            {{ document.category.name }}
+                                        </span>
+                                    </div>
+                                </div>
                                 <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-1 truncate">
                                     {{ document.title }}
                                 </h3>
                                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
                                     {{ formatFileSize(document.size) }} • {{ formatDate(document.created_at) }}
                                 </p>
-                                
-                                <div v-if="document.category" class="mb-2">
-                                    <span 
-                                        class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                                        :style="{
-                                            backgroundColor: document.category.color + '20',
-                                            color: document.category.color
-                                        }"
-                                    >
-                                        <FolderIcon class="h-3 w-3 mr-1" />
-                                        {{ document.category.name }}
-                                    </span>
-                                </div>
-                                
-                                <div v-if="document.tags && document.tags.length > 0" class="flex flex-wrap gap-1">
+                                <p
+                                    v-if="document.note"
+                                    class="text-sm text-gray-600 dark:text-gray-300 mb-2 line-clamp-2"
+                                >
+                                    {{ document.note }}
+                                </p>
+
+                                <div v-if="document.tags && document.tags.length > 0" class="flex flex-wrap gap-1 mb-2">
                                     <span 
                                         v-for="tag in document.tags.slice(0, 3)" 
                                         :key="tag.id"
@@ -426,6 +470,12 @@ const applyFilter = (filters: any) => {
                                                 </button>
                                                 <div class="text-sm text-gray-500 dark:text-gray-400">
                                                     {{ document.file_name }}
+                                                </div>
+                                                <div
+                                                    v-if="document.note"
+                                                    class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1"
+                                                >
+                                                    {{ document.note }}
                                                 </div>
                                             </div>
                                         </div>
@@ -561,8 +611,8 @@ const applyFilter = (filters: any) => {
                     </div>
                 </div>
 
-                <!-- Document Drawer -->
-                <Teleport to="body">
+                <!-- Document Drawer (for image previews) -->
+                <Teleport v-if="isMounted" to="body">
                     <div v-if="showDocumentDrawer" class="fixed inset-0 overflow-hidden z-50">
                         <div class="absolute inset-0 bg-black bg-opacity-50" @click="showDocumentDrawer = false"></div>
                         <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white dark:bg-gray-800 shadow-xl">
@@ -579,21 +629,12 @@ const applyFilter = (filters: any) => {
                             </div>
                             <div class="p-4">
                                 <div class="aspect-[8.5/11] bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden relative">
-                                    <template v-if="selectedDocument?.file?.url">
+                                    <template v-if="selectedDocument?.file?.previewUrl || selectedDocument?.file?.url">
                                         <img
-                                            v-if="selectedDocument.file.extension !== 'pdf'"
-                                            :src="selectedDocument.file.url"
+                                            :src="selectedDocument.file.previewUrl || selectedDocument.file.url"
                                             class="w-full h-auto"
                                             :alt="selectedDocument.title"
                                         />
-                                        <div v-else class="text-center">
-                                            <button
-                                                @click="window.open(selectedDocument.file.pdfUrl || selectedDocument.file.url, '_blank', 'noopener')"
-                                                class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700"
-                                            >
-                                                Open PDF
-                                            </button>
-                                        </div>
                                     </template>
                                     <template v-else>
                                         <div class="text-center text-gray-500 dark:text-gray-300">No preview available</div>
@@ -603,6 +644,16 @@ const applyFilter = (filters: any) => {
                         </div>
                     </div>
                 </Teleport>
+
+                <!-- PDF Viewer (full-screen) -->
+                <PdfViewer
+                    v-if="isMounted"
+                    :show="showPdfViewer"
+                    :pdf-url="selectedDocument?.file?.pdfUrl || selectedDocument?.file?.url || null"
+                    :title="selectedDocument?.title"
+                    :download-url="selectedDocument ? route('documents.download', selectedDocument.id) : undefined"
+                    @close="showPdfViewer = false"
+                />
 
                 <!-- Delete Confirmation Modal -->
                 <Modal :show="showDeleteModal" @close="showDeleteModal = false">

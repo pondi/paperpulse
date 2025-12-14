@@ -18,7 +18,7 @@ class DocumentUploadHandler
      * @param  string  $fileType  'receipt' or 'document'
      * @return array{processed:array,errors:array}
      */
-    public static function processUploads(iterable $uploadedFiles, string $fileType, int $userId, FileProcessingService $fileProcessingService): array
+    public static function processUploads(iterable $uploadedFiles, string $fileType, int $userId, FileProcessingService $fileProcessingService, array $metadata = []): array
     {
         $processed = [];
         $errors = [];
@@ -40,7 +40,7 @@ class DocumentUploadHandler
                 continue;
             }
 
-            $processed[] = $fileProcessingService->processUpload($uploadedFile, $fileType, $userId);
+            $processed[] = $fileProcessingService->processUpload($uploadedFile, $fileType, $userId, $metadata);
         }
 
         return [

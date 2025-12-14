@@ -192,7 +192,21 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
+                            <!-- Document Note -->
+                            <div class="mt-4 text-left">
+                                <label for="document-note" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Document Note
+                                </label>
+                                <textarea
+                                    id="document-note"
+                                    v-model="note"
+                                    rows="3"
+                                    class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    placeholder="Optional note about these files..."
+                                />
+                            </div>
+
                             <!-- Submit Button -->
                             <div class="mt-6 flex justify-center">
                                 <button type="submit"
@@ -221,7 +235,6 @@ import { Head } from '@inertiajs/vue3';
 import { useForm } from '@inertiajs/vue3';
 import { CheckCircleIcon, XMarkIcon, PhotoIcon, DocumentIcon, ReceiptRefundIcon } from '@heroicons/vue/20/solid'
 import { ref, watch } from 'vue';
-import { useFileUpload } from '@/Composables/useFileUpload';
 
 interface FileObject {
     file: File;
@@ -256,24 +269,102 @@ const fileUpload = ref<HTMLFormElement | null>(null);
 const fileType = ref<'receipt' | 'document'>('receipt'); // Default to receipt
 const isUploading = ref(false);
 const uploadProgress = ref(0);
+const note = ref<string>('');
 
-const {
-    selectedFiles,
-    isDragging,
-    handleDrop,
-    handleFileSelect,
-    handleAdditionalFiles,
-    removeFile,
-    resetFiles
-} = useFileUpload({
-    maxFileSize: fileType.value === 'receipt' ? MAX_FILE_SIZE : MAX_DOCUMENT_SIZE,
-    allowedTypes: fileType.value === 'receipt' ? RECEIPT_TYPES : DOCUMENT_TYPES,
-    onError: (error: string) => {
-        uploadError.value = error;
-        setTimeout(() => {
-            uploadError.value = null;
-        }, 5000);
+// Custom file upload state (not using composable's validation since we need dynamic types)
+const selectedFiles = ref<FileObject[]>([]);
+const isDragging = ref(false);
+
+function formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function validateFile(file: File): boolean {
+    const maxSize = fileType.value === 'receipt' ? MAX_FILE_SIZE : MAX_DOCUMENT_SIZE;
+    const allowedTypes = fileType.value === 'receipt' ? RECEIPT_TYPES : DOCUMENT_TYPES;
+
+    if (file.size > maxSize) {
+        uploadError.value = `File ${file.name} is too large. Maximum size is ${formatFileSize(maxSize)}`;
+        setTimeout(() => { uploadError.value = null; }, 5000);
+        return false;
     }
+
+    if (!allowedTypes.includes(file.type)) {
+        uploadError.value = `File ${file.name} has an invalid type. Allowed types are: ${allowedTypes.join(', ')}`;
+        setTimeout(() => { uploadError.value = null; }, 5000);
+        return false;
+    }
+
+    return true;
+}
+
+function createFileObject(file: File): FileObject {
+    return {
+        file,
+        preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+        name: file.name,
+        size: formatFileSize(file.size),
+        type: file.type
+    };
+}
+
+function handleFiles(files: File[], append = false) {
+    const validFiles = Array.from(files)
+        .filter(file => file.size > 0 && validateFile(file));
+
+    if (validFiles.length === 0) return;
+
+    const newFileObjects = validFiles.map(createFileObject);
+
+    if (append) {
+        selectedFiles.value = [...selectedFiles.value, ...newFileObjects];
+    } else {
+        selectedFiles.value = newFileObjects;
+    }
+}
+
+function handleFileSelect(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    handleFiles(Array.from(input.files));
+}
+
+function handleAdditionalFiles(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    handleFiles(Array.from(input.files), true);
+}
+
+function handleDrop(event: DragEvent) {
+    isDragging.value = false;
+    if (!event.dataTransfer?.files) return;
+    handleFiles(Array.from(event.dataTransfer.files), true);
+}
+
+function removeFile(index: number) {
+    const file = selectedFiles.value[index];
+    if (file.preview) {
+        URL.revokeObjectURL(file.preview);
+    }
+    selectedFiles.value.splice(index, 1);
+}
+
+function resetFiles() {
+    selectedFiles.value.forEach(file => {
+        if (file.preview) {
+            URL.revokeObjectURL(file.preview);
+        }
+    });
+    selectedFiles.value = [];
+}
+
+// Watch fileType changes and clear selected files to avoid validation issues
+watch(fileType, () => {
+    resetFiles();
 });
 
 // File type is tracked separately from the form
@@ -289,6 +380,7 @@ async function submit() {
     const uploadForm = useForm({
         files: selectedFiles.value.map(f => f.file),
         file_type: fileType.value,
+        note: note.value || null,
     });
     
     try {
@@ -296,6 +388,7 @@ async function submit() {
             preserveScroll: true,
             onSuccess: () => {
                 resetFiles();
+                note.value = '';
                 uploadSuccess.value = true;
                 isUploading.value = false;
                 uploadProgress.value = 0;

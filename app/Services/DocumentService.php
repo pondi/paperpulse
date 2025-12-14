@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\File;
+use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -57,7 +58,7 @@ class DocumentService
             Log::info("(DocumentService) [{$jobName}] - Document stored (guid: {$guid})");
 
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[DocumentService] Document storage error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -88,7 +89,7 @@ class DocumentService
             }
 
             return $this->disk->get($path);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[DocumentService] Document retrieval error', [
                 'error' => $e->getMessage(),
                 'document_id' => $guid,
@@ -135,7 +136,7 @@ class DocumentService
                 now()->addMinutes($expirationMinutes),
                 ['guid' => $guid, 'type' => $type, 'extension' => $extension]
             );
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[DocumentService] Secure URL generation error', [
                 'error' => $e->getMessage(),
                 'document_id' => $guid,
@@ -172,7 +173,7 @@ class DocumentService
             }
 
             return $success;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[DocumentService] Document deletion error', [
                 'error' => $e->getMessage(),
                 'document_id' => $guid,

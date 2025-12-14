@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Documents;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Services\StorageService;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use ZipArchive;
 
@@ -37,7 +37,7 @@ class DocumentBulkController extends Controller
                     }
                     $document->delete();
                     $deleted++;
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     Log::error('Failed to delete document in bulk operation', [
                         'document_id' => $id,
                         'error' => $e->getMessage(),
@@ -84,7 +84,7 @@ class DocumentBulkController extends Controller
 
             $filenameCounter = [];
 
-            $storageService = app(\App\Services\StorageService::class);
+            $storageService = app(StorageService::class);
 
             foreach ($documents as $document) {
                 try {
@@ -132,7 +132,7 @@ class DocumentBulkController extends Controller
                     // Add file to zip
                     $zip->addFromString($finalFilename, $fileContent);
 
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     Log::error("Error adding document {$document->id} to zip: ".$e->getMessage());
 
                     continue;

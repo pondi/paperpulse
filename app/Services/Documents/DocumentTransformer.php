@@ -12,6 +12,30 @@ class DocumentTransformer
         if ($document->file) {
             $extension = $document->file->fileExtension ?? 'pdf';
             $typeFolder = 'documents';
+
+            // Check if there's a converted PDF available
+            $hasConvertedPdf = ! empty($document->file->s3_converted_path);
+            $pdfUrl = null;
+
+            if ($hasConvertedPdf || strtolower($extension) === 'pdf') {
+                $pdfUrl = route('documents.serve', [
+                    'guid' => $document->file->guid,
+                    'type' => $typeFolder,
+                    'extension' => 'pdf',
+                    'variant' => $hasConvertedPdf ? 'archive' : 'original',
+                ]);
+            }
+
+            // Generate preview URL if available
+            $previewUrl = null;
+            if ($document->file->has_image_preview && $document->file->s3_image_path) {
+                $previewUrl = route('documents.serve', [
+                    'guid' => $document->file->guid,
+                    'type' => 'preview',
+                    'extension' => 'jpg',
+                ]);
+            }
+
             $fileInfo = [
                 'id' => $document->file->id,
                 'url' => route('documents.serve', [
@@ -19,19 +43,19 @@ class DocumentTransformer
                     'type' => $typeFolder,
                     'extension' => $extension,
                 ]),
-                'pdfUrl' => $extension === 'pdf' ? route('documents.serve', [
-                    'guid' => $document->file->guid,
-                    'type' => $typeFolder,
-                    'extension' => 'pdf',
-                ]) : null,
+                'pdfUrl' => $pdfUrl,
+                'previewUrl' => $previewUrl,
                 'extension' => $extension,
                 'size' => $document->file->fileSize,
+                'has_preview' => $document->file->has_image_preview,
+                'is_pdf' => strtolower($extension) === 'pdf' || $hasConvertedPdf,
             ];
         }
 
         return [
             'id' => $document->id,
             'title' => $document->title,
+            'note' => $document->note,
             'file_name' => $document->file?->fileName,
             'file_type' => $document->file?->fileType,
             'size' => $document->file?->fileSize ?? 0,
@@ -50,6 +74,30 @@ class DocumentTransformer
         if ($document->file) {
             $extension = $document->file->fileExtension ?? 'pdf';
             $typeFolder = 'documents';
+
+            // Check if there's a converted PDF available
+            $hasConvertedPdf = ! empty($document->file->s3_converted_path);
+            $pdfUrl = null;
+
+            if ($hasConvertedPdf || strtolower($extension) === 'pdf') {
+                $pdfUrl = route('documents.serve', [
+                    'guid' => $document->file->guid,
+                    'type' => $typeFolder,
+                    'extension' => 'pdf',
+                    'variant' => $hasConvertedPdf ? 'archive' : 'original',
+                ]);
+            }
+
+            // Generate preview URL if available
+            $previewUrl = null;
+            if ($document->file->has_image_preview && $document->file->s3_image_path) {
+                $previewUrl = route('documents.serve', [
+                    'guid' => $document->file->guid,
+                    'type' => 'preview',
+                    'extension' => 'jpg',
+                ]);
+            }
+
             $fileInfo = [
                 'id' => $document->file->id,
                 'url' => route('documents.serve', [
@@ -57,15 +105,17 @@ class DocumentTransformer
                     'type' => $typeFolder,
                     'extension' => $extension,
                 ]),
-                'pdfUrl' => $extension === 'pdf' ? route('documents.serve', [
-                    'guid' => $document->file->guid,
-                    'type' => $typeFolder,
-                    'extension' => 'pdf',
-                ]) : null,
+                'pdfUrl' => $pdfUrl,
+                'previewUrl' => $previewUrl,
                 'extension' => $extension,
                 'mime_type' => $document->file->mime_type,
                 'size' => $document->file->fileSize,
                 'guid' => $document->file->guid,
+                'has_preview' => $document->file->has_image_preview,
+                'is_pdf' => strtolower($extension) === 'pdf' || $hasConvertedPdf,
+                'uploaded_at' => $document->file->uploaded_at?->toIso8601String(),
+                'file_created_at' => $document->file->file_created_at?->toIso8601String(),
+                'file_modified_at' => $document->file->file_modified_at?->toIso8601String(),
             ];
         }
 
@@ -87,6 +137,7 @@ class DocumentTransformer
             'id' => $document->id,
             'title' => $document->title,
             'summary' => $document->summary,
+            'note' => $document->note,
             'category_id' => $document->category_id,
             'tags' => $document->tags?->map(fn ($t) => [
                 'id' => $t->id,

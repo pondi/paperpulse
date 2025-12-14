@@ -49,9 +49,9 @@ trait BelongsToUser
     /**
      * Scope a query to include records for a specific user.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param Builder $query
      * @param  int|User  $user
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @return Builder
      */
     public function scopeForUser($query, $user)
     {
@@ -84,8 +84,8 @@ trait BelongsToUser
     /**
      * Scope a query to include all records (bypass user scope).
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param Builder $query
+     * @return Builder
      */
     public function scopeWithoutUserScope($query)
     {

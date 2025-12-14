@@ -5,6 +5,7 @@ namespace App\Services\PulseDav;
 use App\Contracts\Services\PulseDavFolderContract;
 use App\Models\PulseDavFile;
 use App\Models\User;
+use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -134,7 +135,7 @@ class PulseDavFolderService implements PulseDavFolderContract
             ]);
 
             return $items;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[PulseDavFolder] Failed to get folder contents', [
                 'user_id' => $user->id,
                 'folder_path' => $folderPath,
@@ -309,7 +310,7 @@ class PulseDavFolderService implements PulseDavFolderContract
                 }
                 $file->delete();
                 $deletedCount++;
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('[PulseDavFolder] Failed to delete file in folder', [
                     'file_id' => $file->id,
                     'folder_path' => $folderPath,

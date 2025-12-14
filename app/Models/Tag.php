@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use App\Traits\BelongsToUser;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -15,11 +18,11 @@ use Illuminate\Support\Str;
  * @property string $name
  * @property string $slug
  * @property string|null $color
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @property-read \App\Models\User $user
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Document[] $documents
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Receipt[] $receipts
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property-read User $user
+ * @property-read Collection|Document[] $documents
+ * @property-read Collection|Receipt[] $receipts
  * @property-read int $usage_count
  */
 class Tag extends Model
@@ -82,9 +85,9 @@ class Tag extends Model
     /**
      * Scope a query to search tags by name.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  Builder  $query
      * @param  string  $search
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @return Builder
      */
     public function scopeSearch($query, $search)
     {
@@ -94,9 +97,9 @@ class Tag extends Model
     /**
      * Scope a query to order by usage count.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  Builder  $query
      * @param  string  $direction
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @return Builder
      */
     public function scopeOrderByUsage($query, $direction = 'desc')
     {

@@ -3,8 +3,10 @@
 namespace App\Services\PulseDav;
 
 use App\Contracts\Services\PulseDavFileContract;
+use App\Jobs\PulseDav\ProcessPulseDavFile;
 use App\Models\PulseDavFile;
 use App\Models\User;
+use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -30,7 +32,7 @@ class PulseDavFileService implements PulseDavFileContract
     {
         try {
             return Storage::disk('pulsedav')->get($s3Path);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[PulseDavFile] Failed to download S3 file', [
                 's3_path' => $s3Path,
                 'error' => $e->getMessage(),
@@ -67,7 +69,7 @@ class PulseDavFileService implements PulseDavFileContract
             ]);
 
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[PulseDavFile] Failed to delete S3 file', [
                 's3_file_id' => $s3File->id,
                 'error' => $e->getMessage(),
@@ -92,7 +94,7 @@ class PulseDavFileService implements PulseDavFileContract
             $file->update(['file_type' => $fileType]);
 
             // Dispatch job to process this file
-            \App\Jobs\PulseDav\ProcessPulseDavFile::dispatch($file);
+            ProcessPulseDavFile::dispatch($file);
             $file->markAsProcessing();
             $queued++;
 
@@ -125,7 +127,7 @@ class PulseDavFileService implements PulseDavFileContract
             $request = $this->s3Client->createPresignedRequest($command, "+{$expiration} minutes");
 
             return (string) $request->getUri();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[PulseDavFile] Failed to generate temporary URL', [
                 's3_file_id' => $s3File->id,
                 'error' => $e->getMessage(),
@@ -208,7 +210,7 @@ class PulseDavFileService implements PulseDavFileContract
     {
         try {
             return Storage::disk('pulsedav')->exists($s3Path);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[PulseDavFile] Failed to check file existence', [
                 's3_path' => $s3Path,
                 'error' => $e->getMessage(),
@@ -225,7 +227,7 @@ class PulseDavFileService implements PulseDavFileContract
     {
         try {
             return Storage::disk('pulsedav')->size($s3Path);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[PulseDavFile] Failed to get file size', [
                 's3_path' => $s3Path,
                 'error' => $e->getMessage(),
@@ -253,7 +255,7 @@ class PulseDavFileService implements PulseDavFileContract
             }
 
             return $metadata;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[PulseDavFile] Failed to get file metadata', [
                 'file_id' => $file->id,
                 'error' => $e->getMessage(),

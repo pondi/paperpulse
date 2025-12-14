@@ -2,13 +2,14 @@
 
 namespace App\Services\PulseDav;
 
+use App\Jobs\PulseDav\ProcessPulseDavFile;
 use App\Models\PulseDavFile;
 use App\Models\PulseDavImportBatch;
 use Illuminate\Support\Facades\Log;
 
 class ImportService
 {
-    public static function importFile(PulseDavFile $file, PulseDavImportBatch $batch, string $fileType, array $tagIds): void
+    public static function importFile(PulseDavFile $file, PulseDavImportBatch $batch, string $fileType, array $tagIds, ?string $note = null): void
     {
         Log::info('[PulseDavImport] Importing file', [
             'file_id' => $file->id,
@@ -16,6 +17,7 @@ class ImportService
             's3_path' => $file->s3_path,
             'file_type' => $fileType,
             'tag_ids' => $tagIds,
+            'note' => $note,
         ]);
 
         $inheritedTags = $file->inherited_tags->pluck('id')->toArray();
@@ -27,6 +29,6 @@ class ImportService
             'status' => 'processing',
         ]);
 
-        \App\Jobs\PulseDav\ProcessPulseDavFile::dispatch($file, $allTagIds)->onQueue('default');
+        ProcessPulseDavFile::dispatch($file, $allTagIds, $note)->onQueue('default');
     }
 }

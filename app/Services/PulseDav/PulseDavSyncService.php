@@ -6,6 +6,7 @@ use App\Contracts\Services\PulseDavSyncContract;
 use App\Models\PulseDavFile;
 use App\Models\User;
 use App\Notifications\ScannerFilesImported;
+use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -55,7 +56,7 @@ class PulseDavSyncService implements PulseDavSyncContract
             }
 
             return $files;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[PulseDavSync] Failed to list S3 files', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
@@ -98,7 +99,7 @@ class PulseDavSyncService implements PulseDavSyncContract
             if ($user->preferences->notify_scanner_import) {
                 try {
                     $user->notify(new ScannerFilesImported($synced));
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     Log::warning('[PulseDavSync] Failed to send scanner import notification', [
                         'user_id' => $user->id,
                         'error' => $e->getMessage(),
@@ -176,7 +177,7 @@ class PulseDavSyncService implements PulseDavSyncContract
 
             // Merge folders and files
             return array_merge(array_values($folders), $items);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('[PulseDavSync] Failed to list S3 files with folders', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
@@ -241,7 +242,7 @@ class PulseDavSyncService implements PulseDavSyncContract
                     Log::debug('[PulseDavSync] Created PulseDavFile record', [
                         's3_path' => $itemData['s3_path'],
                     ]);
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     Log::error('[PulseDavSync] Failed to create PulseDavFile record', [
                         's3_path' => $itemData['s3_path'],
                         'error' => $e->getMessage(),

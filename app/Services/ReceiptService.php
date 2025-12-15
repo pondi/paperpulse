@@ -44,7 +44,7 @@ class ReceiptService
      * @param  string  $filePath  Absolute working path
      * @return array{receiptId:int,merchantName:string,merchantAddress:string,merchantVatID:string}
      */
-    public function processReceiptData(int $fileId, string $fileGuid, string $filePath, ?string $note = null): array
+    public function processReceiptData(int $fileId, string $fileGuid, string $filePath, ?string $note = null, bool $isReprocessing = false): array
     {
         try {
             Log::info('Processing receipt data', [
@@ -56,7 +56,6 @@ class ReceiptService
             $file = File::findOrFail($fileId);
 
             // Check if we're reprocessing - delete existing receipt if so
-            $isReprocessing = $file->meta['metadata']['reprocessing'] ?? false;
             if ($isReprocessing) {
                 $existingReceipt = Receipt::where('file_id', $fileId)->first();
                 if ($existingReceipt) {

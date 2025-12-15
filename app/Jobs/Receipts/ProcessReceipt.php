@@ -110,23 +110,29 @@ class ProcessReceipt extends BaseJob
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            // Send failure notification to user
+            // Update file status to failed
             try {
                 $metadata = $this->getMetadata();
                 if ($metadata && isset($metadata['fileId'])) {
                     $file = File::find($metadata['fileId']);
-                    if ($file && $file->user) {
-                        // Create a temporary receipt object for the notification
-                        $tempReceipt = new Receipt;
-                        $tempReceipt->file_id = $file->id;
-                        $tempReceipt->user_id = $file->user_id;
+                    if ($file) {
+                        $file->status = 'failed';
+                        $file->save();
 
-                        $file->user->notify(new ReceiptProcessed($tempReceipt, false, $e->getMessage()));
+                        // Send failure notification to user
+                        if ($file->user) {
+                            // Create a temporary receipt object for the notification
+                            $tempReceipt = new Receipt;
+                            $tempReceipt->file_id = $file->id;
+                            $tempReceipt->user_id = $file->user_id;
+
+                            $file->user->notify(new ReceiptProcessed($tempReceipt, false, $e->getMessage()));
+                        }
                     }
                 }
-            } catch (Exception $notifError) {
-                Log::warning('Failed to send receipt failure notification', [
-                    'error' => $notifError->getMessage(),
+            } catch (Exception $statusError) {
+                Log::warning('Failed to update file status or send notification', [
+                    'error' => $statusError->getMessage(),
                 ]);
             }
 
@@ -301,7 +307,8 @@ class ProcessReceipt extends BaseJob
             $metadata['fileId'],
             $metadata['fileGuid'],
             $localFilePath,
-            $note
+            $note,
+            (bool) ($metadata['metadata']['reprocessing'] ?? false)
         );
 
         if ($debugEnabled) {

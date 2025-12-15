@@ -13,6 +13,7 @@ return [
     'analytics' => 'Analytics',
     'scanner_imports' => 'Scanner Imports',
     'job_status' => 'Job Status',
+    'file_processing' => 'File Processing',
     'dashboard' => 'Dashboard',
     'search' => 'Search',
     'profile' => 'Profile',

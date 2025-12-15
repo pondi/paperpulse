@@ -3,6 +3,7 @@
 namespace App\Services\Files;
 
 use App\Models\File;
+use App\Models\FileShare;
 use App\Services\Files\FileJobChainDispatcher;
 use App\Services\Jobs\JobHistoryCreator;
 use App\Services\Jobs\JobMetadataPersistence;
@@ -81,6 +82,7 @@ class FileReprocessingService
             );
 
             // Reset file status to pending
+            $this->resetFileProcessingState($file);
             $file->status = 'pending';
             $file->save();
 
@@ -114,6 +116,33 @@ class FileReprocessingService
                 'message' => "Failed to start reprocessing: {$e->getMessage()}",
             ];
         }
+    }
+
+    /**
+     * Change a file's type (receipt <-> document), move the original in storage, then reprocess.
+     *
+     * @return array{success:bool,jobId:?string,message:string}
+     */
+    public function changeTypeAndReprocess(File $file, string $newFileType, bool $force = false): array
+    {
+        if (! in_array($newFileType, ['receipt', 'document'], true)) {
+            return [
+                'success' => false,
+                'jobId' => null,
+                'message' => 'Invalid file type.',
+            ];
+        }
+
+        if ($newFileType === $file->file_type) {
+            return $this->reprocessFile($file, $force);
+        }
+
+        $moveResult = $this->changeFileTypeAndMoveStorage($file, $newFileType);
+        if (! $moveResult['success']) {
+            return $moveResult;
+        }
+
+        return $this->reprocessFile($file, $force);
     }
 
     /**
@@ -235,11 +264,118 @@ class FileReprocessingService
             'userId' => $file->user_id,
             's3OriginalPath' => $file->s3_original_path,
             'jobName' => $jobName,
+            'fileCreatedAt' => $file->file_created_at?->toISOString(),
+            'fileModifiedAt' => $file->file_modified_at?->toISOString(),
             'metadata' => [
                 'reprocessing' => true,
                 'original_status' => $file->status,
                 'reprocessed_at' => now()->toISOString(),
+                // Preserve original file dates - these were extracted from file metadata
+                // during initial upload before the file was stored in S3. We must not
+                // re-extract these during reprocessing as the S3 file will have
+                // different timestamps than the original file.
+                'file_created_at' => $file->file_created_at?->toISOString(),
+                'file_modified_at' => $file->file_modified_at?->toISOString(),
             ],
+        ];
+    }
+
+    /**
+     * Reset derived/processing fields before a restart.
+     */
+    protected function resetFileProcessingState(File $file): void
+    {
+        $file->s3_processed_path = null;
+        $file->s3_converted_path = null;
+        $file->s3_image_path = null;
+        $file->has_image_preview = false;
+        $file->image_generation_error = null;
+        $file->fileImage = null;
+    }
+
+    /**
+     * Move the original S3 object to the correct type folder and update DB fields.
+     *
+     * @return array{success:bool,jobId:?string,message:string}
+     */
+    protected function changeFileTypeAndMoveStorage(File $file, string $newFileType): array
+    {
+        if (empty($file->s3_original_path)) {
+            return [
+                'success' => false,
+                'jobId' => null,
+                'message' => 'File has no stored original path.',
+            ];
+        }
+
+        $parsed = $this->parseStoragePath($file->s3_original_path);
+        $extension = $parsed['extension'] ?? $file->fileExtension ?? 'pdf';
+
+        $newOriginalPath = StoragePathBuilder::storagePath(
+            $file->user_id,
+            $file->guid,
+            $newFileType,
+            'original',
+            $extension
+        );
+
+        try {
+            $this->storageService->moveWithinStorage($file->s3_original_path, $newOriginalPath);
+        } catch (Exception $e) {
+            Log::error('[FileReprocessing] Failed to move original file during type change', [
+                'file_id' => $file->id,
+                'from' => $file->s3_original_path,
+                'to' => $newOriginalPath,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'jobId' => null,
+                'message' => 'Failed to move original file in storage: '.$e->getMessage(),
+            ];
+        }
+
+        // Clear any derived outputs (they will be regenerated)
+        $this->resetFileProcessingState($file);
+
+        // Remove any partial/old resource models for this file.
+        $file->receipts()->delete();
+        $file->documents()->delete();
+
+        FileShare::where('file_id', $file->id)->update(['file_type' => $newFileType]);
+
+        $file->file_type = $newFileType;
+        $file->processing_type = $newFileType;
+        $file->s3_original_path = $newOriginalPath;
+        $file->save();
+
+        return [
+            'success' => true,
+            'jobId' => null,
+            'message' => 'File type updated.',
+        ];
+    }
+
+    /**
+     * Parse canonical storage paths like: receipts/{userId}/{guid}/{variant}.{extension}
+     *
+     * @return array{folder:string,user_id:int,guid:string,variant:string,extension:string}|null
+     */
+    protected function parseStoragePath(string $path): ?array
+    {
+        $pattern = '#^(receipts|documents)/(\\d+)/([^/]+)/([^/]+)\\.([A-Za-z0-9]+)$#';
+
+        if (! preg_match($pattern, $path, $matches)) {
+            return null;
+        }
+
+        return [
+            'folder' => $matches[1],
+            'user_id' => (int) $matches[2],
+            'guid' => $matches[3],
+            'variant' => $matches[4],
+            'extension' => $matches[5],
         ];
     }
 

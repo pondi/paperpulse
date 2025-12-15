@@ -185,4 +185,20 @@ class Document extends Model implements Taggable
     {
         return $this->file?->status === 'completed';
     }
+
+    /**
+     * Modify the query used to retrieve models when making all of the models searchable.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public static function makeAllSearchableUsing($query)
+    {
+        // Eager load all relationships needed for toSearchableArray
+        return $query->with([
+            'category',
+            'tags',
+            'file',
+        ]);
+    }
 }

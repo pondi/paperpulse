@@ -15,6 +15,13 @@ class SearchService
      */
     public function search(string $query, array $filters = []): array
     {
+        if (trim($query) === '' && ! $this->hasActiveFilters($filters)) {
+            return [
+                'results' => [],
+                'facets' => ['total' => 0, 'receipts' => 0, 'documents' => 0],
+            ];
+        }
+
         $results = collect();
 
         // Search receipts if not filtered out
@@ -43,6 +50,35 @@ class SearchService
             'results' => $results->values()->all(),
             'facets' => $this->buildFacets($query, $filters),
         ];
+    }
+
+    protected function hasActiveFilters(array $filters): bool
+    {
+        foreach ($filters as $key => $value) {
+            if ($key === 'limit') {
+                continue;
+            }
+
+            if ($key === 'type') {
+                if (is_string($value) && $value !== '' && $value !== 'all') {
+                    return true;
+                }
+                continue;
+            }
+
+            if (is_array($value)) {
+                if (! empty(array_filter($value, fn ($v) => $v !== null && $v !== ''))) {
+                    return true;
+                }
+                continue;
+            }
+
+            if ($value !== null && $value !== '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -160,6 +196,7 @@ class SearchService
                 'type' => 'receipt',
                 'title' => $receipt->merchant?->name ?? 'Unknown Merchant',
                 'description' => $description,
+                'filename' => $receipt->file?->original_filename ?? $receipt->file?->fileName,
                 'url' => route('receipts.show', $receipt->id),
                 'date' => $this->formatDate($receipt->receipt_date),
                 'total' => $receipt->total_amount ? number_format($receipt->total_amount, 2).' '.$receipt->currency : null,
@@ -173,6 +210,12 @@ class SearchService
                     ];
                 })->all() : [],
                 'file' => $receipt->file ? [
+                    'id' => $receipt->file->id,
+                    'guid' => $receipt->file->guid,
+                    'filename' => $receipt->file->original_filename ?? $receipt->file->fileName,
+                    'extension' => $receipt->file->fileExtension,
+                    'has_image_preview' => (bool) $receipt->file->has_image_preview,
+                    'has_converted_pdf' => ! empty($receipt->file->s3_converted_path),
                     'url' => route('receipts.showImage', $receipt->id),
                     'pdfUrl' => $receipt->file->guid && $receipt->file->fileExtension === 'pdf' ? route('receipts.showPdf', $receipt->id) : null,
                     'previewUrl' => $receipt->file->has_image_preview ? route('receipts.showImage', $receipt->id) : null,
@@ -319,6 +362,12 @@ class SearchService
                 }
 
                 $fileInfo = [
+                    'id' => $document->file->id,
+                    'guid' => $document->file->guid,
+                    'filename' => $document->file->original_filename ?? $document->file->fileName,
+                    'extension' => $extension,
+                    'has_image_preview' => (bool) $document->file->has_image_preview,
+                    'has_converted_pdf' => $hasConvertedPdf,
                     'url' => route('documents.serve', [
                         'guid' => $document->file->guid,
                         'type' => $typeFolder,
@@ -334,6 +383,7 @@ class SearchService
                 'type' => 'document',
                 'title' => $document->title ?? 'Untitled Document',
                 'description' => $description,
+                'filename' => $document->file?->original_filename ?? $document->file?->fileName,
                 'url' => route('documents.show', $document->id),
                 'date' => $this->formatDate($document->document_date ?? $document->created_at),
                 'document_type' => $document->document_type,
@@ -352,7 +402,7 @@ class SearchService
     protected function buildFacets(string $query, array $filters): array
     {
         // Simple facet counts
-        if (empty($query) && empty(array_filter($filters))) {
+        if (trim($query) === '' && ! $this->hasActiveFilters($filters)) {
             return [
                 'total' => 0,
                 'receipts' => 0,

@@ -210,6 +210,35 @@ class StorageService
     }
 
     /**
+     * Read a stream handle for a file in the storage bucket.
+     *
+     * @return resource|null
+     */
+    public function readStream(string $path)
+    {
+        $this->configureDualBuckets();
+
+        try {
+            if (! $this->storageDisk->exists($path)) {
+                Log::warning('[StorageService] File not found for stream read', ['path' => $path]);
+
+                return null;
+            }
+
+            $stream = $this->storageDisk->readStream($path);
+
+            return is_resource($stream) ? $stream : null;
+        } catch (Exception $e) {
+            Log::error('[StorageService] Stream read failed', [
+                'error' => $e->getMessage(),
+                'path' => $path,
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
      * Get a file's content by user and GUID.
      *
      * @param  string  $fileType  'receipt' or 'document'

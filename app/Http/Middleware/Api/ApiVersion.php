@@ -11,7 +11,9 @@ class ApiVersion
     {
         $request->attributes->set('api_version', $version);
 
-        // Set response headers
-        return $next($request)->header('X-API-Version', $version);
+        $response = $next($request);
+        $response->headers->set('X-API-Version', $version);
+
+        return $response;
     }
 }

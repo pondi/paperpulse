@@ -12,6 +12,10 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Illuminate\Validation\ValidationException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -88,16 +92,29 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        $exceptions->render(function (Exception $e, $request) {
-            if ($request->expectsJson() && config('app.debug')) {
-                return response()->json([
-                    'message' => $e->getMessage(),
-                    'exception' => get_class($e),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => collect($e->getTrace())->take(5)->toArray(),
-                ], 500);
+        $exceptions->render(function (Throwable $e, $request) {
+            if (! $request->expectsJson() || ! config('app.debug')) {
+                return null;
             }
+
+            // Preserve default handling for framework exceptions that already have correct HTTP status codes.
+            if (
+                $e instanceof ValidationException ||
+                $e instanceof AuthenticationException ||
+                $e instanceof AuthorizationException ||
+                $e instanceof ModelNotFoundException ||
+                $e instanceof HttpExceptionInterface
+            ) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => $e->getMessage(),
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => collect($e->getTrace())->take(5)->toArray(),
+            ], 500);
         });
 
         $exceptions->render(function (PostTooLargeException $e, $request) {

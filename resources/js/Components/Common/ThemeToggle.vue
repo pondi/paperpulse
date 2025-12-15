@@ -2,18 +2,19 @@
   <button
     type="button"
     :aria-label="`Switch to ${nextLabel} mode`"
-    class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+    class="relative flex rounded-full bg-white dark:bg-gray-800 p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-800 border border-gray-200 dark:border-transparent hover:bg-gray-50 dark:hover:bg-gray-700"
     @click="toggleTheme"
   >
-    <span v-if="mode === 'dark'">🌙</span>
-    <span v-else-if="mode === 'light'">☀️</span>
-    <span v-else>🖥️</span>
-    <span class="hidden sm:inline">{{ label }}</span>
+    <span class="sr-only">Toggle theme</span>
+    <MoonIcon v-if="mode === 'dark'" class="h-6 w-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+    <SunIcon v-else-if="mode === 'light'" class="h-6 w-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+    <ComputerDesktopIcon v-else class="h-6 w-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
   </button>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { MoonIcon, SunIcon, ComputerDesktopIcon } from '@heroicons/vue/24/outline';
 
 // Modes: 'light' | 'dark' | 'system'
 const mode = ref('system');

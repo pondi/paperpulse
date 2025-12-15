@@ -125,7 +125,7 @@ class Receipt extends Model implements Taggable
      */
     public function toSearchableArray()
     {
-        $this->load(['merchant', 'lineItems.vendor']);
+        $this->load(['merchant', 'lineItems.vendor', 'tags']);
 
         $array = [
             // Ensure search engine can filter by user
@@ -142,6 +142,7 @@ class Receipt extends Model implements Taggable
             'merchant_name' => $this->merchant?->name,
             'merchant_address' => $this->merchant?->address,
             'merchant_vat_id' => $this->merchant?->vat_id,
+            'tags' => $this->tags?->pluck('name')->toArray() ?? [],
             'line_items' => $this->lineItems->map(function ($item) {
                 return [
                     'description' => $item->text,
@@ -170,5 +171,21 @@ class Receipt extends Model implements Taggable
         }
 
         return $array;
+    }
+
+    /**
+     * Modify the query used to retrieve models when making all of the models searchable.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public static function makeAllSearchableUsing($query)
+    {
+        // Eager load all relationships needed for toSearchableArray
+        return $query->with([
+            'merchant',
+            'lineItems.vendor',
+            'tags',
+        ]);
     }
 }

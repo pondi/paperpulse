@@ -50,6 +50,59 @@ class SearchService
      */
     protected function searchReceipts(string $query, array $filters): Collection
     {
+        // For multi-word queries, we need to search each word and combine results
+        // to ensure documents matching ANY word are found (OR behavior)
+        $words = array_filter(array_unique(str_word_count($query, 1)));
+
+        // If single word or empty, use standard search
+        if (count($words) <= 1) {
+            return $this->executeReceiptSearch($query, $filters);
+        }
+
+        // Multi-word search: search each word and track matches
+        $resultsById = [];
+
+        // Search for each word and track which words each document matches
+        foreach ($words as $word) {
+            $wordResults = $this->executeReceiptSearch($word, $filters);
+            foreach ($wordResults as $result) {
+                $id = $result['id'];
+                if (!isset($resultsById[$id])) {
+                    $result['_matchedWords'] = 1;
+                    $result['_matchedWordsList'] = [$word];
+                    $result['_maxScore'] = $result['_rankingScore'] ?? 0;
+                    $resultsById[$id] = $result;
+                } else {
+                    // Document matches another word - increment count
+                    $resultsById[$id]['_matchedWords']++;
+                    $resultsById[$id]['_matchedWordsList'][] = $word;
+                    // Keep the highest score from any individual word match
+                    $currentScore = $result['_rankingScore'] ?? 0;
+                    if ($currentScore > $resultsById[$id]['_maxScore']) {
+                        $resultsById[$id]['_maxScore'] = $currentScore;
+                    }
+                }
+            }
+        }
+
+        // Calculate final scores: more matched words = much higher score
+        $allResults = collect($resultsById)->map(function ($result) use ($words) {
+            $matchRatio = $result['_matchedWords'] / count($words);
+            $result['_boostedScore'] = ($result['_matchedWords'] * 100) + ($result['_maxScore'] * 10);
+            return $result;
+        });
+
+        // Sort by: 1) number of matched words (desc), 2) boosted score (desc)
+        return $allResults->sortByDesc(function ($item) {
+            return ($item['_matchedWords'] * 1000) + ($item['_boostedScore'] ?? 0);
+        })->values();
+    }
+
+    /**
+     * Execute a single receipt search query
+     */
+    protected function executeReceiptSearch(string $query, array $filters): Collection
+    {
         $searchQuery = Receipt::search($query)
             ->options([
                 'showRankingScore' => true,
@@ -133,6 +186,58 @@ class SearchService
      * Search documents
      */
     protected function searchDocuments(string $query, array $filters): Collection
+    {
+        // For multi-word queries, search each word and combine results (OR behavior)
+        $words = array_filter(array_unique(str_word_count($query, 1)));
+
+        // If single word or empty, use standard search
+        if (count($words) <= 1) {
+            return $this->executeDocumentSearch($query, $filters);
+        }
+
+        // Multi-word search: search each word and track matches
+        $resultsById = [];
+
+        // Search for each word and track which words each document matches
+        foreach ($words as $word) {
+            $wordResults = $this->executeDocumentSearch($word, $filters);
+            foreach ($wordResults as $result) {
+                $id = $result['id'];
+                if (!isset($resultsById[$id])) {
+                    $result['_matchedWords'] = 1;
+                    $result['_matchedWordsList'] = [$word];
+                    $result['_maxScore'] = $result['_rankingScore'] ?? 0;
+                    $resultsById[$id] = $result;
+                } else {
+                    // Document matches another word - increment count
+                    $resultsById[$id]['_matchedWords']++;
+                    $resultsById[$id]['_matchedWordsList'][] = $word;
+                    // Keep the highest score from any individual word match
+                    $currentScore = $result['_rankingScore'] ?? 0;
+                    if ($currentScore > $resultsById[$id]['_maxScore']) {
+                        $resultsById[$id]['_maxScore'] = $currentScore;
+                    }
+                }
+            }
+        }
+
+        // Calculate final scores: more matched words = much higher score
+        $allResults = collect($resultsById)->map(function ($result) use ($words) {
+            $matchRatio = $result['_matchedWords'] / count($words);
+            $result['_boostedScore'] = ($result['_matchedWords'] * 100) + ($result['_maxScore'] * 10);
+            return $result;
+        });
+
+        // Sort by: 1) number of matched words (desc), 2) boosted score (desc)
+        return $allResults->sortByDesc(function ($item) {
+            return ($item['_matchedWords'] * 1000) + ($item['_boostedScore'] ?? 0);
+        })->values();
+    }
+
+    /**
+     * Execute a single document search query
+     */
+    protected function executeDocumentSearch(string $query, array $filters): Collection
     {
         $searchQuery = Document::search($query)
             ->options([

@@ -135,22 +135,66 @@ return [
         'key' => env('MEILISEARCH_KEY'),
         'index-settings' => [
             'receipts' => [
-                'filterableAttributes' => ['id', 'user_id', 'merchant_id', 'category_id', 'status', 'date', 'vendors'],
-                'sortableAttributes' => ['date', 'total_amount', 'created_at'],
-                'searchableAttributes' => ['merchant_name', 'line_items', 'notes'],
+                'filterableAttributes' => ['id', 'user_id', 'merchant_id', 'category_id', 'receipt_date', 'total_amount', 'currency', 'vendors'],
+                'sortableAttributes' => ['receipt_date', 'total_amount', 'created_at', 'updated_at'],
+                // Order by importance: most important fields first for better ranking
+                'searchableAttributes' => [
+                    'merchant_name',         // Most important - users search by merchant
+                    'tags',                  // Tags for categorization
+                    'summary',               // AI-generated summary
+                    'receipt_description',   // Full description
+                    'note',                  // User notes
+                    'receipt_category',      // Category
+                    'line_items',            // Item descriptions and SKUs
+                    'vendors',               // Vendor names from line items
+                    'merchant_address',      // Merchant location
+                ],
+                'rankingRules' => [
+                    'words',      // Most important: rank by number of matching words
+                    'typo',       // Handle typos gracefully
+                    'proximity',  // Words close together rank higher
+                    'attribute',  // Respect searchableAttributes order
+                    'exactness',  // Exact matches rank highest
+                    'sort',       // User-requested sorting
+                ],
+                'typoTolerance' => [
+                    'enabled' => true,
+                    'minWordSizeForTypos' => [
+                        'oneTypo' => 4,   // Allow 1 typo on 4+ char words (more forgiving)
+                        'twoTypos' => 8,  // Allow 2 typos on 8+ char words
+                    ],
+                ],
             ],
             'documents' => [
-                'filterableAttributes' => ['id', 'user_id', 'category_id', 'file_type', 'document_type', 'language'],
-                'sortableAttributes' => ['created_at', 'updated_at', 'title'],
-                'searchableAttributes' => ['title', 'content', 'summary', 'tags'],
+                'filterableAttributes' => ['id', 'user_id', 'category_id', 'file_type', 'document_type', 'language', 'document_date'],
+                'sortableAttributes' => ['created_at', 'updated_at', 'title', 'document_date'],
+                // Order by importance: most important fields first for better ranking
+                'searchableAttributes' => [
+                    'title',              // Most important - document title
+                    'tags',               // Tags for categorization
+                    'summary',            // AI-generated summary
+                    'description',        // User description
+                    'note',               // User notes
+                    'category_name',      // Category name
+                    'extracted_text',     // Full OCR text content
+                    'entities',           // Extracted entities
+                    'file_name',          // Original filename
+                ],
                 'displayedAttributes' => ['id', 'title', 'summary', 'file_type', 'document_type', 'category_id', 'created_at'],
                 'rankingRules' => [
-                    'words',
-                    'typo',
-                    'proximity',
-                    'attribute',
-                    'sort',
-                    'exactness',
+                    'words',      // Most important: rank by number of matching words
+                    'typo',       // Handle typos gracefully
+                    'proximity',  // Words close together rank higher
+                    'attribute',  // Respect searchableAttributes order
+                    'exactness',  // Exact matches rank highest
+                    'sort',       // User-requested sorting
+                ],
+                'typoTolerance' => [
+                    'enabled' => true,
+                    'minWordSizeForTypos' => [
+                        'oneTypo' => 4,   // Allow 1 typo on 4+ char words
+                        'twoTypos' => 8,  // Allow 2 typos on 8+ char words
+                    ],
                 ],
             ],
             'line_items' => [

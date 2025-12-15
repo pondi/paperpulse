@@ -2,6 +2,7 @@
 
 namespace App\Jobs\PulseDav;
 
+use App\Exceptions\DuplicateFileException;
 use App\Jobs\BaseJob;
 use App\Models\PulseDavFile;
 use App\Services\FileProcessingService;
@@ -100,6 +101,31 @@ class ProcessPulseDavFile extends BaseJob
                 'job_id' => $this->jobID,
                 'pulsedav_file_id' => $this->pulseDavFile->id,
                 'file_id' => $result['fileId'] ?? null,
+            ]);
+
+        } catch (DuplicateFileException $e) {
+            // Handle duplicate file - keep in PulseDav bucket, just mark as completed
+            Log::info('[ProcessPulseDavFile] Duplicate file detected, skipping processing', [
+                'job_id' => $this->jobID,
+                'pulsedav_file_id' => $this->pulseDavFile->id,
+                's3_path' => $this->pulseDavFile->s3_path,
+                'file_hash' => $e->getFileHash(),
+                'existing_file_id' => $e->getExistingFile()->id,
+            ]);
+
+            // Mark as completed and link to existing file
+            // Note: We keep the file in PulseDav bucket for now
+            $this->pulseDavFile->update([
+                'status' => 'completed',
+                'processed_at' => now(),
+                'file_id' => $e->getExistingFile()->id, // Link to the existing file
+            ]);
+
+            Log::info('[ProcessPulseDavFile] Duplicate file marked as completed, file kept in PulseDav', [
+                'job_id' => $this->jobID,
+                'pulsedav_file_id' => $this->pulseDavFile->id,
+                'existing_file_id' => $e->getExistingFile()->id,
+                's3_path' => $this->pulseDavFile->s3_path,
             ]);
 
         } catch (Exception $e) {

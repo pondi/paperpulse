@@ -237,14 +237,14 @@ const applyFilter = (filters: any) => {
                                 />
                             </div>
                             <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                                <div>
+                                <div v-if="documents?.meta">
                                     <p class="text-sm text-gray-700 dark:text-gray-300">
                                         Showing
-                                        <span class="font-medium">{{ documents.meta.from }}</span>
+                                        <span class="font-medium">{{ documents.meta.from || 0 }}</span>
                                         to
-                                        <span class="font-medium">{{ documents.meta.to }}</span>
+                                        <span class="font-medium">{{ documents.meta.to || 0 }}</span>
                                         of
-                                        <span class="font-medium">{{ documents.meta.total }}</span>
+                                        <span class="font-medium">{{ documents.meta.total || 0 }}</span>
                                         results
                                     </p>
                                 </div>

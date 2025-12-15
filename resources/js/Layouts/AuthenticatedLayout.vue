@@ -207,6 +207,9 @@
         :item="previewItem"
         @close="closePreview"
       />
+
+      <!-- Global Toast Notifications -->
+      <Toast />
     </div>
 </template>
 
@@ -244,6 +247,7 @@ import SearchBar from '@/Components/Features/SearchBar.vue';
 import NotificationBell from '@/Components/Features/NotificationBell.vue';
 import ThemeToggle from '@/Components/Common/ThemeToggle.vue';
 import FilePreviewModal from '@/Components/Common/FilePreviewModal.vue';
+import Toast from '@/Components/Common/Toast.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
 const sidebarOpen = ref(false)

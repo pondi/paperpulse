@@ -30,7 +30,7 @@ class FileMetadataService implements FileMetadataContract
     /**
      * Create file record in database from uploaded file
      */
-    public function createFileRecordFromUpload(UploadedFile $uploadedFile, string $fileGuid, string $fileType, int $userId): File
+    public function createFileRecordFromUpload(UploadedFile $uploadedFile, string $fileGuid, string $fileType, int $userId, ?string $fileHash = null): File
     {
         // Extract file timestamps from document metadata
         $filePath = $uploadedFile->getRealPath();
@@ -44,6 +44,7 @@ class FileMetadataService implements FileMetadataContract
         $file->fileType = $uploadedFile->getClientMimeType();
         $file->fileSize = $uploadedFile->getSize();
         $file->guid = $fileGuid;
+        $file->file_hash = $fileHash;
         $file->file_type = $fileType;
         $file->processing_type = $fileType;
         $file->uploaded_at = now();
@@ -54,6 +55,7 @@ class FileMetadataService implements FileMetadataContract
         Log::debug('[FileMetadataService] File record created from upload', [
             'file_id' => $file->id,
             'file_guid' => $fileGuid,
+            'file_hash' => $fileHash,
             'file_type' => $fileType,
             'source' => 'upload',
             'file_created_at' => $dates['created_at']?->toDateTimeString(),
@@ -66,7 +68,7 @@ class FileMetadataService implements FileMetadataContract
     /**
      * Create file record in database from file data array
      */
-    public function createFileRecordFromData(array $fileData, string $fileGuid, string $fileType, int $userId): File
+    public function createFileRecordFromData(array $fileData, string $fileGuid, string $fileType, int $userId, ?string $fileHash = null): File
     {
         $file = new File;
         $file->user_id = $userId;
@@ -75,6 +77,7 @@ class FileMetadataService implements FileMetadataContract
         $file->fileType = $fileData['mimeType'] ?? $this->validationService->getMimeType($fileData['extension']);
         $file->fileSize = $fileData['size'];
         $file->guid = $fileGuid;
+        $file->file_hash = $fileHash;
         $file->file_type = $fileType;
         $file->processing_type = $fileType;
         $file->uploaded_at = now();
@@ -85,6 +88,7 @@ class FileMetadataService implements FileMetadataContract
         Log::debug('[FileMetadataService] File record created from data', [
             'file_id' => $file->id,
             'file_guid' => $fileGuid,
+            'file_hash' => $fileHash,
             'file_type' => $fileType,
             'source' => $fileData['source'] ?? 'unknown',
             'file_created_at' => $file->file_created_at?->toDateTimeString(),

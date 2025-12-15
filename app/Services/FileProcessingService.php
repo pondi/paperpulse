@@ -2,11 +2,15 @@
 
 namespace App\Services;
 
+use App\Contracts\Services\FileDuplicationContract;
 use App\Contracts\Services\FileMetadataContract;
 use App\Contracts\Services\FileStorageContract;
 use App\Contracts\Services\FileValidationContract;
+use App\Exceptions\DuplicateFileException;
 use App\Jobs\Files\ProcessFile;
 use App\Models\File;
+use App\Models\User;
+use App\Notifications\DuplicateFileDetected;
 use App\Services\Files\FileJobChainDispatcher;
 use App\Services\Jobs\JobHistoryCreator;
 use App\Services\Jobs\JobMetadataPersistence;
@@ -33,6 +37,8 @@ class FileProcessingService
 
     protected FileValidationContract $fileValidation;
 
+    protected FileDuplicationContract $fileDuplication;
+
     protected TextExtractionService $textExtractionService;
 
     protected FileJobChainDispatcher $jobChainDispatcher;
@@ -41,12 +47,14 @@ class FileProcessingService
         FileStorageContract $fileStorage,
         FileMetadataContract $fileMetadata,
         FileValidationContract $fileValidation,
+        FileDuplicationContract $fileDuplication,
         TextExtractionService $textExtractionService,
         FileJobChainDispatcher $jobChainDispatcher
     ) {
         $this->fileStorage = $fileStorage;
         $this->fileMetadata = $fileMetadata;
         $this->fileValidation = $fileValidation;
+        $this->fileDuplication = $fileDuplication;
         $this->textExtractionService = $textExtractionService;
         $this->jobChainDispatcher = $jobChainDispatcher;
     }
@@ -86,6 +94,56 @@ class FileProcessingService
                 throw new Exception('File validation failed: '.implode(', ', $validation['errors']));
             }
 
+            // Check for duplicate files BEFORE any storage operations
+            $duplicationCheck = $this->fileDuplication->checkDuplication($fileData['content'], $userId);
+            $fileHash = $duplicationCheck['hash'];
+
+            if ($duplicationCheck['isDuplicate']) {
+                $existingFile = $duplicationCheck['existingFile'];
+
+                Log::warning("[FileProcessing] [{$jobName}] Duplicate file detected, skipping processing", [
+                    'file_name' => $fileData['fileName'],
+                    'file_hash' => $fileHash,
+                    'existing_file_id' => $existingFile->id,
+                    'existing_file_guid' => $existingFile->guid,
+                    'user_id' => $userId,
+                ]);
+
+                // Send notification to user about duplicate file
+                try {
+                    $user = User::find($userId);
+                    if ($user) {
+                        $user->notify(new DuplicateFileDetected(
+                            $fileData['fileName'],
+                            $existingFile,
+                            $fileHash
+                        ));
+
+                        Log::info("[FileProcessing] [{$jobName}] Duplicate file notification sent to user", [
+                            'user_id' => $userId,
+                            'file_name' => $fileData['fileName'],
+                        ]);
+                    }
+                } catch (Exception $notificationError) {
+                    Log::error("[FileProcessing] [{$jobName}] Failed to send duplicate notification", [
+                        'error' => $notificationError->getMessage(),
+                        'user_id' => $userId,
+                    ]);
+                }
+
+                // Throw exception with information about the duplicate
+                throw new DuplicateFileException(
+                    $existingFile,
+                    $fileHash,
+                    "File '{$fileData['fileName']}' is a duplicate of existing file '{$existingFile->fileName}'"
+                );
+            }
+
+            Log::debug("[FileProcessing] [{$jobName}] File hash calculated, no duplicate found", [
+                'file_name' => $fileData['fileName'],
+                'file_hash' => $fileHash,
+            ]);
+
             // Store working file locally (temporary)
             $workingPath = $this->fileStorage->storeWorkingContent(
                 $fileData['content'],
@@ -93,8 +151,8 @@ class FileProcessingService
                 $fileData['extension']
             );
 
-            // Create file record in database
-            $file = $this->fileMetadata->createFileRecordFromData($fileData, $fileGuid, $fileType, $userId);
+            // Create file record in database with hash
+            $file = $this->fileMetadata->createFileRecordFromData($fileData, $fileGuid, $fileType, $userId, $fileHash);
 
             // Store original file to S3 storage bucket (permanent)
             $s3Path = $this->fileStorage->storeToS3(

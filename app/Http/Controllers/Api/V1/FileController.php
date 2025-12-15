@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exceptions\DuplicateFileException;
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Requests\Api\V1\StoreFileRequest;
 use App\Http\Resources\Api\V1\FileResource;
@@ -83,6 +84,18 @@ class FileController extends BaseApiController
                 'file_type' => $fileType,
                 'checksum_sha256' => $checksum,
             ], 'File uploaded for processing', 201);
+        } catch (DuplicateFileException $e) {
+            // Handle duplicate file gracefully - return 409 Conflict
+            Log::info('[API] Duplicate file upload detected', [
+                'user_id' => $request->user()->id,
+                'file_type' => $fileType,
+                'file_hash' => $e->getFileHash(),
+                'existing_file_id' => $e->getExistingFile()->id,
+            ]);
+
+            return $this->error('Duplicate file detected', 409, [
+                'duplicate' => $e->toArray(),
+            ]);
         } catch (Throwable $e) {
             Log::error('[API] File upload failed', [
                 'error' => $e->getMessage(),

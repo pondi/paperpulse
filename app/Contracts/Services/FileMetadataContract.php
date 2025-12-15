@@ -15,12 +15,12 @@ interface FileMetadataContract
     /**
      * Create file record in database from uploaded file
      */
-    public function createFileRecordFromUpload(UploadedFile $uploadedFile, string $fileGuid, string $fileType, int $userId): File;
+    public function createFileRecordFromUpload(UploadedFile $uploadedFile, string $fileGuid, string $fileType, int $userId, ?string $fileHash = null): File;
 
     /**
      * Create file record in database from file data array
      */
-    public function createFileRecordFromData(array $fileData, string $fileGuid, string $fileType, int $userId): File;
+    public function createFileRecordFromData(array $fileData, string $fileGuid, string $fileType, int $userId, ?string $fileHash = null): File;
 
     /**
      * Extract file data from uploaded file

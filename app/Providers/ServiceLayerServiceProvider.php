@@ -2,12 +2,13 @@
 
 namespace App\Providers;
 
-use App\Contracts\Services\FileMetadataContract;
 // File Service Contracts
+use App\Contracts\Services\FileDuplicationContract;
+use App\Contracts\Services\FileMetadataContract;
 use App\Contracts\Services\FileStorageContract;
 use App\Contracts\Services\FileValidationContract;
-use App\Contracts\Services\PulseDavFileContract;
 // File Service Implementations
+use App\Contracts\Services\PulseDavFileContract;
 use App\Contracts\Services\PulseDavFolderContract;
 use App\Contracts\Services\PulseDavImportContract;
 use App\Contracts\Services\PulseDavSyncContract;
@@ -15,15 +16,17 @@ use App\Contracts\Services\PulseDavSyncContract;
 use App\Contracts\Services\ReceiptEnricherContract;
 use App\Contracts\Services\ReceiptParserContract;
 use App\Contracts\Services\ReceiptValidatorContract;
-// Receipt Service Implementations
+// File Service Implementations
 use App\Services\File\FileMetadataService;
 use App\Services\File\FileStorageService;
 use App\Services\File\FileValidationService;
+use App\Services\Files\FileDuplicationService;
 // PulseDav Service Contracts
 use App\Services\PulseDav\PulseDavFileService;
 use App\Services\PulseDav\PulseDavFolderService;
 use App\Services\PulseDav\PulseDavImportService;
 use App\Services\PulseDav\PulseDavSyncService;
+// Receipt Service Implementations
 // PulseDav Service Implementations
 use App\Services\Receipt\ReceiptEnricherService;
 use App\Services\Receipt\ReceiptParserService;
@@ -41,6 +44,7 @@ class ServiceLayerServiceProvider extends ServiceProvider
         $this->app->bind(FileValidationContract::class, FileValidationService::class);
         $this->app->bind(FileStorageContract::class, FileStorageService::class);
         $this->app->bind(FileMetadataContract::class, FileMetadataService::class);
+        $this->app->bind(FileDuplicationContract::class, FileDuplicationService::class);
 
         // Receipt Analysis Services
         $this->app->bind(ReceiptParserContract::class, ReceiptParserService::class);

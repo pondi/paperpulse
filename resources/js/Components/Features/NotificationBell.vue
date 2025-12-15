@@ -101,7 +101,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue';
 import {
   BellIcon,
@@ -119,10 +119,10 @@ const loading = ref(false);
 const notifications = ref([]);
 const unreadCount = ref(0);
 let pollInterval = null;
+const page = usePage();
 
 const __ = (key) => {
-  const messages = window.page?.props?.language?.messages || {};
-  return messages[key] || key;
+  return page.props.language?.messages?.[key] || key;
 };
 
 const loadNotifications = async () => {
@@ -190,7 +190,7 @@ const handleNotificationClick = (notification) => {
   if (!notification.read_at) {
     markAsRead(notification.id);
   }
-  
+
   // Navigate based on notification type
   if (notification.data.type === 'receipt_processed' && notification.data.receipt_id) {
     router.visit(route('receipts.show', notification.data.receipt_id));
@@ -198,6 +198,15 @@ const handleNotificationClick = (notification) => {
     router.visit(route('pulsedav.index'));
   } else if (notification.data.type === 'bulk_operation_completed') {
     router.visit(route('receipts.index'));
+  } else if (notification.data.type === 'duplicate_file_detected') {
+    // Navigate to the existing file's receipt or document
+    if (notification.data.receipt_id) {
+      router.visit(route('receipts.show', notification.data.receipt_id));
+    } else if (notification.data.document_id) {
+      router.visit(route('documents.show', notification.data.document_id));
+    } else {
+      router.visit(route('files.index'));
+    }
   }
 };
 
@@ -207,6 +216,7 @@ const getNotificationIcon = (notification) => {
   if (type === 'receipt_failed') return XCircleIcon;
   if (type === 'bulk_operation_completed') return FolderIcon;
   if (type === 'scanner_files_imported') return CloudArrowDownIcon;
+  if (type === 'duplicate_file_detected') return DocumentDuplicateIcon;
   return BellIcon;
 };
 
@@ -216,6 +226,7 @@ const getNotificationIconClass = (notification) => {
   if (type === 'receipt_failed') return 'text-red-500';
   if (type === 'bulk_operation_completed') return 'text-indigo-500';
   if (type === 'scanner_files_imported') return 'text-blue-500';
+  if (type === 'duplicate_file_detected') return 'text-yellow-500';
   return 'text-gray-400';
 };
 
@@ -225,20 +236,21 @@ const getNotificationTitle = (notification) => {
   if (type === 'receipt_failed') return __('receipt_processing_failed');
   if (type === 'bulk_operation_completed') return __('bulk_operation_completed');
   if (type === 'scanner_files_imported') return __('scanner_files_imported');
+  if (type === 'duplicate_file_detected') return __('duplicate_file_detected');
   return __('notification');
 };
 
 const getNotificationMessage = (notification) => {
   const data = notification.data;
-  
+
   if (data.type === 'receipt_processed') {
     return `${data.merchant_name} - ${formatCurrency(data.amount, data.currency)}`;
   }
-  
+
   if (data.type === 'receipt_failed') {
     return data.error_message || __('processing_error');
   }
-  
+
   if (data.type === 'bulk_operation_completed') {
     const operation = data.operation;
     const count = data.count;
@@ -247,11 +259,15 @@ const getNotificationMessage = (notification) => {
     if (operation === 'export') return `${count} ${__('receipts_exported')}`;
     return `${count} ${__('items_processed')}`;
   }
-  
+
   if (data.type === 'scanner_files_imported') {
     return `${data.file_count} ${__('files_imported')}`;
   }
-  
+
+  if (data.type === 'duplicate_file_detected') {
+    return `"${data.uploaded_file_name}" ${__('already_exists')} - "${data.existing_file_name}"`;
+  }
+
   return '';
 };
 
@@ -269,10 +285,21 @@ const formatTime = (timestamp) => {
 };
 
 const formatCurrency = (amount, currency) => {
-  return new Intl.NumberFormat('nb-NO', {
-    style: 'currency',
-    currency: currency || 'NOK',
-  }).format(amount || 0);
+  // Validate currency code - must be 3 uppercase letters (ISO 4217 format)
+  const validCurrency = currency && typeof currency === 'string' && /^[A-Z]{3}$/i.test(currency)
+    ? currency.toUpperCase()
+    : 'NOK';
+
+  try {
+    return new Intl.NumberFormat('nb-NO', {
+      style: 'currency',
+      currency: validCurrency,
+    }).format(amount || 0);
+  } catch (e) {
+    // Fallback if Intl.NumberFormat still fails
+    console.error('Currency formatting error:', e);
+    return `${validCurrency} ${(amount || 0).toFixed(2)}`;
+  }
 };
 
 onMounted(() => {

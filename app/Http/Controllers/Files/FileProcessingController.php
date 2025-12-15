@@ -74,6 +74,7 @@ class FileProcessingController extends Controller
                 ]
             );
 
+            // Handle errors (validation failures)
             if (! empty($result['errors'])) {
                 $firstError = reset($result['errors']);
                 $firstFile = array_key_first($result['errors']);
@@ -81,8 +82,41 @@ class FileProcessingController extends Controller
                 return back()->with('error', 'File validation failed for "'.$firstFile.'": '.$firstError);
             }
 
-            return redirect()->route($fileType === 'document' ? 'documents.index' : 'receipts.index')
-                ->with('success', count($result['processed']).' file(s) uploaded successfully');
+            // Build success/warning message
+            $messages = [];
+            $processedCount = count($result['processed']);
+            $duplicateCount = count($result['duplicates']);
+
+            if ($processedCount > 0) {
+                $messages[] = $processedCount.' file(s) uploaded successfully';
+            }
+
+            if ($duplicateCount > 0) {
+                $duplicateFiles = array_keys($result['duplicates']);
+                if ($duplicateCount === 1) {
+                    $messages[] = '"'.$duplicateFiles[0].'" was skipped (duplicate file)';
+                } else {
+                    $messages[] = $duplicateCount.' file(s) skipped (duplicates)';
+                }
+            }
+
+            // Determine flash message type and content
+            if ($processedCount > 0 && $duplicateCount > 0) {
+                // Mixed result - show as warning
+                return redirect()->route($fileType === 'document' ? 'documents.index' : 'receipts.index')
+                    ->with('warning', implode('. ', $messages));
+            } elseif ($processedCount > 0) {
+                // All successful
+                return redirect()->route($fileType === 'document' ? 'documents.index' : 'receipts.index')
+                    ->with('success', $messages[0]);
+            } elseif ($duplicateCount > 0) {
+                // All duplicates
+                return redirect()->route($fileType === 'document' ? 'documents.index' : 'receipts.index')
+                    ->with('info', implode('. ', $messages));
+            } else {
+                // No files processed
+                return back()->with('error', 'No files were processed');
+            }
         } catch (Exception $e) {
             Log::error('(FileProcessingController) [store] - Failed to upload document', [
                 'error' => $e->getMessage(),

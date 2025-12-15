@@ -49,6 +49,7 @@ class File extends Model
         'fileType',
         'fileSize',
         'guid',
+        'file_hash',
         'file_type',
         's3_original_path',
         's3_processed_path',

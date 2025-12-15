@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Contracts\Services\FileDuplicationContract;
 use App\Contracts\Services\ReceiptEnricherContract;
 use App\Contracts\Services\ReceiptParserContract;
 use App\Contracts\Services\ReceiptValidatorContract;
@@ -88,6 +89,7 @@ class AppServiceProvider extends ServiceProvider
                 $app->make(FileStorageService::class),
                 $app->make(FileMetadataService::class),
                 $app->make(FileValidationService::class),
+                $app->make(FileDuplicationContract::class),
                 $app->make(TextExtractionService::class),
                 $app->make(FileJobChainDispatcher::class)
             );

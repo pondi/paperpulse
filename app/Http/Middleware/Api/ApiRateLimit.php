@@ -28,9 +28,10 @@ class ApiRateLimit
 
         $response = $next($request);
 
-        return $response->header('X-RateLimit-Limit', $maxAttempts)
-            ->header('X-RateLimit-Remaining',
-                $maxAttempts - $this->limiter->attempts($key));
+        $response->headers->set('X-RateLimit-Limit', (string) $maxAttempts);
+        $response->headers->set('X-RateLimit-Remaining', (string) ($maxAttempts - $this->limiter->attempts($key)));
+
+        return $response;
     }
 
     protected function resolveRequestSignature(Request $request): string

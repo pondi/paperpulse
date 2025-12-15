@@ -24,12 +24,7 @@ class SearchController extends Controller
         // Build filters from request via helper
         $filters = SearchFilterBuilder::build($request);
 
-        // If no query and no filters, return empty results
-        if (empty($query) && empty(array_filter($filters))) {
-            $searchResults = ['results' => [], 'facets' => ['total' => 0, 'receipts' => 0, 'documents' => 0]];
-        } else {
-            $searchResults = $this->searchService->search($query, $filters);
-        }
+        $searchResults = $this->searchService->search($query, $filters);
 
         // Return JSON for non-Inertia AJAX/API requests
         if (! $isInertiaRequest && ($request->wantsJson() || $request->ajax())) {

@@ -134,6 +134,28 @@ class FileMetadataService implements FileMetadataContract
         $filename = basename($incomingPath);
         $extension = pathinfo($filename, PATHINFO_EXTENSION);
 
+        // Write content to temp file to extract metadata dates
+        $tempPath = sys_get_temp_dir().'/pulsedav_'.uniqid().'.'.$extension;
+        file_put_contents($tempPath, $fileContent);
+
+        try {
+            // Extract file timestamps from document metadata
+            $dates = DocumentMetadataExtractor::extractDates($tempPath, $extension);
+
+            Log::debug('[FileMetadataService] Extracted file metadata dates from PulseDav', [
+                'filename' => $filename,
+                'extension' => $extension,
+                'file_created_at' => $dates['created_at']?->toDateTimeString(),
+                'file_modified_at' => $dates['modified_at']?->toDateTimeString(),
+                'source' => 'pulsedav',
+            ]);
+        } finally {
+            // Clean up temp file
+            if (file_exists($tempPath)) {
+                @unlink($tempPath);
+            }
+        }
+
         return [
             'fileName' => $filename,
             'extension' => $extension,
@@ -142,6 +164,8 @@ class FileMetadataService implements FileMetadataContract
             'content' => $fileContent,
             'source' => 'pulsedav',
             'incomingPath' => $incomingPath,
+            'file_created_at' => $dates['created_at'] ?? null,
+            'file_modified_at' => $dates['modified_at'] ?? null,
         ];
     }
 
@@ -153,6 +177,10 @@ class FileMetadataService implements FileMetadataContract
      */
     public function prepareFileMetadata(File $file, string $fileGuid, array $fileData, ?string $workingPath, string $s3Path, string $jobName, array $metadata = []): array
     {
+        // Include file dates in metadata for job processing
+        $metadata['file_created_at'] = $file->file_created_at?->toISOString();
+        $metadata['file_modified_at'] = $file->file_modified_at?->toISOString();
+
         return [
             'fileId' => $file->id,
             'fileGuid' => $fileGuid,
@@ -164,6 +192,8 @@ class FileMetadataService implements FileMetadataContract
             'userId' => $file->user_id,
             's3OriginalPath' => $s3Path,
             'jobName' => $jobName,
+            'fileCreatedAt' => $file->file_created_at?->toISOString(),
+            'fileModifiedAt' => $file->file_modified_at?->toISOString(),
             'metadata' => $metadata,
         ];
     }

@@ -354,4 +354,57 @@ class StorageService
     {
         return $this->incomingDisk;
     }
+
+    /**
+     * Check if a file exists in the storage bucket.
+     */
+    public function existsInStorage(string $path): bool
+    {
+        $this->configureDualBuckets();
+
+        try {
+            return $this->storageDisk->exists($path);
+        } catch (Exception $e) {
+            Log::warning('[StorageService] Storage exists check failed', [
+                'path' => $path,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Move a file within the storage bucket.
+     *
+     * This is used for retagging a file from receipt <-> document while keeping the same GUID.
+     *
+     * @throws Exception
+     */
+    public function moveWithinStorage(string $fromPath, string $toPath): void
+    {
+        $this->configureDualBuckets();
+
+        if ($fromPath === $toPath) {
+            return;
+        }
+
+        if (! $this->storageDisk->exists($fromPath)) {
+            throw new Exception("File not found in storage: {$fromPath}");
+        }
+
+        if ($this->storageDisk->exists($toPath)) {
+            $this->storageDisk->delete($toPath);
+        }
+
+        $moved = $this->storageDisk->move($fromPath, $toPath);
+        if ($moved === false) {
+            throw new Exception("Failed to move file in storage: {$fromPath} -> {$toPath}");
+        }
+
+        Log::info('[StorageService] File moved within storage', [
+            'from' => $fromPath,
+            'to' => $toPath,
+        ]);
+    }
 }

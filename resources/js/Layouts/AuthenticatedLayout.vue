@@ -236,6 +236,7 @@ import {
   ChartBarIcon,
   UserCircleIcon,
   TagIcon,
+  DocumentTextIcon,
 } from '@heroicons/vue/24/outline'
 import { ChevronDownIcon } from '@heroicons/vue/20/solid'
 import ApplicationLogo from '@/Components/Common/ApplicationLogo.vue';
@@ -290,7 +291,8 @@ const navigationItems = [
   { name: 'tags', href: route('tags.index'), icon: TagIcon, current: route().current('tags.*') },
   { name: 'upload', href: route('documents.upload'), icon: CloudArrowUpIcon, current: route().current('documents.upload') },
   { name: 'scanner_imports', href: route('pulsedav.index'), icon: CloudArrowDownIcon, current: route().current('pulsedav.*') },
-  { name: 'job_status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index') }
+  { name: 'job_status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index') },
+  { name: 'file_processing', href: route('files.index'), icon: DocumentTextIcon, current: route().current('files.*') }
 ];
 
 const navigation = navigationItems;

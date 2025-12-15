@@ -13,6 +13,7 @@ return [
     'analytics' => 'Analyser',
     'scanner_imports' => 'Skanner Importer',
     'job_status' => 'Jobbstatus',
+    'file_processing' => 'Filbehandling',
     'dashboard' => 'Oversikt',
     'search' => 'Søk',
     'profile' => 'Profil',

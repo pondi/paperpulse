@@ -76,6 +76,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
 require __DIR__.'/auth.php';
 require __DIR__.'/web/documents.php';
 require __DIR__.'/web/receipts.php';
+require __DIR__.'/web/files.php';
 require __DIR__.'/web/profile.php';
 require __DIR__.'/web/admin.php';
 require __DIR__.'/web/integrations.php';

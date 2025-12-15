@@ -198,7 +198,8 @@ class ProcessDocument extends BaseJob
 
         $this->updateProgress(60);
 
-        $this->createDocumentRecord($file, $note, $extractedText, $jobName);
+        $isReprocessing = $metadata['metadata']['reprocessing'] ?? false;
+        $this->createDocumentRecord($file, $note, $extractedText, $jobName, (bool) $isReprocessing);
     }
 
     private function maybeGenerateDocumentPreview(
@@ -262,12 +263,11 @@ class ProcessDocument extends BaseJob
         return $metadata['s3OriginalPath'];
     }
 
-    private function createDocumentRecord(File $file, ?string $note, string $extractedText, string $jobName): void
+    private function createDocumentRecord(File $file, ?string $note, string $extractedText, string $jobName, bool $isReprocessing): void
     {
         DB::beginTransaction();
 
         try {
-            $isReprocessing = $file->meta['metadata']['reprocessing'] ?? false;
             if ($isReprocessing) {
                 $existingDocument = Document::where('file_id', $file->id)->first();
                 if ($existingDocument) {

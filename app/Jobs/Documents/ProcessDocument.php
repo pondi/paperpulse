@@ -11,6 +11,7 @@ use App\Services\TextExtractionService;
 use App\Services\Workers\WorkerFileManager;
 use DateTime;
 use Exception;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -144,12 +145,13 @@ class ProcessDocument extends BaseJob
         WorkerFileManager $workerFileManager
     ): void {
         // Check if file was converted to PDF by ProcessFile job
-        $s3PathToUse = $metadata['s3ConvertedPath'] ?? $metadata['s3OriginalPath'];
-        $extensionToUse = isset($metadata['s3ConvertedPath']) ? 'pdf' : $metadata['fileExtension'];
+        $s3ArchivePath = $metadata['s3ArchivePath'] ?? $metadata['s3ConvertedPath'] ?? null;
+        $s3PathToUse = $s3ArchivePath ?? $metadata['s3OriginalPath'];
+        $extensionToUse = $s3ArchivePath ? 'pdf' : $metadata['fileExtension'];
 
         Log::debug("[ProcessDocument] [{$jobName}] Downloading file for processing", [
             'job_id' => $this->jobID,
-            'using_converted' => isset($metadata['s3ConvertedPath']),
+            'using_converted' => (bool) $s3ArchivePath,
             's3_path' => $s3PathToUse,
             'extension' => $extensionToUse,
             'original_extension' => $metadata['originalExtension'] ?? $metadata['fileExtension'],
@@ -167,7 +169,7 @@ class ProcessDocument extends BaseJob
             'job_id' => $this->jobID,
             'local_path' => $localFilePath,
             'file_guid' => $metadata['fileGuid'],
-            'using_converted_pdf' => isset($metadata['s3ConvertedPath']),
+            'using_converted_pdf' => (bool) $s3ArchivePath,
         ]);
 
         $this->updateProgress(20);
@@ -186,6 +188,8 @@ class ProcessDocument extends BaseJob
                 $metadata['fileGuid']
             );
         }
+
+        $extractedText = $this->sanitizeTextForDatabase($extractedText) ?? '';
 
         $this->updateProgress(40);
 
@@ -287,10 +291,10 @@ class ProcessDocument extends BaseJob
             $document = new Document;
             $document->file_id = $file->id;
             $document->user_id = $file->user_id;
-            $document->title = $this->extractTitle($extractedText, $file->fileName);
+            $document->title = $this->sanitizeTextForDatabase($this->extractTitle($extractedText, $file->fileName));
             $document->description = $this->extractDescription($extractedText);
-            $document->note = $note;
-            $document->content = $extractedText;
+            $document->note = $this->sanitizeTextForDatabase($note);
+            $document->content = $this->sanitizeTextForDatabase($extractedText) ?? '';
             $document->document_type = $this->detectDocumentType($extractedText, $file->fileName);
             $document->extracted_text = $this->prepareExtractedText($extractedText);
             $document->language = $this->detectLanguage($extractedText);
@@ -350,14 +354,37 @@ class ProcessDocument extends BaseJob
      */
     protected function extractDescription(string $text): ?string
     {
-        // Take first 500 characters as description
-        $description = substr($text, 0, 500);
+        $description = Str::limit($text, 500, '...');
 
-        if (strlen($description) > 50) {
-            return $description.'...';
+        if (Str::length($description) <= 50) {
+            return null;
         }
 
-        return null;
+        return $this->sanitizeTextForDatabase($description);
+    }
+
+    protected function sanitizeTextForDatabase(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return $value;
+        }
+
+        if (function_exists('mb_check_encoding') && mb_check_encoding($value, 'UTF-8')) {
+            return $value;
+        }
+
+        if (function_exists('iconv')) {
+            $converted = @iconv('UTF-8', 'UTF-8//IGNORE', $value);
+            if ($converted !== false) {
+                return $converted;
+            }
+        }
+
+        if (function_exists('mb_convert_encoding')) {
+            return mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+        }
+
+        return $value;
     }
 
     /**

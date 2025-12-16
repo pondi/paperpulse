@@ -260,7 +260,7 @@ class OpenAIProvider implements AIService
                 'messages' => [
                     [
                         'role' => 'system',
-                        'content' => "Extract up to {$maxTags} relevant tags from the document content. Tags should be concise, relevant keywords or phrases.",
+                        'content' => "Extract up to {$maxTags} relevant tags from the document content. Tags should be concise, relevant keywords or phrases. CRITICAL: Generate tags in the SAME language as the document content. If the document is in Norwegian, use Norwegian tags. If in English, use English tags. If in French, use French tags, etc. Always match the document's language.",
                     ],
                     [
                         'role' => 'user',

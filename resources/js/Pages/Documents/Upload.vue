@@ -3,7 +3,7 @@
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Upload files</h2>
+            <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">Upload files</h2>
         </template>
 
         <div class="py-12">
@@ -40,10 +40,10 @@
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-gray-800 px-6 py-24 sm:py-32 rounded-lg shadow-sm">
+                <div class="bg-white dark:bg-zinc-800 px-6 py-24 sm:py-32 rounded-lg shadow-sm">
                     <div class="mx-auto max-w-2xl text-center">
-                        <h2 class="text-4xl font-semibold tracking-tight text-gray-900 dark:text-white sm:text-5xl">Upload Your Documents</h2>
-                        <p class="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-400">
+                        <h2 class="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-5xl">Upload Your Documents</h2>
+                        <p class="mt-6 text-lg leading-8 text-zinc-600 dark:text-zinc-400">
                             Upload your receipts and documents. They will be automatically processed and organized for you.
                         </p>
 
@@ -56,8 +56,8 @@
                                     :class="[
                                         'px-4 py-2 text-sm font-medium rounded-l-lg border',
                                         fileType === 'receipt'
-                                            ? 'bg-indigo-600 text-white border-indigo-600 z-10'
-                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                            ? 'bg-zinc-900 dark:bg-amber-600 text-white border-amber-600 z-10'
+                                            : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-600 hover:bg-amber-50 dark:hover:bg-zinc-700'
                                     ]"
                                 >
                                     <ReceiptRefundIcon class="h-5 w-5 inline-block mr-2" />
@@ -69,8 +69,8 @@
                                     :class="[
                                         'px-4 py-2 text-sm font-medium rounded-r-lg border',
                                         fileType === 'document'
-                                            ? 'bg-indigo-600 text-white border-indigo-600 z-10'
-                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                            ? 'bg-zinc-900 dark:bg-amber-600 text-white border-amber-600 z-10'
+                                            : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-600 hover:bg-amber-50 dark:hover:bg-zinc-700'
                                     ]"
                                 >
                                     <DocumentIcon class="h-5 w-5 inline-block mr-2" />
@@ -81,10 +81,10 @@
                         
                         <form class="mt-6" ref="fileUpload" @submit.prevent="submit">
                             <div 
-                                class="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 dark:border-gray-700 px-6 py-10 relative"
+                                class="mt-2 flex justify-center rounded-lg border border-dashed border-zinc-900/25 dark:border-zinc-700 px-6 py-10 relative"
                                 :class="[
                                     { 'cursor-pointer': selectedFiles.length === 0 },
-                                    { 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20': isDragging }
+                                    { 'border-amber-500 bg-amber-50 dark:bg-zinc-900/20': isDragging }
                                 ]"
                                 @click="selectedFiles.length === 0 && $refs.fileInput?.click()"
                                 v-bind="$attrs"
@@ -104,14 +104,14 @@
 
                                 <!-- Empty State -->
                                 <div v-if="selectedFiles.length === 0" class="text-center">
-                                    <PhotoIcon class="mx-auto h-12 w-12" :class="isDragging ? 'text-indigo-500' : 'text-gray-300'" aria-hidden="true" />
-                                    <div class="mt-4 flex text-sm leading-6 text-gray-600 dark:text-gray-400">
-                                        <span class="relative rounded-md bg-white dark:bg-gray-800 font-semibold text-indigo-600 dark:text-indigo-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2 hover:text-indigo-500">
+                                    <PhotoIcon class="mx-auto h-12 w-12" :class="isDragging ? 'text-amber-500' : 'text-zinc-300'" aria-hidden="true" />
+                                    <div class="mt-4 flex text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                                        <span class="relative rounded-md bg-white dark:bg-zinc-800 font-semibold text-amber-600 dark:text-amber-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-amber-600 focus-within:ring-offset-2 hover:text-amber-500">
                                             Upload files
                                         </span>
                                         <p class="pl-1">or drag and drop</p>
                                     </div>
-                                    <p class="text-xs leading-5 text-gray-600 dark:text-gray-400">
+                                    <p class="text-xs leading-5 text-zinc-600 dark:text-zinc-400">
                                         {{ fileType === 'receipt' 
                                             ? 'PDF, PNG, JPG up to 10MB' 
                                             : 'PDF, PNG, JPG, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV up to 50MB' 
@@ -123,7 +123,7 @@
                                 <div v-else class="w-full">
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div v-for="(file, index) in selectedFiles" :key="file.name + index"
-                                            class="relative flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                            class="relative flex items-center p-4 bg-amber-50 dark:bg-zinc-700 rounded-lg">
                                             <div class="flex-shrink-0 h-16 w-16 relative">
                                                 <img v-if="file.preview" 
                                                     :src="file.preview" 
@@ -131,20 +131,20 @@
                                                     alt="File preview"
                                                 />
                                                 <DocumentIcon v-else 
-                                                    class="h-16 w-16 text-gray-400"
+                                                    class="h-16 w-16 text-zinc-400"
                                                 />
                                             </div>
                                             <div class="ml-4 flex-1 min-w-0">
-                                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                                <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
                                                     {{ file.name }}
                                                 </p>
-                                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                                <p class="text-sm text-zinc-500 dark:text-zinc-400">
                                                     {{ file.size }}
                                                 </p>
                                             </div>
                                             <button 
                                                 @click.prevent="removeFile(index)" 
-                                                class="ml-4 flex-shrink-0 p-1 rounded-full text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+                                                class="ml-4 flex-shrink-0 p-1 rounded-full text-zinc-400 hover:text-zinc-500 dark:hover:text-zinc-300"
                                                 type="button"
                                             >
                                                 <span class="sr-only">Remove file</span>
@@ -155,7 +155,7 @@
 
                                     <!-- Add more files button -->
                                     <div class="flex justify-center mt-4">
-                                        <label class="relative cursor-pointer rounded-md bg-white dark:bg-gray-800 font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">
+                                        <label class="relative cursor-pointer rounded-md bg-white dark:bg-zinc-800 font-semibold text-amber-600 dark:text-amber-400 hover:text-amber-500">
                                             <span>Add more files</span>
                                             <input 
                                                 type="file" 
@@ -169,24 +169,24 @@
                                 </div>
                                 
                                 <!-- Upload Progress -->
-                                <div v-if="isUploading" class="absolute inset-x-0 bottom-0 p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-700">
+                                <div v-if="isUploading" class="absolute inset-x-0 bottom-0 p-4 bg-white dark:bg-zinc-800 border-t dark:border-zinc-700">
                                     <div class="relative pt-1">
                                         <div class="flex mb-2 items-center justify-between">
                                             <div>
-                                                <span class="text-xs font-semibold inline-block text-indigo-600 dark:text-indigo-400">
+                                                <span class="text-xs font-semibold inline-block text-amber-600 dark:text-amber-400">
                                                     Uploading
                                                 </span>
                                             </div>
                                             <div class="text-right">
-                                                <span class="text-xs font-semibold inline-block text-indigo-600 dark:text-indigo-400">
+                                                <span class="text-xs font-semibold inline-block text-amber-600 dark:text-amber-400">
                                                     {{ uploadProgress }}%
                                                 </span>
                                             </div>
                                         </div>
-                                        <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-indigo-200 dark:bg-indigo-900">
+                                        <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-amber-200 dark:bg-zinc-900">
                                             <div
                                                 :style="{ width: uploadProgress + '%' }"
-                                                class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-600 transition-all duration-300"
+                                                class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-zinc-900 dark:bg-amber-600 transition-all duration-300"
                                             ></div>
                                         </div>
                                     </div>
@@ -195,14 +195,14 @@
 
                             <!-- Document Note -->
                             <div class="mt-4 text-left">
-                                <label for="document-note" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label for="document-note" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                                     Document Note
                                 </label>
                                 <textarea
                                     id="document-note"
                                     v-model="note"
                                     rows="3"
-                                    class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    class="mt-1 block w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
                                     placeholder="Optional note about these files..."
                                 />
                             </div>
@@ -212,10 +212,10 @@
                                 <button type="submit"
                                     :disabled="selectedFiles.length === 0 || isUploading"
                                     :class="[
-                                        'rounded-md px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors duration-200',
+                                        'rounded-md px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 transition-colors duration-200',
                                         (selectedFiles.length === 0 || isUploading)
-                                            ? 'bg-gray-400 cursor-not-allowed' 
-                                            : 'bg-indigo-600 hover:bg-indigo-500'
+                                            ? 'bg-zinc-400 cursor-not-allowed' 
+                                            : 'bg-zinc-900 dark:bg-amber-600 hover:bg-zinc-800 dark:hover:bg-amber-700'
                                     ]">
                                     <span v-if="isUploading">Uploading...</span>
                                     <span v-else>Upload {{ selectedFiles.length }} {{ selectedFiles.length === 1 ? 'file' : 'files' }}</span>

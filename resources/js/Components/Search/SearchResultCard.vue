@@ -1,19 +1,19 @@
 <template>
   <div
-    class="group relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden"
+    class="group relative bg-white dark:bg-zinc-800 rounded-lg border border-amber-200 dark:border-zinc-700 hover:border-amber-300 dark:hover:border-amber-600 hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden"
     @click="handleClick"
   >
     <!-- Type indicator stripe -->
     <div
       class="absolute top-0 left-0 w-1 h-full"
-      :class="result.type === 'receipt' ? 'bg-indigo-500' : 'bg-purple-500'"
+      :class="result.type === 'receipt' ? 'bg-amber-500' : 'bg-purple-500'"
     />
 
     <div class="flex gap-4 p-4 pl-5">
       <!-- Thumbnail (if available) -->
       <div
         v-if="result.file?.url"
-        class="flex-shrink-0 w-16 h-20 bg-gray-100 dark:bg-gray-700 rounded overflow-hidden border border-gray-200 dark:border-gray-600"
+        class="flex-shrink-0 w-16 h-20 bg-amber-100 dark:bg-zinc-700 rounded overflow-hidden border border-amber-200 dark:border-zinc-600"
       >
         <img
           :src="result.file.previewUrl || result.file.url"
@@ -24,10 +24,10 @@
       </div>
       <div
         v-else
-        class="flex-shrink-0 w-16 h-20 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center border border-gray-200 dark:border-gray-600"
+        class="flex-shrink-0 w-16 h-20 bg-amber-100 dark:bg-zinc-700 rounded flex items-center justify-center border border-amber-200 dark:border-zinc-600"
       >
-        <ReceiptRefundIcon v-if="result.type === 'receipt'" class="size-8 text-gray-400" />
-        <DocumentIcon v-else class="size-8 text-gray-400" />
+        <ReceiptRefundIcon v-if="result.type === 'receipt'" class="size-8 text-zinc-400" />
+        <DocumentIcon v-else class="size-8 text-zinc-400" />
       </div>
 
       <!-- Content -->
@@ -39,19 +39,19 @@
               <span
                 class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
                 :class="result.type === 'receipt'
-                  ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                  ? 'bg-amber-100 text-amber-700 dark:bg-zinc-900/30 dark:text-amber-300'
                   : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'"
               >
                 <ReceiptRefundIcon v-if="result.type === 'receipt'" class="size-3 mr-1" />
                 <DocumentIcon v-else class="size-3 mr-1" />
                 {{ result.type }}
               </span>
-              <span v-if="result.date" class="text-xs text-gray-500 dark:text-gray-400">
+              <span v-if="result.date" class="text-xs text-zinc-500 dark:text-zinc-400">
                 {{ formatDate(result.date) }}
               </span>
             </div>
             <h3
-              class="text-base font-semibold text-gray-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
+              class="text-base font-semibold text-zinc-900 dark:text-white truncate group-hover:text-amber-600 dark:group-hover:text-amber-400"
               v-html="highlightText(result.title)"
             />
           </div>
@@ -59,7 +59,7 @@
           <!-- Total amount for receipts -->
           <div v-if="result.type === 'receipt' && result.total" class="flex-shrink-0">
             <div class="text-right">
-              <div class="text-lg font-bold text-gray-900 dark:text-white">
+              <div class="text-lg font-bold text-zinc-900 dark:text-white">
                 {{ result.total }}
               </div>
             </div>
@@ -69,7 +69,7 @@
         <!-- Description -->
         <p
           v-if="result.description"
-          class="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-2"
+          class="text-sm text-zinc-600 dark:text-zinc-300 line-clamp-2 mb-2"
           v-html="highlightText(result.description)"
         />
 
@@ -79,13 +79,13 @@
             <span
               v-for="(item, idx) in result.items.slice(0, 3)"
               :key="idx"
-              class="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded px-2 py-0.5"
+              class="inline-flex items-center text-xs text-zinc-600 dark:text-zinc-400 bg-amber-100 dark:bg-zinc-700 rounded px-2 py-0.5"
             >
               {{ item.description }}
             </span>
             <span
               v-if="result.items.length > 3"
-              class="inline-flex items-center text-xs text-gray-500 dark:text-gray-500"
+              class="inline-flex items-center text-xs text-zinc-500 dark:text-zinc-500"
             >
               +{{ result.items.length - 3 }} more
             </span>
@@ -93,7 +93,7 @@
         </div>
 
         <!-- Meta information -->
-        <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+        <div class="flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
           <div v-if="result.category" class="flex items-center gap-1">
             <FolderIcon class="size-3" />
             <span>{{ result.category }}</span>
@@ -118,7 +118,7 @@
       <div class="flex-shrink-0 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           @click.stop="handlePreview"
-          class="p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+          class="p-2 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-100 dark:hover:bg-zinc-700 rounded"
           title="Quick preview"
         >
           <EyeIcon class="size-5" />
@@ -126,7 +126,7 @@
         <a
           :href="result.url"
           @click.stop
-          class="p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+          class="p-2 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-100 dark:hover:bg-zinc-700 rounded"
           title="Open in new tab"
           target="_blank"
         >
@@ -195,6 +195,6 @@ const highlightText = (text) => {
   const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`(${escapedQuery})`, 'gi');
 
-  return text.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-900/50 text-gray-900 dark:text-white px-0.5 rounded">$1</mark>');
+  return text.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-900/50 text-zinc-900 dark:text-white px-0.5 rounded">$1</mark>');
 };
 </script>

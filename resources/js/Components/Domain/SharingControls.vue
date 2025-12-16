@@ -5,7 +5,7 @@
             v-if="!readonly"
             @click="showShareModal = true"
             type="button"
-            class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            class="inline-flex items-center px-3 py-2 border border-zinc-300 dark:border-zinc-600 shadow-sm text-sm leading-4 font-medium rounded-md text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-700 hover:bg-amber-50 dark:hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
         >
             <ShareIcon class="h-5 w-5 mr-2" />
             Share
@@ -13,24 +13,24 @@
 
         <!-- Current Shares List -->
         <div v-if="currentShares.length > 0" class="mt-4">
-            <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+            <h4 class="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">
                 Shared with
             </h4>
             <div class="space-y-2">
                 <div
                     v-for="share in currentShares"
                     :key="share.id"
-                    class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                    class="flex items-center justify-between p-3 bg-amber-50 dark:bg-zinc-700 rounded-lg"
                 >
                     <div class="flex items-center">
                         <div class="flex-shrink-0">
-                            <UserCircleIcon class="h-8 w-8 text-gray-400" />
+                            <UserCircleIcon class="h-8 w-8 text-zinc-400" />
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                                 {{ share.shared_with_user.name }}
                             </p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400">
                                 {{ share.shared_with_user.email }}
                             </p>
                         </div>
@@ -43,7 +43,7 @@
                             v-if="!readonly && canRemoveShare"
                             @click="removeShare(share)"
                             type="button"
-                            class="text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                            class="text-zinc-400 hover:text-red-600 dark:hover:text-red-400"
                         >
                             <XMarkIcon class="h-5 w-5" />
                         </button>
@@ -55,7 +55,7 @@
         <!-- Share Modal -->
         <Modal :show="showShareModal" @close="closeShareModal">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
                     Share {{ fileType === 'document' ? 'Document' : 'Receipt' }}
                 </h2>
 
@@ -81,7 +81,7 @@
                         <select
                             id="share-permission"
                             v-model="shareForm.permission"
-                            class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600"
+                            class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 focus:border-amber-500 dark:focus:border-amber-600 focus:ring-amber-500 dark:focus:ring-amber-600"
                         >
                             <option value="view">View Only</option>
                             <option value="edit" v-if="allowEditPermission">Edit</option>
@@ -99,14 +99,14 @@
                             placeholder="Select expiration date..."
                             :error="shareForm.errors.expires_at"
                         />
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                             Leave blank for no expiration
                         </p>
                     </div>
 
                     <!-- Share Link Section -->
-                    <div v-if="enableShareLinks" class="mt-6 pt-6 border-t dark:border-gray-700">
-                        <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+                    <div v-if="enableShareLinks" class="mt-6 pt-6 border-t dark:border-zinc-700">
+                        <h3 class="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-3">
                             Share Link
                         </h3>
                         <div v-if="shareLink" class="flex items-center gap-2">
@@ -227,8 +227,8 @@ const minExpirationDate = computed(() => {
 // Get permission badge classes
 const getPermissionClasses = (permission) => {
     return permission === 'edit'
-        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-200'
-        : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-200';
+        ? 'bg-amber-100 text-amber-800 dark:bg-orange-900/20 dark:text-amber-200'
+        : 'bg-amber-100 text-zinc-900 dark:bg-zinc-900/20 dark:text-zinc-200';
 };
 
 // Share with user

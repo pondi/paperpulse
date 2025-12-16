@@ -2,7 +2,7 @@
     <div class="tag-manager">
         <!-- Tag Input with Autocomplete -->
         <div class="relative">
-            <div class="flex flex-wrap gap-2 p-2 border border-gray-300 dark:border-gray-600 rounded-md min-h-[42px] bg-white dark:bg-gray-700">
+            <div class="flex flex-wrap gap-2 p-2 border border-zinc-300 dark:border-zinc-600 rounded-md min-h-[42px] bg-white dark:bg-zinc-700">
                 <!-- Selected Tags -->
                 <TransitionGroup name="tag" tag="div" class="flex flex-wrap gap-2">
                     <span
@@ -35,7 +35,7 @@
                     @blur="hideSuggestions"
                     type="text"
                     :placeholder="modelValue.length === 0 ? placeholder : ''"
-                    class="flex-1 min-w-[100px] border-0 bg-transparent p-0 focus:ring-0 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                    class="flex-1 min-w-[100px] border-0 bg-transparent p-0 focus:ring-0 text-sm text-zinc-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-gray-500"
                     :disabled="disabled"
                 />
             </div>
@@ -44,15 +44,15 @@
             <Transition name="dropdown">
                 <div
                     v-if="showSuggestions && filteredTags.length > 0 && !readonly"
-                    class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg rounded-md py-1 text-sm ring-1 ring-black ring-opacity-5 max-h-60 overflow-auto"
+                    class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-700 shadow-lg rounded-md py-1 text-sm ring-1 ring-black ring-opacity-5 max-h-60 overflow-auto"
                 >
                     <button
                         v-for="(tag, index) in filteredTags"
                         :key="tag.id || 'new'"
                         @mousedown.prevent="selectTag(tag)"
                         type="button"
-                        class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 focus:bg-gray-100 dark:focus:bg-gray-600 focus:outline-none"
-                        :class="{ 'bg-gray-100 dark:bg-gray-600': index === selectedIndex }"
+                        class="w-full text-left px-4 py-2 hover:bg-amber-100 dark:hover:bg-amber-600 focus:bg-amber-100 dark:focus:bg-zinc-600 focus:outline-none"
+                        :class="{ 'bg-amber-100 dark:bg-zinc-600': index === selectedIndex }"
                     >
                         <span class="flex items-center justify-between">
                             <span class="flex items-center">
@@ -61,9 +61,9 @@
                                     :style="{ backgroundColor: tag.color }"
                                 ></span>
                                 {{ tag.name }}
-                                <span v-if="tag.isNew" class="ml-2 text-xs text-gray-500 dark:text-gray-400">(create new)</span>
+                                <span v-if="tag.isNew" class="ml-2 text-xs text-zinc-500 dark:text-zinc-400">(create new)</span>
                             </span>
-                            <span v-if="tag.usage_count !== undefined" class="text-xs text-gray-500 dark:text-gray-400">
+                            <span v-if="tag.usage_count !== undefined" class="text-xs text-zinc-500 dark:text-zinc-400">
                                 {{ tag.usage_count }} {{ tag.usage_count === 1 ? 'use' : 'uses' }}
                             </span>
                         </span>
@@ -75,7 +75,7 @@
         <!-- Create/Edit Tag Modal -->
         <Modal :show="showTagModal" @close="closeTagModal">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
                     {{ editingTag ? 'Edit Tag' : 'Create New Tag' }}
                 </h2>
 
@@ -101,7 +101,7 @@
                             type="color"
                             class="h-10 w-20 rounded cursor-pointer"
                         />
-                        <span class="text-sm text-gray-600 dark:text-gray-400">{{ tagForm.color }}</span>
+                        <span class="text-sm text-zinc-600 dark:text-zinc-400">{{ tagForm.color }}</span>
                     </div>
                     <InputError :message="tagForm.errors.color" class="mt-2" />
                 </div>

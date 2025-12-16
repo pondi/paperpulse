@@ -1,6 +1,6 @@
 <template>
     <div class="relative">
-        <div class="flex flex-wrap gap-2 p-2 border rounded-md border-gray-300 min-h-[42px] cursor-text" @click="focusInput">
+        <div class="flex flex-wrap gap-2 p-2 border rounded-md border-zinc-300 min-h-[42px] cursor-text" @click="focusInput">
             <span
                 v-for="tag in selectedTags"
                 :key="tag.id"
@@ -10,7 +10,7 @@
                 {{ tag.name }}
                 <button
                     @click.stop="removeTag(tag.id)"
-                    class="ml-1 hover:text-gray-700"
+                    class="ml-1 hover:text-zinc-700"
                 >
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -34,13 +34,13 @@
         <!-- Dropdown -->
         <div
             v-if="showDropdown && (filteredTags.length > 0 || searchQuery)"
-            class="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto"
+            class="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg border border-amber-200 max-h-48 overflow-y-auto"
         >
             <div
                 v-for="tag in filteredTags"
                 :key="tag.id"
                 @mousedown.prevent="selectTag(tag)"
-                class="px-3 py-2 cursor-pointer hover:bg-gray-50 flex items-center justify-between"
+                class="px-3 py-2 cursor-pointer hover:bg-amber-50 flex items-center justify-between"
             >
                 <span class="flex items-center">
                     <span
@@ -57,9 +57,9 @@
             <div
                 v-if="searchQuery && !exactMatch"
                 @mousedown.prevent="createNewTag"
-                class="px-3 py-2 cursor-pointer hover:bg-gray-50 border-t border-gray-200"
+                class="px-3 py-2 cursor-pointer hover:bg-amber-50 border-t border-amber-200"
             >
-                <span class="text-sm text-gray-600">Create new tag:</span>
+                <span class="text-sm text-zinc-600">Create new tag:</span>
                 <span class="ml-1 font-medium">{{ searchQuery }}</span>
             </div>
         </div>

@@ -1,6 +1,6 @@
 <template>
     <div
-        class="flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer border border-transparent hover:border-gray-200"
+        class="flex items-center p-3 hover:bg-amber-50 dark:hover:bg-zinc-700 rounded-lg cursor-pointer border border-transparent hover:border-amber-200 dark:hover:border-zinc-600"
         @click="handleClick"
     >
         <input
@@ -8,7 +8,7 @@
             type="checkbox"
             :checked="selected"
             @click.stop="$emit('toggle-selection', item)"
-            class="mr-3 rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            class="mr-3 rounded border-zinc-300 text-amber-600 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50"
         />
         
         <div class="flex-1 flex items-center">
@@ -17,7 +17,7 @@
                 <svg v-if="item.is_folder" class="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                 </svg>
-                <svg v-else class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-else class="w-6 h-6 text-zinc-400 dark:text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
             </div>
@@ -25,7 +25,7 @@
             <!-- Name and tags -->
             <div class="flex-1">
                 <div class="flex items-center">
-                    <span class="text-sm font-medium text-gray-900">{{ item.name || item.filename }}</span>
+                    <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ item.name || item.filename }}</span>
                     <div v-if="item.folder_tags && item.folder_tags.length > 0" class="ml-2 flex gap-1">
                         <span
                             v-for="tag in item.folder_tags"
@@ -37,13 +37,13 @@
                         </span>
                     </div>
                 </div>
-                <div v-if="item.folder_path" class="text-xs text-gray-500 mt-0.5">
+                <div v-if="item.folder_path" class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                     {{ item.folder_path }}
                 </div>
             </div>
             
             <!-- Metadata -->
-            <div class="flex items-center space-x-4 text-sm text-gray-500">
+            <div class="flex items-center space-x-4 text-sm text-zinc-500 dark:text-zinc-400">
                 <span v-if="!item.is_folder">{{ formatFileSize(item.size) }}</span>
                 <span v-if="item.uploaded_at">{{ formatDate(item.uploaded_at) }}</span>
                 <span v-if="item.status && !item.is_folder" :class="getStatusClass(item.status)" class="px-2 py-0.5 rounded text-xs font-medium">
@@ -55,7 +55,7 @@
             <div v-if="item.is_folder" class="ml-4">
                 <button
                     @click.stop="showTagModal = true"
-                    class="text-gray-400 hover:text-gray-600"
+                    class="text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
                     title="Manage folder tags"
                 >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,12 +73,12 @@
         </template>
         
         <div class="space-y-4">
-            <p class="text-sm text-gray-600">
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">
                 Tags applied to this folder will be inherited by all files within it during import.
             </p>
-            
+
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Folder Tags</label>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Folder Tags</label>
                 <TagSelector
                     v-model="folderTagIds"
                     :tags="availableTags"
@@ -89,13 +89,13 @@
             <div class="flex justify-end space-x-2 pt-4">
                 <button
                     @click="showTagModal = false"
-                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                    class="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded-md hover:bg-amber-50 dark:hover:bg-amber-600"
                 >
                     Cancel
                 </button>
                 <button
                     @click="saveFolderTags"
-                    class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700"
+                    class="px-4 py-2 text-sm font-medium text-white bg-zinc-900 border border-transparent rounded-md hover:bg-zinc-800"
                 >
                     Save Tags
                 </button>
@@ -162,11 +162,11 @@ const formatDate = (dateString) => {
 
 const getStatusClass = (status) => {
     const classes = {
-        pending: 'bg-yellow-100 text-yellow-800',
-        processing: 'bg-blue-100 text-blue-800',
-        completed: 'bg-green-100 text-green-800',
-        failed: 'bg-red-100 text-red-800',
+        pending: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200',
+        processing: 'bg-amber-100 dark:bg-orange-900/50 text-amber-800 dark:text-amber-200',
+        completed: 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200',
+        failed: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200',
     };
-    return classes[status] || 'bg-gray-100 text-gray-800';
+    return classes[status] || 'bg-amber-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200';
 };
 </script>

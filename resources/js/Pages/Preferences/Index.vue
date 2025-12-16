@@ -3,19 +3,19 @@
   
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+      <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
         {{ __('preferences') }}
       </h2>
     </template>
 
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-      <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+      <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
         <section>
           <header>
-            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+            <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
               {{ __('general_preferences') }}
             </h2>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               {{ __('general_preferences_description') }}
             </p>
           </header>
@@ -27,7 +27,7 @@
                 <select
                   id="language"
                   v-model="form.language"
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600"
+                  class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
                 >
                   <option v-for="(label, value) in options.languages" :key="value" :value="value">
                     {{ label }}
@@ -41,7 +41,7 @@
                 <select
                   id="timezone"
                   v-model="form.timezone"
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600"
+                  class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
                 >
                   <option v-for="timezone in timezones" :key="timezone.value" :value="timezone.value">
                     {{ timezone.label }}
@@ -55,7 +55,7 @@
                 <select
                   id="date_format"
                   v-model="form.date_format"
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600"
+                  class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
                 >
                   <option v-for="(label, value) in options.date_formats" :key="value" :value="value">
                     {{ label }}
@@ -69,7 +69,7 @@
                 <select
                   id="currency"
                   v-model="form.currency"
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600"
+                  class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
                 >
                   <option v-for="(label, value) in options.currencies" :key="value" :value="value">
                     {{ label }}
@@ -82,13 +82,13 @@
         </section>
       </div>
 
-      <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+      <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
         <section>
           <header>
-            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+            <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
               {{ __('receipt_processing') }}
             </h2>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               {{ __('receipt_processing_description') }}
             </p>
           </header>
@@ -96,27 +96,27 @@
           <div class="mt-6 space-y-4">
             <div class="flex items-center justify-between">
               <label for="auto_categorize" class="flex flex-col">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('auto_categorize') }}</span>
-                <span class="text-sm text-gray-500">{{ __('auto_categorize_description') }}</span>
+                <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ __('auto_categorize') }}</span>
+                <span class="text-sm text-zinc-500">{{ __('auto_categorize_description') }}</span>
               </label>
               <input
                 id="auto_categorize"
                 v-model="form.auto_categorize"
                 type="checkbox"
-                class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
               />
             </div>
 
             <div class="flex items-center justify-between">
               <label for="extract_line_items" class="flex flex-col">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('extract_line_items') }}</span>
-                <span class="text-sm text-gray-500">{{ __('extract_line_items_description') }}</span>
+                <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ __('extract_line_items') }}</span>
+                <span class="text-sm text-zinc-500">{{ __('extract_line_items_description') }}</span>
               </label>
               <input
                 id="extract_line_items"
                 v-model="form.extract_line_items"
                 type="checkbox"
-                class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
               />
             </div>
 
@@ -125,7 +125,7 @@
               <select
                 id="default_category_id"
                 v-model="form.default_category_id"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600"
+                class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
               >
                 <option :value="null">{{ __('no_default_category') }}</option>
                 <option v-for="category in categories" :key="category.id" :value="category.id">
@@ -138,133 +138,133 @@
         </section>
       </div>
 
-      <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+      <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
         <section>
           <header>
-            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+            <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
               {{ __('notification_preferences') }}
             </h2>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               {{ __('notification_preferences_description') }}
             </p>
           </header>
 
           <div class="mt-6 space-y-6">
             <div class="space-y-4">
-              <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('in_app_notifications') }}</h3>
+              <h3 class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ __('in_app_notifications') }}</h3>
               
               <div class="space-y-3">
                 <div class="flex items-center justify-between">
-                  <label for="notify_processing_complete" class="text-sm text-gray-700 dark:text-gray-300">
+                  <label for="notify_processing_complete" class="text-sm text-zinc-700 dark:text-zinc-300">
                     {{ __('notify_processing_complete') }}
                   </label>
                   <input
                     id="notify_processing_complete"
                     v-model="form.notify_processing_complete"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
                 <div class="flex items-center justify-between">
-                  <label for="notify_processing_failed" class="text-sm text-gray-700 dark:text-gray-300">
+                  <label for="notify_processing_failed" class="text-sm text-zinc-700 dark:text-zinc-300">
                     {{ __('notify_processing_failed') }}
                   </label>
                   <input
                     id="notify_processing_failed"
                     v-model="form.notify_processing_failed"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
                 <div class="flex items-center justify-between">
-                  <label for="notify_bulk_complete" class="text-sm text-gray-700 dark:text-gray-300">
+                  <label for="notify_bulk_complete" class="text-sm text-zinc-700 dark:text-zinc-300">
                     {{ __('notify_bulk_complete') }}
                   </label>
                   <input
                     id="notify_bulk_complete"
                     v-model="form.notify_bulk_complete"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
                 <div class="flex items-center justify-between">
-                  <label for="notify_scanner_import" class="text-sm text-gray-700 dark:text-gray-300">
+                  <label for="notify_scanner_import" class="text-sm text-zinc-700 dark:text-zinc-300">
                     {{ __('notify_scanner_import') }}
                   </label>
                   <input
                     id="notify_scanner_import"
                     v-model="form.notify_scanner_import"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
               </div>
             </div>
 
-            <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('email_notifications') }}</h3>
+            <div class="space-y-4 pt-4 border-t border-amber-200 dark:border-zinc-700">
+              <h3 class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ __('email_notifications') }}</h3>
               
               <div class="space-y-3">
                 <div class="flex items-center justify-between">
-                  <label for="email_notify_processing_complete" class="text-sm text-gray-700 dark:text-gray-300">
+                  <label for="email_notify_processing_complete" class="text-sm text-zinc-700 dark:text-zinc-300">
                     {{ __('email_processing_complete') }}
                   </label>
                   <input
                     id="email_notify_processing_complete"
                     v-model="form.email_notify_processing_complete"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
                 <div class="flex items-center justify-between">
-                  <label for="email_notify_processing_failed" class="text-sm text-gray-700 dark:text-gray-300">
+                  <label for="email_notify_processing_failed" class="text-sm text-zinc-700 dark:text-zinc-300">
                     {{ __('email_processing_failed') }}
                   </label>
                   <input
                     id="email_notify_processing_failed"
                     v-model="form.email_notify_processing_failed"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
                 <div class="flex items-center justify-between">
-                  <label for="email_notify_bulk_complete" class="text-sm text-gray-700 dark:text-gray-300">
+                  <label for="email_notify_bulk_complete" class="text-sm text-zinc-700 dark:text-zinc-300">
                     {{ __('email_bulk_complete') }}
                   </label>
                   <input
                     id="email_notify_bulk_complete"
                     v-model="form.email_notify_bulk_complete"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
                 <div class="flex items-center justify-between">
-                  <label for="email_notify_scanner_import" class="text-sm text-gray-700 dark:text-gray-300">
+                  <label for="email_notify_scanner_import" class="text-sm text-zinc-700 dark:text-zinc-300">
                     {{ __('email_scanner_import') }}
                   </label>
                   <input
                     id="email_notify_scanner_import"
                     v-model="form.email_notify_scanner_import"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
                 <div class="flex items-center justify-between">
-                  <label for="email_weekly_summary" class="text-sm text-gray-700 dark:text-gray-300">
+                  <label for="email_weekly_summary" class="text-sm text-zinc-700 dark:text-zinc-300">
                     {{ __('email_weekly_summary') }}
                   </label>
                   <input
                     id="email_weekly_summary"
                     v-model="form.email_weekly_summary"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
@@ -273,7 +273,7 @@
                   <select
                     id="weekly_summary_day"
                     v-model="form.weekly_summary_day"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600"
+                    class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
                   >
                     <option v-for="(label, value) in options.weekly_summary_days" :key="value" :value="value">
                       {{ label }}
@@ -287,13 +287,13 @@
         </section>
       </div>
 
-      <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+      <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
         <section>
           <header>
-            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+            <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
               {{ __('display_preferences') }}
             </h2>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               {{ __('display_preferences_description') }}
             </p>
           </header>
@@ -304,7 +304,7 @@
               <select
                 id="receipt_list_view"
                 v-model="form.receipt_list_view"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600"
+                class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
               >
                 <option v-for="(label, value) in options.list_views" :key="value" :value="value">
                   {{ label }}
@@ -318,7 +318,7 @@
               <select
                 id="receipts_per_page"
                 v-model="form.receipts_per_page"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600"
+                class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
               >
                 <option v-for="value in options.per_page_options" :key="value" :value="value">
                   {{ value }}
@@ -332,7 +332,7 @@
               <select
                 id="default_sort"
                 v-model="form.default_sort"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600"
+                class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
               >
                 <option v-for="(label, value) in options.sort_options" :key="value" :value="value">
                   {{ label }}
@@ -344,13 +344,13 @@
         </section>
       </div>
 
-      <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+      <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
         <section>
           <header>
-            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+            <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
               {{ __('scanner_preferences') }}
             </h2>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               {{ __('scanner_preferences_description') }}
             </p>
           </header>
@@ -358,27 +358,27 @@
           <div class="mt-6 space-y-4">
             <div class="flex items-center justify-between">
               <label for="auto_process_scanner_uploads" class="flex flex-col">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('auto_process_scanner_uploads') }}</span>
-                <span class="text-sm text-gray-500">{{ __('auto_process_scanner_uploads_description') }}</span>
+                <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ __('auto_process_scanner_uploads') }}</span>
+                <span class="text-sm text-zinc-500">{{ __('auto_process_scanner_uploads_description') }}</span>
               </label>
               <input
                 id="auto_process_scanner_uploads"
                 v-model="form.auto_process_scanner_uploads"
                 type="checkbox"
-                class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
               />
             </div>
 
             <div class="flex items-center justify-between">
               <label for="delete_after_processing" class="flex flex-col">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('delete_after_processing') }}</span>
-                <span class="text-sm text-gray-500">{{ __('delete_after_processing_description') }}</span>
+                <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ __('delete_after_processing') }}</span>
+                <span class="text-sm text-zinc-500">{{ __('delete_after_processing_description') }}</span>
               </label>
               <input
                 id="delete_after_processing"
                 v-model="form.delete_after_processing"
                 type="checkbox"
-                class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
               />
             </div>
 
@@ -390,21 +390,21 @@
                 type="number"
                 min="1"
                 max="365"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600"
+                class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
               />
               <InputError class="mt-2" :message="form.errors.file_retention_days" />
             </div>
 
             <div class="flex items-center justify-between">
               <label for="pulsedav_realtime_sync" class="flex flex-col">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('pulsedav_realtime_sync') }}</span>
-                <span class="text-sm text-gray-500">{{ __('pulsedav_realtime_sync_description') }}</span>
+                <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ __('pulsedav_realtime_sync') }}</span>
+                <span class="text-sm text-zinc-500">{{ __('pulsedav_realtime_sync_description') }}</span>
               </label>
               <input
                 id="pulsedav_realtime_sync"
                 v-model="form.pulsedav_realtime_sync"
                 type="checkbox"
-                class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
               />
             </div>
           </div>
@@ -426,7 +426,7 @@
           leave-active-class="transition ease-in-out"
           leave-to-class="opacity-0"
         >
-          <p v-if="form.recentlySuccessful" class="text-sm text-gray-600 dark:text-gray-400">
+          <p v-if="form.recentlySuccessful" class="text-sm text-zinc-600 dark:text-zinc-400">
             {{ __('saved') }}
           </p>
         </Transition>

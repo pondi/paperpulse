@@ -6,8 +6,8 @@
       @click="$emit('update:page', pageNum)"
       :class="{
         'px-4 py-2 rounded-md border': true,
-        'bg-indigo-600 text-white hover:bg-indigo-500 border-indigo-600': pageNum === pagination.current_page,
-        'bg-white text-gray-700 hover:bg-gray-50 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:border-gray-600': pageNum !== pagination.current_page
+        'bg-zinc-900 dark:bg-amber-600 text-white hover:bg-zinc-800 dark:hover:bg-amber-700 border-amber-600': pageNum === pagination.current_page,
+        'bg-white text-zinc-700 hover:bg-amber-50 border-zinc-300 dark:bg-zinc-700 dark:text-zinc-300 dark:hover:bg-amber-600 dark:border-zinc-600': pageNum !== pagination.current_page
       }"
     >
       {{ pageNum }}

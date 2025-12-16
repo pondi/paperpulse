@@ -12,9 +12,9 @@
                 @click="toggleCalendar"
                 @keydown.escape="closeCalendar"
                 @keydown.enter.prevent="toggleCalendar"
-                class="block w-full rounded-md border-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm cursor-pointer"
+                class="block w-full rounded-md border-0 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600 sm:text-sm cursor-pointer transition-colors duration-200"
                 :class="[
-                    error ? 'ring-red-500 dark:ring-red-500' : 'ring-gray-300 dark:ring-gray-600',
+                    error ? 'ring-red-500 dark:ring-red-500' : 'ring-zinc-300 dark:ring-zinc-600',
                     disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
                 ]"
                 :disabled="disabled"
@@ -22,7 +22,7 @@
             
             <!-- Calendar Icon -->
             <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <CalendarDaysIcon class="h-5 w-5 text-gray-400" />
+                <CalendarDaysIcon class="h-5 w-5 text-zinc-400" />
             </div>
 
             <!-- Clear Button (when date is selected) -->
@@ -30,7 +30,7 @@
                 v-if="modelValue && !disabled"
                 @click.stop="clearDate"
                 type="button"
-                class="absolute inset-y-0 right-8 flex items-center pr-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                class="absolute inset-y-0 right-8 flex items-center pr-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors duration-200"
             >
                 <XMarkIcon class="h-4 w-4" />
             </button>
@@ -49,15 +49,15 @@
                 <div
                     v-if="showCalendar"
                     ref="calendar"
-                    class="fixed z-[9999] w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
+                    class="fixed z-[9999] w-80 bg-white dark:bg-zinc-800 rounded-lg shadow-xl border-2 border-amber-200 dark:border-zinc-700"
                     :style="calendarPosition"
                 >
                 <!-- Calendar Header -->
-                <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between p-4 border-b-2 border-amber-200 dark:border-zinc-700">
                     <button
                         @click="previousMonth"
                         type="button"
-                        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                        class="p-2 hover:bg-amber-50 dark:hover:bg-zinc-700 rounded-lg transition-colors duration-200"
                     >
                         <ChevronLeftIcon class="h-5 w-5" />
                     </button>
@@ -65,7 +65,7 @@
                     <div class="flex items-center space-x-2">
                         <select
                             v-model="currentMonth"
-                            class="text-sm font-medium bg-transparent border-none focus:ring-0 text-gray-900 dark:text-gray-100"
+                            class="text-sm font-bold bg-transparent border-none focus:ring-0 text-zinc-900 dark:text-zinc-100"
                         >
                             <option v-for="(month, index) in monthNames" :key="index" :value="index">
                                 {{ month }}
@@ -74,7 +74,7 @@
                         
                         <select
                             v-model="currentYear"
-                            class="text-sm font-medium bg-transparent border-none focus:ring-0 text-gray-900 dark:text-gray-100"
+                            class="text-sm font-bold bg-transparent border-none focus:ring-0 text-zinc-900 dark:text-zinc-100"
                         >
                             <option v-for="year in yearRange" :key="year" :value="year">
                                 {{ year }}
@@ -85,7 +85,7 @@
                     <button
                         @click="nextMonth"
                         type="button"
-                        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                        class="p-2 hover:bg-amber-50 dark:hover:bg-zinc-700 rounded-lg transition-colors duration-200"
                     >
                         <ChevronRightIcon class="h-5 w-5" />
                     </button>
@@ -98,7 +98,7 @@
                         <div
                             v-for="day in dayNames"
                             :key="day"
-                            class="h-8 flex items-center justify-center text-xs font-medium text-gray-500 dark:text-gray-400"
+                            class="h-8 flex items-center justify-center text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase"
                         >
                             {{ day }}
                         </div>
@@ -114,13 +114,13 @@
                             class="h-8 flex items-center justify-center text-sm rounded-md"
                             :class="[
                                 date.isCurrentMonth 
-                                    ? 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                    : 'text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50',
-                                date.isSelected 
-                                    ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                                    ? 'text-zinc-900 dark:text-zinc-100 hover:bg-amber-50 dark:hover:bg-zinc-700'
+                                    : 'text-zinc-400 dark:text-zinc-500 hover:bg-amber-50 dark:hover:bg-zinc-700/50',
+                                date.isSelected
+                                    ? 'bg-amber-600 text-white hover:bg-amber-700 font-bold'
                                     : '',
-                                date.isToday && !date.isSelected 
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-semibold' 
+                                date.isToday && !date.isSelected
+                                    ? 'bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 font-bold' 
                                     : '',
                                 isDateDisabled(date) 
                                     ? 'cursor-not-allowed opacity-50' 
@@ -134,18 +134,18 @@
                 </div>
 
                 <!-- Quick Actions -->
-                <div class="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750 rounded-b-lg">
+                <div class="flex items-center justify-between px-4 py-3 border-t-2 border-amber-200 dark:border-zinc-700 bg-amber-50 dark:bg-zinc-800 rounded-b-lg">
                     <button
                         @click="selectToday"
                         type="button"
-                        class="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium"
+                        class="text-sm text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 font-bold transition-colors duration-200"
                     >
                         Today
                     </button>
                     <button
                         @click="closeCalendar"
                         type="button"
-                        class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                        class="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium transition-colors duration-200"
                     >
                         Close
                     </button>

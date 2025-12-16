@@ -64,8 +64,8 @@ class FileServeController extends Controller
         if ($variant === 'preview' && $file->has_image_preview && $file->s3_image_path) {
             $content = $storageService->getFile($file->s3_image_path);
             $extension = 'jpg';
-        } elseif ($variant === 'archive' && ! empty($file->s3_converted_path)) {
-            $content = $storageService->getFile($file->s3_converted_path);
+        } elseif ($variant === 'archive' && ! empty($file->s3_archive_path)) {
+            $content = $storageService->getFile($file->s3_archive_path);
             $extension = 'pdf';
         } elseif ($variant === 'original' && ! empty($file->s3_original_path)) {
             $content = $storageService->getFile($file->s3_original_path);

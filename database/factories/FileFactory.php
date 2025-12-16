@@ -34,7 +34,7 @@ class FileFactory extends Factory
             'status' => 'pending',
             's3_original_path' => null,
             's3_processed_path' => null,
-            's3_converted_path' => null,
+            's3_archive_path' => null,
             's3_image_path' => null,
             'has_image_preview' => false,
             'image_generation_error' => null,

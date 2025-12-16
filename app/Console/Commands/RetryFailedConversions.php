@@ -35,6 +35,7 @@ class RetryFailedConversions extends Command
         $this->info('Searching for failed conversions...');
 
         $failedConversions = FileConversion::where('status', 'failed')
+            ->where('input_extension', '!=', 'pdf')
             ->with('file')
             ->limit($limit)
             ->get();

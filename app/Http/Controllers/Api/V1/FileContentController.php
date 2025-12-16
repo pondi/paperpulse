@@ -69,8 +69,8 @@ class FileContentController extends BaseApiController
         }
 
         if ($variant === 'archive') {
-            if (! empty($file->s3_converted_path)) {
-                return [$file->s3_converted_path, 'pdf', 'application/pdf'];
+            if (! empty($file->s3_archive_path)) {
+                return [$file->s3_archive_path, 'pdf', 'application/pdf'];
             }
 
             if ($file->guid) {

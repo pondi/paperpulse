@@ -215,7 +215,7 @@ class SearchService
                     'filename' => $receipt->file->original_filename ?? $receipt->file->fileName,
                     'extension' => $receipt->file->fileExtension,
                     'has_image_preview' => (bool) $receipt->file->has_image_preview,
-                    'has_converted_pdf' => ! empty($receipt->file->s3_converted_path),
+                    'has_archive_pdf' => ! empty($receipt->file->s3_archive_path),
                     'url' => route('receipts.showImage', $receipt->id),
                     'pdfUrl' => $receipt->file->guid && $receipt->file->fileExtension === 'pdf' ? route('receipts.showPdf', $receipt->id) : null,
                     'previewUrl' => $receipt->file->has_image_preview ? route('receipts.showImage', $receipt->id) : null,
@@ -340,15 +340,15 @@ class SearchService
             if ($document->file && $document->file->guid) {
                 $extension = $document->file->fileExtension ?? 'pdf';
                 $typeFolder = 'documents';
-                $hasConvertedPdf = ! empty($document->file->s3_converted_path);
+                $hasArchivePdf = ! empty($document->file->s3_archive_path);
 
                 $pdfUrl = null;
-                if ($hasConvertedPdf || strtolower($extension) === 'pdf') {
+                if ($hasArchivePdf || strtolower($extension) === 'pdf') {
                     $pdfUrl = route('documents.serve', [
                         'guid' => $document->file->guid,
                         'type' => $typeFolder,
                         'extension' => 'pdf',
-                        'variant' => $hasConvertedPdf ? 'archive' : 'original',
+                        'variant' => $hasArchivePdf ? 'archive' : 'original',
                     ]);
                 }
 
@@ -367,7 +367,7 @@ class SearchService
                     'filename' => $document->file->original_filename ?? $document->file->fileName,
                     'extension' => $extension,
                     'has_image_preview' => (bool) $document->file->has_image_preview,
-                    'has_converted_pdf' => $hasConvertedPdf,
+                    'has_archive_pdf' => $hasArchivePdf,
                     'url' => route('documents.serve', [
                         'guid' => $document->file->guid,
                         'type' => $typeFolder,

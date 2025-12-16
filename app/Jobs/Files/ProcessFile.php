@@ -58,6 +58,14 @@ class ProcessFile extends BaseJob
                 'file_guid' => $metadata['fileGuid'],
             ]);
 
+            if (isset($metadata['fileId'])) {
+                $file = File::find($metadata['fileId']);
+                if ($file && $file->status === 'pending') {
+                    $file->status = 'processing';
+                    $file->save();
+                }
+            }
+
             $this->updateProgress(10);
 
             // Get services
@@ -103,11 +111,11 @@ class ProcessFile extends BaseJob
 
                     if ($result['success']) {
                         // Conversion succeeded - update file record and metadata
-                        $file->s3_converted_path = $result['output_path'];
+                        $file->s3_archive_path = $result['output_path'];
                         $file->save();
 
-                        // Use converted PDF for downstream processing
-                        $metadata['s3ConvertedPath'] = $result['output_path'];
+                        // Use archive PDF for downstream processing
+                        $metadata['s3ArchivePath'] = $result['output_path'];
                         $metadata['originalExtension'] = $metadata['fileExtension'];
                         $metadata['fileExtension'] = 'pdf'; // TextExtraction uses PDF
                         $this->storeMetadata($metadata);
@@ -139,6 +147,10 @@ class ProcessFile extends BaseJob
                 }
             }
 
+            $this->updateProgress(35);
+
+            $this->updateProgress(50);
+
             // Handle file type specific processing
             if ($fileType === 'receipt') {
                 // For receipts, convert to image if PDF (existing behavior)
@@ -148,7 +160,6 @@ class ProcessFile extends BaseJob
                     // This will be handled by ProcessReceipt job
                     // Just ensure the file is ready
                 }
-                $this->updateProgress(50);
             } else {
                 // For documents, we keep the original format
                 // The file is already stored in S3 by FileProcessingService
@@ -160,9 +171,9 @@ class ProcessFile extends BaseJob
                 $localFilePath = null;
                 try {
                     // Download file from S3 to local temp for text extraction
-                    // Use converted PDF if available, otherwise use original file
-                    $s3PathToUse = $metadata['s3ConvertedPath'] ?? $metadata['s3OriginalPath'];
-                    $extensionToUse = isset($metadata['s3ConvertedPath']) ? 'pdf' : $metadata['fileExtension'];
+                    // Use archive PDF if available, otherwise use original file
+                    $s3PathToUse = $metadata['s3ArchivePath'] ?? $metadata['s3OriginalPath'];
+                    $extensionToUse = isset($metadata['s3ArchivePath']) ? 'pdf' : $metadata['fileExtension'];
 
                     $workerFileManager = app(WorkerFileManager::class);
                     $localFilePath = $workerFileManager->ensureLocalFile(
@@ -173,7 +184,7 @@ class ProcessFile extends BaseJob
 
                     Log::debug("[ProcessFile] [{$jobName}] File downloaded for text extraction", [
                         'local_path' => $localFilePath,
-                        'using_converted' => isset($metadata['s3ConvertedPath']),
+                        'using_archive' => isset($metadata['s3ArchivePath']),
                         's3_path' => $s3PathToUse,
                     ]);
 
@@ -205,8 +216,6 @@ class ProcessFile extends BaseJob
                         );
                     }
                 }
-
-                $this->updateProgress(50);
             }
 
             // Validate S3 storage

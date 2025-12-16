@@ -53,7 +53,7 @@ class File extends Model
         'file_type',
         's3_original_path',
         's3_processed_path',
-        's3_converted_path',
+        's3_archive_path',
         's3_image_path',
         'has_image_preview',
         'image_generation_error',

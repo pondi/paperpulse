@@ -16,13 +16,29 @@ class TextractPdfImageProcessor
         $fileGuid = pathinfo($s3Path, PATHINFO_FILENAME);
 
         try {
-            $pdfContent = $textractDisk->get($s3Path);
             $localPdfPath = storage_path('app/temp/'.$fileGuid.'.pdf');
 
             if (! is_dir(dirname($localPdfPath))) {
                 mkdir(dirname($localPdfPath), 0755, true);
             }
-            file_put_contents($localPdfPath, $pdfContent);
+            $readStream = $textractDisk->readStream($s3Path);
+            if (! is_resource($readStream)) {
+                throw new Exception('Failed to read PDF from Textract bucket');
+            }
+
+            try {
+                $out = fopen($localPdfPath, 'wb');
+                if ($out === false) {
+                    throw new Exception('Failed to create local PDF for conversion');
+                }
+                try {
+                    stream_copy_to_stream($readStream, $out);
+                } finally {
+                    fclose($out);
+                }
+            } finally {
+                fclose($readStream);
+            }
 
             if (! extension_loaded('imagick')) {
                 Log::warning('[Textract] Imagick not available for PDF conversion');
@@ -39,18 +55,21 @@ class TextractPdfImageProcessor
             Log::info('[Textract] Converting PDF to images', ['pdf_path' => $localPdfPath, 'page_count' => $pageCount]);
 
             $allText = '';
-            $allBlocks = [];
+            $storeBlocks = (bool) config('ai.ocr.options.store_blocks', false);
+            $allBlocks = $storeBlocks ? [] : null;
             $allForms = [];
             $allTables = [];
             $totalConfidence = 0.0;
             $processedPages = 0;
+
+            $maxPages = (int) config('ai.ocr.options.pdf_image_max_pages', 3);
 
             $tempDir = storage_path('app/temp');
             if (! is_dir($tempDir)) {
                 mkdir($tempDir, 0755, true);
             }
 
-            for ($page = 1; $page <= min($pageCount, 10); $page++) {
+            for ($page = 1; $page <= min($pageCount, max(1, $maxPages)); $page++) {
                 $savedFiles = (new Pdf($localPdfPath))
                     ->selectPage($page)
                     ->resolution(144)
@@ -79,7 +98,9 @@ class TextractPdfImageProcessor
                         $allText .= "\n\n--- Page {$page} ---\n\n";
                     }
                     $allText .= $pageResult['text'];
-                    $allBlocks = array_merge($allBlocks, $pageResult['blocks'] ?? []);
+                    if ($storeBlocks) {
+                        $allBlocks = array_merge($allBlocks, $pageResult['blocks'] ?? []);
+                    }
                     $allForms = array_merge($allForms, $pageResult['forms'] ?? []);
                     $allTables = array_merge($allTables, $pageResult['tables'] ?? []);
                     $totalConfidence += $pageResult['confidence'] ?? 0.0;
@@ -105,13 +126,14 @@ class TextractPdfImageProcessor
                 'text' => trim($allText),
                 'metadata' => [
                     'page_count' => $processedPages,
-                    'block_count' => count($allBlocks),
+                    'block_count' => $storeBlocks ? count($allBlocks) : null,
                     'extraction_type' => 'pdf_converted_to_images',
                     'original_pdf_pages' => $pageCount,
+                    'max_pages_processed' => $maxPages,
                 ],
                 'confidence' => $processedPages > 0 ? $totalConfidence / $processedPages : 0,
                 'pages' => range(1, $processedPages),
-                'blocks' => $allBlocks,
+                'blocks' => $storeBlocks ? $allBlocks : [],
                 'forms' => $allForms,
                 'tables' => $allTables,
             ];

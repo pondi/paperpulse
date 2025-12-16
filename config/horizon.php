@@ -200,7 +200,9 @@ return [
     'environments' => [
         'production' => [
             'supervisor-1' => [
-                'maxProcesses' => 10,
+                // Keep conservative defaults for containerized deployments; scale with pods instead of
+                // spawning many PHP worker processes in one pod (which can trigger OOMKilled).
+                'maxProcesses' => (int) env('HORIZON_MAX_PROCESSES', 2),
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],

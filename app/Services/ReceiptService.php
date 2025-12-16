@@ -204,6 +204,9 @@ class ReceiptService
     {
         try {
             $paths = [];
+            $prettyStructured = (bool) config('ai.ocr.options.pretty_print_structured', false);
+            $storeBlocks = (bool) config('ai.ocr.options.store_blocks', false);
+            $prettyBlocks = (bool) config('ai.ocr.options.pretty_print_blocks', false);
 
             // Store plain OCR text
             if (! empty($text)) {
@@ -211,16 +214,27 @@ class ReceiptService
             }
 
             // Store structured OCR data
-            $paths['ocr_structured'] = $this->storageService->storeFile(json_encode($structuredData, JSON_PRETTY_PRINT), $userId, $fileGuid, 'receipt', 'ocr_structured', 'json');
+            $structuredFlags = $prettyStructured ? JSON_PRETTY_PRINT : 0;
+            $structuredJson = json_encode($structuredData, $structuredFlags);
+            if ($structuredJson !== false) {
+                $paths['ocr_structured'] = $this->storageService->storeFile($structuredJson, $userId, $fileGuid, 'receipt', 'ocr_structured', 'json');
+            }
 
             // Store raw blocks (closest to original Textract response content)
-            if (! empty($blocks)) {
-                $paths['ocr_blocks'] = $this->storageService->storeFile(json_encode($blocks, JSON_PRETTY_PRINT), $userId, $fileGuid, 'receipt', 'ocr_blocks', 'json');
+            if ($storeBlocks && ! empty($blocks)) {
+                $blockFlags = $prettyBlocks ? JSON_PRETTY_PRINT : 0;
+                $blocksJson = json_encode($blocks, $blockFlags);
+                if ($blocksJson !== false) {
+                    $paths['ocr_blocks'] = $this->storageService->storeFile($blocksJson, $userId, $fileGuid, 'receipt', 'ocr_blocks', 'json');
+                }
             }
 
             // Store OCR metadata if present (e.g., counts, job_id)
             if (! empty($ocrMetadata)) {
-                $paths['ocr_meta'] = $this->storageService->storeFile(json_encode($ocrMetadata, JSON_PRETTY_PRINT), $userId, $fileGuid, 'receipt', 'ocr_meta', 'json');
+                $metaJson = json_encode($ocrMetadata, JSON_PRETTY_PRINT);
+                if ($metaJson !== false) {
+                    $paths['ocr_meta'] = $this->storageService->storeFile($metaJson, $userId, $fileGuid, 'receipt', 'ocr_meta', 'json');
+                }
             }
 
             // Update File.meta with artifact references

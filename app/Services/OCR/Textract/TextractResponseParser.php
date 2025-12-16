@@ -329,4 +329,86 @@ class TextractResponseParser
 
         return trim($text);
     }
+
+    /**
+     * Parse AnalyzeExpense API response for receipts.
+     */
+    public static function parseExpense(array $result): array
+    {
+        $expenseDocuments = $result['ExpenseDocuments'] ?? [];
+        $text = '';
+        $forms = [];
+        $tables = [];
+        $confidence = 0.0;
+        $lineCount = 0;
+        $blocks = [];
+
+        foreach ($expenseDocuments as $expenseDoc) {
+            // Extract summary fields (merchant, total, date, etc.)
+            $summaryFields = $expenseDoc['SummaryFields'] ?? [];
+            foreach ($summaryFields as $field) {
+                $type = $field['Type']['Text'] ?? '';
+                $labelText = $field['LabelDetection']['Text'] ?? $type;
+                $valueText = $field['ValueDetection']['Text'] ?? '';
+                $fieldConfidence = $field['ValueDetection']['Confidence'] ?? 0;
+
+                if ($type !== '' && $valueText !== '') {
+                    $forms[$type] = $valueText;
+                    $text .= "{$labelText}: {$valueText}\n";
+                    $confidence += $fieldConfidence;
+                    $lineCount++;
+                }
+            }
+
+            // Extract line items (items on receipt)
+            $lineItemGroups = $expenseDoc['LineItemGroups'] ?? [];
+            foreach ($lineItemGroups as $group) {
+                $lineItems = $group['LineItems'] ?? [];
+                $tableData = [];
+
+                foreach ($lineItems as $idx => $item) {
+                    $row = [];
+                    $fields = $item['LineItemExpenseFields'] ?? [];
+
+                    foreach ($fields as $field) {
+                        $type = $field['Type']['Text'] ?? '';
+                        $value = $field['ValueDetection']['Text'] ?? '';
+                        $row[$type] = $value;
+
+                        if ($value !== '') {
+                            $text .= "{$type}: {$value} ";
+                        }
+                    }
+
+                    if (! empty($row)) {
+                        $tableData[] = $row;
+                        $text .= "\n";
+                        $lineCount++;
+                    }
+                }
+
+                if (! empty($tableData)) {
+                    $tables[] = $tableData;
+                }
+            }
+
+            // Store blocks if present (for sync APIs)
+            if (isset($expenseDoc['Blocks'])) {
+                $blocks = array_merge($blocks, $expenseDoc['Blocks']);
+            }
+        }
+
+        return [
+            'text' => trim($text),
+            'metadata' => [
+                'block_count' => count($blocks),
+                'line_count' => $lineCount,
+                'extraction_type' => 'expense_analysis',
+            ],
+            'confidence' => $lineCount > 0 ? $confidence / $lineCount / 100 : 0,
+            'blocks' => $blocks,
+            'forms' => $forms,
+            'tables' => $tables,
+        ];
+    }
 }

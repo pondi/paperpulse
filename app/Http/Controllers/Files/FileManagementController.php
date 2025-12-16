@@ -14,8 +14,7 @@ class FileManagementController extends Controller
     public function index(Request $request)
     {
         $files = File::query()
-            ->whereIn('status', ['failed', 'completed'])
-            ->orderByRaw("case when status = 'failed' then 0 else 1 end")
+            ->whereIn('status', ['failed', 'processing', 'pending', 'completed'])
             ->orderByDesc('uploaded_at')
             ->paginate(50)
             ->through(fn (File $file) => FileTransformer::forIndex($file));

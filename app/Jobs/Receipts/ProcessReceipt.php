@@ -356,7 +356,10 @@ class ProcessReceipt extends BaseJob
             $thumbnailError = null;
 
             try {
-                $thumbnailData = $this->generateThumbnail($localFilePath, $metadata['fileGuid']);
+                // Avoid rendering PDFs again here (can be very memory-heavy); rely on S3 preview instead.
+                if (($metadata['fileExtension'] ?? null) !== 'pdf') {
+                    $thumbnailData = $this->generateThumbnail($localFilePath, $metadata['fileGuid']);
+                }
             } catch (Exception $thumbError) {
                 $thumbnailError = $thumbError->getMessage();
                 Log::warning('[ProcessReceipt] Thumbnail generation failed', [

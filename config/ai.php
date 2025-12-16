@@ -90,7 +90,8 @@ return [
                 'secret' => env('TEXTRACT_SECRET'),
                 'bucket' => env('TEXTRACT_BUCKET'),
                 'timeout' => env('TEXTRACT_TIMEOUT', 120),
-                'polling_interval' => env('TEXTRACT_POLLING_INTERVAL', 10),
+                'polling_interval' => env('TEXTRACT_POLLING_INTERVAL', 10), // seconds between polls
+                'max_polling_attempts' => env('TEXTRACT_MAX_POLLING_ATTEMPTS', 60), // max attempts (60 × 10s = 10 min)
             ],
         ],
 
@@ -98,6 +99,15 @@ return [
             'cache_results' => true,
             'cache_duration' => 7, // days
             'min_confidence' => 0.8,
+            // Persisting raw Textract blocks can be extremely memory-heavy for some PDFs.
+            // Keep disabled by default in production; enable temporarily for debugging/auditing.
+            'store_blocks' => env('OCR_STORE_BLOCKS', false),
+            // Upper bound for returning raw blocks in-memory (safety valve for Horizon workers).
+            'max_blocks_in_memory' => (int) env('OCR_MAX_BLOCKS_IN_MEMORY', 5000),
+            'pretty_print_structured' => env('OCR_PRETTY_PRINT_STRUCTURED', false),
+            'pretty_print_blocks' => env('OCR_PRETTY_PRINT_BLOCKS', false),
+            // When Textract rejects a PDF and we fall back to PDF->images, cap pages processed.
+            'pdf_image_max_pages' => (int) env('OCR_PDF_IMAGE_MAX_PAGES', 3),
         ],
     ],
 

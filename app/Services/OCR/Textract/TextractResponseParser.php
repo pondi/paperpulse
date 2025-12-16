@@ -4,6 +4,124 @@ namespace App\Services\OCR\Textract;
 
 class TextractResponseParser
 {
+    /**
+     * Parse a single page worth of blocks for document-style output.
+     *
+     * @return array{text:string,confidence_sum:float,line_count:int}
+     */
+    public static function parseDocumentPage(array $pageBlocks, int $pageNum): array
+    {
+        $text = '';
+        $confidenceSum = 0.0;
+        $lineCount = 0;
+
+        if ($pageNum > 1) {
+            $text .= "\n\n--- Page {$pageNum} ---\n\n";
+        }
+
+        $blocksById = array_column($pageBlocks, null, 'Id');
+
+        usort($pageBlocks, function ($a, $b) {
+            $aTop = $a['Geometry']['BoundingBox']['Top'] ?? 0;
+            $bTop = $b['Geometry']['BoundingBox']['Top'] ?? 0;
+
+            return $aTop <=> $bTop;
+        });
+
+        foreach ($pageBlocks as $block) {
+            if (($block['BlockType'] ?? null) === 'LINE' && isset($block['Text'])) {
+                $text .= $block['Text']."\n";
+                $confidenceSum += $block['Confidence'] ?? 0;
+                $lineCount++;
+            } elseif (($block['BlockType'] ?? null) === 'TABLE') {
+                $tableData = self::parseTable($block, $blocksById);
+                $formatted = self::formatTableAsText($tableData);
+                if ($formatted !== '') {
+                    $text .= $formatted."\n";
+                }
+            }
+        }
+
+        return [
+            'text' => $text,
+            'confidence_sum' => $confidenceSum,
+            'line_count' => $lineCount,
+        ];
+    }
+
+    /**
+     * Parse a single page worth of blocks for receipt/structured output.
+     *
+     * @return array{text:string,confidence_sum:float,line_count:int,forms:array<string,string>,tables:array<int,array>}
+     */
+    public static function parseStructuredPage(array $pageBlocks): array
+    {
+        $blocksById = array_column($pageBlocks, null, 'Id');
+
+        $text = '';
+        $forms = [];
+        $tables = [];
+        $confidenceSum = 0.0;
+        $lineCount = 0;
+
+        foreach ($pageBlocks as $block) {
+            if (($block['BlockType'] ?? null) === 'LINE' && isset($block['Text'])) {
+                $text .= $block['Text']."\n";
+                $confidenceSum += $block['Confidence'] ?? 0;
+                $lineCount++;
+            }
+        }
+
+        foreach ($pageBlocks as $block) {
+            if (($block['BlockType'] ?? null) === 'KEY_VALUE_SET' && isset($block['EntityTypes']) && in_array('KEY', $block['EntityTypes'])) {
+                if (! isset($block['Relationships'])) {
+                    continue;
+                }
+
+                $keyText = '';
+                $valueText = '';
+
+                foreach ($block['Relationships'] as $relationship) {
+                    if (($relationship['Type'] ?? null) === 'CHILD') {
+                        $keyText = self::resolveBlockText($relationship['Ids'] ?? [], $blocksById);
+                    }
+                    if (($relationship['Type'] ?? null) === 'VALUE') {
+                        foreach (($relationship['Ids'] ?? []) as $valueId) {
+                            if (! isset($blocksById[$valueId])) {
+                                continue;
+                            }
+                            $valueBlock = $blocksById[$valueId];
+                            foreach (($valueBlock['Relationships'] ?? []) as $valueRel) {
+                                if (($valueRel['Type'] ?? null) === 'CHILD') {
+                                    $valueText = self::resolveBlockText($valueRel['Ids'] ?? [], $blocksById);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                $keyText = trim($keyText);
+                if ($keyText !== '') {
+                    $forms[$keyText] = trim($valueText);
+                }
+            }
+        }
+
+        foreach ($pageBlocks as $block) {
+            if (($block['BlockType'] ?? null) === 'TABLE') {
+                $tables[] = self::parseTable($block, $blocksById);
+            }
+        }
+
+        return [
+            'text' => $text,
+            'confidence_sum' => $confidenceSum,
+            'line_count' => $lineCount,
+            'forms' => $forms,
+            'tables' => $tables,
+        ];
+    }
+
     public static function parseBasic(array $result, string $type = 'basic'): array
     {
         $text = '';

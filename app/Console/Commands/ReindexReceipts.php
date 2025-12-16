@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 
 class ReindexReceipts extends Command
 {
-    protected $signature = 'receipts:reindex';
+    protected $signature = 'reindex:receipts';
 
     protected $description = 'Reindex all receipts in Meilisearch';
 

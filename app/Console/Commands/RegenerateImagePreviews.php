@@ -16,7 +16,8 @@ class RegenerateImagePreviews extends Command
      *
      * @var string
      */
-    protected $signature = 'receipts:regenerate-previews
+    protected $signature = 'files:regenerate-previews
+                            {--type= : File type to process (receipt or document)}
                             {--limit=0 : Number of files to process (0 for all)}
                             {--force : Regenerate even if preview exists}';
 
@@ -25,21 +26,30 @@ class RegenerateImagePreviews extends Command
      *
      * @var string
      */
-    protected $description = 'Regenerate image previews for PDF receipt files';
+    protected $description = 'Regenerate image previews for PDF files (receipts and documents)';
 
     /**
      * Execute the console command.
      */
     public function handle(FilePreviewManager $previewManager)
     {
+        $type = $this->option('type');
         $limit = (int) $this->option('limit');
         $force = $this->option('force');
 
         $this->info('Starting image preview regeneration...');
 
         // Query for PDF files
-        $query = File::where('fileExtension', 'pdf')
-            ->where('file_type', 'receipt');
+        $query = File::where('fileExtension', 'pdf');
+
+        // Filter by type if specified
+        if ($type) {
+            if (!in_array($type, ['receipt', 'document'])) {
+                $this->error('Invalid type. Must be "receipt" or "document".');
+                return Command::FAILURE;
+            }
+            $query->where('file_type', $type);
+        }
 
         if (!$force) {
             $query->where(function ($q) {

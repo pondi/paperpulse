@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Receipt;
 use App\Notifications\BulkOperationCompleted;
+use App\Services\ReceiptService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Exception;
@@ -24,10 +25,21 @@ class BulkOperationsController extends Controller
             'receipt_ids.*' => 'integer|exists:receipts,id',
         ]);
 
-        // Only delete receipts owned by the user
-        $deletedCount = Receipt::whereIn('id', $request->receipt_ids)
+        $receiptService = app(ReceiptService::class);
+        $deletedCount = 0;
+
+        // Delete receipts owned by the user via ReceiptService to ensure
+        // related files/artifacts are cleaned up and don't affect deduplication.
+        $receipts = Receipt::whereIn('id', $request->receipt_ids)
             ->where('user_id', auth()->id())
-            ->delete();
+            ->with('file')
+            ->get();
+
+        foreach ($receipts as $receipt) {
+            if ($receiptService->deleteReceipt($receipt)) {
+                $deletedCount++;
+            }
+        }
 
         // Send notification
         $user = auth()->user();

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Documents;
 
 use App\Http\Controllers\BaseResourceController;
 use App\Models\Document;
+use App\Models\File;
 use App\Models\Tag;
 use App\Services\Documents\DocumentTransformer;
 use App\Services\Documents\DocumentUploadHandler;
@@ -14,6 +15,7 @@ use App\Services\Tags\TagAttachmentService;
 use App\Traits\ShareableController;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -154,25 +156,36 @@ class DocumentController extends BaseResourceController
     }
 
     /**
-     * Hook called before destroy.
+     * Delete a document and clean up its file record so it doesn't affect deduplication.
      */
-    protected function beforeDestroy($document): void
+    public function destroy($id)
     {
-        try {
-            // If file has a GUID, delete the original variant using StorageService pathing
+        $document = Document::with('file')->findOrFail($id);
+        $this->authorize('delete', $document);
+
+        $fileId = $document->file_id;
+
+        DB::transaction(function () use ($document, $fileId) {
+            // Delete stored file using StorageService and GUID path.
             if ($document->file && $document->file->guid) {
                 $storageService = app(StorageService::class);
                 $extension = $document->file->fileExtension ?? 'pdf';
-                // Build path: documents/{user_id}/{guid}/original.{extension}
                 $fullPath = 'documents/'.$document->user_id.'/'.$document->file->guid.'/original.'.$extension;
                 $storageService->deleteFile($fullPath);
             }
-        } catch (Exception $e) {
-            Log::error('Failed to delete document file', [
-                'document_id' => $document->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
+
+            $document->delete();
+
+            // Delete the file record if it no longer has any owners.
+            if ($fileId) {
+                $file = File::find($fileId);
+                if ($file && ! $file->receipts()->exists() && ! $file->documents()->exists()) {
+                    $file->delete();
+                }
+            }
+        });
+
+        return redirect()->route('documents.index')->with('success', 'Document deleted successfully');
     }
 
     /**

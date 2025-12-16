@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Documents;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
+use App\Models\File;
 use App\Services\StorageService;
 use Exception;
 use Illuminate\Http\Request;
@@ -29,13 +30,25 @@ class DocumentBulkController extends Controller
             $document = Document::find($id);
             if ($document && auth()->user()->can('delete', $document)) {
                 try {
+                    $document->loadMissing('file');
+                    $fileId = $document->file_id;
+
                     // Delete stored file using StorageService and GUID path
                     if ($document->file && $document->file->guid) {
                         $extension = $document->file->fileExtension ?? 'pdf';
                         $fullPath = 'documents/'.$document->user_id.'/'.$document->file->guid.'/original.'.$extension;
                         $storageService->deleteFile($fullPath);
                     }
+
                     $document->delete();
+
+                    // Delete the file record if it no longer has any owners.
+                    if ($fileId) {
+                        $file = File::find($fileId);
+                        if ($file && ! $file->receipts()->exists() && ! $file->documents()->exists()) {
+                            $file->delete();
+                        }
+                    }
                     $deleted++;
                 } catch (Exception $e) {
                     Log::error('Failed to delete document in bulk operation', [

@@ -13,16 +13,17 @@ class DocumentTransformer
             $extension = $document->file->fileExtension ?? 'pdf';
             $typeFolder = 'documents';
 
-            // Check if there's a converted PDF available
-            $hasConvertedPdf = ! empty($document->file->s3_converted_path);
+            // Check if there's an archive PDF available
+            $hasArchivePdf = ! empty($document->file->s3_archive_path);
+            $hasPdfVariant = $hasArchivePdf || strtolower($extension) === 'pdf';
             $pdfUrl = null;
 
-            if ($hasConvertedPdf || strtolower($extension) === 'pdf') {
+            if ($hasPdfVariant) {
                 $pdfUrl = route('documents.serve', [
                     'guid' => $document->file->guid,
                     'type' => $typeFolder,
                     'extension' => 'pdf',
-                    'variant' => $hasConvertedPdf ? 'archive' : 'original',
+                    'variant' => $hasArchivePdf ? 'archive' : 'original',
                 ]);
             }
 
@@ -48,7 +49,7 @@ class DocumentTransformer
                 'extension' => $extension,
                 'size' => $document->file->fileSize,
                 'has_preview' => $document->file->has_image_preview,
-                'is_pdf' => strtolower($extension) === 'pdf' || $hasConvertedPdf,
+                'is_pdf' => $hasPdfVariant,
             ];
         }
 
@@ -75,16 +76,17 @@ class DocumentTransformer
             $extension = $document->file->fileExtension ?? 'pdf';
             $typeFolder = 'documents';
 
-            // Check if there's a converted PDF available
-            $hasConvertedPdf = ! empty($document->file->s3_converted_path);
+            // Check if there's an archive PDF available
+            $hasArchivePdf = ! empty($document->file->s3_archive_path);
+            $hasPdfVariant = $hasArchivePdf || strtolower($extension) === 'pdf';
             $pdfUrl = null;
 
-            if ($hasConvertedPdf || strtolower($extension) === 'pdf') {
+            if ($hasPdfVariant) {
                 $pdfUrl = route('documents.serve', [
                     'guid' => $document->file->guid,
                     'type' => $typeFolder,
                     'extension' => 'pdf',
-                    'variant' => $hasConvertedPdf ? 'archive' : 'original',
+                    'variant' => $hasArchivePdf ? 'archive' : 'original',
                 ]);
             }
 
@@ -112,7 +114,7 @@ class DocumentTransformer
                 'size' => $document->file->fileSize,
                 'guid' => $document->file->guid,
                 'has_preview' => $document->file->has_image_preview,
-                'is_pdf' => strtolower($extension) === 'pdf' || $hasConvertedPdf,
+                'is_pdf' => $hasPdfVariant,
                 'uploaded_at' => $document->file->uploaded_at?->toIso8601String(),
                 'file_created_at' => $document->file->file_created_at?->toIso8601String(),
                 'file_modified_at' => $document->file->file_modified_at?->toIso8601String(),

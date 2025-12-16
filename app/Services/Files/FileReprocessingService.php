@@ -286,7 +286,7 @@ class FileReprocessingService
     protected function resetFileProcessingState(File $file): void
     {
         $file->s3_processed_path = null;
-        $file->s3_converted_path = null;
+        $file->s3_archive_path = null;
         $file->s3_image_path = null;
         $file->has_image_preview = false;
         $file->image_generation_error = null;

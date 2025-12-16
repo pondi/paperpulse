@@ -3,7 +3,7 @@
       <TransitionRoot as="template" :show="sidebarOpen">
         <Dialog class="relative z-50 xl:hidden" @close="sidebarOpen = false">
           <TransitionChild as="template" enter="transition-opacity ease-linear duration-300" enter-from="opacity-0" enter-to="opacity-100" leave="transition-opacity ease-linear duration-300" leave-from="opacity-100" leave-to="opacity-0">
-            <div class="fixed inset-0 bg-gray-900/80" />
+            <div class="fixed inset-0 bg-zinc-900/80" />
           </TransitionChild>
 
           <div class="fixed inset-0 flex">
@@ -18,7 +18,7 @@
                   </div>
                 </TransitionChild>
                 <!-- Sidebar component, swap this element with another sidebar if you like -->
-                <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-gray-900 px-6 ring-1 ring-gray-900/5 dark:ring-white/10">
+                <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-zinc-900 px-6 ring-1 ring-zinc-900/5 dark:ring-white/10 border-r-4 border-amber-600 dark:border-amber-500">
                   <div class="flex h-16 shrink-0 items-center">
                     <Link :href="route('dashboard')" class="flex items-center gap-2">
                       <ApplicationLogo class="h-10 w-10" />
@@ -30,7 +30,7 @@
                       <li>
                         <ul role="list" class="-mx-2 space-y-1">
                           <li v-for="item in navigation" :key="item.name">
-                            <Link :href="item.href" :class="[item.current ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white', 'group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold']">
+                            <Link :href="item.href" :class="[item.current ? 'bg-amber-100 text-zinc-900 dark:bg-amber-600 dark:text-white border-l-4 border-amber-600 dark:border-amber-400' : 'text-zinc-600 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white border-l-4 border-transparent', 'group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold transition-all duration-200']">
                               <component :is="item.icon" class="size-6 shrink-0" aria-hidden="true" />
                               {{ __(item.name.toLowerCase()) }}
                             </Link>
@@ -39,7 +39,7 @@
                                 v-for="child in item.children"
                                 :key="child.name"
                                 :href="child.href"
-                                :class="[child.current ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white', 'group flex gap-x-3 rounded-md py-1 pl-11 pr-2 text-sm/6 font-medium']"
+                                :class="[child.current ? 'bg-amber-100 text-zinc-900 dark:bg-amber-600 dark:text-white' : 'text-zinc-600 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white', 'group flex gap-x-3 rounded-md py-1 pl-11 pr-2 text-sm/6 font-medium transition-all duration-200']"
                               >
                                 {{ __(child.name.toLowerCase()) }}
                               </Link>
@@ -49,17 +49,17 @@
                       </li>
                       <li class="-mx-6 mt-auto">
                         <Menu as="div" class="relative w-full">
-                          <MenuButton class="flex w-full items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800">
+                          <MenuButton class="flex w-full items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-zinc-700 hover:bg-amber-50 dark:text-white dark:hover:bg-zinc-800 transition-all duration-200">
                             <span class="sr-only">Open user menu</span>
                             <span class="flex items-center gap-x-4">
                               <span class="flex-1">{{ $page.props.auth.user.name }}</span>
-                              <ChevronDownIcon class="size-5 text-gray-400" aria-hidden="true" />
+                              <ChevronDownIcon class="size-5 text-zinc-400" aria-hidden="true" />
                             </span>
                           </MenuButton>
                           <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
-                            <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-white dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 dark:ring-gray-700 focus:outline-none">
+                            <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-white dark:bg-zinc-800 py-2 shadow-xl ring-1 ring-zinc-900/5 dark:ring-zinc-700 focus:outline-none">
                               <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
-                                <Link :href="item.href" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-100', 'block px-3 py-1 text-sm/6', item.method ? 'w-full text-left' : '']">
+                                <Link :href="item.href" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-amber-100 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100' : 'text-zinc-700 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-700 dark:hover:text-zinc-100', 'block px-3 py-1 text-sm/6 transition-all duration-200', item.method ? 'w-full text-left' : '']">
                                   {{ __(item.name.toLowerCase()) }}
                                 </Link>
                               </MenuItem>
@@ -79,7 +79,7 @@
       <!-- Static sidebar for desktop -->
       <div class="hidden xl:fixed xl:inset-y-0 xl:z-50 xl:flex xl:w-72 xl:flex-col">
         <!-- Sidebar component, swap this element with another sidebar if you like -->
-        <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-gray-900 px-6 ring-1 ring-gray-900/5 dark:ring-white/10">
+        <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-zinc-900 px-6 ring-1 ring-zinc-900/5 dark:ring-white/10 border-r-4 border-amber-600 dark:border-amber-500">
           <div class="flex h-16 shrink-0 items-center">
             <Link :href="route('dashboard')" class="flex items-center gap-2">
               <ApplicationLogo class="h-10 w-10" />
@@ -91,7 +91,7 @@
               <li>
                 <ul role="list" class="-mx-2 space-y-1">
                   <li v-for="item in navigation" :key="item.name">
-                    <Link :href="item.href" :class="[item.current ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white', 'group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold']">
+                    <Link :href="item.href" :class="[item.current ? 'bg-amber-100 text-zinc-900 dark:bg-amber-600 dark:text-white border-l-4 border-amber-600 dark:border-amber-400' : 'text-zinc-600 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white border-l-4 border-transparent', 'group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold transition-all duration-200']">
                       <component :is="item.icon" class="size-6 shrink-0" aria-hidden="true" />
                       {{ __(item.name.toLowerCase()) }}
                     </Link>
@@ -100,7 +100,7 @@
                         v-for="child in item.children"
                         :key="child.name"
                         :href="child.href"
-                        :class="[child.current ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white', 'group flex gap-x-3 rounded-md py-1 pl-11 pr-2 text-sm/6 font-medium']"
+                        :class="[child.current ? 'bg-amber-100 text-zinc-900 dark:bg-amber-600 dark:text-white' : 'text-zinc-600 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white', 'group flex gap-x-3 rounded-md py-1 pl-11 pr-2 text-sm/6 font-medium transition-all duration-200']"
                       >
                         {{ __(child.name.toLowerCase()) }}
                       </Link>
@@ -110,17 +110,17 @@
               </li>
               <li class="-mx-6 mt-auto">
                 <Menu as="div" class="relative w-full">
-                  <MenuButton class="flex w-full items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800">
+                  <MenuButton class="flex w-full items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-zinc-700 hover:bg-amber-50 dark:text-white dark:hover:bg-zinc-800 transition-all duration-200">
                     <span class="sr-only">Open user menu</span>
                     <span class="flex items-center gap-x-4">
                       <span class="flex-1">{{ $page.props.auth.user.name }}</span>
-                      <ChevronDownIcon class="size-5 text-gray-400" aria-hidden="true" />
+                      <ChevronDownIcon class="size-5 text-zinc-400" aria-hidden="true" />
                     </span>
                   </MenuButton>
                   <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
-                    <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-white dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 dark:ring-gray-700 focus:outline-none">
+                    <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-white dark:bg-zinc-800 py-2 shadow-xl ring-1 ring-zinc-900/5 dark:ring-zinc-700 focus:outline-none">
                       <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
-                        <Link :href="item.href" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-100', 'block px-3 py-1 text-sm/6', item.method ? 'w-full text-left' : '']">
+                        <Link :href="item.href" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-amber-100 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100' : 'text-zinc-700 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-700 dark:hover:text-zinc-100', 'block px-3 py-1 text-sm/6 transition-all duration-200', item.method ? 'w-full text-left' : '']">
                           {{ __(item.name.toLowerCase()) }}
                         </Link>
                       </MenuItem>
@@ -133,10 +133,10 @@
         </div>
       </div>
 
-      <div class="xl:pl-72 bg-gray-50 dark:bg-gray-900">
+      <div class="xl:pl-72 bg-amber-50 dark:bg-zinc-900">
         <!-- Sticky search header -->
-        <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-6 border-b border-gray-200 bg-white px-4 shadow-sm sm:px-6 lg:px-8 dark:border-white/5 dark:bg-gray-900">
-          <button type="button" class="-m-2.5 p-2.5 text-gray-700 xl:hidden dark:text-white" @click="sidebarOpen = true">
+        <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-6 border-b-2 border-amber-200 bg-white/90 backdrop-blur-sm px-4 shadow-lg sm:px-6 lg:px-8 dark:border-zinc-700/50 dark:bg-zinc-900/90">
+          <button type="button" class="-m-2.5 p-2.5 text-zinc-700 xl:hidden dark:text-white hover:text-amber-600 dark:hover:text-amber-500 transition-colors duration-200" @click="sidebarOpen = true">
             <span class="sr-only">Open sidebar</span>
             <Bars3Icon class="size-5" aria-hidden="true" />
           </button>
@@ -154,11 +154,11 @@
                   <span class="sr-only">Open user menu</span>
                   <div class="flex items-center">
                     <span class="hidden lg:flex lg:items-center">
-                      <span class="text-sm font-semibold text-gray-700 dark:text-gray-300" aria-hidden="true">{{ $page.props.auth.user.name }}</span>
-                      <ChevronDownIcon class="ml-2 h-5 w-5 text-gray-400" aria-hidden="true" />
+                      <span class="text-sm font-semibold text-zinc-700 dark:text-zinc-300" aria-hidden="true">{{ $page.props.auth.user.name }}</span>
+                      <ChevronDownIcon class="ml-2 h-5 w-5 text-zinc-400" aria-hidden="true" />
                     </span>
                     <span class="lg:hidden">
-                      <UserCircleIcon class="h-6 w-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                      <UserCircleIcon class="h-6 w-6 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
                     </span>
                   </div>
                 </MenuButton>
@@ -170,13 +170,13 @@
                   leave-from-class="transform opacity-100 scale-100"
                   leave-to-class="transform opacity-0 scale-95"
                 >
-                  <MenuItems class="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 dark:ring-gray-700 focus:outline-none">
+                  <MenuItems class="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white dark:bg-zinc-800 py-2 shadow-xl ring-1 ring-zinc-900/5 dark:ring-zinc-700 focus:outline-none">
                     <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
                       <Link
                         :href="item.href"
                         :method="item.method"
                         :as="item.method ? 'button' : 'a'"
-                        :class="[active ? 'bg-gray-50 dark:bg-gray-700' : '', 'block px-3 py-1 text-sm text-gray-900 dark:text-gray-100', item.method ? 'w-full text-left' : '']"
+                        :class="[active ? 'bg-amber-50 dark:bg-zinc-700' : '', 'block px-3 py-1 text-sm text-zinc-900 dark:text-zinc-100 transition-all duration-200', item.method ? 'w-full text-left' : '']"
                       >
                         {{ __(item.name.toLowerCase()) }}
                       </Link>

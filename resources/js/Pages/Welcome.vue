@@ -68,7 +68,7 @@ const requestInvite = async () => {
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                         </div>
-                        <span class="text-xl font-bold text-zinc-900 dark:text-zinc-100">PaperPulse</span>
+                        <span class="text-xl font-black text-zinc-900 dark:text-zinc-100">PaperPulse</span>
                     </div>
 
                     <div class="flex items-center space-x-4 md:space-x-6">
@@ -200,7 +200,7 @@ const requestInvite = async () => {
                                     </svg>
                                 </div>
                             </div>
-                            <h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-3">Snap & Done</h3>
+                            <h3 class="text-xl font-black text-zinc-900 dark:text-zinc-100 mb-3">Snap & Done</h3>
                             <p class="text-zinc-700 dark:text-zinc-300 leading-relaxed">
                                 Photo, email, or PDF—we extract vendor, totals, tax, dates, and line items automatically. Zero typing required.
                             </p>
@@ -215,7 +215,7 @@ const requestInvite = async () => {
                                     </svg>
                                 </div>
                             </div>
-                            <h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-3">Auto-Organized</h3>
+                            <h3 class="text-xl font-black text-zinc-900 dark:text-zinc-100 mb-3">Auto-Organized</h3>
                             <p class="text-zinc-700 dark:text-zinc-300 leading-relaxed">
                                 Smart tags, categories, and deduplication keep everything tidy. No folder hunting. No duplicate headaches.
                             </p>
@@ -230,7 +230,7 @@ const requestInvite = async () => {
                                     </svg>
                                 </div>
                             </div>
-                            <h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-3">Find Instantly</h3>
+                            <h3 class="text-xl font-black text-zinc-900 dark:text-zinc-100 mb-3">Find Instantly</h3>
                             <p class="text-zinc-700 dark:text-zinc-300 leading-relaxed">
                                 Search by store, amount, item, or date. Export for taxes. Share secure links with your accountant in seconds.
                             </p>
@@ -261,7 +261,7 @@ const requestInvite = async () => {
                                 <div class="inline-flex items-center justify-center w-12 h-12 bg-zinc-900 dark:bg-amber-600 text-white text-xl font-black mb-6">
                                     1
                                 </div>
-                                <h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-3">Upload</h3>
+                                <h3 class="text-xl font-black text-zinc-900 dark:text-zinc-100 mb-3">Upload</h3>
                                 <p class="text-zinc-700 dark:text-zinc-300 leading-relaxed">
                                     Snap a receipt with your phone, forward an invoice email, or drop a PDF. All formats welcome.
                                 </p>
@@ -272,7 +272,7 @@ const requestInvite = async () => {
                                 <div class="inline-flex items-center justify-center w-12 h-12 bg-zinc-900 dark:bg-orange-600 text-white text-xl font-black mb-6">
                                     2
                                 </div>
-                                <h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-3">AI Extracts</h3>
+                                <h3 class="text-xl font-black text-zinc-900 dark:text-zinc-100 mb-3">AI Extracts</h3>
                                 <p class="text-zinc-700 dark:text-zinc-300 leading-relaxed">
                                     We pull vendor names, amounts, tax, dates, and line items. Files get tagged, categorized, and deduplicated automatically.
                                 </p>
@@ -283,7 +283,7 @@ const requestInvite = async () => {
                                 <div class="inline-flex items-center justify-center w-12 h-12 bg-zinc-900 dark:bg-red-600 text-white text-xl font-black mb-6">
                                     3
                                 </div>
-                                <h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-3">You're Done</h3>
+                                <h3 class="text-xl font-black text-zinc-900 dark:text-zinc-100 mb-3">You're Done</h3>
                                 <p class="text-zinc-700 dark:text-zinc-300 leading-relaxed">
                                     Search anything instantly. Export CSV or PDF for taxes. Share secure links with your team or accountant.
                                 </p>
@@ -343,37 +343,37 @@ const requestInvite = async () => {
         <!-- Invitation Request Modal -->
         <div v-if="showInviteModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                <div class="fixed inset-0 bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 transition-opacity" @click="showInviteModal = false"></div>
+                <div class="fixed inset-0 bg-zinc-500 dark:bg-zinc-900 bg-opacity-75 dark:bg-opacity-75 transition-opacity" @click="showInviteModal = false"></div>
 
-                <div class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+                <div class="relative transform overflow-hidden rounded-lg bg-white dark:bg-zinc-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
                     <div v-if="!inviteSuccess">
-                        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
-                            <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-orange-900/30">
+                            <svg class="h-6 w-6 text-amber-600 dark:text-amber-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
                         </div>
                         <div class="mt-3 text-center sm:mt-5">
-                            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white" id="modal-title">Request an Invitation</h3>
+                            <h3 class="text-lg font-black leading-6 text-zinc-900 dark:text-white" id="modal-title">Request an Invitation</h3>
                             <div class="mt-2">
-                                <p class="text-sm text-gray-600 dark:text-gray-300">Request access and be among the first to transform your document management.</p>
+                                <p class="text-sm text-zinc-600 dark:text-zinc-300">Request access and be among the first to transform your document management.</p>
                             </div>
                         </div>
 
                         <form @submit.prevent="requestInvite" class="mt-5 sm:mt-6">
                             <div class="space-y-4">
                                 <div>
-                                    <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-                                    <input type="text" v-model="inviteName" id="name" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="John Doe">
+                                    <label for="name" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Name</label>
+                                    <input type="text" v-model="inviteName" id="name" required class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm" placeholder="John Doe">
                                 </div>
 
                                 <div>
-                                    <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-                                    <input type="email" v-model="inviteEmail" id="email" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="john@example.com">
+                                    <label for="email" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Email</label>
+                                    <input type="email" v-model="inviteEmail" id="email" required class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm" placeholder="john@example.com">
                                 </div>
 
                                 <div>
-                                    <label for="company" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Company (Optional)</label>
-                                    <input type="text" v-model="inviteCompany" id="company" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Acme Inc.">
+                                    <label for="company" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Company (Optional)</label>
+                                    <input type="text" v-model="inviteCompany" id="company" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm" placeholder="Acme Inc.">
                                 </div>
                             </div>
 
@@ -382,10 +382,10 @@ const requestInvite = async () => {
                             </div>
 
                             <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
-                                <button type="submit" :disabled="inviteSubmitting" class="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 sm:col-start-2">
+                                <button type="submit" :disabled="inviteSubmitting" class="inline-flex w-full justify-center rounded-md bg-orange-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 sm:col-start-2">
                                     {{ inviteSubmitting ? 'Submitting...' : 'Request Invitation' }}
                                 </button>
-                                <button type="button" @click="showInviteModal = false" class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:col-start-1 sm:mt-0">
+                                <button type="button" @click="showInviteModal = false" class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-900 dark:text-white shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 hover:bg-amber-50 dark:hover:bg-amber-600 sm:col-start-1 sm:mt-0">
                                     Cancel
                                 </button>
                             </div>
@@ -399,9 +399,9 @@ const requestInvite = async () => {
                             </svg>
                         </div>
                         <div class="mt-3 text-center sm:mt-5">
-                            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Success!</h3>
+                            <h3 class="text-lg font-black leading-6 text-zinc-900 dark:text-white">Success!</h3>
                             <div class="mt-2">
-                                <p class="text-sm text-gray-600 dark:text-gray-300">We've received your invitation request. You'll hear from us soon!</p>
+                                <p class="text-sm text-zinc-600 dark:text-zinc-300">We've received your invitation request. You'll hear from us soon!</p>
                             </div>
                         </div>
                     </div>

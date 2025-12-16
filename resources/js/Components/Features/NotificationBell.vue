@@ -1,10 +1,10 @@
 <template>
   <Menu as="div" class="relative ml-3">
     <div>
-      <MenuButton class="relative flex rounded-full bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-800 border border-gray-200 dark:border-transparent">
+      <MenuButton class="relative flex rounded-full bg-white dark:bg-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-800 border border-amber-200 dark:border-transparent">
         <span class="absolute -inset-1.5" />
         <span class="sr-only">View notifications</span>
-        <BellIcon class="h-6 w-6 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300" aria-hidden="true" />
+        <BellIcon class="h-6 w-6 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300" aria-hidden="true" />
         <span v-if="unreadCount > 0" class="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 flex items-center justify-center">
           <span class="text-xs text-white font-medium">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
         </span>
@@ -18,22 +18,22 @@
       leave-from-class="transform opacity-100 scale-100"
       leave-to-class="transform opacity-0 scale-95"
     >
-      <MenuItems class="absolute right-0 z-10 mt-2 w-96 origin-top-right rounded-md bg-white dark:bg-gray-800 py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-        <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+      <MenuItems class="absolute right-0 z-10 mt-2 w-96 origin-top-right rounded-md bg-white dark:bg-zinc-800 py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+        <div class="px-4 py-2 border-b border-amber-200 dark:border-zinc-700">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ __('notifications') }}</h3>
+            <h3 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('notifications') }}</h3>
             <div class="flex items-center space-x-2">
               <button
                 v-if="unreadCount > 0"
                 @click="markAllAsRead"
-                class="text-xs text-indigo-600 hover:text-indigo-500"
+                class="text-xs text-amber-600 hover:text-amber-700 dark:hover:text-amber-500"
               >
                 {{ __('mark_all_read') }}
               </button>
               <button
                 v-if="notifications.length > 0"
                 @click="clearAll"
-                class="text-xs text-gray-500 hover:text-gray-700"
+                class="text-xs text-zinc-500 hover:text-zinc-700"
               >
                 {{ __('clear_all') }}
               </button>
@@ -42,12 +42,12 @@
         </div>
         
         <div v-if="loading" class="px-4 py-8 text-center">
-          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
         </div>
         
         <div v-else-if="notifications.length === 0" class="px-4 py-8 text-center">
-          <BellSlashIcon class="mx-auto h-12 w-12 text-gray-400" />
-          <p class="mt-2 text-sm text-gray-500">{{ __('no_notifications') }}</p>
+          <BellSlashIcon class="mx-auto h-12 w-12 text-zinc-400" />
+          <p class="mt-2 text-sm text-zinc-500">{{ __('no_notifications') }}</p>
         </div>
         
         <div v-else class="max-h-96 overflow-y-auto">
@@ -55,9 +55,9 @@
             <div
               @click="handleNotificationClick(notification)"
               :class="[
-                active ? 'bg-gray-100 dark:bg-gray-700' : '',
-                !notification.read_at ? 'bg-blue-50 dark:bg-blue-900/20' : '',
-                'block px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0'
+                active ? 'bg-amber-100 dark:bg-zinc-700' : '',
+                !notification.read_at ? 'bg-amber-50 dark:bg-amber-900/20' : '',
+                'block px-4 py-3 cursor-pointer border-b border-amber-200 dark:border-zinc-700 last:border-0'
               ]"
             >
               <div class="flex items-start">
@@ -65,19 +65,19 @@
                   <component :is="getNotificationIcon(notification)" class="h-6 w-6" :class="getNotificationIconClass(notification)" />
                 </div>
                 <div class="ml-3 flex-1">
-                  <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     {{ getNotificationTitle(notification) }}
                   </p>
-                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                     {{ getNotificationMessage(notification) }}
                   </p>
-                  <p class="mt-1 text-xs text-gray-400">
+                  <p class="mt-1 text-xs text-zinc-400">
                     {{ formatTime(notification.created_at) }}
                   </p>
                 </div>
                 <button
                   @click.stop="deleteNotification(notification.id)"
-                  class="ml-2 text-gray-400 hover:text-gray-600"
+                  class="ml-2 text-zinc-400 hover:text-zinc-600"
                 >
                   <XMarkIcon class="h-4 w-4" />
                 </button>
@@ -86,10 +86,10 @@
           </MenuItem>
         </div>
         
-        <div v-if="notifications.length > 0" class="px-4 py-2 border-t border-gray-200 dark:border-gray-700">
+        <div v-if="notifications.length > 0" class="px-4 py-2 border-t border-amber-200 dark:border-zinc-700">
           <Link
             :href="route('preferences.index')"
-            class="text-sm text-indigo-600 hover:text-indigo-500"
+            class="text-sm text-amber-600 hover:text-amber-700 dark:hover:text-amber-500"
           >
             {{ __('notification_settings') }}
           </Link>
@@ -224,10 +224,10 @@ const getNotificationIconClass = (notification) => {
   const type = notification.data.type;
   if (type === 'receipt_processed') return 'text-green-500';
   if (type === 'receipt_failed') return 'text-red-500';
-  if (type === 'bulk_operation_completed') return 'text-indigo-500';
-  if (type === 'scanner_files_imported') return 'text-blue-500';
+  if (type === 'bulk_operation_completed') return 'text-amber-500';
+  if (type === 'scanner_files_imported') return 'text-orange-500';
   if (type === 'duplicate_file_detected') return 'text-yellow-500';
-  return 'text-gray-400';
+  return 'text-zinc-400';
 };
 
 const getNotificationTitle = (notification) => {

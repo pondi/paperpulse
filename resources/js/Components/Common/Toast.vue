@@ -15,7 +15,7 @@
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5"
+          class="pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg bg-white dark:bg-zinc-800 shadow-xl border-2 border-amber-200 dark:border-zinc-700 ring-1 ring-black ring-opacity-5"
         >
           <div class="p-4">
             <div class="flex items-start">
@@ -37,15 +37,15 @@
                 />
                 <InformationCircleIcon
                   v-else-if="toast.type === 'info'"
-                  class="h-6 w-6 text-blue-400"
+                  class="h-6 w-6 text-amber-400"
                   aria-hidden="true"
                 />
               </div>
               <div class="ml-3 w-0 flex-1 pt-0.5">
                 <p
-                  class="text-sm font-medium"
+                  class="text-sm font-bold"
                   :class="{
-                    'text-gray-900 dark:text-gray-100': toast.type === 'success' || toast.type === 'info',
+                    'text-zinc-900 dark:text-zinc-100': toast.type === 'success' || toast.type === 'info',
                     'text-red-900 dark:text-red-100': toast.type === 'error',
                     'text-yellow-900 dark:text-yellow-100': toast.type === 'warning',
                   }"
@@ -57,7 +57,7 @@
                 <button
                   type="button"
                   @click="removeToast(toast.id)"
-                  class="inline-flex rounded-md bg-white dark:bg-gray-800 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                  class="inline-flex rounded-md bg-white dark:bg-zinc-800 text-zinc-400 hover:text-zinc-500 dark:hover:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-colors duration-200"
                 >
                   <span class="sr-only">Close</span>
                   <XMarkIcon class="h-5 w-5" aria-hidden="true" />

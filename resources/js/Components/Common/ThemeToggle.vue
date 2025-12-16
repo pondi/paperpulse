@@ -2,13 +2,13 @@
   <button
     type="button"
     :aria-label="`Switch to ${nextLabel} mode`"
-    class="relative flex rounded-full bg-white dark:bg-gray-800 p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-800 border border-gray-200 dark:border-transparent hover:bg-gray-50 dark:hover:bg-gray-700"
+    class="relative flex rounded-full bg-white dark:bg-zinc-800 p-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-800 border border-amber-200 dark:border-transparent hover:bg-amber-50 dark:hover:bg-zinc-700"
     @click="toggleTheme"
   >
     <span class="sr-only">Toggle theme</span>
-    <MoonIcon v-if="mode === 'dark'" class="h-6 w-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-    <SunIcon v-else-if="mode === 'light'" class="h-6 w-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-    <ComputerDesktopIcon v-else class="h-6 w-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+    <MoonIcon v-if="mode === 'dark'" class="h-6 w-6 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
+    <SunIcon v-else-if="mode === 'light'" class="h-6 w-6 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
+    <ComputerDesktopIcon v-else class="h-6 w-6 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
   </button>
 </template>
 

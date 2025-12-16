@@ -9,10 +9,10 @@
   >
     <div v-if="selectedCount > 0" class="fixed bottom-0 inset-x-0 pb-2 sm:pb-5">
       <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-        <div class="p-2 rounded-lg bg-indigo-600 shadow-lg sm:p-3">
+        <div class="p-2 rounded-lg bg-zinc-900 shadow-lg sm:p-3">
           <div class="flex items-center justify-between flex-wrap">
             <div class="w-0 flex-1 flex items-center">
-              <span class="flex p-2 rounded-lg bg-indigo-800">
+              <span class="flex p-2 rounded-lg bg-zinc-800">
                 <CheckCircleIcon class="h-6 w-6 text-white" aria-hidden="true" />
               </span>
               <p class="ml-3 font-medium text-white truncate">
@@ -25,13 +25,13 @@
                 <button
                   @click="showCategorizeModal = true"
                   type="button"
-                  class="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-indigo-600 bg-white hover:bg-indigo-50"
+                  class="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-amber-600 bg-white hover:bg-amber-50"
                 >
                   <FolderIcon class="-ml-1 mr-2 h-4 w-4" aria-hidden="true" />
                   Categorize
                 </button>
                 <Menu as="div" class="relative inline-block text-left">
-                  <MenuButton class="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-indigo-600 bg-white hover:bg-indigo-50">
+                  <MenuButton class="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-amber-600 bg-white hover:bg-amber-50">
                     <ArrowDownTrayIcon class="-ml-1 mr-2 h-4 w-4" aria-hidden="true" />
                     Export
                     <ChevronDownIcon class="ml-2 -mr-1 h-4 w-4" aria-hidden="true" />
@@ -49,7 +49,7 @@
                         <MenuItem v-slot="{ active }">
                           <button
                             @click="exportSelected('csv')"
-                            :class="[active ? 'bg-gray-100 text-gray-900' : 'text-gray-700', 'block w-full text-left px-4 py-2 text-sm']"
+                            :class="[active ? 'bg-amber-100 text-zinc-900' : 'text-zinc-700', 'block w-full text-left px-4 py-2 text-sm']"
                           >
                             Export as CSV
                           </button>
@@ -57,7 +57,7 @@
                         <MenuItem v-slot="{ active }">
                           <button
                             @click="exportSelected('pdf')"
-                            :class="[active ? 'bg-gray-100 text-gray-900' : 'text-gray-700', 'block w-full text-left px-4 py-2 text-sm']"
+                            :class="[active ? 'bg-amber-100 text-zinc-900' : 'text-zinc-700', 'block w-full text-left px-4 py-2 text-sm']"
                           >
                             Export as PDF
                           </button>
@@ -80,7 +80,7 @@
               <button
                 @click="$emit('clear-selection')"
                 type="button"
-                class="-mr-1 flex p-2 rounded-md hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-white"
+                class="-mr-1 flex p-2 rounded-md hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-white"
               >
                 <span class="sr-only">Clear selection</span>
                 <XMarkIcon class="h-6 w-6 text-white" aria-hidden="true" />
@@ -95,21 +95,21 @@
   <!-- Delete Confirmation Modal -->
   <TransitionRoot as="template" :show="showDeleteModal">
     <Dialog as="div" class="relative z-50" @close="showDeleteModal = false">
-      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+      <div class="fixed inset-0 bg-zinc-500 bg-opacity-75 transition-opacity" />
 
       <div class="fixed inset-0 z-10 overflow-y-auto">
         <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-          <DialogPanel class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+          <DialogPanel class="relative transform overflow-hidden rounded-lg bg-white dark:bg-zinc-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
             <div class="sm:flex sm:items-start">
               <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
                 <ExclamationTriangleIcon class="h-6 w-6 text-red-600" aria-hidden="true" />
               </div>
               <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
-                <DialogTitle as="h3" class="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
+                <DialogTitle as="h3" class="text-base font-semibold leading-6 text-zinc-900 dark:text-zinc-100">
                   Delete {{ selectedCount }} {{ selectedCount === 1 ? 'receipt' : 'receipts' }}
                 </DialogTitle>
                 <div class="mt-2">
-                  <p class="text-sm text-gray-500">
+                  <p class="text-sm text-zinc-500">
                     Are you sure you want to delete {{ selectedCount }} {{ selectedCount === 1 ? 'receipt' : 'receipts' }}? This action cannot be undone.
                   </p>
                 </div>
@@ -125,7 +125,7 @@
               </button>
               <button
                 type="button"
-                class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 sm:mt-0 sm:w-auto"
+                class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-zinc-800 px-3 py-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-amber-50 dark:hover:bg-zinc-700 sm:mt-0 sm:w-auto"
                 @click="showDeleteModal = false"
               >
                 Cancel
@@ -140,27 +140,27 @@
   <!-- Categorize Modal -->
   <TransitionRoot as="template" :show="showCategorizeModal">
     <Dialog as="div" class="relative z-50" @close="showCategorizeModal = false">
-      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+      <div class="fixed inset-0 bg-zinc-500 bg-opacity-75 transition-opacity" />
 
       <div class="fixed inset-0 z-10 overflow-y-auto">
         <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-          <DialogPanel class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+          <DialogPanel class="relative transform overflow-hidden rounded-lg bg-white dark:bg-zinc-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
             <div>
               <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
                 <FolderIcon class="h-6 w-6 text-green-600" aria-hidden="true" />
               </div>
               <div class="mt-3 text-center sm:mt-5">
-                <DialogTitle as="h3" class="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
+                <DialogTitle as="h3" class="text-base font-semibold leading-6 text-zinc-900 dark:text-zinc-100">
                   Categorize {{ selectedCount }} {{ selectedCount === 1 ? 'receipt' : 'receipts' }}
                 </DialogTitle>
                 <div class="mt-2">
-                  <p class="text-sm text-gray-500">
+                  <p class="text-sm text-zinc-500">
                     Select a category to apply to all selected receipts.
                   </p>
                   <div class="mt-4">
                     <select
                       v-model="selectedCategoryId"
-                      class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                      class="block w-full rounded-md border-0 py-1.5 text-zinc-900 shadow-sm ring-1 ring-inset ring-zinc-300 focus:ring-2 focus:ring-inset focus:ring-amber-600 sm:text-sm sm:leading-6"
                     >
                       <option value="">Select a category</option>
                       <optgroup v-if="categories.length > 0" label="Your Categories">
@@ -186,14 +186,14 @@
               <button
                 type="button"
                 :disabled="!selectedCategoryId"
-                class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:col-start-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="inline-flex w-full justify-center rounded-md bg-zinc-900 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 sm:col-start-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="categorizeSelected"
               >
                 Apply Category
               </button>
               <button
                 type="button"
-                class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 sm:col-start-1 sm:mt-0"
+                class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-zinc-800 px-3 py-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-amber-50 dark:hover:bg-zinc-700 sm:col-start-1 sm:mt-0"
                 @click="showCategorizeModal = false"
               >
                 Cancel

@@ -177,13 +177,13 @@ const handleThumbnailError = (documentId: number) => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center justify-between">
-                <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+                <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
                     Documents
                 </h2>
                 <div class="flex items-center space-x-4">
                     <Link
                         :href="route('documents.upload')"
-                        class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                        class="inline-flex items-center px-4 py-2 bg-zinc-900 dark:bg-orange-600 border border-transparent rounded-md font-bold text-sm text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200"
                     >
                         Upload Document
                     </Link>
@@ -216,7 +216,7 @@ const handleThumbnailError = (documentId: number) => {
                         />
                         <button
                             @click="showFilters = !showFilters"
-                            class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            class="inline-flex items-center px-4 py-2 border-2 border-zinc-900 dark:border-zinc-600 rounded-md shadow-sm text-sm font-bold text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-800 hover:bg-amber-50 dark:hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all duration-200"
                         >
                             <FunnelIcon class="h-5 w-5 mr-2" />
                             Filters
@@ -228,8 +228,8 @@ const handleThumbnailError = (documentId: number) => {
                             :class="[
                                 'p-2 rounded',
                                 viewMode === 'grid' 
-                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400' 
-                                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
+                                    ? 'bg-amber-100 dark:bg-orange-900 text-amber-600 dark:text-amber-400' 
+                                    : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'
                             ]"
                         >
                             <Squares2X2Icon class="h-5 w-5" />
@@ -239,8 +239,8 @@ const handleThumbnailError = (documentId: number) => {
                             :class="[
                                 'p-2 rounded',
                                 viewMode === 'list' 
-                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400' 
-                                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
+                                    ? 'bg-amber-100 dark:bg-orange-900 text-amber-600 dark:text-amber-400' 
+                                    : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'
                             ]"
                         >
                             <ListBulletIcon class="h-5 w-5" />
@@ -249,22 +249,22 @@ const handleThumbnailError = (documentId: number) => {
                 </div>
 
                 <!-- Bulk Actions -->
-                <div v-if="selectedDocuments.length > 0" class="mb-4 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                <div v-if="selectedDocuments.length > 0" class="mb-6 bg-amber-50 dark:bg-zinc-800 rounded-lg p-4 shadow-lg border-l-4 border-amber-600 dark:border-amber-500">
                     <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-700 dark:text-gray-300">
+                        <span class="text-sm font-bold text-zinc-900 dark:text-zinc-100">
                             {{ selectedDocuments.length }} document(s) selected
                         </span>
-                        <div class="flex items-center space-x-2">
+                        <div class="flex items-center gap-2">
                             <button
                                 @click="downloadSelected"
-                                class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                                class="inline-flex items-center px-3 py-1.5 border-2 border-zinc-900 dark:border-zinc-600 rounded-md text-sm font-bold text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-700 hover:bg-amber-50 dark:hover:bg-zinc-600 transition-all duration-200"
                             >
                                 <ArrowDownTrayIcon class="h-4 w-4 mr-1" />
                                 Download
                             </button>
                             <button
                                 @click="showDeleteModal = true"
-                                class="inline-flex items-center px-3 py-1.5 border border-red-300 dark:border-red-600 rounded-md text-sm font-medium text-red-700 dark:text-red-400 bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900"
+                                class="inline-flex items-center px-3 py-1.5 border-2 border-red-600 dark:border-red-600 rounded-md text-sm font-bold text-red-700 dark:text-red-400 bg-white dark:bg-zinc-700 hover:bg-red-50 dark:hover:bg-red-900 transition-all duration-200"
                             >
                                 <TrashIcon class="h-4 w-4 mr-1" />
                                 Delete
@@ -274,29 +274,29 @@ const handleThumbnailError = (documentId: number) => {
                 </div>
 
                 <!-- Documents Grid/List -->
-                <div class="bg-white dark:bg-gray-800 overflow-visible shadow-sm sm:rounded-lg">
+                <div class="bg-white dark:bg-zinc-900 overflow-visible shadow-lg sm:rounded-lg border-t-4 border-orange-600 dark:border-orange-500">
                     <!-- Empty State -->
                     <div v-if="documents.data.length === 0" class="p-12 text-center">
-                        <DocumentIcon class="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 class="mt-2 text-lg font-medium text-gray-900 dark:text-white">No documents found</h3>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        <DocumentIcon class="mx-auto h-16 w-16 text-zinc-400 dark:text-zinc-600" />
+                        <h3 class="mt-4 text-lg font-black text-zinc-900 dark:text-zinc-100">No documents found</h3>
+                        <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                             Upload your first document to get started.
                         </p>
-                        <div class="mt-6">
+                        <div class="mt-8">
                             <Link
                                 :href="route('documents.upload')"
-                                class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700"
+                                class="inline-flex items-center px-6 py-3 bg-zinc-900 dark:bg-orange-600 border border-transparent rounded-md font-bold text-sm text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-orange-700 transition-all duration-200"
                             >
                                 Upload Document
                             </Link>
                         </div>
                     </div>
                     <!-- Grid View -->
-                    <div v-else-if="viewMode === 'grid'" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div v-else-if="viewMode === 'grid'" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div
                             v-for="document in documents.data"
                             :key="document.id"
-                            class="relative group border dark:border-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow"
+                            class="relative group bg-white dark:bg-zinc-900 border border-amber-200 dark:border-zinc-700 rounded-lg p-4 shadow-lg hover:shadow-xl transition-all duration-200"
                         >
                             <div class="absolute top-4 right-4">
                                 <Checkbox
@@ -307,7 +307,7 @@ const handleThumbnailError = (documentId: number) => {
 
                             <div @click="viewDocument(document)" class="cursor-pointer">
                                 <!-- Thumbnail Preview -->
-                                <div class="aspect-[8.5/11] bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden relative mb-3">
+                                <div class="aspect-[8.5/11] bg-amber-100 dark:bg-zinc-700 rounded-lg overflow-hidden relative mb-3">
                                     <!-- Show preview if available and no error -->
                                     <template v-if="document.file?.has_preview && !thumbnailErrors.has(document.id)">
                                         <img
@@ -321,7 +321,7 @@ const handleThumbnailError = (documentId: number) => {
                                     <!-- Fallback to icon -->
                                     <template v-else>
                                         <div class="flex items-center justify-center h-full">
-                                            <DocumentIcon class="h-16 w-16 text-gray-400" />
+                                            <DocumentIcon class="h-16 w-16 text-zinc-400" />
                                         </div>
                                     </template>
 
@@ -335,15 +335,15 @@ const handleThumbnailError = (documentId: number) => {
                                         </span>
                                     </div>
                                 </div>
-                                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-1 truncate">
+                                <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-1 truncate">
                                     {{ document.title }}
                                 </h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                                <p class="text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-2">
                                     {{ formatFileSize(document.size) }} • {{ formatDate(document.created_at) }}
                                 </p>
                                 <p
                                     v-if="document.note"
-                                    class="text-sm text-gray-600 dark:text-gray-300 mb-2 line-clamp-2"
+                                    class="text-sm text-zinc-600 dark:text-zinc-300 mb-2 line-clamp-2"
                                 >
                                     {{ document.note }}
                                 </p>
@@ -352,13 +352,13 @@ const handleThumbnailError = (documentId: number) => {
                                     <span 
                                         v-for="tag in document.tags.slice(0, 3)" 
                                         :key="tag.id"
-                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200"
                                     >
                                         {{ tag.name }}
                                     </span>
                                     <span 
                                         v-if="document.tags && document.tags.length > 3"
-                                        class="text-xs text-gray-500 dark:text-gray-400"
+                                        class="text-xs text-zinc-500 dark:text-zinc-400"
                                     >
                                         +{{ document.tags ? document.tags.length - 3 : 0 }} more
                                     </span>
@@ -369,7 +369,7 @@ const handleThumbnailError = (documentId: number) => {
                                 <div class="flex items-center space-x-2">
                                     <Link
                                         :href="route('documents.show', document.id)"
-                                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                                        class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
                                     >
                                         <EyeIcon class="h-5 w-5" />
                                     </Link>
@@ -382,7 +382,7 @@ const handleThumbnailError = (documentId: number) => {
                                 </div>
                                 <Dropdown align="right" width="48">
                                     <template #trigger>
-                                        <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                        <button class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
                                             <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                                             </svg>
@@ -410,41 +410,41 @@ const handleThumbnailError = (documentId: number) => {
 
                     <!-- List View -->
                     <div v-else class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-700">
+                        <table class="min-w-full divide-y divide-amber-200 dark:divide-zinc-700">
+                            <thead>
                                 <tr>
-                                    <th class="px-6 py-3 text-left">
+                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left">
                                         <Checkbox
                                             :checked="allSelected"
                                             :indeterminate="someSelected"
                                             @change="toggleAll"
                                         />
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
                                         Document
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
                                         Category
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
                                         Tags
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
                                         Shared
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
                                         Size
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
                                         Date
                                     </th>
-                                    <th class="relative px-6 py-3">
+                                    <th class="relative px-6 py-3 bg-amber-50 dark:bg-zinc-800">
                                         <span class="sr-only">Actions</span>
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                <tr v-for="document in documents.data" :key="document.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <tbody class="bg-white dark:bg-zinc-900 divide-y divide-amber-200 dark:divide-zinc-700">
+                                <tr v-for="document in documents.data" :key="document.id" class="hover:bg-amber-50 dark:hover:bg-zinc-800 transition-colors duration-200">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <Checkbox
                                             :checked="selectedDocuments.includes(document.id)"
@@ -453,11 +453,11 @@ const handleThumbnailError = (documentId: number) => {
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
-                                            <DocumentIcon class="h-8 w-8 text-gray-400 mr-3" />
+                                            <DocumentIcon class="h-8 w-8 text-zinc-400 mr-3" />
                                             <div>
                                                 <button
                                                     @click="viewDocument(document)"
-                                                    class="text-sm font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+                                                    class="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-amber-600 dark:hover:text-amber-400"
                                                 >
                                                     {{ document.title }}
                                                     <span
@@ -468,12 +468,12 @@ const handleThumbnailError = (documentId: number) => {
                                                         <ShareIcon class="h-3 w-3 mr-1" /> {{ document.shared_with_count }}
                                                     </span>
                                                 </button>
-                                                <div class="text-sm text-gray-500 dark:text-gray-400">
+                                                <div class="text-sm text-zinc-500 dark:text-zinc-400">
                                                     {{ document.file_name }}
                                                 </div>
                                                 <div
                                                     v-if="document.note"
-                                                    class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1"
+                                                    class="text-xs text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-1"
                                                 >
                                                     {{ document.note }}
                                                 </div>
@@ -497,13 +497,13 @@ const handleThumbnailError = (documentId: number) => {
                                             <span 
                                                 v-for="tag in (document.tags || []).slice(0, 2)" 
                                                 :key="tag.id"
-                                                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                                                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200"
                                             >
                                                 {{ tag.name }}
                                             </span>
                                             <span 
                                                 v-if="document.tags && document.tags.length > 2"
-                                                class="text-xs text-gray-500 dark:text-gray-400"
+                                                class="text-xs text-zinc-500 dark:text-zinc-400"
                                             >
                                                 +{{ document.tags ? document.tags.length - 2 : 0 }}
                                             </span>
@@ -516,18 +516,18 @@ const handleThumbnailError = (documentId: number) => {
                                         >
                                             {{ document.shared_with_count }}
                                         </span>
-                                        <span v-else class="text-gray-400">0</span>
+                                        <span v-else class="text-zinc-400">0</span>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-500 dark:text-zinc-400">
                                         {{ formatFileSize(document.size) }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-500 dark:text-zinc-400">
                                         {{ formatDate(document.created_at) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <Dropdown align="right" width="48">
                                             <template #trigger>
-                                                <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                                <button class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
                                                     <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                                                         <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                                                     </svg>
@@ -556,7 +556,7 @@ const handleThumbnailError = (documentId: number) => {
                     </div>
 
                     <!-- Pagination -->
-                    <div v-if="documents.links.length > 3" class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                    <div v-if="documents.links.length > 3" class="px-6 py-4 border-t border-amber-200 dark:border-zinc-700">
                         <nav class="flex items-center justify-between">
                             <div class="flex-1 flex justify-between sm:hidden">
                                 <Link
@@ -566,8 +566,8 @@ const handleThumbnailError = (documentId: number) => {
                                     :class="[
                                         'relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md',
                                         link.active 
-                                            ? 'bg-blue-600 text-white' 
-                                            : 'text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700',
+                                            ? 'bg-orange-600 text-white' 
+                                            : 'text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-800 hover:bg-amber-50 dark:hover:bg-zinc-700',
                                         !link.url && 'opacity-50 cursor-not-allowed'
                                     ]"
                                     :disabled="!link.url"
@@ -576,13 +576,13 @@ const handleThumbnailError = (documentId: number) => {
                             </div>
                             <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                                 <div v-if="documents?.meta">
-                                    <p class="text-sm text-gray-700 dark:text-gray-300">
+                                    <p class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                                         Showing
-                                        <span class="font-medium">{{ documents.meta.from || 0 }}</span>
+                                        <span class="font-black">{{ documents.meta.from || 0 }}</span>
                                         to
-                                        <span class="font-medium">{{ documents.meta.to || 0 }}</span>
+                                        <span class="font-black">{{ documents.meta.to || 0 }}</span>
                                         of
-                                        <span class="font-medium">{{ documents.meta.total || 0 }}</span>
+                                        <span class="font-black">{{ documents.meta.total || 0 }}</span>
                                         results
                                     </p>
                                 </div>
@@ -595,8 +595,8 @@ const handleThumbnailError = (documentId: number) => {
                                             :class="[
                                                 'relative inline-flex items-center px-4 py-2 text-sm font-medium',
                                                 link.active 
-                                                    ? 'z-10 bg-blue-50 dark:bg-blue-900 border-blue-500 text-blue-600 dark:text-blue-400' 
-                                                    : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700',
+                                                    ? 'z-10 bg-amber-50 dark:bg-orange-900 border-amber-500 text-amber-600 dark:text-amber-400' 
+                                                    : 'bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-amber-50 dark:hover:bg-zinc-700',
                                                 !link.url && 'opacity-50 cursor-not-allowed',
                                                 documents.links.indexOf(link) === 0 && 'rounded-l-md',
                                                 documents.links.indexOf(link) === documents.links.length - 1 && 'rounded-r-md'
@@ -615,20 +615,20 @@ const handleThumbnailError = (documentId: number) => {
                 <Teleport v-if="isMounted" to="body">
                     <div v-if="showDocumentDrawer" class="fixed inset-0 overflow-hidden z-50">
                         <div class="absolute inset-0 bg-black bg-opacity-50" @click="showDocumentDrawer = false"></div>
-                        <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white dark:bg-gray-800 shadow-xl">
-                            <div class="flex items-center justify-between p-4 border-b dark:border-gray-700">
-                                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                        <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white dark:bg-zinc-800 shadow-xl">
+                            <div class="flex items-center justify-between p-4 border-b dark:border-zinc-700">
+                                <h3 class="text-lg font-medium text-zinc-900 dark:text-white">
                                     {{ selectedDocument?.title }}
                                 </h3>
                                 <button
                                     @click="showDocumentDrawer = false"
-                                    class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+                                    class="text-zinc-400 hover:text-zinc-500 dark:hover:text-zinc-300"
                                 >
                                     <XMarkIcon class="h-6 w-6" />
                                 </button>
                             </div>
                             <div class="p-4">
-                                <div class="aspect-[8.5/11] bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden relative">
+                                <div class="aspect-[8.5/11] bg-amber-100 dark:bg-zinc-700 rounded-lg flex items-center justify-center overflow-hidden relative">
                                     <template v-if="selectedDocument?.file?.previewUrl || selectedDocument?.file?.url">
                                         <img
                                             :src="selectedDocument.file.previewUrl || selectedDocument.file.url"
@@ -637,7 +637,7 @@ const handleThumbnailError = (documentId: number) => {
                                         />
                                     </template>
                                     <template v-else>
-                                        <div class="text-center text-gray-500 dark:text-gray-300">No preview available</div>
+                                        <div class="text-center text-zinc-500 dark:text-zinc-300">No preview available</div>
                                     </template>
                                 </div>
                             </div>
@@ -658,13 +658,13 @@ const handleThumbnailError = (documentId: number) => {
                 <!-- Delete Confirmation Modal -->
                 <Modal :show="showDeleteModal" @close="showDeleteModal = false">
                     <div class="p-6">
-                        <h2 class="text-lg font-medium text-gray-900 dark:text-white">
+                        <h2 class="text-lg font-black text-zinc-900 dark:text-zinc-100">
                             Delete Documents
                         </h2>
-                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                             Are you sure you want to delete {{ selectedDocuments.length }} document(s)? This action cannot be undone.
                         </p>
-                        <div class="mt-6 flex justify-end space-x-3">
+                        <div class="mt-6 flex justify-end gap-3">
                             <SecondaryButton @click="showDeleteModal = false">
                                 Cancel
                             </SecondaryButton>

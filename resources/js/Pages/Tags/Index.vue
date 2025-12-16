@@ -2,7 +2,7 @@
     <AuthenticatedLayout title="Tags">
         <template #header>
             <div class="flex items-center justify-between">
-                <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+                <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
                     Tags
                 </h2>
                 <PrimaryButton @click="openCreateModal">
@@ -17,7 +17,7 @@
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <!-- Search and Filters -->
-                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                <div class="bg-white dark:bg-zinc-800 overflow-hidden shadow-lg sm:rounded-lg mb-6">
                     <div class="p-6">
                         <div class="flex flex-col sm:flex-row gap-4">
                             <div class="flex-1">
@@ -33,7 +33,7 @@
                                 <select
                                     v-model="filters.sort"
                                     @change="applyFilters"
-                                    class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600"
+                                    class="rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 focus:border-amber-500 dark:focus:border-amber-600 focus:ring-amber-500 dark:focus:ring-amber-600"
                                 >
                                     <option value="desc">Most Used</option>
                                     <option value="asc">Least Used</option>
@@ -46,14 +46,14 @@
                 </div>
 
                 <!-- Tags Grid -->
-                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="bg-white dark:bg-zinc-800 overflow-hidden shadow-lg sm:rounded-lg">
                     <div class="p-6">
                         <div v-if="tags.data.length === 0" class="text-center py-12">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="mx-auto h-12 w-12 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                             </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No tags</h3>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating a new tag.</p>
+                            <h3 class="mt-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">No tags</h3>
+                            <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Get started by creating a new tag.</p>
                             <div class="mt-6">
                                 <PrimaryButton @click="openCreateModal">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,7 +68,7 @@
                             <div
                                 v-for="tag in tags.data"
                                 :key="tag.id"
-                                class="relative group bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
+                                class="relative group bg-amber-50 dark:bg-zinc-700 rounded-lg p-4 hover:shadow-md transition-shadow"
                             >
                                 <div class="flex items-start justify-between">
                                     <div class="flex-1">
@@ -77,11 +77,11 @@
                                                 class="w-4 h-4 rounded-full"
                                                 :style="{ backgroundColor: tag.color }"
                                             ></span>
-                                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                                            <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
                                                 {{ tag.name }}
                                             </h3>
                                         </div>
-                                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                                        <div class="text-sm text-zinc-500 dark:text-zinc-400">
                                             <span v-if="tag.documents_count > 0">
                                                 {{ tag.documents_count }} {{ tag.documents_count === 1 ? 'document' : 'documents' }}
                                             </span>
@@ -98,8 +98,8 @@
                                     <!-- Actions Dropdown -->
                                     <Dropdown align="right" width="48">
                                         <template #trigger>
-                                            <button class="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600">
-                                                <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <button class="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-amber-200 dark:hover:bg-amber-600">
+                                                <svg class="w-5 h-5 text-zinc-600 dark:text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                                                 </svg>
                                             </button>
@@ -147,7 +147,7 @@
         <!-- Create/Edit Tag Modal -->
         <Modal :show="showTagModal" @close="closeTagModal">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
                     {{ editingTag ? 'Edit Tag' : 'Create New Tag' }}
                 </h2>
 
@@ -173,7 +173,7 @@
                             type="color"
                             class="h-10 w-20 rounded cursor-pointer"
                         />
-                        <span class="text-sm text-gray-600 dark:text-gray-400">{{ tagForm.color }}</span>
+                        <span class="text-sm text-zinc-600 dark:text-zinc-400">{{ tagForm.color }}</span>
                     </div>
                     <InputError :message="tagForm.errors.color" class="mt-2" />
                 </div>
@@ -192,11 +192,11 @@
         <!-- Merge Tag Modal -->
         <Modal :show="showMergeModal" @close="closeMergeModal">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
                     Merge Tag
                 </h2>
 
-                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                     Merge <strong>{{ mergingTag?.name }}</strong> into another tag. All items will be moved to the target tag.
                 </p>
 
@@ -205,7 +205,7 @@
                     <select
                         id="target-tag"
                         v-model="mergeForm.target_tag_id"
-                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600"
+                        class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 focus:border-amber-500 dark:focus:border-amber-600 focus:ring-amber-500 dark:focus:ring-amber-600"
                     >
                         <option value="">Select a tag...</option>
                         <option
@@ -233,11 +233,11 @@
         <!-- Delete Confirmation Modal -->
         <Modal :show="showDeleteModal" @close="closeDeleteModal">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
                     Delete Tag
                 </h2>
 
-                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                     Are you sure you want to delete <strong>{{ deletingTag?.name }}</strong>? This will remove the tag from all items.
                 </p>
 

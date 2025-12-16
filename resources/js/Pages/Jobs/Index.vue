@@ -3,10 +3,10 @@
 
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-semibold text-xl text-gray-900 dark:text-gray-200 leading-tight">Jobs</h2>
+      <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">Jobs</h2>
     </template>
 
-    <div class="py-12 bg-gray-50 dark:bg-gray-900">
+    <div class="py-12 bg-amber-50 dark:bg-zinc-900">
       <div class="max-w-7xl 2xl:max-w-screen-2xl mx-auto sm:px-6 lg:px-8">
         <div class="lg:grid lg:grid-cols-12 lg:gap-8">
           <!-- Left Column: Statistics -->
@@ -25,7 +25,7 @@
             </div>
 
             <!-- Empty State -->
-            <div v-else class="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6 text-center text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
+            <div v-else class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg p-6 text-center text-zinc-600 dark:text-zinc-400 border border-amber-200 dark:border-zinc-700">
               No jobs found
             </div>
 

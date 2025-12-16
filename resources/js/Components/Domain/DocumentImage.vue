@@ -11,13 +11,13 @@
       />
 
       <!-- Error state -->
-      <div v-if="imageError" class="flex flex-col items-center justify-center h-full bg-gray-50 dark:bg-gray-900">
+      <div v-if="imageError" class="flex flex-col items-center justify-center h-full bg-amber-50 dark:bg-zinc-900">
         <ExclamationCircleIcon class="size-16 text-red-400 mb-4" />
-        <span class="text-sm text-gray-500 dark:text-gray-400">{{ errorMessage }}</span>
+        <span class="text-sm text-zinc-500 dark:text-zinc-400">{{ errorMessage }}</span>
         <button
           v-if="file.pdfUrl"
           @click="openPdf"
-          class="mt-4 text-sm text-indigo-600 hover:text-indigo-500"
+          class="mt-4 text-sm text-amber-600 hover:text-amber-500"
         >
           Try viewing PDF instead
         </button>
@@ -25,16 +25,16 @@
     </template>
 
     <!-- No file state -->
-    <div v-else class="flex flex-col items-center justify-center h-full bg-gray-50 dark:bg-gray-900">
-      <DocumentIcon class="size-16 text-gray-400 mb-4" />
-      <span class="text-sm text-gray-500 dark:text-gray-400">{{ noImageMessage }}</span>
+    <div v-else class="flex flex-col items-center justify-center h-full bg-amber-50 dark:bg-zinc-900">
+      <DocumentIcon class="size-16 text-zinc-400 mb-4" />
+      <span class="text-sm text-zinc-500 dark:text-zinc-400">{{ noImageMessage }}</span>
     </div>
 
     <!-- PDF button overlay (only shows when PDF is available and image loads successfully) -->
     <div v-if="showPdfButton && file?.pdfUrl && !imageError" :class="pdfButtonPosition">
       <button
         @click="openPdf"
-        class="inline-flex items-center gap-x-2 px-3 py-2 bg-white dark:bg-gray-800 rounded-md text-sm font-semibold text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 shadow-lg border border-gray-200 dark:border-gray-700"
+        class="inline-flex items-center gap-x-2 px-3 py-2 bg-white dark:bg-zinc-800 rounded-md text-sm font-semibold text-zinc-900 dark:text-white hover:bg-amber-50 dark:hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 shadow-lg border border-amber-200 dark:border-zinc-700"
       >
         <DocumentIcon class="size-4" />
         {{ __('view_pdf') }}

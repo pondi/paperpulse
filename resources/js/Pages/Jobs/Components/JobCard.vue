@@ -2,7 +2,7 @@
   <div :class="{
     'shadow-sm rounded-lg p-6 border': true,
     // Default (non-failed) card colors: light + dark
-    'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700': job.status !== 'failed',
+    'bg-white border-amber-200 dark:bg-zinc-800 dark:border-zinc-700': job.status !== 'failed',
     // Failed card colors: light + dark
     'bg-red-50 border-red-300 dark:bg-red-900/20 dark:border-red-800': job.status === 'failed'
   }">
@@ -13,27 +13,27 @@
           <!-- File Type Icon -->
           <div :class="{
             'w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold': true,
-            'bg-blue-600 text-white': job.type === 'receipt',
+            'bg-orange-600 text-white': job.type === 'receipt',
             'bg-purple-600 text-white': job.type === 'document',
-            'bg-gray-600 text-white': job.type === 'unknown'
+            'bg-zinc-600 text-white': job.type === 'unknown'
           }">
             {{ job.type === 'receipt' ? 'R' : job.type === 'document' ? 'D' : '?' }}
           </div>
           
           <div>
-            <h3 class="font-semibold text-lg text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-lg text-zinc-900 dark:text-white">
               {{ job.file_info?.job_name || 'Processing Job' }}
             </h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400">
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">
               {{ job.file_info?.name || 'Unknown File' }}
-              <span v-if="job.file_info?.extension" class="ml-1 px-1.5 py-0.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 rounded text-xs">
+              <span v-if="job.file_info?.extension" class="ml-1 px-1.5 py-0.5 bg-amber-100 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200 rounded text-xs">
                 {{ job.file_info.extension.toUpperCase() }}
               </span>
             </p>
           </div>
         </div>
         
-        <p class="text-xs text-gray-500">Job ID: {{ job.id }}</p>
+        <p class="text-xs text-zinc-500">Job ID: {{ job.id }}</p>
       </div>
       
       <div class="flex items-center gap-3">
@@ -42,7 +42,7 @@
           v-if="canRestart"
           @click="restartJob"
           :disabled="isRestarting"
-          class="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white text-sm rounded-lg font-medium transition-colors duration-200"
+          class="px-3 py-1 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-800 disabled:opacity-50 text-white text-sm rounded-lg font-medium transition-colors duration-200"
           :title="isRestarting ? 'Restarting...' : 'Restart failed job chain'"
         >
           <span v-if="isRestarting" class="flex items-center gap-2">
@@ -63,7 +63,7 @@
         <span :class="{
           'px-3 py-1 rounded-full text-sm font-semibold': true,
           'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300': job.status === 'pending',
-          'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300': job.status === 'processing',
+          'bg-amber-100 text-amber-800 dark:bg-orange-900/50 dark:text-amber-300': job.status === 'processing',
           'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300': job.status === 'completed',
           'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300': job.status === 'failed'
         }">
@@ -73,14 +73,14 @@
     </div>
 
     <!-- Overall Progress Bar -->
-    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-4">
-      <div class="bg-indigo-500 h-2.5 rounded-full transition-all duration-500" 
+    <div class="w-full bg-amber-200 dark:bg-zinc-700 rounded-full h-2.5 mb-4">
+      <div class="bg-amber-500 h-2.5 rounded-full transition-all duration-500" 
         :style="{ width: `${job.progress}%` }">
       </div>
     </div>
 
     <!-- Job Details -->
-    <div class="grid grid-cols-3 gap-4 text-sm text-gray-600 dark:text-gray-400 mb-6">
+    <div class="grid grid-cols-3 gap-4 text-sm text-zinc-600 dark:text-zinc-400 mb-6">
       <div>
         <p>Started: {{ formatDateTime(job.started_at) }}</p>
         <p v-if="job.finished_at">Finished: {{ formatDateTime(job.finished_at) }}</p>
@@ -97,7 +97,7 @@
 
     <!-- Processing Pipeline -->
     <div v-if="job.steps?.length" class="mt-6">
-      <h4 class="font-semibold mb-4 text-gray-900 dark:text-white">Processing Pipeline</h4>
+      <h4 class="font-semibold mb-4 text-zinc-900 dark:text-white">Processing Pipeline</h4>
       
       <!-- Horizontal Step Flow -->
       <div class="flex items-center gap-2 overflow-x-auto pb-4">
@@ -106,31 +106,31 @@
           <div :class="{
             'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2': true,
             'bg-green-600 border-green-600 text-white': step.status === 'completed',
-            'bg-blue-600 border-blue-600 text-white animate-pulse': step.status === 'processing',
+            'bg-orange-600 border-amber-600 text-white animate-pulse': step.status === 'processing',
             'bg-red-600 border-red-600 text-white': step.status === 'failed',
-            'bg-gray-600 border-gray-600 text-gray-300': step.status === 'pending',
+            'bg-zinc-600 border-zinc-600 text-zinc-300': step.status === 'pending',
           }">
             {{ index + 1 }}
           </div>
           
           <!-- Step Info -->
           <div class="min-w-0 flex-1">
-            <div class="text-sm font-medium text-gray-900 dark:text-white">{{ step.name }}</div>
-            <div class="text-xs text-gray-600 dark:text-gray-400">
+            <div class="text-sm font-medium text-zinc-900 dark:text-white">{{ step.name }}</div>
+            <div class="text-xs text-zinc-600 dark:text-zinc-400">
               {{ step.status }}
               <span v-if="step.duration !== null && step.duration !== undefined">
                 - {{ formatDuration(step.duration) }}
               </span>
             </div>
-            <div v-if="step.status === 'processing'" class="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-1 mt-1">
-              <div class="bg-blue-500 h-1 rounded-full transition-all duration-500" 
+            <div v-if="step.status === 'processing'" class="w-16 bg-amber-200 dark:bg-zinc-700 rounded-full h-1 mt-1">
+              <div class="bg-amber-500 h-1 rounded-full transition-all duration-500" 
                 :style="{ width: `${step.progress}%` }">
               </div>
             </div>
           </div>
           
           <!-- Arrow -->
-          <div v-if="index < job.steps.length - 1" class="text-gray-400 dark:text-gray-500 mx-2">
+          <div v-if="index < job.steps.length - 1" class="text-zinc-400 dark:text-zinc-500 mx-2">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
               <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>

@@ -177,7 +177,7 @@ const sharingControlShares = computed(() => {
 });
 
 const getDocumentTypeClass = () => {
-    return 'text-blue-400 bg-blue-400/10';
+    return 'text-amber-400 bg-amber-400/10';
 };
 </script>
 
@@ -187,14 +187,14 @@ const getDocumentTypeClass = () => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex justify-between items-center">
-                <h2 class="font-semibold text-xl text-gray-900 dark:text-gray-200 leading-tight flex items-center gap-x-2">
+                <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2">
                     <DocumentIcon class="size-6" />
                     {{ document.title }}
                 </h2>
                 <div class="flex items-center gap-x-4">
                     <button
                         @click="downloadDocument"
-                        class="inline-flex items-center gap-x-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        class="inline-flex items-center gap-x-2 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md text-sm font-medium text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-800 hover:bg-amber-50 dark:hover:bg-zinc-700"
                     >
                         <ArrowDownTrayIcon class="h-4 w-4" />
                         Download
@@ -207,7 +207,7 @@ const getDocumentTypeClass = () => {
                     />
                     <Link
                         :href="route('documents.index')"
-                        class="inline-flex items-center gap-x-2 px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700"
+                        class="inline-flex items-center gap-x-2 px-4 py-2 bg-zinc-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-zinc-700"
                     >
                         <ArrowLeftIcon class="size-4" />
                         Back to Documents
@@ -218,21 +218,21 @@ const getDocumentTypeClass = () => {
 
         <div class="flex h-[calc(100vh-9rem)] overflow-hidden">
             <!-- Left Panel - Document Details -->
-            <div class="w-1/2 p-6 overflow-y-auto border-r border-gray-200 dark:border-gray-700">
+            <div class="w-1/2 p-6 overflow-y-auto border-r border-amber-200 dark:border-zinc-700">
                 <div class="space-y-8">
                     <!-- Document Status/Type Badge -->
-                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+                    <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-x-3">
                                 <div :class="[getDocumentTypeClass(), 'flex-none rounded-full p-1']">
                                     <div class="size-2 rounded-full bg-current" />
                                 </div>
-                                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-200">Document Details</h3>
+                                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200">Document Details</h3>
                             </div>
                             <button
                                 @click="isEditing = !isEditing"
                                 class="inline-flex items-center gap-x-2 px-3 py-2 text-sm font-semibold rounded-md"
-                                :class="isEditing ? 'text-gray-900 bg-gray-100 hover:bg-gray-200 dark:text-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600' : 'text-gray-100 bg-gray-700 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500'"
+                                :class="isEditing ? 'text-zinc-900 bg-amber-100 hover:bg-amber-200 dark:text-zinc-100 dark:bg-zinc-700 dark:hover:bg-amber-600' : 'text-zinc-100 bg-zinc-700 hover:bg-amber-600 dark:bg-zinc-600 dark:hover:bg-zinc-500'"
                             >
                                 <PencilIcon v-if="!isEditing" class="size-4" />
                                 <CheckIcon v-else class="size-4" />
@@ -243,49 +243,49 @@ const getDocumentTypeClass = () => {
                         <dl class="mt-6 space-y-6">
                             <!-- Title -->
                             <div class="flex flex-col">
-                                <dt class="text-sm font-medium text-gray-500">Title</dt>
-                                <dd v-if="!isEditing" class="mt-1 text-sm text-gray-700 dark:text-gray-200">
+                                <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Title</dt>
+                                <dd v-if="!isEditing" class="mt-1 text-sm text-zinc-700 dark:text-zinc-200">
                                     {{ document.title }}
                                 </dd>
                                 <input
                                     v-else
                                     v-model="editedDocument.title"
                                     type="text"
-                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
                                 />
                             </div>
 
                             <!-- Summary -->
                             <div class="flex flex-col">
-                                <dt class="text-sm font-medium text-gray-500">Summary</dt>
-                                <dd v-if="!isEditing" class="mt-1 text-sm text-gray-700 dark:text-gray-200">
+                                <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Summary</dt>
+                                <dd v-if="!isEditing" class="mt-1 text-sm text-zinc-700 dark:text-zinc-200">
                                     {{ document.summary || 'No summary available' }}
                                 </dd>
                                 <textarea
                                     v-else
                                     v-model="editedDocument.summary"
                                     rows="3"
-                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
                                 />
                             </div>
 
                             <!-- Document Note -->
                             <div class="flex flex-col">
-                                <dt class="text-sm font-medium text-gray-500">Document Note</dt>
-                                <dd v-if="!isEditing" class="mt-1 text-sm text-gray-700 dark:text-gray-200">
+                                <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Document Note</dt>
+                                <dd v-if="!isEditing" class="mt-1 text-sm text-zinc-700 dark:text-zinc-200">
                                     {{ document.note || 'No note added' }}
                                 </dd>
                                 <textarea
                                     v-else
                                     v-model="editedDocument.note"
                                     rows="2"
-                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
                                 />
                             </div>
 
                             <!-- Category -->
                             <div class="flex flex-col">
-                                <dt class="text-sm font-medium text-gray-500">Category</dt>
+                                <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Category</dt>
                                 <dd v-if="!isEditing">
                                     <span
                                         v-if="selectedCategory"
@@ -295,12 +295,12 @@ const getDocumentTypeClass = () => {
                                         <FolderIcon class="h-4 w-4 mr-1" />
                                         {{ selectedCategory.name }}
                                     </span>
-                                    <p v-else class="mt-1 text-sm text-gray-500">No category</p>
+                                    <p v-else class="mt-1 text-sm text-zinc-500">No category</p>
                                 </dd>
                                 <select
                                     v-else
                                     v-model="editedDocument.category_id"
-                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
                                 >
                                     <option :value="null">No category</option>
                                     <option v-for="category in categories" :key="category.id" :value="category.id">
@@ -312,8 +312,8 @@ const getDocumentTypeClass = () => {
                     </div>
 
                     <!-- Tags -->
-                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-200 mb-4">Tags</h3>
+                    <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
+                        <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200 mb-4">Tags</h3>
                         <TagManager
                             v-model="documentTags"
                             :readonly="!isEditing"
@@ -323,36 +323,36 @@ const getDocumentTypeClass = () => {
                     </div>
 
                     <!-- File Metadata -->
-                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-200 mb-4">File Information</h3>
+                    <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
+                        <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200 mb-4">File Information</h3>
                         <dl class="space-y-3">
                             <div>
-                                <dt class="text-xs font-medium text-gray-500">File Size</dt>
-                                <dd class="text-sm text-gray-900 dark:text-white">
+                                <dt class="text-xs font-medium text-zinc-500">File Size</dt>
+                                <dd class="text-sm text-zinc-900 dark:text-white">
                                     {{ formatFileSize(document.file?.size || 0) }}
                                 </dd>
                             </div>
-                            <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
-                                <dt class="text-xs font-medium text-gray-500">Uploaded to PaperPulse</dt>
-                                <dd class="text-sm text-gray-900 dark:text-white">
+                            <div class="border-t border-amber-200 dark:border-zinc-700 pt-3">
+                                <dt class="text-xs font-medium text-zinc-500">Uploaded to PaperPulse</dt>
+                                <dd class="text-sm text-zinc-900 dark:text-white">
                                     {{ formatDate(document.file?.uploaded_at || document.created_at) }}
                                 </dd>
                             </div>
                             <div v-if="document.file?.file_created_at">
-                                <dt class="text-xs font-medium text-gray-500">Original File Created</dt>
-                                <dd class="text-sm text-gray-900 dark:text-white">
+                                <dt class="text-xs font-medium text-zinc-500">Original File Created</dt>
+                                <dd class="text-sm text-zinc-900 dark:text-white">
                                     {{ formatDate(document.file.file_created_at) }}
                                 </dd>
                             </div>
                             <div v-if="document.file?.file_modified_at">
-                                <dt class="text-xs font-medium text-gray-500">Original File Modified</dt>
-                                <dd class="text-sm text-gray-900 dark:text-white">
+                                <dt class="text-xs font-medium text-zinc-500">Original File Modified</dt>
+                                <dd class="text-sm text-zinc-900 dark:text-white">
                                     {{ formatDate(document.file.file_modified_at) }}
                                 </dd>
                             </div>
-                            <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
-                                <dt class="text-xs font-medium text-gray-500">Last Updated in PaperPulse</dt>
-                                <dd class="text-sm text-gray-900 dark:text-white">
+                            <div class="border-t border-amber-200 dark:border-zinc-700 pt-3">
+                                <dt class="text-xs font-medium text-zinc-500">Last Updated in PaperPulse</dt>
+                                <dd class="text-sm text-zinc-900 dark:text-white">
                                     {{ formatDate(document.updated_at) }}
                                 </dd>
                             </div>
@@ -360,7 +360,7 @@ const getDocumentTypeClass = () => {
                     </div>
 
                     <!-- Delete Button -->
-                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+                    <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
                         <button
                             @click="showDeleteModal = true"
                             class="w-full inline-flex justify-center items-center gap-x-2 px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700"
@@ -373,7 +373,7 @@ const getDocumentTypeClass = () => {
             </div>
 
             <!-- Right Panel - Document Preview -->
-            <div class="w-1/2 bg-gray-50 dark:bg-gray-900 overflow-auto">
+            <div class="w-1/2 bg-amber-50 dark:bg-zinc-900 overflow-auto">
                 <DocumentImage
                     :file="document.file"
                     :alt-text="document.title"
@@ -388,16 +388,16 @@ const getDocumentTypeClass = () => {
         <!-- Delete Confirmation Modal -->
         <Modal :show="showDeleteModal" @close="showDeleteModal = false">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 dark:text-white">
+                <h2 class="text-lg font-medium text-zinc-900 dark:text-white">
                     Delete Document
                 </h2>
-                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                     Are you sure you want to delete this document? This action cannot be undone.
                 </p>
                 <div class="mt-6 flex justify-end space-x-3">
                     <button
                         @click="showDeleteModal = false"
-                        class="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-700"
+                        class="inline-flex items-center px-4 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-md font-semibold text-xs text-zinc-700 dark:text-zinc-300 uppercase tracking-widest hover:bg-amber-50 dark:hover:bg-zinc-700"
                     >
                         Cancel
                     </button>

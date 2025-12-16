@@ -144,16 +144,31 @@
                             <p class="mt-2 text-zinc-600 dark:text-zinc-400">Loading folder structure...</p>
                         </div>
                         
-                        <div v-else class="space-y-2">
-                            <FolderItem
-                                v-for="item in currentFolderContents"
-                                :key="item.s3_path || item.path"
-                                :item="item"
-                                :selected="isSelected(item)"
-                                @toggle-selection="toggleSelection(item)"
-                                @navigate="navigateToFolder"
-                                @update-tags="updateFolderTags"
-                            />
+                        <div v-else>
+                            <div v-if="currentFolderFiles.length > 0" class="mb-4">
+                                <label class="flex items-center space-x-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                    <input
+                                        type="checkbox"
+                                        :checked="areAllFolderFilesSelected"
+                                        @change="toggleSelectAllFolderFiles"
+                                        class="rounded border-zinc-300 text-amber-600 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50"
+                                    />
+                                    <span>
+                                        Select all {{ currentFolderFiles.length }} file{{ currentFolderFiles.length === 1 ? '' : 's' }} in this folder
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="space-y-2">
+                                <FolderItem
+                                    v-for="item in currentFolderContents"
+                                    :key="item.s3_path || item.path"
+                                    :item="item"
+                                    :selected="isSelected(item)"
+                                    @toggle-selection="toggleSelection(item)"
+                                    @navigate="navigateToFolder"
+                                    @update-tags="updateFolderTags"
+                                />
+                            </div>
                         </div>
                         
                         <div v-if="!loadingFolders && currentFolderContents.length === 0" class="text-center py-8 text-zinc-500 dark:text-zinc-400">
@@ -378,6 +393,29 @@ const selectedCount = computed(() => {
     return selectedFiles.value.length + selectedFolders.value.length;
 });
 
+const isFolderFileSelectable = (item) => {
+    if (item.is_folder) {
+        return false;
+    }
+
+    if (!item.status) {
+        return true;
+    }
+
+    return isSelectable(item);
+};
+
+const currentFolderFiles = computed(() => {
+    return currentFolderContents.value.filter(isFolderFileSelectable);
+});
+
+const areAllFolderFilesSelected = computed(() => {
+    if (currentFolderFiles.value.length === 0) {
+        return false;
+    }
+    return currentFolderFiles.value.every(item => isSelected(item));
+});
+
 // Methods
 const isSelectable = (file) => {
     return ['pending', 'failed'].includes(file.status);
@@ -396,6 +434,47 @@ const toggleAll = (event) => {
     } else {
         selectedFiles.value = [];
     }
+};
+
+const toggleSelectAllFolderFiles = () => {
+    const folderFiles = currentFolderFiles.value;
+    if (folderFiles.length === 0) {
+        return;
+    }
+
+    if (areAllFolderFilesSelected.value) {
+        const folderPaths = new Set(folderFiles.map(file => file.s3_path || file.path));
+        selectedFiles.value = selectedFiles.value.filter(selection => {
+            if (selection && typeof selection === 'object') {
+                const selectionPath = selection.s3_path || selection.path;
+                return !folderPaths.has(selectionPath);
+            }
+            return true;
+        });
+        return;
+    }
+
+    const existingPaths = new Set(
+        selectedFiles.value
+            .filter(selection => selection && typeof selection === 'object')
+            .map(selection => selection.s3_path || selection.path)
+    );
+
+    const newSelections = folderFiles
+        .filter(file => {
+            const path = file.s3_path || file.path;
+            return !existingPaths.has(path);
+        })
+        .map(file => ({
+            ...file,
+            s3_path: file.s3_path || file.path,
+        }));
+
+    if (newSelections.length === 0) {
+        return;
+    }
+
+    selectedFiles.value = [...selectedFiles.value, ...newSelections];
 };
 
 const syncFiles = async () => {

@@ -1,0 +1,53 @@
+# VCS and editor files
+.git
+.gitignore
+.gitattributes
+.github
+.idea
+.vscode
+*.swp
+*.swo
+*.DS_Store
+
+# Environment / secrets
+.env
+.env.*
+.envrc
+*.pem
+*.key
+*.crt
+*.pfx
+
+# Node & frontend build artifacts
+node_modules
+npm-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+public/hot
+public/build
+
+# Composer vendor from host (use container-built vendor instead)
+vendor
+
+# Laravel runtime data (recreated in container)
+storage
+storage/**
+bootstrap/cache/*.php
+
+# Tests and local tooling
+tests
+phpunit.xml
+phpstan.neon
+
+# Documentation and examples (not needed in production images)
+docs
+mkdocs.yml
+example
+
+# Kubernetes manifests (contain secrets; not needed in images)
+deploy/k8s
+
+# Local build outputs or caches
+site
+coverage
+*.log

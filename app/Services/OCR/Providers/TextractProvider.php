@@ -204,6 +204,7 @@ class TextractProvider implements OCRService
         Log::info('[TextractProvider] Using direct bytes strategy (no S3)', [
             'file_extension' => $extension,
             'file_size' => filesize($filePath),
+            'file_type' => $fileType,
         ]);
 
         $fileBytes = file_get_contents($filePath);
@@ -211,15 +212,21 @@ class TextractProvider implements OCRService
             throw new Exception('Could not read file contents');
         }
 
-        $featureTypes = $this->getFeatureTypesForFileType($fileType);
-
         try {
-            $result = $this->client->analyzeDocument([
-                'Document' => [
-                    'Bytes' => $fileBytes,
-                ],
-                'FeatureTypes' => $featureTypes,
-            ]);
+            // Use appropriate API based on file type
+            if ($fileType === 'receipt') {
+                $result = $this->client->analyzeExpense([
+                    'Document' => [
+                        'Bytes' => $fileBytes,
+                    ],
+                ]);
+            } else {
+                $result = $this->client->detectDocumentText([
+                    'Document' => [
+                        'Bytes' => $fileBytes,
+                    ],
+                ]);
+            }
 
             $parsed = $this->parseResultByFileType($result->toArray(), $fileType);
 
@@ -240,14 +247,13 @@ class TextractProvider implements OCRService
         Log::info('[TextractProvider] Using S3 async strategy (multi-page PDF)', [
             'file_size' => filesize($filePath),
             'page_count' => $pageCount,
+            'file_type' => $fileType,
         ]);
 
         $s3Path = $this->uploadToS3($filePath, $fileGuid);
 
         try {
-            $featureTypes = $this->getFeatureTypesForFileType($fileType);
-
-            $result = $this->extractViaAsyncApi($s3Path, $featureTypes, $fileType);
+            $result = $this->extractViaAsyncApi($s3Path, $fileType);
 
             return $result;
         } finally {
@@ -264,22 +270,32 @@ class TextractProvider implements OCRService
         Log::info('[TextractProvider] Using S3 sync strategy (large file)', [
             'file_extension' => $extension,
             'file_size' => filesize($filePath),
+            'file_type' => $fileType,
         ]);
 
         $s3Path = $this->uploadToS3($filePath, $fileGuid);
 
         try {
-            $featureTypes = $this->getFeatureTypesForFileType($fileType);
-
-            $result = $this->client->analyzeDocument([
-                'Document' => [
-                    'S3Object' => [
-                        'Bucket' => $this->bucket,
-                        'Name' => $s3Path,
+            // Use appropriate API based on file type
+            if ($fileType === 'receipt') {
+                $result = $this->client->analyzeExpense([
+                    'Document' => [
+                        'S3Object' => [
+                            'Bucket' => $this->bucket,
+                            'Name' => $s3Path,
+                        ],
                     ],
-                ],
-                'FeatureTypes' => $featureTypes,
-            ]);
+                ]);
+            } else {
+                $result = $this->client->detectDocumentText([
+                    'Document' => [
+                        'S3Object' => [
+                            'Bucket' => $this->bucket,
+                            'Name' => $s3Path,
+                        ],
+                    ],
+                ]);
+            }
 
             $parsed = $this->parseResultByFileType($result->toArray(), $fileType);
 
@@ -303,31 +319,49 @@ class TextractProvider implements OCRService
     /**
      * Extract text using async Textract API (polls for completion).
      */
-    protected function extractViaAsyncApi(string $s3Path, array $featureTypes, string $fileType): array
+    protected function extractViaAsyncApi(string $s3Path, string $fileType): array
     {
-        // Start async job
-        $result = $this->client->startDocumentAnalysis([
-            'DocumentLocation' => [
-                'S3Object' => [
-                    'Bucket' => $this->bucket,
-                    'Name' => $s3Path,
+        // Start async job with appropriate API
+        if ($fileType === 'receipt') {
+            $result = $this->client->startExpenseAnalysis([
+                'DocumentLocation' => [
+                    'S3Object' => [
+                        'Bucket' => $this->bucket,
+                        'Name' => $s3Path,
+                    ],
                 ],
-            ],
-            'FeatureTypes' => $featureTypes,
-        ]);
+            ]);
+        } else {
+            $result = $this->client->startDocumentTextDetection([
+                'DocumentLocation' => [
+                    'S3Object' => [
+                        'Bucket' => $this->bucket,
+                        'Name' => $s3Path,
+                    ],
+                ],
+            ]);
+        }
 
         $jobId = $result->get('JobId');
 
         Log::info('[TextractProvider] Async job started', [
             'job_id' => $jobId,
             's3_path' => $s3Path,
+            'file_type' => $fileType,
+            'api_used' => $fileType === 'receipt' ? 'StartExpenseAnalysis' : 'StartDocumentTextDetection',
         ]);
 
         // Poll for completion
-        $response = $this->pollForCompletion($jobId);
+        $response = $this->pollForCompletion($jobId, $fileType);
 
-        // Stream paginated blocks to disk to avoid holding large responses in memory
-        $streamed = $this->streamAsyncBlocksToDisk($jobId, $response);
+        // Handle expense analysis differently (doesn't use block streaming)
+        if ($fileType === 'receipt') {
+            $parsed = TextractResponseParser::parseExpense($response->toArray());
+            return $this->cleanupBlocks($parsed);
+        }
+
+        // Stream paginated blocks to disk to avoid holding large responses in memory (documents only)
+        $streamed = $this->streamAsyncBlocksToDisk($jobId, $response, $fileType);
 
         try {
             $parsed = $this->parseStreamedAsyncBlocks($streamed, $response->get('DocumentMetadata') ?? [], $fileType);
@@ -340,8 +374,9 @@ class TextractProvider implements OCRService
 
     /**
      * Poll Textract async job until completion.
+     * Uses appropriate polling method based on file type (expense vs document).
      */
-    protected function pollForCompletion(string $jobId): \Aws\Result
+    protected function pollForCompletion(string $jobId, string $fileType): \Aws\Result
     {
         $maxAttempts = config('ai.ocr.providers.textract.max_polling_attempts', 60);
         $pollingInterval = config('ai.ocr.providers.textract.polling_interval', 10);
@@ -351,13 +386,20 @@ class TextractProvider implements OCRService
             sleep($pollingInterval);
             $attempt++;
 
-            $response = $this->client->getDocumentAnalysis(['JobId' => $jobId]);
+            // Use appropriate polling method based on file type
+            if ($fileType === 'receipt') {
+                $response = $this->client->getExpenseAnalysis(['JobId' => $jobId]);
+            } else {
+                $response = $this->client->getDocumentTextDetection(['JobId' => $jobId]);
+            }
+
             $status = $response->get('JobStatus');
 
             Log::debug('[TextractProvider] Polling async job', [
                 'job_id' => $jobId,
                 'status' => $status,
                 'attempt' => $attempt,
+                'file_type' => $fileType,
             ]);
 
             if ($status === 'SUCCEEDED' || $status === 'PARTIAL_SUCCESS') {
@@ -385,7 +427,7 @@ class TextractProvider implements OCRService
      *
      * This avoids accumulating large block arrays in memory (which can exhaust the worker memory limit).
      */
-    protected function streamAsyncBlocksToDisk(string $jobId, \Aws\Result $response): array
+    protected function streamAsyncBlocksToDisk(string $jobId, \Aws\Result $response, string $fileType): array
     {
         $baseDir = storage_path("app/textract/async/{$jobId}");
         if (! is_dir($baseDir) && ! mkdir($baseDir, 0755, true) && ! is_dir($baseDir)) {
@@ -428,10 +470,19 @@ class TextractProvider implements OCRService
 
             while ($nextToken) {
                 $page++;
-                $nextResponse = $this->client->getDocumentAnalysis([
-                    'JobId' => $jobId,
-                    'NextToken' => $nextToken,
-                ]);
+
+                // Use appropriate polling method based on file type
+                if ($fileType === 'receipt') {
+                    $nextResponse = $this->client->getExpenseAnalysis([
+                        'JobId' => $jobId,
+                        'NextToken' => $nextToken,
+                    ]);
+                } else {
+                    $nextResponse = $this->client->getDocumentTextDetection([
+                        'JobId' => $jobId,
+                        'NextToken' => $nextToken,
+                    ]);
+                }
 
                 $blocks = $nextResponse->get('Blocks') ?? [];
                 $writeBlocks($blocks);
@@ -683,13 +734,17 @@ class TextractProvider implements OCRService
 
     /**
      * Get feature types based on file type.
+     *
+     * Note: Returns empty array as we use specialized APIs instead:
+     * - Receipts: AnalyzeExpense API
+     * - Documents: DetectDocumentText API
      */
     protected function getFeatureTypesForFileType(string $fileType): array
     {
         return match ($fileType) {
-            'receipt' => ['TABLES', 'FORMS'],
-            'document' => ['LAYOUT', 'TABLES', 'FORMS'],
-            default => ['TABLES', 'FORMS'],
+            'receipt' => [],
+            'document' => [],
+            default => [],
         };
     }
 
@@ -699,9 +754,9 @@ class TextractProvider implements OCRService
     protected function parseResultByFileType(array $result, string $fileType): array
     {
         return match ($fileType) {
-            'receipt' => TextractResponseParser::parseStructured($result, 'receipt'),
-            'document' => TextractResponseParser::parseDocument($result),
-            default => TextractResponseParser::parseStructured($result, 'receipt'),
+            'receipt' => TextractResponseParser::parseExpense($result),
+            'document' => TextractResponseParser::parseBasic($result, 'document'),
+            default => TextractResponseParser::parseBasic($result, 'document'),
         };
     }
 

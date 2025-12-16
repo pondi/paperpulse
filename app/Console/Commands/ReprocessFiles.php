@@ -141,7 +141,7 @@ class ReprocessFiles extends Command
     }
 
     /**
-     * Display files table.
+     * Display files in a table format.
      */
     protected function displayFilesTable($files): void
     {
@@ -168,7 +168,7 @@ class ReprocessFiles extends Command
      */
     protected function displayResults(array $results): void
     {
-        $this->info('✅ Reprocessing Results:');
+        $this->info('Reprocessing Results:');
         $this->newLine();
 
         // Summary
@@ -181,7 +181,7 @@ class ReprocessFiles extends Command
         $failures = collect($results['results'])->filter(fn ($r) => ! $r['success'] && ! str_contains($r['message'], 'already'));
 
         if ($failures->isNotEmpty()) {
-            $this->error('❌ Failed files:');
+            $this->error('Failed files:');
             foreach ($failures as $failure) {
                 $this->error("  File {$failure['file_id']} ({$failure['file_name']}): {$failure['message']}");
             }
@@ -192,7 +192,7 @@ class ReprocessFiles extends Command
         $skipped = collect($results['results'])->filter(fn ($r) => ! $r['success'] && str_contains($r['message'], 'already'));
 
         if ($skipped->isNotEmpty() && $skipped->count() <= 10) {
-            $this->warn('⏭️  Skipped files:');
+            $this->warn('Skipped files:');
             foreach ($skipped as $skip) {
                 $this->line("  File {$skip['file_id']}: {$skip['message']}");
             }
@@ -203,7 +203,7 @@ class ReprocessFiles extends Command
         $successful = collect($results['results'])->filter(fn ($r) => $r['success']);
 
         if ($successful->isNotEmpty()) {
-            $this->info('🚀 Started reprocessing jobs:');
+            $this->info('Started reprocessing jobs:');
             $displayCount = min($successful->count(), 10);
             foreach ($successful->take($displayCount) as $success) {
                 $this->line("  File {$success['file_id']}: Job {$success['job_id']}");
@@ -218,7 +218,7 @@ class ReprocessFiles extends Command
 
         // Next steps
         if ($results['successful'] > 0) {
-            $this->info('💡 Monitor job progress:');
+            $this->info('Monitor job progress:');
             $this->line('   php artisan horizon                              (Horizon dashboard)');
             $this->line('   tail -f storage/logs/laravel.log | grep Process  (Live logs)');
             $this->line('   php artisan files:reprocess --stats              (View statistics)');

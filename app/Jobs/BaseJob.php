@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\File;
 use App\Models\JobHistory;
 use App\Services\Jobs\JobMetadataPersistence;
 use Illuminate\Bus\Queueable;
@@ -342,21 +343,117 @@ abstract class BaseJob implements ShouldQueue
             $this->uuid = (string) Str::uuid();
         }
 
-        JobHistory::where('uuid', $this->uuid)
-            ->update([
-                'status' => 'failed',
-                'finished_at' => now(),
-                'exception' => $exception->getMessage(),
-            ]);
+        $exceptionMessage = $this->exceptionMessageForStorage($exception);
 
-        // Update parent job status
-        $this->updateParentJobStatus();
+        $this->persistFailureToJobHistory($exceptionMessage, $exception);
+
+        try {
+            $metadata = $this->getMetadata();
+            $fileId = $metadata['fileId'] ?? null;
+
+            if ($fileId) {
+                $file = File::find($fileId);
+                if ($file && in_array($file->status, ['pending', 'processing'], true)) {
+                    $fileMeta = $file->meta ?? [];
+                    $fileMeta['last_processing_error'] = [
+                        'message' => $exceptionMessage,
+                        'job' => static::class,
+                        'job_id' => $this->jobID,
+                        'failed_at' => now()->toISOString(),
+                    ];
+
+                    $file->status = 'failed';
+                    $file->meta = $fileMeta;
+                    $file->save();
+                }
+            }
+        } catch (Throwable $metadataError) {
+            Log::warning('Failed to update file status after job failure', [
+                'class' => static::class,
+                'job_id' => $this->jobID,
+                'uuid' => $this->uuid,
+                'error' => $metadataError->getMessage(),
+            ]);
+        }
 
         Log::error('Job failed', [
             'class' => static::class,
             'job_id' => $this->jobID,
             'uuid' => $this->uuid,
-            'error' => $exception->getMessage(),
+            'error' => $exceptionMessage,
+            'exception_class' => $exception::class,
         ]);
+    }
+
+    protected function persistFailureToJobHistory(string $exceptionMessage, Throwable $exception): void
+    {
+        $updatePayload = [
+            'status' => 'failed',
+            'finished_at' => now(),
+            'exception' => $exceptionMessage,
+        ];
+
+        $attempts = [
+            $updatePayload,
+            array_replace($updatePayload, ['exception' => Str::limit($exceptionMessage, 500, '…')]),
+            array_replace($updatePayload, ['exception' => Str::limit($exceptionMessage, 200, '…')]),
+            array_replace($updatePayload, ['exception' => 'Job failed; see logs for details.']),
+        ];
+
+        $lastError = null;
+
+        foreach ($attempts as $payload) {
+            try {
+                JobHistory::where('uuid', $this->uuid)->update($payload);
+
+                try {
+                    $this->updateParentJobStatus();
+                } catch (Throwable $parentUpdateError) {
+                    Log::warning('Failed to update parent job status after child failure', [
+                        'class' => static::class,
+                        'job_id' => $this->jobID,
+                        'uuid' => $this->uuid,
+                        'error' => $parentUpdateError->getMessage(),
+                    ]);
+                }
+
+                return;
+            } catch (Throwable $e) {
+                $lastError = $e;
+            }
+        }
+
+        Log::warning('Failed to persist job failure to job_history', [
+            'class' => static::class,
+            'job_id' => $this->jobID,
+            'uuid' => $this->uuid,
+            'error' => $lastError?->getMessage(),
+            'original_exception_class' => $exception::class,
+            'original_exception_message' => $exceptionMessage,
+        ]);
+    }
+
+    protected function exceptionMessageForStorage(Throwable $exception): string
+    {
+        $message = $exception->getMessage();
+
+        $message = str_replace(["\r\n", "\r", "\n"], ' ', $message);
+
+        if (function_exists('iconv')) {
+            $converted = @iconv('UTF-8', 'UTF-8//IGNORE', $message);
+            if ($converted !== false) {
+                $message = $converted;
+            }
+        }
+
+        $message = preg_replace('/[^\x{0000}-\x{FFFF}]/u', '', $message) ?? $message;
+        $message = preg_replace('/\s+/u', ' ', $message) ?? $message;
+        $message = trim($message);
+
+        if ($message === '') {
+            $message = class_basename($exception);
+        }
+
+        return Str::limit($message, 2000, '…');
     }
 }

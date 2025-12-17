@@ -73,10 +73,9 @@ class FileJobChainDispatcher
         $jobs[] = (new DeleteWorkingFiles($jobId))->onQueue($queue);
 
         if ($source === 'pulsedav' && $pulseDavFileId && isset($metadata['fileId'])) {
-            $file = File::find($metadata['fileId']);
-            if ($file) {
-                $jobs[] = (new UpdatePulseDavFileStatus($jobId, $file, $pulseDavFileId, $fileType))->onQueue($queue);
-            }
+            // Pass file_id instead of File object - job will query when it runs
+            // This avoids race conditions where File might not be found at dispatch time
+            $jobs[] = (new UpdatePulseDavFileStatus($jobId, $metadata['fileId'], $pulseDavFileId, $fileType))->onQueue($queue);
         }
 
         Bus::chain($jobs)->dispatch();

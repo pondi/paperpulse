@@ -41,15 +41,33 @@ interface Props {
         links: any;
         meta: any;
     };
-    stats: Stats;
-    filters: {
+    stats?: Stats;
+    filters?: {
         status: string;
         per_page: number;
     };
-    pagination: PaginationInfo;
+    pagination?: PaginationInfo;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+    stats: () => ({
+        total: 0,
+        failed: 0,
+        processing: 0,
+        pending: 0,
+        completed: 0,
+    }),
+    filters: () => ({
+        status: '',
+        per_page: 50,
+    }),
+    pagination: () => ({
+        current_page: 1,
+        last_page: 1,
+        per_page: 50,
+        total: 0,
+    }),
+});
 
 const form = reactive({
     status: props.filters?.status ?? '',
@@ -69,9 +87,15 @@ const selectedTypeById = ref<Record<number, 'receipt' | 'document'>>(
 const expandedFileId = ref<number | null>(null);
 
 // Watch for filter changes and update URL
+// Use debounce to prevent rapid navigation
+let watchEnabled = false;
+setTimeout(() => { watchEnabled = true; }, 100);
+
 watch(
     () => [form.status, form.per_page, form.page],
     () => {
+        if (!watchEnabled) return;
+
         router.get(
             route('files.index'),
             {

@@ -74,7 +74,8 @@ class BatchProcessingController extends Controller
     public function status(int $batchJobId): JsonResponse
     {
         try {
-            $status = $this->batchService->getBatchStatus($batchJobId);
+            $user = Auth::user();
+            $status = $this->batchService->getBatchStatus($batchJobId, $user);
 
             return response()->json([
                 'success' => true,
@@ -95,7 +96,8 @@ class BatchProcessingController extends Controller
     public function cancel(int $batchJobId): JsonResponse
     {
         try {
-            $cancelled = $this->batchService->cancelBatch($batchJobId);
+            $user = Auth::user();
+            $cancelled = $this->batchService->cancelBatch($batchJobId, $user);
 
             return response()->json([
                 'success' => $cancelled,

@@ -14,7 +14,7 @@ class FileContentController extends BaseApiController
     public function show(Request $request, File $file, StorageService $storageService)
     {
         if ($file->user_id !== $request->user()->id) {
-            return $this->forbidden('You do not have access to this file');
+            return $this->notFound('File not found');
         }
 
         $validated = $request->validate([

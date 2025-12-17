@@ -28,7 +28,7 @@ class FileController extends BaseApiController
     public function show(Request $request, File $file, StorageService $storageService)
     {
         if ($file->user_id !== $request->user()->id) {
-            return $this->forbidden('You do not have access to this file');
+            return $this->error('File not found', 404);
         }
 
         $path = $file->s3_original_path;

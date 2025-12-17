@@ -170,9 +170,15 @@ class BatchProcessingService
     /**
      * Get batch processing status
      */
-    public function getBatchStatus(int $batchJobId): array
+    public function getBatchStatus(int $batchJobId, ?\App\Models\User $user = null): array
     {
-        $batchJob = BatchJob::findOrFail($batchJobId);
+        $query = BatchJob::where('id', $batchJobId);
+
+        if ($user) {
+            $query->where('user_id', $user->id);
+        }
+
+        $batchJob = $query->firstOrFail();
 
         $progress = $batchJob->total_items > 0
             ? ($batchJob->processed_items / $batchJob->total_items) * 100
@@ -198,10 +204,16 @@ class BatchProcessingService
     /**
      * Cancel a batch job
      */
-    public function cancelBatch(int $batchJobId): bool
+    public function cancelBatch(int $batchJobId, ?\App\Models\User $user = null): bool
     {
         try {
-            $batchJob = BatchJob::findOrFail($batchJobId);
+            $query = BatchJob::where('id', $batchJobId);
+
+            if ($user) {
+                $query->where('user_id', $user->id);
+            }
+
+            $batchJob = $query->firstOrFail();
 
             if (in_array($batchJob->status, ['completed', 'cancelled'])) {
                 return false; // Cannot cancel completed or already cancelled batches

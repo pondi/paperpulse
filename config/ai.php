@@ -59,7 +59,7 @@ return [
     |
     */
     'options' => [
-        'max_tokens' => [
+        'max_completion_tokens' => [
             'receipt' => 1024,
             'document' => 2048,
             'summary' => 200,

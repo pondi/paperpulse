@@ -53,7 +53,7 @@ class OpenAIProvider implements AIService
         try {
             $model = config('ai.models.receipt');
             $params = [
-                'max_tokens' => config('ai.options.max_tokens.receipt', 1024),
+                'max_completion_tokens' => config('ai.options.max_completion_tokens.receipt', 1024),
                 'temperature' => config('ai.options.temperature.receipt', 0.1),
             ];
 
@@ -196,7 +196,7 @@ class OpenAIProvider implements AIService
             $response = OpenAI::chat()->create([
                 'model' => config('ai.models.merchant'),
                 'messages' => $promptData['messages'],
-                'max_tokens' => $promptData['options']['max_tokens'] ?? 200,
+                'max_completion_tokens' => $promptData['options']['max_completion_tokens'] ?? 200,
                 'temperature' => $promptData['options']['temperature'] ?? 0.1,
                 'response_format' => ['type' => 'json_object'],
             ]);
@@ -224,7 +224,7 @@ class OpenAIProvider implements AIService
                 'model' => config('ai.models.summary'),
                 'messages' => $promptData['messages'],
                 'temperature' => $promptData['options']['temperature'] ?? 0.3,
-                'max_tokens' => $promptData['options']['max_tokens'] ?? (int) ($maxLength / 4),
+                'max_completion_tokens' => $promptData['options']['max_completion_tokens'] ?? (int) ($maxLength / 4),
             ]);
 
             return trim($response->choices[0]->message->content);
@@ -253,6 +253,7 @@ class OpenAIProvider implements AIService
                     ],
                 ],
                 'required' => ['tags'],
+                'additionalProperties' => false,
             ];
 
             $response = OpenAI::chat()->create([
@@ -268,13 +269,13 @@ class OpenAIProvider implements AIService
                     ],
                 ],
                 'temperature' => 0.2,
-                'max_tokens' => 150,
+                'max_completion_tokens' => 150,
                 'response_format' => [
                     'type' => 'json_schema',
                     'json_schema' => [
                         'name' => 'tag_extraction',
                         'schema' => $schema,
-                        'strict' => true,
+                        'strict' => (bool) config('ai.options.strict_json_schema', false),
                     ],
                 ],
             ]);
@@ -316,7 +317,7 @@ class OpenAIProvider implements AIService
                     ],
                 ],
                 'temperature' => 0.1,
-                'max_tokens' => 10,
+                'max_completion_tokens' => 10,
             ]);
 
             $type = strtolower(trim($response->choices[0]->message->content));

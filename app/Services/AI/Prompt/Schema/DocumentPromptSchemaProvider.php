@@ -33,6 +33,8 @@ class DocumentPromptSchemaProvider
                         'emails' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Email addresses found'],
                         'references' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Reference numbers, IDs, etc.'],
                     ],
+                    'required' => [],
+                    'additionalProperties' => false,
                 ],
                 'tags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Relevant tags for categorization'],
                 'language' => ['type' => 'string', 'description' => 'Primary language of document'],
@@ -43,6 +45,8 @@ class DocumentPromptSchemaProvider
                         'overall' => ['type' => 'string', 'enum' => ['positive', 'negative', 'neutral'], 'description' => 'Overall sentiment'],
                         'confidence' => ['type' => 'number', 'description' => 'Confidence in sentiment analysis (0-1)'],
                     ],
+                    'required' => [],
+                    'additionalProperties' => false,
                 ],
                 'urgency' => [
                     'type' => 'object',
@@ -50,6 +54,8 @@ class DocumentPromptSchemaProvider
                         'level' => ['type' => 'string', 'enum' => ['low', 'medium', 'high', 'critical'], 'description' => 'Urgency level of document'],
                         'indicators' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Phrases indicating urgency'],
                     ],
+                    'required' => [],
+                    'additionalProperties' => false,
                 ],
                 'metadata' => [
                     'type' => 'object',
@@ -59,6 +65,8 @@ class DocumentPromptSchemaProvider
                         'confidence_score' => ['type' => 'number', 'description' => 'Overall extraction confidence (0-1)'],
                         'processing_notes' => ['type' => 'string', 'description' => 'Notes about processing challenges or findings'],
                     ],
+                    'required' => [],
+                    'additionalProperties' => false,
                 ],
                 'vendors' => [
                     'type' => 'array',

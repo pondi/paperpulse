@@ -12,7 +12,7 @@ class ChatPayloadBuilder
      *
      * @param  array  $promptData  Output of PromptTemplateService::getPrompt
      * @param  string  $model  Model name
-     * @param  array  $params  Overrides like max_tokens/temperature
+     * @param  array  $params  Overrides like max_completion_tokens/temperature
      */
     public static function forReceipt(array $promptData, string $model, array $params): array
     {
@@ -40,7 +40,7 @@ class ChatPayloadBuilder
             'model' => $model,
             'messages' => $promptData['messages'],
             'temperature' => $promptData['options']['temperature'] ?? 0.2,
-            'max_tokens' => $promptData['options']['max_tokens'] ?? 3000,
+            'max_completion_tokens' => $promptData['options']['max_completion_tokens'] ?? 3000,
             'response_format' => [
                 'type' => 'json_schema',
                 'json_schema' => [

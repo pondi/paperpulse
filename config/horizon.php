@@ -151,9 +151,13 @@ return [
     | allowing a new instance of Horizon to start while the last
     | instance will continue to terminate each of its workers.
     |
+    | IMPORTANT: This should be TRUE in production Kubernetes deployments
+    | to enable zero-downtime rolling updates. New pods can start processing
+    | jobs immediately while old pods finish their current work.
+    |
     */
 
-    'fast_termination' => false,
+    'fast_termination' => env('HORIZON_FAST_TERMINATION', true),
 
     /*
     |--------------------------------------------------------------------------

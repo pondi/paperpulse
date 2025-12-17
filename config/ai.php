@@ -39,11 +39,14 @@ return [
     |
     */
     'models' => [
-        'receipt' => 'gpt-4o-mini',
-        'document' => 'gpt-4o',
-        'summary' => 'gpt-4o-mini',
-        'classification' => 'gpt-4o-mini',
-        'entities' => 'gpt-4o-mini',
+        'receipt' => 'gpt-5-mini',
+        'document' => 'gpt-5-mini',
+        'summary' => 'gpt-5-mini',
+        'classification' => 'gpt-5-mini',
+        'entities' => 'gpt-5-mini',
+        'merchant' => 'gpt-5-mini',
+        'fallback' => 'gpt-5-mini',
+        'default' => 'gpt-5-mini',
     ],
 
     /*

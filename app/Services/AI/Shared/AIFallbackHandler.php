@@ -31,7 +31,7 @@ class AIFallbackHandler
     public static function getFallbackModel(string $provider): array
     {
         $fallbackModels = [
-            'openai' => 'gpt-4.1-mini',
+            'openai' => config('ai.models.fallback'),
             'anthropic' => 'claude-3-haiku-20240307',
         ];
 

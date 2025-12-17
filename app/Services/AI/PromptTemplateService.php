@@ -53,7 +53,7 @@ class PromptTemplateService
                 'timestamp' => now()->toISOString(),
                 'template_name' => $templateName,
                 'language' => $options['language'] ?? 'no',
-                'model' => $options['model'] ?? 'gpt-4.1-mini',
+                'model' => $options['model'] ?? config('ai.models.default'),
                 'provider' => $options['provider'] ?? 'openai',
             ], $data);
 

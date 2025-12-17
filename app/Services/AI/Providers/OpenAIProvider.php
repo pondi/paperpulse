@@ -51,7 +51,7 @@ class OpenAIProvider implements AIService
         ]);
 
         try {
-            $model = config('ai.models.receipt', 'gpt-4o-mini');
+            $model = config('ai.models.receipt');
             $params = [
                 'max_tokens' => config('ai.options.max_tokens.receipt', 1024),
                 'temperature' => config('ai.options.temperature.receipt', 0.1),
@@ -107,7 +107,7 @@ class OpenAIProvider implements AIService
             // If it's a schema validation error, try fallback without strict mode
             if (AIFallbackHandler::shouldAttemptFallback($e)) {
                 AIDebugLogger::fallbackAttempt('OpenAI', $e->getMessage(), [
-                    'fallback_model' => $model ?? 'gpt-4.1-mini',
+                    'fallback_model' => $model ?? config('ai.models.fallback'),
                 ]);
 
                 try {
@@ -123,7 +123,7 @@ class OpenAIProvider implements AIService
                     $normalizedData = AIDataNormalizer::normalizeReceiptData($result);
 
                     $fallbackResult = AIFallbackHandler::createSuccessResult('openai', $normalizedData, [
-                        'model' => $model ?? 'gpt-4.1-mini',
+                        'model' => $model ?? config('ai.models.fallback'),
                         'template' => $promptData['template_name'] ?? 'fallback',
                         'tokens_used' => $response->usage->totalTokens ?? 0,
                         'fallback_used' => true,
@@ -148,7 +148,7 @@ class OpenAIProvider implements AIService
     public function analyzeDocument(string $content, array $options = []): array
     {
         try {
-            $model = config('ai.models.document', 'gpt-4o');
+            $model = config('ai.models.document');
 
             // Use template service to get structured prompt
             $promptData = $this->promptService->getPrompt('document', [
@@ -194,7 +194,7 @@ class OpenAIProvider implements AIService
             ]);
 
             $response = OpenAI::chat()->create([
-                'model' => 'gpt-4.1-mini',
+                'model' => config('ai.models.merchant'),
                 'messages' => $promptData['messages'],
                 'max_tokens' => $promptData['options']['max_tokens'] ?? 200,
                 'temperature' => $promptData['options']['temperature'] ?? 0.1,
@@ -221,7 +221,7 @@ class OpenAIProvider implements AIService
             ]);
 
             $response = OpenAI::chat()->create([
-                'model' => config('ai.models.summary', 'gpt-4o-mini'),
+                'model' => config('ai.models.summary'),
                 'messages' => $promptData['messages'],
                 'temperature' => $promptData['options']['temperature'] ?? 0.3,
                 'max_tokens' => $promptData['options']['max_tokens'] ?? (int) ($maxLength / 4),
@@ -256,7 +256,7 @@ class OpenAIProvider implements AIService
             ];
 
             $response = OpenAI::chat()->create([
-                'model' => config('ai.models.entities', 'gpt-4o-mini'),
+                'model' => config('ai.models.entities'),
                 'messages' => [
                     [
                         'role' => 'system',
@@ -304,7 +304,7 @@ class OpenAIProvider implements AIService
             ];
 
             $response = OpenAI::chat()->create([
-                'model' => config('ai.models.classification', 'gpt-4o-mini'),
+                'model' => config('ai.models.classification'),
                 'messages' => [
                     [
                         'role' => 'system',
@@ -342,7 +342,7 @@ class OpenAIProvider implements AIService
 
         try {
             $response = OpenAI::chat()->create([
-                'model' => 'gpt-3.5-turbo',
+                'model' => config('ai.models.entities'),
                 'messages' => [
                     [
                         'role' => 'system',

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
 import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
+import Pagination from '@/Pages/Jobs/Components/Pagination.vue';
 
 type FileItem = {
     id: number;
@@ -19,15 +20,42 @@ type FileItem = {
     viewUrl: string;
 };
 
+interface Stats {
+    total: number;
+    failed: number;
+    processing: number;
+    pending: number;
+    completed: number;
+}
+
+interface PaginationInfo {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+}
+
 interface Props {
     files: {
         data: FileItem[];
         links: any;
         meta: any;
     };
+    stats: Stats;
+    filters: {
+        status: string;
+        per_page: number;
+    };
+    pagination: PaginationInfo;
 }
 
 const props = defineProps<Props>();
+
+const form = reactive({
+    status: props.filters?.status ?? '',
+    per_page: props.filters?.per_page ?? 50,
+    page: props.pagination?.current_page ?? 1,
+});
 
 const selectedTypeById = ref<Record<number, 'receipt' | 'document'>>(
     Object.fromEntries(
@@ -40,10 +68,24 @@ const selectedTypeById = ref<Record<number, 'receipt' | 'document'>>(
 
 const expandedFileId = ref<number | null>(null);
 
-const failedCount = computed(() => props.files.data.filter(f => f.status === 'failed').length);
-const completedCount = computed(() => props.files.data.filter(f => f.status === 'completed').length);
-const processingCount = computed(() => props.files.data.filter(f => f.status === 'processing').length);
-const pendingCount = computed(() => props.files.data.filter(f => f.status === 'pending').length);
+// Watch for filter changes and update URL
+watch(
+    () => [form.status, form.per_page, form.page],
+    () => {
+        router.get(
+            route('files.index'),
+            {
+                status: form.status || undefined,
+                per_page: form.per_page,
+                page: form.page,
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+            }
+        );
+    }
+);
 
 const formatDate = (iso: string | null) => {
     if (!iso) return '';
@@ -99,7 +141,7 @@ const toggleExpanded = (fileId: number) => {
                             </div>
                             <div class="ml-4">
                                 <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">Total Files</p>
-                                <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.files.data.length }}</p>
+                                <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.total }}</p>
                             </div>
                         </div>
                     </div>
@@ -113,7 +155,7 @@ const toggleExpanded = (fileId: number) => {
                             </div>
                             <div class="ml-4">
                                 <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">Completed</p>
-                                <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ completedCount }}</p>
+                                <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.completed }}</p>
                             </div>
                         </div>
                     </div>
@@ -127,7 +169,7 @@ const toggleExpanded = (fileId: number) => {
                             </div>
                             <div class="ml-4">
                                 <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">In Progress</p>
-                                <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ processingCount + pendingCount }}</p>
+                                <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.processing + props.stats.pending }}</p>
                             </div>
                         </div>
                     </div>
@@ -141,8 +183,42 @@ const toggleExpanded = (fileId: number) => {
                             </div>
                             <div class="ml-4">
                                 <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">Failed</p>
-                                <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ failedCount }}</p>
+                                <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.failed }}</p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="mb-6 rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
+                    <div class="flex flex-wrap gap-4">
+                        <select
+                            v-model="form.status"
+                            @change="form.page = 1"
+                            class="bg-white text-zinc-900 dark:bg-zinc-700 dark:text-white rounded-md border border-zinc-300 dark:border-zinc-600 shadow-sm focus:border-amber-500 focus:ring focus:ring-amber-500 focus:ring-opacity-50"
+                        >
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="processing">Processing</option>
+                            <option value="completed">Completed</option>
+                            <option value="failed">Failed</option>
+                        </select>
+
+                        <select
+                            v-model.number="form.per_page"
+                            @change="form.page = 1"
+                            class="bg-white text-zinc-900 dark:bg-zinc-700 dark:text-white rounded-md border border-zinc-300 dark:border-zinc-600 shadow-sm focus:border-amber-500 focus:ring focus:ring-amber-500 focus:ring-opacity-50"
+                        >
+                            <option :value="50">50 per page</option>
+                            <option :value="100">100 per page</option>
+                            <option :value="200">200 per page</option>
+                            <option :value="999999">All</option>
+                        </select>
+
+                        <div class="flex-1 text-right self-center">
+                            <span class="text-sm text-zinc-600 dark:text-zinc-400">
+                                Showing {{ props.files.data.length }} of {{ props.pagination.total }} files
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -325,6 +401,15 @@ const toggleExpanded = (fileId: number) => {
                         </div>
                     </div>
                 </div>
+
+                <!-- Pagination -->
+                <Pagination
+                    v-if="props.pagination.last_page > 1"
+                    :page="form.page"
+                    @update:page="page => form.page = page"
+                    :pagination="props.pagination"
+                    class="mt-6"
+                />
             </div>
         </div>
     </AuthenticatedLayout>

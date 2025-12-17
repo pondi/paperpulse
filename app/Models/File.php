@@ -62,6 +62,7 @@ class File extends Model
 
     protected $casts = [
         'meta' => 'array',
+        'has_image_preview' => 'boolean',
         'uploaded_at' => 'datetime',
         'file_created_at' => 'datetime',
         'file_modified_at' => 'datetime',

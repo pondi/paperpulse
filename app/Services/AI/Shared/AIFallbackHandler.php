@@ -26,7 +26,7 @@ class AIFallbackHandler
     /**
      * Get fallback model configuration by provider.
      *
-     * @return array{model:string,max_tokens:int,temperature:float}
+     * @return array{model:string,max_completion_tokens:int,temperature:float}
      */
     public static function getFallbackModel(string $provider): array
     {
@@ -37,7 +37,7 @@ class AIFallbackHandler
 
         return [
             'model' => $fallbackModels[$provider] ?? $fallbackModels['openai'],
-            'max_tokens' => 1024,
+            'max_completion_tokens' => 1024,
             'temperature' => 0.1,
         ];
     }
@@ -53,7 +53,7 @@ class AIFallbackHandler
             'model' => $model ?? $config['model'],
             'messages' => $messages,
             'response_format' => ['type' => 'json_object'],
-            'max_tokens' => $config['max_tokens'],
+            'max_completion_tokens' => $config['max_completion_tokens'],
             'temperature' => $config['temperature'],
         ];
     }
@@ -67,7 +67,7 @@ class AIFallbackHandler
 
         return [
             'model' => $config['model'],
-            'max_tokens' => $config['max_tokens'],
+            'max_completion_tokens' => $config['max_completion_tokens'],
             'temperature' => $config['temperature'],
             'system' => 'Extract receipt data from the following text. Return JSON with merchant name, total amount, date, and items.',
             'messages' => [

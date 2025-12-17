@@ -68,8 +68,8 @@ class AIDebugLogger
             'messages_count' => count($payload['messages'] ?? []),
         ];
 
-        if (isset($payload['max_tokens'])) {
-            $logData['max_tokens'] = $payload['max_tokens'];
+        if (isset($payload['max_completion_tokens'])) {
+            $logData['max_completion_tokens'] = $payload['max_completion_tokens'];
         }
         if (isset($payload['temperature'])) {
             $logData['temperature'] = $payload['temperature'];

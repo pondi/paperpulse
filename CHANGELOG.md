@@ -2,6 +2,57 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2025-12-17
+
+### Added
+- File management enhancements
+  - SHA-256 deduplication to prevent duplicate uploads
+  - Failed file reprocessing with management UI
+  - Expanded file statuses and URL management
+  - Orphan file record cleanup
+  - Configurable pagination for file processing views
+  - File streaming via API v1
+
+- Search improvements
+  - Natural language OR search with multi-word ranking
+  - Unified search endpoint for receipts and documents
+  - API v1 search endpoint
+
+- PulseDav enhancements
+  - Select all files in folder functionality
+  - Document ID support for better tracking
+
+- Job system improvements
+  - Enhanced job history with pagination and clickable statistics
+  - Hardened monitoring and restart capabilities
+  - Improved failure persistence with sanitization
+
+- UI/UX updates
+  - Complete Inertia/Vue styling redesign
+  - Modernized layouts and navigation
+  - Theme toggle redesigned as icon button
+  - Refreshed email templates
+  - Modernized invitation intake flow
+
+- AI and language features
+  - AI outputs now match document language automatically
+
+### Changed
+- AI provider migration to gpt-5.2
+- Textract processing optimized for better API usage and artifact handling
+- Receipt processing now allows operations without merchant information
+- Console commands consolidated and cleaned up
+- Converted PDFs renamed to archive variant for clarity
+- Original file dates now preserved from scanner imports
+- Kubernetes deployment support with Horizon fast termination
+
+### Fixed
+- Security improvements with authorization checks and enhanced API error responses
+- PulseDav race condition in UpdatePulseDavFileStatus job
+- GPT-5.2 integration and token limit issues
+- Watch functionality prevented from firing on initial mount
+- Logging configuration handles empty env vars correctly
+
 ## [1.0.0] - 2025-01-07
 
 ### Added

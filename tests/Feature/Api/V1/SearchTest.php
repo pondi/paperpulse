@@ -42,7 +42,7 @@ it('returns lightweight search results with content links', function () {
                         'guid' => '2c2d0c66-24f6-4f86-b894-c20dc2d63eaa',
                         'extension' => 'pdf',
                         'has_image_preview' => false,
-                        'has_converted_pdf' => true,
+                        'has_archive_pdf' => true,
                     ],
                 ],
                 [
@@ -58,7 +58,7 @@ it('returns lightweight search results with content links', function () {
                         'guid' => 'b1f10574-e0ed-4f24-86e5-57c12ae45a9e',
                         'extension' => 'jpg',
                         'has_image_preview' => true,
-                        'has_converted_pdf' => false,
+                        'has_archive_pdf' => false,
                     ],
                 ],
             ],

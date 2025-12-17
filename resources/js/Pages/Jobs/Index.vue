@@ -11,7 +11,7 @@
         <div class="lg:grid lg:grid-cols-12 lg:gap-8">
           <!-- Left Column: Statistics -->
           <div class="lg:col-span-4 xl:col-span-3 space-y-6 mb-6 lg:mb-0">
-            <JobStats :stats="stats" />
+            <JobStats :stats="stats" @filter-status="handleFilterStatus" />
             <PulseDavStats :stats="pulseDavStats" :recent-files="recentPulseDavFiles" />
           </div>
           
@@ -129,6 +129,7 @@ interface Props {
     status: string;
     queue: string;
     search: string;
+    per_page: number;
   };
   pagination: Pagination;
 }
@@ -153,7 +154,8 @@ const props = withDefaults(defineProps<Props>(), {
   filters: () => ({
     status: '',
     queue: '',
-    search: ''
+    search: '',
+    per_page: 50
   }),
   pagination: () => ({
     current_page: 1,
@@ -167,6 +169,7 @@ const form = reactive({
   status: props.filters?.status ?? '',
   queue: props.filters?.queue ?? '',
   search: props.filters?.search ?? '',
+  per_page: props.filters?.per_page ?? 50,
   page: props.pagination?.current_page ?? 1
 });
 
@@ -184,11 +187,12 @@ const updateForm = (newForm: typeof form) => {
 
 const loadJobsData = async () => {
   try {
-    const response = await axios.get('/jobs/status', { 
+    const response = await axios.get('/jobs/status', {
       params: {
         status: form.status || undefined,
         queue: form.queue || undefined,
         search: form.search || undefined,
+        per_page: form.per_page,
         page: form.page
       }
     });
@@ -229,6 +233,11 @@ const handleJobRestart = (jobId: string) => {
   if (import.meta.env.DEV) console.log('Job restart initiated for:', jobId);
   // Refresh data after restart
   setTimeout(() => loadJobsData(), 1000);
+};
+
+const handleFilterStatus = (status: string) => {
+  form.status = status;
+  form.page = 1;
 };
 
 watch(form, (newForm) => {

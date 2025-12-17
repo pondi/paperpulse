@@ -39,14 +39,14 @@ return [
     |
     */
     'models' => [
-        'receipt' => 'gpt-5-mini',
-        'document' => 'gpt-5-mini',
-        'summary' => 'gpt-5-mini',
-        'classification' => 'gpt-5-mini',
-        'entities' => 'gpt-5-mini',
-        'merchant' => 'gpt-5-mini',
-        'fallback' => 'gpt-5-mini',
-        'default' => 'gpt-5-mini',
+        'receipt' => 'gpt-5.2',
+        'document' => 'gpt-5.2',
+        'summary' => 'gpt-5.2',
+        'classification' => 'gpt-5.2',
+        'entities' => 'gpt-5.2',
+        'merchant' => 'gpt-5.2',
+        'fallback' => 'gpt-5.2',
+        'default' => 'gpt-5.2',
     ],
 
     /*
@@ -55,19 +55,16 @@ return [
     |--------------------------------------------------------------------------
     |
     | Fine-tuned parameters for different AI processing tasks including
-    | token limits, temperature settings, and timeout values.
+    | token limits and timeout values.
     |
     */
     'options' => [
         'max_completion_tokens' => [
-            'receipt' => 1024,
-            'document' => 2048,
-            'summary' => 200,
-        ],
-        'temperature' => [
-            'receipt' => 0.1,
-            'document' => 0.2,
-            'summary' => 0.3,
+            // Generous limits to handle large/complex receipts without truncation
+            // A 50-page receipt with many items needs ~8-16K tokens for complete extraction
+            'receipt' => (int) env('AI_MAX_COMPLETION_TOKENS_RECEIPT', 16384),
+            'document' => (int) env('AI_MAX_COMPLETION_TOKENS_DOCUMENT', 16384),
+            'summary' => (int) env('AI_MAX_COMPLETION_TOKENS_SUMMARY', 1000),
         ],
         // Controls OpenAI JSON schema strict mode; false avoids provider
         // rejections when optional fields are omitted by the model

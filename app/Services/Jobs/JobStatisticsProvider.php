@@ -35,6 +35,9 @@ class JobStatisticsProvider
 
         $stats['pending'] += DB::table('jobs')->count();
 
+        // Add total count for easier reference
+        $stats['total'] = $stats['pending'] + $stats['processing'] + $stats['completed'] + $stats['failed'];
+
         return $stats;
     }
 }

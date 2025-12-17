@@ -64,6 +64,11 @@ class JobController extends Controller
         if (! auth()->user()?->isAdmin()) {
             abort(403, 'Unauthorized');
         }
+
+        // Validate and get per_page value (50, 100, 200, or 999999 for "all")
+        $perPage = $request->input('per_page', 50);
+        $perPage = in_array($perPage, [50, 100, 200, 999999]) ? (int) $perPage : 50;
+
         $historyQuery = JobHistory::query()
             ->whereNull('parent_uuid')
             ->orderBy('created_at', 'desc')
@@ -71,7 +76,7 @@ class JobController extends Controller
             ->when($request->filled('queue'), fn (Builder $query) => $query->where('queue', $request->queue))
             ->when($request->filled('search'), fn (Builder $query) => $query->where('name', 'like', "%{$request->search}%"));
 
-        $historyJobs = $historyQuery->with('tasks')->paginate(50);
+        $historyJobs = $historyQuery->with('tasks')->paginate($perPage);
 
         // Get recent PulseDav files with processing status
         $recentPulseDavFiles = PulseDavFile::where('user_id', auth()->id())
@@ -104,6 +109,7 @@ class JobController extends Controller
                 'status' => $request->input('status', ''),
                 'queue' => $request->input('queue', ''),
                 'search' => $request->input('search', ''),
+                'per_page' => $perPage,
             ],
             'pagination' => [
                 'current_page' => $historyJobs->currentPage(),
@@ -125,6 +131,10 @@ class JobController extends Controller
         try {
             $pendingJobs = $this->getPendingJobs();
 
+            // Validate and get per_page value (50, 100, 200, or 999999 for "all")
+            $perPage = $request->input('per_page', 50);
+            $perPage = in_array($perPage, [50, 100, 200, 999999]) ? (int) $perPage : 50;
+
             $historyQuery = JobHistory::parentJobs()
                 ->when($request->status, fn (Builder $query) => $query->where('status', $request->status))
                 ->when($request->queue, fn (Builder $query) => $query->where('queue', $request->queue))
@@ -133,7 +143,7 @@ class JobController extends Controller
             $historyJobs = $historyQuery
                 ->with('tasks')
                 ->orderBy('created_at', 'desc')
-                ->paginate(50);
+                ->paginate($perPage);
 
             return response()->json([
                 'data' => $historyJobs->map(function (JobHistory $job) use ($pendingJobs): array {

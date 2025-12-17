@@ -15,10 +15,10 @@ class ReceiptValidatorService implements ReceiptValidatorContract
         $errors = [];
         $warnings = [];
 
-        // Validate merchant information
+        // Validate merchant information (warnings only - not critical)
         $merchantValidation = $this->validateMerchantData($data);
         if (! $merchantValidation['valid']) {
-            $errors = array_merge($errors, $merchantValidation['errors']);
+            $warnings = array_merge($warnings, $merchantValidation['errors']);
         }
 
         // Validate totals
@@ -274,12 +274,26 @@ class ReceiptValidatorService implements ReceiptValidatorContract
 
     /**
      * Check if receipt data contains essential information for processing
+     *
+     * Returns true if there's at least some useful data (merchant, date, total, or items)
+     * This allows receipts to be processed even without merchant information
      */
     public function hasEssentialData(array $data): bool
     {
         $hasValidMerchant = ! empty($data['merchant']['name']) || ! empty($data['store']['name']);
 
-        return $hasValidMerchant;
+        $hasDate = ! empty($data['receipt_info']['date']) ||
+                   ! empty($data['receipt']['date']) ||
+                   ! empty($data['date']);
+
+        $hasTotal = ! empty($data['totals']['total_amount']) ||
+                    ! empty($data['receipt']['total']) ||
+                    ! empty($data['total']);
+
+        $hasItems = ! empty($data['items']) && is_array($data['items']);
+
+        // Receipt is processable if it has ANY of these: merchant, date, total, or items
+        return $hasValidMerchant || $hasDate || $hasTotal || $hasItems;
     }
 
     /**

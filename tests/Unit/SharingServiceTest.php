@@ -3,14 +3,15 @@
 namespace Tests\Unit;
 
 use App\Models\Document;
+use App\Models\File;
 use App\Models\FileShare;
 use App\Models\Receipt;
 use App\Models\User;
 use App\Services\SharingService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Auth\Access\AuthorizationException;
 use Tests\TestCase;
-use UnauthorizedHttpException;
 
 class SharingServiceTest extends TestCase
 {
@@ -31,13 +32,22 @@ class SharingServiceTest extends TestCase
 
         $this->actingAs($owner);
 
-        $receipt = Receipt::factory()->create(['user_id' => $owner->id]);
+        $file = File::factory()->create([
+            'user_id' => $owner->id,
+            'file_type' => 'receipt',
+            'processing_type' => 'receipt',
+        ]);
+
+        $receipt = Receipt::factory()->create([
+            'file_id' => $file->id,
+            'user_id' => $owner->id,
+        ]);
 
         $share = $this->sharingService->shareFile($receipt, $targetUser);
 
         $this->assertInstanceOf(FileShare::class, $share);
-        $this->assertEquals(Receipt::class, $share->shareable_type);
-        $this->assertEquals($receipt->id, $share->shareable_id);
+        $this->assertEquals('receipt', $share->file_type);
+        $this->assertEquals($receipt->file_id, $share->file_id);
         $this->assertEquals($targetUser->id, $share->shared_with_user_id);
         $this->assertEquals('view', $share->permission);
     }
@@ -49,7 +59,16 @@ class SharingServiceTest extends TestCase
 
         $this->actingAs($owner);
 
-        $document = Document::factory()->create(['user_id' => $owner->id]);
+        $file = File::factory()->create([
+            'user_id' => $owner->id,
+            'file_type' => 'document',
+            'processing_type' => 'document',
+        ]);
+
+        $document = Document::factory()->create([
+            'file_id' => $file->id,
+            'user_id' => $owner->id,
+        ]);
 
         $share = $this->sharingService->shareFile($document, $targetUser, [
             'permission' => 'edit',
@@ -65,7 +84,16 @@ class SharingServiceTest extends TestCase
 
         $this->actingAs($owner);
 
-        $document = Document::factory()->create(['user_id' => $owner->id]);
+        $file = File::factory()->create([
+            'user_id' => $owner->id,
+            'file_type' => 'document',
+            'processing_type' => 'document',
+        ]);
+
+        $document = Document::factory()->create([
+            'file_id' => $file->id,
+            'user_id' => $owner->id,
+        ]);
 
         $expiresAt = Carbon::now()->addDays(7);
 
@@ -84,9 +112,18 @@ class SharingServiceTest extends TestCase
 
         $this->actingAs($otherUser);
 
-        $receipt = Receipt::factory()->create(['user_id' => $owner->id]);
+        $file = File::factory()->create([
+            'user_id' => $owner->id,
+            'file_type' => 'receipt',
+            'processing_type' => 'receipt',
+        ]);
 
-        $this->expectException(UnauthorizedHttpException::class);
+        $receipt = Receipt::factory()->create([
+            'file_id' => $file->id,
+            'user_id' => $owner->id,
+        ]);
+
+        $this->expectException(AuthorizationException::class);
 
         $this->sharingService->shareFile($receipt, $targetUser);
     }
@@ -98,7 +135,16 @@ class SharingServiceTest extends TestCase
 
         $this->actingAs($owner);
 
-        $document = Document::factory()->create(['user_id' => $owner->id]);
+        $file = File::factory()->create([
+            'user_id' => $owner->id,
+            'file_type' => 'document',
+            'processing_type' => 'document',
+        ]);
+
+        $document = Document::factory()->create([
+            'file_id' => $file->id,
+            'user_id' => $owner->id,
+        ]);
 
         $this->sharingService->shareFile($document, $targetUser);
 
@@ -111,7 +157,16 @@ class SharingServiceTest extends TestCase
         $owner = User::factory()->create();
         $otherUser = User::factory()->create();
 
-        $document = Document::factory()->create(['user_id' => $owner->id]);
+        $file = File::factory()->create([
+            'user_id' => $owner->id,
+            'file_type' => 'document',
+            'processing_type' => 'document',
+        ]);
+
+        $document = Document::factory()->create([
+            'file_id' => $file->id,
+            'user_id' => $owner->id,
+        ]);
 
         $this->assertFalse($this->sharingService->userHasAccess($document, $otherUser));
     }
@@ -123,7 +178,16 @@ class SharingServiceTest extends TestCase
 
         $this->actingAs($owner);
 
-        $document = Document::factory()->create(['user_id' => $owner->id]);
+        $file = File::factory()->create([
+            'user_id' => $owner->id,
+            'file_type' => 'document',
+            'processing_type' => 'document',
+        ]);
+
+        $document = Document::factory()->create([
+            'file_id' => $file->id,
+            'user_id' => $owner->id,
+        ]);
 
         $this->sharingService->shareFile($document, $targetUser, [
             'expires_at' => Carbon::now()->subDay(),
@@ -139,7 +203,16 @@ class SharingServiceTest extends TestCase
 
         $this->actingAs($owner);
 
-        $document = Document::factory()->create(['user_id' => $owner->id]);
+        $file = File::factory()->create([
+            'user_id' => $owner->id,
+            'file_type' => 'document',
+            'processing_type' => 'document',
+        ]);
+
+        $document = Document::factory()->create([
+            'file_id' => $file->id,
+            'user_id' => $owner->id,
+        ]);
 
         $this->sharingService->shareFile($document, $targetUser, [
             'permission' => 'view',
@@ -156,7 +229,16 @@ class SharingServiceTest extends TestCase
 
         $this->actingAs($owner);
 
-        $document = Document::factory()->create(['user_id' => $owner->id]);
+        $file = File::factory()->create([
+            'user_id' => $owner->id,
+            'file_type' => 'document',
+            'processing_type' => 'document',
+        ]);
+
+        $document = Document::factory()->create([
+            'file_id' => $file->id,
+            'user_id' => $owner->id,
+        ]);
 
         $this->sharingService->shareFile($document, $targetUser);
 
@@ -175,7 +257,16 @@ class SharingServiceTest extends TestCase
 
         $this->actingAs($owner);
 
-        $document = Document::factory()->create(['user_id' => $owner->id]);
+        $file = File::factory()->create([
+            'user_id' => $owner->id,
+            'file_type' => 'document',
+            'processing_type' => 'document',
+        ]);
+
+        $document = Document::factory()->create([
+            'file_id' => $file->id,
+            'user_id' => $owner->id,
+        ]);
 
         // Create expired share
         $this->sharingService->shareFile($document, $targetUser, [
@@ -183,7 +274,16 @@ class SharingServiceTest extends TestCase
         ]);
 
         // Create valid share
-        $receipt = Receipt::factory()->create(['user_id' => $owner->id]);
+        $receiptFile = File::factory()->create([
+            'user_id' => $owner->id,
+            'file_type' => 'receipt',
+            'processing_type' => 'receipt',
+        ]);
+
+        $receipt = Receipt::factory()->create([
+            'file_id' => $receiptFile->id,
+            'user_id' => $owner->id,
+        ]);
         $this->sharingService->shareFile($receipt, $targetUser, [
             'expires_at' => Carbon::now()->addDay(),
         ]);

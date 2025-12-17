@@ -13,14 +13,41 @@ class FileManagementController extends Controller
 {
     public function index(Request $request)
     {
-        $files = File::query()
+        // Validate and get per_page value (50, 100, 200, or 999999 for "all")
+        $perPage = $request->input('per_page', 50);
+        $perPage = in_array($perPage, [50, 100, 200, 999999]) ? (int) $perPage : 50;
+
+        $filesQuery = File::query()
             ->whereIn('status', ['failed', 'processing', 'pending', 'completed'])
-            ->orderByDesc('uploaded_at')
-            ->paginate(50)
+            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->status))
+            ->orderByDesc('uploaded_at');
+
+        $files = $filesQuery
+            ->paginate($perPage)
             ->through(fn (File $file) => FileTransformer::forIndex($file));
+
+        // Get statistics for all files (not just current page)
+        $stats = [
+            'total' => File::whereIn('status', ['failed', 'processing', 'pending', 'completed'])->count(),
+            'failed' => File::where('status', 'failed')->count(),
+            'processing' => File::where('status', 'processing')->count(),
+            'pending' => File::where('status', 'pending')->count(),
+            'completed' => File::where('status', 'completed')->count(),
+        ];
 
         return Inertia::render('Files/Index', [
             'files' => $files,
+            'stats' => $stats,
+            'filters' => [
+                'status' => $request->input('status', ''),
+                'per_page' => $perPage,
+            ],
+            'pagination' => [
+                'current_page' => $files->currentPage(),
+                'last_page' => $files->lastPage(),
+                'per_page' => $files->perPage(),
+                'total' => $files->total(),
+            ],
         ]);
     }
 

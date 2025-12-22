@@ -12,7 +12,7 @@ class ListInvitations extends Command
      *
      * @var string
      */
-    protected $signature = 'invite:list {--status= : Filter by status (pending, sent, rejected)} {--pending : Show only pending requests}';
+    protected $signature = 'invite:list {--status= : Filter by status (pending, sent, rejected)}';
 
     /**
      * The console command description.
@@ -28,11 +28,8 @@ class ListInvitations extends Command
     {
         $query = Invitation::orderBy('created_at', 'desc');
 
-        // Filter by status
         if ($status = $this->option('status')) {
             $query->where('status', $status);
-        } elseif ($this->option('pending')) {
-            $query->where('status', 'pending');
         }
 
         $invitations = $query->get();

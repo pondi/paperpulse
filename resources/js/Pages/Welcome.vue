@@ -1,7 +1,6 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { onMounted, ref } from 'vue';
-import axios from 'axios';
 
 defineProps({
     canLogin: {
@@ -12,13 +11,8 @@ defineProps({
     },
 });
 
-const inviteEmail = ref('');
-const inviteName = ref('');
-const inviteCompany = ref('');
 const showInviteModal = ref(false);
-const inviteSubmitting = ref(false);
 const inviteSuccess = ref(false);
-const inviteError = ref('');
 
 // Avoid rendering <Head> during the very first paint to rule out
 // any interaction between Inertia's head manager and initial mount.
@@ -27,30 +21,24 @@ onMounted(() => {
     isMounted.value = true;
 });
 
-const requestInvite = async () => {
-    inviteSubmitting.value = true;
-    inviteError.value = '';
+const inviteForm = useForm({
+    name: '',
+    email: '',
+    company: '',
+});
 
-    try {
-        await axios.post('/api/invitation-request', {
-            email: inviteEmail.value,
-            name: inviteName.value,
-            company: inviteCompany.value,
-        });
-
-        inviteSuccess.value = true;
-        setTimeout(() => {
-            showInviteModal.value = false;
-            inviteSuccess.value = false;
-            inviteEmail.value = '';
-            inviteName.value = '';
-            inviteCompany.value = '';
-        }, 3000);
-    } catch (error) {
-        inviteError.value = error.response?.data?.message || 'Something went wrong. Please try again.';
-    } finally {
-        inviteSubmitting.value = false;
-    }
+const requestInvite = () => {
+    inviteForm.post('/invitation-request', {
+        preserveScroll: true,
+        onSuccess: () => {
+            inviteSuccess.value = true;
+            setTimeout(() => {
+                showInviteModal.value = false;
+                inviteSuccess.value = false;
+                inviteForm.reset();
+            }, 3000);
+        },
+    });
 };
 </script>
 
@@ -363,27 +351,30 @@ const requestInvite = async () => {
                             <div class="space-y-4">
                                 <div>
                                     <label for="name" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Name</label>
-                                    <input type="text" v-model="inviteName" id="name" required class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm" placeholder="John Doe">
+                                    <input type="text" v-model="inviteForm.name" id="name" required class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm" placeholder="John Doe">
+                                    <p v-if="inviteForm.errors.name" class="mt-1 text-sm text-red-600">{{ inviteForm.errors.name }}</p>
                                 </div>
 
                                 <div>
                                     <label for="email" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Email</label>
-                                    <input type="email" v-model="inviteEmail" id="email" required class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm" placeholder="john@example.com">
+                                    <input type="email" v-model="inviteForm.email" id="email" required class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm" placeholder="john@example.com">
+                                    <p v-if="inviteForm.errors.email" class="mt-1 text-sm text-red-600">{{ inviteForm.errors.email }}</p>
                                 </div>
 
                                 <div>
                                     <label for="company" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Company (Optional)</label>
-                                    <input type="text" v-model="inviteCompany" id="company" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm" placeholder="Acme Inc.">
+                                    <input type="text" v-model="inviteForm.company" id="company" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm" placeholder="Acme Inc.">
+                                    <p v-if="inviteForm.errors.company" class="mt-1 text-sm text-red-600">{{ inviteForm.errors.company }}</p>
                                 </div>
                             </div>
 
-                            <div v-if="inviteError" class="mt-4 rounded-md bg-red-50 p-3">
-                                <p class="text-sm text-red-800">{{ inviteError }}</p>
+                            <div v-if="inviteForm.errors.message" class="mt-4 rounded-md bg-red-50 dark:bg-red-900/20 p-3">
+                                <p class="text-sm text-red-800 dark:text-red-400">{{ inviteForm.errors.message }}</p>
                             </div>
 
                             <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
-                                <button type="submit" :disabled="inviteSubmitting" class="inline-flex w-full justify-center rounded-md bg-orange-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 sm:col-start-2">
-                                    {{ inviteSubmitting ? 'Submitting...' : 'Request Invitation' }}
+                                <button type="submit" :disabled="inviteForm.processing" class="inline-flex w-full justify-center rounded-md bg-orange-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 sm:col-start-2">
+                                    {{ inviteForm.processing ? 'Submitting...' : 'Request Invitation' }}
                                 </button>
                                 <button type="button" @click="showInviteModal = false" class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-900 dark:text-white shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 hover:bg-amber-50 dark:hover:bg-amber-600 sm:col-start-1 sm:mt-0">
                                     Cancel

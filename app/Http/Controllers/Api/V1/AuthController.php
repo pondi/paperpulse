@@ -42,35 +42,6 @@ class AuthController extends BaseApiController
         ], 'Login successful');
     }
 
-    public function register(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
-
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
-
-        $token = $user->createToken('api-token')->plainTextToken;
-
-        Log::info('[API] Registration success', [
-            'user_id' => $user->id,
-            'email' => $user->email,
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
-
-        return $this->success([
-            'user' => new UserResource($user),
-            'token' => $token,
-        ], 'Registration successful', 201);
-    }
-
     public function logout(Request $request)
     {
         $userId = $request->user()?->id;

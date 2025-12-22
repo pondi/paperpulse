@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Api\InvitationRequestController;
 use App\Http\Controllers\Api\WebDavAuthController;
 use App\Http\Controllers\BatchProcessingController;
 use App\Http\Controllers\Documents\DocumentController;
@@ -27,10 +26,6 @@ Route::get('health', function () {
         'version' => config('app.version', '1.0.0'),
     ]);
 });
-
-// Invitation requests (public endpoint)
-Route::post('/invitation-request', [InvitationRequestController::class, 'store'])
-    ->middleware('throttle:10,1');
 
 // V1 API routes
 Route::prefix('v1')

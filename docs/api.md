@@ -9,11 +9,6 @@ Minimal REST surface for external integrations. All file operations are scoped t
 - Tokens: Laravel Sanctum personal access token.
 - Header: `Authorization: Bearer <token>`
 
-### Register
-- `POST /auth/register`
-- Body: `{ "name": "Jane Doe", "email": "jane@example.com", "password": "secret123", "password_confirmation": "secret123" }`
-- Response: `user`, `token` (201)
-
 ### Login
 - `POST /auth/login`
 - Body: `{ "email": "jane@example.com", "password": "secret123" }`
@@ -261,8 +256,7 @@ Instant search across receipts + documents (same underlying search implementatio
 
 ## Other Routes Outside `/v1`
 - `/api/health`: health check (no auth).
-- `/api/beta-request`: beta signup (public).
 - `/api/webdav/auth`: PulseDav auth (used by sync feature).
 - `/api/documents/{id}/shares`, `/api/receipts/{id}/shares`, `/api/batch/*`: internal/web-facing APIs; keep intact for web app and batch processing. External clients should ignore these in favor of `/api/v1/files`.
 
-Receipt and Document payloads exposed by these internal APIs and the web app include a `note` field (nullable string) representing the user-authored “Document Note” attached to each record.
+Receipt and Document payloads exposed by these internal APIs and the web app include a `note` field (nullable string) representing the user-authored "Document Note" attached to each record.

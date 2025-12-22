@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\InvitationRequestController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,10 @@ Route::get('/', function () {
 
     return Inertia::render('Welcome', $props);
 });
+
+Route::post('/invitation-request', [InvitationRequestController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('invitation.request');
 
 // Authenticated & Inertia routes
 Route::middleware(['auth', 'verified', 'web'])->group(function () {

@@ -1,0 +1,54 @@
+services:
+  # Gotenberg - Office to PDF/A conversion service
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: paperpulse-gotenberg
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - paperpulse
+
+  # Converter - Go worker that processes conversion jobs
+  converter:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.converter
+    container_name: paperpulse-converter
+    depends_on:
+      - gotenberg
+    environment:
+      # Local dev: Redis running on host machine
+      - REDIS_ADDR=host.docker.internal:${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_CONVERSION_DB=${REDIS_CONVERSION_DB}
+      - REDIS_PREFIX=${REDIS_PREFIX}
+      - GOTENBERG_URL=http://gotenberg:3000
+      - AWS_BUCKET=${AWS_BUCKET}
+      - S3_REGION=${S3_REGION}
+      - S3_KEY=${S3_KEY}
+      - S3_SECRET=${S3_SECRET}
+      - S3_ENDPOINT=${S3_ENDPOINT}
+      - S3_USE_PATH_STYLE_ENDPOINT=${S3_USE_PATH_STYLE_ENDPOINT}
+      # Local dev: Postgres running on host machine (no SSL)
+      - DB_HOST=host.docker.internal
+      - DB_PORT=${DB_PORT}
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_SSLMODE=disable
+      - CONVERSION_WORKER_COUNT=2
+      - CONVERSION_TIMEOUT=120
+      - CONVERSION_MAX_RETRIES=3
+    restart: unless-stopped
+    networks:
+      - paperpulse
+
+networks:
+  paperpulse:
+    driver: bridge

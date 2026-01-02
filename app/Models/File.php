@@ -27,7 +27,6 @@ class File extends Model
 {
     use BelongsToUser;
     use HasFactory;
-    // use Searchable; // Temporarily disabled due to Meilisearch configuration issue
 
     protected $fillable = [
         'user_id',
@@ -78,9 +77,19 @@ class File extends Model
         return $this->hasMany(Receipt::class);
     }
 
+    public function primaryReceipt()
+    {
+        return $this->hasOne(Receipt::class)->latestOfMany();
+    }
+
     public function documents()
     {
         return $this->hasMany(Document::class);
+    }
+
+    public function primaryDocument()
+    {
+        return $this->hasOne(Document::class)->latestOfMany();
     }
 
     public function conversion()

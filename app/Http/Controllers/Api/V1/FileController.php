@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Exceptions\DuplicateFileException;
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Requests\Api\V1\StoreFileRequest;
+use App\Http\Resources\Api\V1\FileListResource;
 use App\Http\Resources\Api\V1\FileResource;
 use App\Models\File;
 use App\Services\FileProcessingService;
@@ -15,14 +16,71 @@ use Throwable;
 
 class FileController extends BaseApiController
 {
+    /**
+     * List files with optional filtering
+     *
+     * Single Responsibility: Validate filters and return paginated file list
+     */
     public function index(Request $request)
     {
-        $files = File::where('user_id', $request->user()->id)
+        $validated = $request->validate([
+            'file_type' => 'nullable|string|in:receipt,document',
+            'status' => 'nullable|string|in:pending,processing,completed,failed',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $query = File::where('user_id', $request->user()->id);
+
+        // Filter by file type (receipt or document)
+        if (! empty($validated['file_type'])) {
+            $query->where('file_type', $validated['file_type']);
+        }
+
+        // Filter by processing status
+        if (! empty($validated['status'])) {
+            $query->where('status', $validated['status']);
+        }
+
+        $query->with($this->relationshipsForList($validated['file_type'] ?? null));
+
+        $files = $query
             ->latest('uploaded_at')
             ->latest('created_at')
-            ->paginate($request->per_page ?? 15);
+            ->paginate($validated['per_page'] ?? 15);
 
-        return $this->paginated(FileResource::collection($files));
+        return $this->paginated(FileListResource::collection($files));
+    }
+
+    /**
+     * @return array<int, string|array>
+     */
+    private function relationshipsForList(?string $fileType): array
+    {
+        if ($fileType === 'receipt') {
+            return [
+                'primaryReceipt' => function ($query) {
+                    $query->with(['merchant', 'category']);
+                },
+            ];
+        }
+
+        if ($fileType === 'document') {
+            return [
+                'primaryDocument' => function ($query) {
+                    $query->with(['category']);
+                },
+            ];
+        }
+
+        return [
+            'primaryReceipt' => function ($query) {
+                $query->with(['merchant', 'category']);
+            },
+            'primaryDocument' => function ($query) {
+                $query->with(['category']);
+            },
+        ];
     }
 
     public function show(Request $request, File $file, StorageService $storageService)

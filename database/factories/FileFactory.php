@@ -29,6 +29,7 @@ class FileFactory extends Factory
             'fileSize' => $this->faker->numberBetween(1000, 5_000_000),
             'fileImage' => null,
             'guid' => (string) Str::uuid(),
+            'file_hash' => hash('sha256', (string) Str::uuid()),
             'file_type' => 'receipt',
             'processing_type' => 'receipt',
             'status' => 'pending',
@@ -45,4 +46,3 @@ class FileFactory extends Factory
         ];
     }
 }
-

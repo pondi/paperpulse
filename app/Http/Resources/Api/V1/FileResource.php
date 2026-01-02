@@ -6,6 +6,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class FileResource extends JsonResource
 {
+    /**
+     * Transform file metadata for API responses
+     *
+     * Single Responsibility: Transform file data only
+     * - No S3 paths exposed (internal implementation detail)
+     * - No signed URLs (use /files/{id}/content endpoint instead)
+     */
     public function toArray($request): array
     {
         return [
@@ -19,7 +26,6 @@ class FileResource extends JsonResource
             'size' => $this->fileSize ?? $this->file_size,
             'status' => $this->status,
             'uploaded_at' => $this->uploaded_at?->toISOString(),
-            's3_original_path' => $this->s3_original_path,
             'has_image_preview' => (bool) $this->has_image_preview,
         ];
     }

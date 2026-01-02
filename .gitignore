@@ -37,3 +37,6 @@ PLAN.md
 frankenphp
 frankenphp-worker.php
 AGENTS.md
+
+# Local build/push helper (intentionally untracked)
+build-push.local.sh

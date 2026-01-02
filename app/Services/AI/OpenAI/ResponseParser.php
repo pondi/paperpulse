@@ -17,7 +17,6 @@ class ResponseParser
         $content = $response->choices[0]->message->content ?? '{}';
         $decoded = json_decode($content, true);
 
-        // Debug: Log what the AI is actually returning
         \Illuminate\Support\Facades\Log::debug('[ResponseParser] AI response content', [
             'raw_content' => $content,
             'decoded' => $decoded,

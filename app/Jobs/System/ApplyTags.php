@@ -30,8 +30,7 @@ class ApplyTags extends BaseJob
      */
     protected function handleJob(): void
     {
-        // Debug: Log initial state
-        Log::info('[ApplyTags] Starting tag application', [
+        Log::debug('[ApplyTags] Starting tag application', [
             'job_id' => $this->jobID,
             'file_id' => $this->file->id,
             'file_type' => $this->file->file_type,
@@ -40,14 +39,13 @@ class ApplyTags extends BaseJob
         ]);
 
         if (empty($this->tagIds)) {
-            Log::info('[ApplyTags] No tags to apply', ['file_id' => $this->file->id]);
+            Log::debug('[ApplyTags] No tags to apply', ['file_id' => $this->file->id]);
 
             return;
         }
 
         try {
-            // Debug: Log file details
-            Log::info('[ApplyTags] File details', [
+            Log::debug('[ApplyTags] File details', [
                 'file_id' => $this->file->id,
                 'file_guid' => $this->file->guid,
                 'file_type' => $this->file->file_type,
@@ -57,11 +55,11 @@ class ApplyTags extends BaseJob
 
             // Find the receipt or document associated with this file
             if ($this->file->file_type === 'document') {
-                Log::info('[ApplyTags] Looking for document with file_id', ['file_id' => $this->file->id]);
+                Log::debug('[ApplyTags] Looking for document with file_id', ['file_id' => $this->file->id]);
                 $document = Document::where('file_id', $this->file->id)->first();
 
                 if ($document) {
-                    Log::info('[ApplyTags] Found document', [
+                    Log::debug('[ApplyTags] Found document', [
                         'document_id' => $document->id,
                         'document_file_id' => $document->file_id,
                     ]);
@@ -72,13 +70,13 @@ class ApplyTags extends BaseJob
                         $pivotData[$tagId] = ['file_type' => 'document'];
                     }
 
-                    Log::info('[ApplyTags] Prepared pivot data for document', [
+                    Log::debug('[ApplyTags] Prepared pivot data for document', [
                         'pivot_data' => $pivotData,
                     ]);
 
                     $document->tags()->syncWithoutDetaching($pivotData);
 
-                    Log::info('[ApplyTags] Tags successfully applied to document', [
+                    Log::debug('[ApplyTags] Tags successfully applied to document', [
                         'document_id' => $document->id,
                         'tag_ids' => $this->tagIds,
                         'pivot_data' => $pivotData,
@@ -88,7 +86,7 @@ class ApplyTags extends BaseJob
                 }
             } else {
                 // Receipt type or null file_type
-                Log::info('[ApplyTags] Looking for receipt with file_id', [
+                Log::debug('[ApplyTags] Looking for receipt with file_id', [
                     'file_id' => $this->file->id,
                     'file_type' => $this->file->file_type,
                 ]);
@@ -96,14 +94,14 @@ class ApplyTags extends BaseJob
                 $receipt = Receipt::where('file_id', $this->file->id)->first();
 
                 if ($receipt) {
-                    Log::info('[ApplyTags] Found receipt', [
+                    Log::debug('[ApplyTags] Found receipt', [
                         'receipt_id' => $receipt->id,
                         'receipt_file_id' => $receipt->file_id,
                     ]);
 
                     // Check if the receipt model uses TaggableModel trait
                     $usesTrait = in_array('App\Traits\TaggableModel', class_uses($receipt));
-                    Log::info('[ApplyTags] Receipt uses TaggableModel trait', ['uses_trait' => $usesTrait]);
+                    Log::debug('[ApplyTags] Receipt uses TaggableModel trait', ['uses_trait' => $usesTrait]);
 
                     // Sync tags to receipt with proper file_type pivot data
                     $pivotData = [];
@@ -111,13 +109,12 @@ class ApplyTags extends BaseJob
                         $pivotData[$tagId] = ['file_type' => 'receipt'];
                     }
 
-                    Log::info('[ApplyTags] Prepared pivot data for receipt', [
+                    Log::debug('[ApplyTags] Prepared pivot data for receipt', [
                         'pivot_data' => $pivotData,
                     ]);
 
-                    // Debug: Check what the tags() relationship returns
                     $tagsRelation = $receipt->tags();
-                    Log::info('[ApplyTags] Tags relationship details', [
+                    Log::debug('[ApplyTags] Tags relationship details', [
                         'relation_class' => get_class($tagsRelation),
                         'pivot_table' => $tagsRelation->getTable(),
                         'foreign_pivot_key' => $tagsRelation->getForeignPivotKeyName(),
@@ -126,7 +123,7 @@ class ApplyTags extends BaseJob
 
                     $receipt->tags()->syncWithoutDetaching($pivotData);
 
-                    Log::info('[ApplyTags] Tags successfully applied to receipt', [
+                    Log::debug('[ApplyTags] Tags successfully applied to receipt', [
                         'receipt_id' => $receipt->id,
                         'tag_ids' => $this->tagIds,
                         'pivot_data' => $pivotData,

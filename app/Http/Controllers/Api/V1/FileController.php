@@ -6,10 +6,11 @@ use App\Exceptions\DuplicateFileException;
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Requests\Api\V1\StoreFileRequest;
 use App\Http\Resources\Api\V1\FileListResource;
-use App\Http\Resources\Api\V1\FileResource;
+use App\Http\Resources\Api\V1\FileDetailResource;
 use App\Models\File;
 use App\Services\FileProcessingService;
-use App\Services\StorageService;
+use App\Services\Files\FileDetailService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -83,24 +84,26 @@ class FileController extends BaseApiController
         ];
     }
 
-    public function show(Request $request, File $file, StorageService $storageService)
+    /**
+     * Get detailed file information with receipt or document data
+     *
+     * Single Responsibility: Validate authorization and return detailed file data
+     * - No business logic
+     * - No S3 operations (use /files/{id}/content for file streaming)
+     * - Delegates to FileDetailService for data retrieval
+     */
+    public function show(Request $request, int $file, FileDetailService $fileDetailService)
     {
-        if ($file->user_id !== $request->user()->id) {
+        try {
+            $fileWithDetails = $fileDetailService->getFileWithDetails($file, $request->user()->id);
+
+            return $this->success(
+                new FileDetailResource($fileWithDetails),
+                'File details retrieved successfully'
+            );
+        } catch (ModelNotFoundException $e) {
             return $this->error('File not found', 404);
         }
-
-        $path = $file->s3_original_path;
-        $url = $path ? $storageService->getTemporaryUrl($path, 60) : null;
-
-        if (! $url) {
-            return $this->error('File not available for download', 404);
-        }
-
-        return $this->success([
-            'file' => new FileResource($file),
-            'download_url' => $url,
-            'expires_in_minutes' => 60,
-        ], 'File URL generated successfully');
     }
 
     public function store(StoreFileRequest $request, FileProcessingService $fileProcessingService)

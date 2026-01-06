@@ -8,21 +8,20 @@ use App\Models\Merchant;
 class ReceiptPayloadBuilder
 {
     public static function build(
-        array                   $analysis,
-        array                   $data,
-        int                     $userId,
-        int                     $fileId,
-        ?int                    $merchantId,
-        ?Merchant               $merchant,
-                                $dateTime,
-        array                   $totals,
-        string                  $currency,
-        ?int                    $categoryId,
-        ?string                 $categoryName,
+        array $analysis,
+        array $data,
+        int $userId,
+        int $fileId,
+        ?int $merchantId,
+        ?Merchant $merchant,
+        $dateTime,
+        array $totals,
+        string $currency,
+        ?int $categoryId,
+        ?string $categoryName,
         ReceiptEnricherContract $enricher,
-        string                  $defaultCurrency,
-        ?string                 $note = null,
-        ?string                 $summary = null
+        string $defaultCurrency,
+        ?string $note = null
     ): array {
         $enriched = $enricher->enrichReceiptData($data, $merchant);
 
@@ -38,7 +37,6 @@ class ReceiptPayloadBuilder
             'receipt_category' => $categoryName,
             'receipt_description' => $enricher->generateEnhancedDescription($data, $defaultCurrency, $categoryName),
             'note' => $note,
-            'summary' => $summary,
             'receipt_data' => json_encode(array_merge($analysis, ['enriched_data' => $enriched])),
         ];
     }

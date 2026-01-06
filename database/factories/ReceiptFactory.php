@@ -42,7 +42,6 @@ class ReceiptFactory extends Factory
             'ai_entities' => null,
             'language' => null,
             'note' => fake()->optional()->sentence(),
-            'summary' => fake()->optional()->sentence(),
         ];
     }
 }

@@ -77,9 +77,6 @@ class ReceiptAnalysisRunner
             $items = $this->parser->extractItems($data);
             $totals = TotalsCalculator::calculate($items, $data, $this->parser);
 
-            // Extract AI-generated summary from analysis
-            $summary = $data['summary'] ?? null;
-
             $receiptPayload = ReceiptPayloadBuilder::build(
                 $analysis,
                 $data,
@@ -94,8 +91,7 @@ class ReceiptAnalysisRunner
                 $categoryName,
                 $this->enricher,
                 $prefs['default_currency'],
-                $note,
-                $summary
+                $note
             );
 
             if ($debug) {

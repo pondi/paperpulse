@@ -1,13 +1,12 @@
 <?php
 
 use App\Models\Category;
+use App\Models\Document;
 use App\Models\File;
+use App\Models\LineItem;
 use App\Models\Merchant;
 use App\Models\Receipt;
-use App\Models\Document;
-use App\Models\Tag;
 use App\Models\User;
-use App\Models\LineItem;
 use Laravel\Sanctum\Sanctum;
 
 beforeEach(function () {
@@ -41,7 +40,7 @@ it('returns detailed receipt data for a receipt file', function () {
         'tax_amount' => 3.42,
         'currency' => 'USD',
         'receipt_date' => '2025-01-15',
-        'summary' => 'Groceries including milk, bread, eggs',
+        'receipt_description' => 'Groceries including milk, bread, eggs',
     ]);
 
     LineItem::create([
@@ -81,7 +80,7 @@ it('returns detailed receipt data for a receipt file', function () {
                 'tax_amount',
                 'currency',
                 'receipt_date',
-                'summary',
+                'receipt_description',
                 'category' => ['id', 'name'],
             ],
         ],
@@ -94,7 +93,7 @@ it('returns detailed receipt data for a receipt file', function () {
 
     // Verify receipt data
     expect($response->json('data.receipt.total_amount'))->toBe('45.67');
-    expect($response->json('data.receipt.summary'))->toBe('Groceries including milk, bread, eggs');
+    expect($response->json('data.receipt.receipt_description'))->toBe('Groceries including milk, bread, eggs');
     expect($response->json('data.receipt.category.name'))->toBe('Groceries');
     expect($response->json('data.receipt.merchant.name'))->toBe('Whole Foods');
 

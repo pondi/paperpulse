@@ -16,7 +16,6 @@ class DefaultPromptSchemaProvider
                 'result' => ['type' => 'string'],
             ],
             'required' => ['result'],
-            'additionalProperties' => false,
         ];
     }
 }

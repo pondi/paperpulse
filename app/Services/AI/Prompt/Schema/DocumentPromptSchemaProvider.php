@@ -34,7 +34,6 @@ class DocumentPromptSchemaProvider
                         'references' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Reference numbers, IDs, etc.'],
                     ],
                     'required' => [],
-                    'additionalProperties' => false,
                 ],
                 'tags' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Relevant tags for categorization'],
                 'language' => ['type' => 'string', 'description' => 'Primary language of document'],
@@ -46,7 +45,6 @@ class DocumentPromptSchemaProvider
                         'confidence' => ['type' => 'number', 'description' => 'Confidence in sentiment analysis (0-1)'],
                     ],
                     'required' => [],
-                    'additionalProperties' => false,
                 ],
                 'urgency' => [
                     'type' => 'object',
@@ -55,7 +53,6 @@ class DocumentPromptSchemaProvider
                         'indicators' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Phrases indicating urgency'],
                     ],
                     'required' => [],
-                    'additionalProperties' => false,
                 ],
                 'metadata' => [
                     'type' => 'object',
@@ -66,7 +63,6 @@ class DocumentPromptSchemaProvider
                         'processing_notes' => ['type' => 'string', 'description' => 'Notes about processing challenges or findings'],
                     ],
                     'required' => [],
-                    'additionalProperties' => false,
                 ],
                 'vendors' => [
                     'type' => 'array',
@@ -75,7 +71,6 @@ class DocumentPromptSchemaProvider
                 ],
             ],
             'required' => ['title', 'document_type'],
-            'additionalProperties' => false,
         ];
     }
 }

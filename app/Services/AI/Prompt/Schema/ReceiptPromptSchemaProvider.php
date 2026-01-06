@@ -28,7 +28,6 @@ class ReceiptPromptSchemaProvider
                         'category' => ['type' => 'string', 'description' => 'Business category (grocery, restaurant, retail, etc.)'],
                     ],
                     'required' => ['name'],
-                    'additionalProperties' => false,
                 ],
                 'items' => [
                     'type' => 'array',
@@ -48,7 +47,6 @@ class ReceiptPromptSchemaProvider
                             'brand' => ['type' => 'string', 'description' => 'Alias of vendor if provider uses brand terminology'],
                         ],
                         'required' => ['name', 'total_price'],
-                        'additionalProperties' => false,
                     ],
                 ],
                 'totals' => [
@@ -62,7 +60,6 @@ class ReceiptPromptSchemaProvider
                         'tip_amount' => ['type' => 'number', 'description' => 'Tip amount if applicable'],
                     ],
                     'required' => ['total_amount'],
-                    'additionalProperties' => false,
                 ],
                 'receipt_info' => [
                     'type' => 'object',
@@ -76,7 +73,6 @@ class ReceiptPromptSchemaProvider
                         'terminal_id' => ['type' => 'string', 'description' => 'Terminal or register ID'],
                     ],
                     'required' => [],
-                    'additionalProperties' => false,
                 ],
                 'payment' => [
                     'type' => 'object',
@@ -90,7 +86,6 @@ class ReceiptPromptSchemaProvider
                         'amount_paid' => ['type' => 'number', 'description' => 'Amount paid by customer'],
                     ],
                     'required' => [],
-                    'additionalProperties' => false,
                 ],
                 'loyalty_program' => [
                     'type' => 'object',
@@ -102,7 +97,6 @@ class ReceiptPromptSchemaProvider
                         'points_used' => ['type' => 'number', 'description' => 'Points used for discounts'],
                     ],
                     'required' => [],
-                    'additionalProperties' => false,
                 ],
                 'metadata' => [
                     'type' => 'object',
@@ -114,7 +108,6 @@ class ReceiptPromptSchemaProvider
                         'processing_notes' => ['type' => 'string', 'description' => 'Any notes about processing challenges'],
                     ],
                     'required' => [],
-                    'additionalProperties' => false,
                 ],
                 'vendors' => [
                     'type' => 'array',
@@ -127,7 +120,6 @@ class ReceiptPromptSchemaProvider
                 ],
             ],
             'required' => ['merchant', 'totals', 'receipt_info'],
-            'additionalProperties' => $strictMode ? false : true,
         ];
     }
 }

@@ -86,7 +86,7 @@ class OpenAIProvider implements AIService
                     'total_tokens' => $response->usage->totalTokens ?? 0,
                 ],
                 'finish_reason' => $response->choices[0]->finishReason ?? 'unknown',
-                'has_content' => !empty($response->choices[0]->message->content ?? ''),
+                'has_content' => ! empty($response->choices[0]->message->content ?? ''),
                 'content_length' => strlen($response->choices[0]->message->content ?? ''),
             ]);
 
@@ -239,7 +239,6 @@ class OpenAIProvider implements AIService
                     ],
                 ],
                 'required' => ['tags'],
-                'additionalProperties' => false,
             ];
 
             $response = OpenAI::chat()->create([

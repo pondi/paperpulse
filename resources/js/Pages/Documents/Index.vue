@@ -34,6 +34,7 @@ interface Document {
     size: number;
     created_at: string;
     updated_at: string;
+    entity_type?: string;
     category?: {
         id: number;
         name: string;
@@ -168,6 +169,23 @@ const thumbnailErrors = ref<Set<number>>(new Set());
 
 const handleThumbnailError = (documentId: number) => {
     thumbnailErrors.value.add(documentId);
+};
+
+// Helper to get correct route name based on entity type
+const getShowRoute = (document: Document) => {
+    const entityType = document.entity_type || 'document';
+
+    switch (entityType) {
+        case 'contract':
+            return route('contracts.show', document.id);
+        case 'invoice':
+            return route('invoices.show', document.id);
+        case 'voucher':
+            return route('vouchers.show', document.id);
+        case 'document':
+        default:
+            return route('documents.show', document.id);
+    }
 };
 </script>
 
@@ -368,7 +386,7 @@ const handleThumbnailError = (documentId: number) => {
                             <div class="mt-3 flex items-center justify-between">
                                 <div class="flex items-center space-x-2">
                                     <Link
-                                        :href="route('documents.show', document.id)"
+                                        :href="getShowRoute(document)"
                                         class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
                                     >
                                         <EyeIcon class="h-5 w-5" />
@@ -392,11 +410,11 @@ const handleThumbnailError = (documentId: number) => {
                                         <DropdownLink :href="route('documents.download', document.id)">
                                             Download
                                         </DropdownLink>
-                                        <DropdownLink :href="route('documents.show', document.id)">
-                                            Edit
+                                        <DropdownLink :href="getShowRoute(document)">
+                                            View
                                         </DropdownLink>
-                                        <DropdownLink 
-                                            as="button" 
+                                        <DropdownLink
+                                            as="button"
                                             @click="router.delete(route('documents.destroy', document.id))"
                                             class="text-red-600 dark:text-red-400"
                                         >
@@ -534,14 +552,14 @@ const handleThumbnailError = (documentId: number) => {
                                                 </button>
                                             </template>
                                             <template #content>
-                                                <DropdownLink :href="route('documents.show', document.id)">
+                                                <DropdownLink :href="getShowRoute(document)">
                                                     View
                                                 </DropdownLink>
                                                 <DropdownLink :href="route('documents.download', document.id)">
                                                     Download
                                                 </DropdownLink>
-                                                <DropdownLink 
-                                                    as="button" 
+                                                <DropdownLink
+                                                    as="button"
                                                     @click="router.delete(route('documents.destroy', document.id))"
                                                     class="text-red-600 dark:text-red-400"
                                                 >

@@ -50,6 +50,57 @@ class ContractController extends Controller
 
         $contract->load(['file', 'tags']);
 
+        // Build file information for preview/download
+        $fileInfo = null;
+        if ($contract->file) {
+            $extension = $contract->file->fileExtension ?? 'pdf';
+            $typeFolder = 'documents';
+
+            // Check if there's an archive PDF available
+            $hasArchivePdf = ! empty($contract->file->s3_archive_path);
+            $hasPdfVariant = $hasArchivePdf || strtolower($extension) === 'pdf';
+            $pdfUrl = null;
+
+            if ($hasPdfVariant) {
+                $pdfUrl = route('documents.serve', [
+                    'guid' => $contract->file->guid,
+                    'type' => $typeFolder,
+                    'extension' => 'pdf',
+                    'variant' => $hasArchivePdf ? 'archive' : 'original',
+                ]);
+            }
+
+            // Generate preview URL if available
+            $previewUrl = null;
+            if ($contract->file->has_image_preview && $contract->file->s3_image_path) {
+                $previewUrl = route('documents.serve', [
+                    'guid' => $contract->file->guid,
+                    'type' => 'preview',
+                    'extension' => 'jpg',
+                ]);
+            }
+
+            $fileInfo = [
+                'id' => $contract->file->id,
+                'url' => route('documents.serve', [
+                    'guid' => $contract->file->guid,
+                    'type' => $typeFolder,
+                    'extension' => $extension,
+                ]),
+                'pdfUrl' => $pdfUrl,
+                'previewUrl' => $previewUrl,
+                'extension' => $extension,
+                'mime_type' => $contract->file->mime_type,
+                'size' => $contract->file->fileSize,
+                'guid' => $contract->file->guid,
+                'has_preview' => $contract->file->has_image_preview,
+                'is_pdf' => $hasPdfVariant,
+                'uploaded_at' => $contract->file->uploaded_at?->toIso8601String(),
+                'file_created_at' => $contract->file->file_created_at?->toIso8601String(),
+                'file_modified_at' => $contract->file->file_modified_at?->toIso8601String(),
+            ];
+        }
+
         return Inertia::render('Contracts/Show', [
             'contract' => [
                 'id' => $contract->id,
@@ -73,7 +124,10 @@ class ContractController extends Controller
                 'obligations' => $contract->obligations,
                 'summary' => $contract->summary,
                 'file_id' => $contract->file_id,
+                'file' => $fileInfo,
                 'tags' => $contract->tags,
+                'created_at' => $contract->created_at?->toIso8601String(),
+                'updated_at' => $contract->updated_at?->toIso8601String(),
             ],
         ]);
     }

@@ -52,6 +52,57 @@ class InvoiceController extends Controller
 
         $invoice->load(['merchant', 'file', 'tags', 'lineItems']);
 
+        // Build file information for preview/download
+        $fileInfo = null;
+        if ($invoice->file) {
+            $extension = $invoice->file->fileExtension ?? 'pdf';
+            $typeFolder = 'documents';
+
+            // Check if there's an archive PDF available
+            $hasArchivePdf = ! empty($invoice->file->s3_archive_path);
+            $hasPdfVariant = $hasArchivePdf || strtolower($extension) === 'pdf';
+            $pdfUrl = null;
+
+            if ($hasPdfVariant) {
+                $pdfUrl = route('documents.serve', [
+                    'guid' => $invoice->file->guid,
+                    'type' => $typeFolder,
+                    'extension' => 'pdf',
+                    'variant' => $hasArchivePdf ? 'archive' : 'original',
+                ]);
+            }
+
+            // Generate preview URL if available
+            $previewUrl = null;
+            if ($invoice->file->has_image_preview && $invoice->file->s3_image_path) {
+                $previewUrl = route('documents.serve', [
+                    'guid' => $invoice->file->guid,
+                    'type' => 'preview',
+                    'extension' => 'jpg',
+                ]);
+            }
+
+            $fileInfo = [
+                'id' => $invoice->file->id,
+                'url' => route('documents.serve', [
+                    'guid' => $invoice->file->guid,
+                    'type' => $typeFolder,
+                    'extension' => $extension,
+                ]),
+                'pdfUrl' => $pdfUrl,
+                'previewUrl' => $previewUrl,
+                'extension' => $extension,
+                'mime_type' => $invoice->file->mime_type,
+                'size' => $invoice->file->fileSize,
+                'guid' => $invoice->file->guid,
+                'has_preview' => $invoice->file->has_image_preview,
+                'is_pdf' => $hasPdfVariant,
+                'uploaded_at' => $invoice->file->uploaded_at?->toIso8601String(),
+                'file_created_at' => $invoice->file->file_created_at?->toIso8601String(),
+                'file_modified_at' => $invoice->file->file_modified_at?->toIso8601String(),
+            ];
+        }
+
         return Inertia::render('Invoices/Show', [
             'invoice' => [
                 'id' => $invoice->id,
@@ -95,7 +146,10 @@ class InvoiceController extends Controller
                     ];
                 }),
                 'file_id' => $invoice->file_id,
+                'file' => $fileInfo,
                 'tags' => $invoice->tags,
+                'created_at' => $invoice->created_at?->toIso8601String(),
+                'updated_at' => $invoice->updated_at?->toIso8601String(),
             ],
         ]);
     }

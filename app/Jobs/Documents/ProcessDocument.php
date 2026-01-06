@@ -6,15 +6,14 @@ use App\Jobs\BaseJob;
 use App\Models\Document;
 use App\Models\File;
 use App\Services\Files\FilePreviewManager;
-use App\Services\StorageService;
 use App\Services\TextExtractionService;
 use App\Services\Workers\WorkerFileManager;
 use DateTime;
 use Exception;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Creates a Document from a processed file and prepares it for analysis.
@@ -280,6 +279,12 @@ class ProcessDocument extends BaseJob
                         'document_id' => $existingDocument->id,
                     ]);
 
+                    // Also delete the extractable_entity record
+                    \App\Models\ExtractableEntity::where('file_id', $file->id)
+                        ->where('entity_type', 'document')
+                        ->where('entity_id', $existingDocument->id)
+                        ->delete();
+
                     $existingDocument->delete();
 
                     Log::info('[ProcessDocument] Existing document deleted successfully', [
@@ -308,6 +313,23 @@ class ProcessDocument extends BaseJob
                 'word_count' => str_word_count($extractedText),
             ];
             $document->save();
+
+            // Create extractable_entity record for consistency with Gemini pipeline
+            \App\Models\ExtractableEntity::create([
+                'file_id' => $file->id,
+                'user_id' => $file->user_id,
+                'entity_type' => 'document',
+                'entity_id' => $document->id,
+                'is_primary' => true,
+                'confidence_score' => null,
+                'extraction_provider' => 'textract_openai',
+                'extraction_model' => null,
+                'extraction_metadata' => [
+                    'entity_type_name' => 'document',
+                    'extracted_at' => now()->toIso8601String(),
+                ],
+                'extracted_at' => now(),
+            ]);
 
             $file->status = 'completed';
             $file->save();

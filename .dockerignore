@@ -9,6 +9,10 @@
 *.swo
 *.DS_Store
 
+# Hidden directories and files (catch-all for .gemini/, .junie/, etc.)
+.*
+!.dockerignore
+
 # Environment / secrets
 .env
 .env.*
@@ -43,9 +47,14 @@ phpstan.neon
 docs
 mkdocs.yml
 example
+*.md
+*.sh
 
-# Kubernetes manifests (contain secrets; not needed in images)
+# Deployment configurations (k8s manifests contain secrets; mkdocs not needed in images)
 deploy/k8s
+deploy/k8s/**
+deploy/mkdocs
+deploy/mkdocs/**
 
 # Local build outputs or caches
 site

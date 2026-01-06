@@ -1,11 +1,23 @@
 <template>
-  <AppLayout :title="`Contract: ${contract.contract_title || contract.id}`">
-    <div class="max-w-5xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-      <!-- Header -->
-      <div class="mb-6">
-        <Link :href="route('contracts.index')" class="text-blue-600 dark:text-blue-400 hover:underline mb-2 inline-block">
-          &larr; Back to Contracts
+  <Head :title="`Contract: ${contract.contract_title || contract.id}`" />
+
+  <AuthenticatedLayout>
+    <template #header>
+      <div class="flex justify-between items-center">
+        <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
+          {{ contract.contract_title || 'Contract' }}
+        </h2>
+        <Link
+          :href="route('contracts.index')"
+          class="inline-flex items-center gap-x-2 px-4 py-2 bg-zinc-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-zinc-700"
+        >
+          Back to Contracts
         </Link>
+      </div>
+    </template>
+
+    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div class="mb-6">
         <div class="flex justify-between items-start">
           <div>
             <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">
@@ -161,15 +173,42 @@
           </dl>
         </div>
 
-        <!-- Actions -->
-        <div class="flex space-x-3">
-          <Link
-            v-if="contract.file_id"
-            :href="route('files.show', contract.file_id)"
-            class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-lg transition"
-          >
-            View Original File
-          </Link>
+        <!-- File Preview & Actions -->
+        <div v-if="contract.file" class="mt-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Original File</h3>
+          <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+            <div v-if="contract.file.has_preview" class="mb-4">
+              <img
+                :src="contract.file.previewUrl || contract.file.url"
+                :alt="contract.contract_title"
+                class="w-full rounded-lg"
+              />
+            </div>
+            <div class="flex space-x-3">
+              <a
+                v-if="contract.file.pdfUrl"
+                :href="contract.file.pdfUrl"
+                target="_blank"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition inline-flex items-center"
+              >
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                View PDF
+              </a>
+              <a
+                :href="contract.file.url"
+                download
+                class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-lg transition inline-flex items-center"
+              >
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download
+              </a>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -187,13 +226,13 @@
         </div>
       </div>
     </div>
-  </AppLayout>
+  </AuthenticatedLayout>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
-import AppLayout from '@/Layouts/AppLayout.vue'
+import { Head, Link, router } from '@inertiajs/vue3'
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 const props = defineProps({
   contract: {

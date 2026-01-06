@@ -116,13 +116,18 @@ class DocumentController extends BaseResourceController
         $data['title'] = match ($entityType) {
             'Document' => $entity->title,
             'Contract' => $entity->contract_title ?? $entity->title ?? $file->fileName,
-            'Invoice' => 'Invoice from '.($entity->vendor_name ?? 'Unknown'),
+            'Invoice' => 'Invoice from '.($entity->from_name ?? $entity->vendor_name ?? 'Unknown'),
             'Voucher' => $entity->voucher_name ?? $entity->code ?? 'Voucher',
             'Warranty' => 'Warranty: '.($entity->product_name ?? 'Product'),
             'ReturnPolicy' => 'Return Policy: '.($entity->store_name ?? 'Store'),
             'BankStatement' => 'Bank Statement - '.($entity->account_name ?? 'Account'),
             default => $file->fileName
         };
+
+        // Add file size for display
+        $data['size'] = $file->fileSize ?? 0;
+        $data['file_name'] = $file->fileName;
+        $data['file_type'] = $file->fileType;
 
         // Add category if available (Document entities)
         if ($entityType === 'Document' && $entity->category) {
@@ -132,6 +137,51 @@ class DocumentController extends BaseResourceController
         // Add tags if available (Document entities)
         if ($entityType === 'Document' && $entity->tags) {
             $data['tags'] = $entity->tags;
+        } else {
+            $data['tags'] = [];
+        }
+
+        // Add shared users count
+        $data['shared_with_count'] = 0;
+
+        // Add file preview information
+        if ($file->has_image_preview && $file->s3_image_path) {
+            $data['file'] = [
+                'id' => $file->id,
+                'url' => route('documents.serve', [
+                    'guid' => $file->guid,
+                    'type' => 'documents',
+                    'extension' => $file->fileExtension ?? 'pdf',
+                ]),
+                'pdfUrl' => $file->fileExtension === 'pdf' || $file->s3_archive_path ? route('documents.serve', [
+                    'guid' => $file->guid,
+                    'type' => 'documents',
+                    'extension' => 'pdf',
+                    'variant' => $file->s3_archive_path ? 'archive' : 'original',
+                ]) : null,
+                'previewUrl' => route('documents.serve', [
+                    'guid' => $file->guid,
+                    'type' => 'preview',
+                    'extension' => 'jpg',
+                ]),
+                'extension' => $file->fileExtension ?? 'pdf',
+                'has_preview' => true,
+                'is_pdf' => $file->fileExtension === 'pdf' || ! empty($file->s3_archive_path),
+            ];
+        } else {
+            $data['file'] = [
+                'id' => $file->id,
+                'url' => route('documents.serve', [
+                    'guid' => $file->guid,
+                    'type' => 'documents',
+                    'extension' => $file->fileExtension ?? 'pdf',
+                ]),
+                'pdfUrl' => null,
+                'previewUrl' => null,
+                'extension' => $file->fileExtension ?? 'pdf',
+                'has_preview' => false,
+                'is_pdf' => $file->fileExtension === 'pdf',
+            ];
         }
 
         return $data;
@@ -139,21 +189,47 @@ class DocumentController extends BaseResourceController
 
     /**
      * Override show to pass props expected by Vue component.
+     * Handles polymorphic entities by redirecting to appropriate controller.
      */
     public function show($id): Response
     {
-        $document = $this->model::with($this->showWith)->findOrFail($id);
+        // Try to find a Document with this ID
+        $document = $this->model::with($this->showWith)->find($id);
 
-        $this->authorize('view', $document);
+        if ($document) {
+            $this->authorize('view', $document);
 
-        $meta = $this->getShowMeta();
+            $meta = $this->getShowMeta();
 
-        return Inertia::render("{$this->resource}/Show", [
-            'document' => DocumentTransformer::forShow($document),
-            // Flatten meta for Vue expectations
-            'categories' => $meta['categories'] ?? [],
-            'available_tags' => $meta['available_tags'] ?? [],
-        ]);
+            return Inertia::render("{$this->resource}/Show", [
+                'document' => DocumentTransformer::forShow($document),
+                // Flatten meta for Vue expectations
+                'categories' => $meta['categories'] ?? [],
+                'available_tags' => $meta['available_tags'] ?? [],
+            ]);
+        }
+
+        // Not a Document - check if it's another entity type
+        // Look for extractable_entity with this ID
+        $extractableEntity = \App\Models\ExtractableEntity::where('entity_id', $id)
+            ->where('user_id', auth()->id())
+            ->with('entity')
+            ->first();
+
+        if (! $extractableEntity) {
+            abort(404, 'Document not found');
+        }
+
+        $entity = $extractableEntity->entity;
+        $entityType = class_basename($entity);
+
+        // Redirect to appropriate controller based on entity type
+        return match ($entityType) {
+            'Contract' => redirect()->route('contracts.show', $entity->id),
+            'Invoice' => redirect()->route('invoices.show', $entity->id),
+            'Voucher' => redirect()->route('vouchers.show', $entity->id),
+            default => abort(404, "No show page available for entity type: {$entityType}")
+        };
     }
 
     /**

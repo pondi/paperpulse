@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BankStatement;
 use App\Models\BankTransaction;
+use App\Models\Category;
 use App\Models\Contract;
 use App\Models\Document;
 use App\Models\ExtractableEntity;
@@ -235,11 +236,14 @@ class EntityFactory
         // Map currency from payment or totals, with fallback
         $currency = $payment['currency'] ?? ($totals['currency'] ?? 'NOK');
 
+        // Resolve category ID from category name
+        $categoryId = $data['category_id'] ?? $this->resolveCategoryId($data, $file);
+
         $receipt = Receipt::create([
             'file_id' => $file->id,
             'user_id' => $file->user_id,
             'merchant_id' => $merchantId,
-            'category_id' => $data['category_id'] ?? null,
+            'category_id' => $categoryId,
             'receipt_date' => $receiptInfo['date'] ?? null,
             'total_amount' => $totals['total_amount'] ?? 0,
             'tax_amount' => $totals['tax_amount'] ?? 0,
@@ -250,7 +254,6 @@ class EntityFactory
             'ai_entities' => $data['ai_entities'] ?? null,
             'language' => $metadata['language'] ?? null,
             'receipt_data' => json_encode($data),
-            'summary' => $data['summary'] ?? null,
             'note' => $data['note'] ?? null,
         ]);
 
@@ -563,6 +566,48 @@ class EntityFactory
         ]);
 
         return $merchantModel?->id;
+    }
+
+    /**
+     * Resolve category ID from category name.
+     */
+    protected function resolveCategoryId(array $data, File $file): ?int
+    {
+        $categoryName = $data['receipt_category'] ?? null;
+
+        if (empty($categoryName)) {
+            return null;
+        }
+
+        // Try to find existing category for this user
+        $category = Category::where('user_id', $file->user_id)
+            ->where('name', $categoryName)
+            ->first();
+
+        // If not found, create a new category from the default categories
+        if (! $category) {
+            $defaultCategories = Category::getDefaultCategories();
+            $matchingDefault = collect($defaultCategories)->firstWhere('name', $categoryName);
+
+            if ($matchingDefault) {
+                $category = Category::create([
+                    'user_id' => $file->user_id,
+                    'name' => $matchingDefault['name'],
+                    'slug' => Category::generateUniqueSlug($matchingDefault['name'], $file->user_id),
+                    'color' => $matchingDefault['color'],
+                    'icon' => $matchingDefault['icon'],
+                    'is_active' => true,
+                ]);
+
+                Log::info('[EntityFactory] Created new category for user', [
+                    'category_id' => $category->id,
+                    'category_name' => $category->name,
+                    'user_id' => $file->user_id,
+                ]);
+            }
+        }
+
+        return $category?->id;
     }
 
     /**

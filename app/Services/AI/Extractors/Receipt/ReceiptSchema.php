@@ -61,8 +61,65 @@ class ReceiptSchema
                     'card_type' => ['type' => 'string', 'description' => 'Card type if applicable (Visa, Mastercard)'],
                     'currency' => ['type' => 'string', 'description' => 'Currency code (NOK, EUR, USD)'],
 
-                    // Summary and vendors
-                    'summary' => ['type' => 'string', 'description' => '1-2 sentence summary of purchase'],
+                    // Description and category
+                    'description' => ['type' => 'string', 'description' => 'Brief description of the purchase (e.g., "Grocery shopping at Rema 1000 - purchased milk, bread, and eggs")'],
+                    'category' => [
+                        'type' => 'string',
+                        'description' => 'Purchase category - choose the ONE most appropriate category',
+                        'enum' => [
+                            // Food & Beverages
+                            'Groceries',
+                            'Restaurants & Dining',
+                            'Coffee & Bakery',
+                            // Transportation
+                            'Fuel & Gas',
+                            'Public Transport',
+                            'Parking & Tolls',
+                            'Vehicle Maintenance',
+                            // Shopping
+                            'Clothing & Accessories',
+                            'Electronics',
+                            'Books & Media',
+                            'Sports & Outdoors',
+                            'Personal Care & Beauty',
+                            // Home & Living
+                            'Furniture',
+                            'Home Improvement',
+                            'Garden & Plants',
+                            'Appliances',
+                            'Home Decor',
+                            // Utilities & Bills
+                            'Electricity & Water',
+                            'Internet & Phone',
+                            'Streaming Services',
+                            'Insurance',
+                            // Healthcare & Wellness
+                            'Pharmacy & Medicine',
+                            'Doctor & Medical',
+                            'Fitness & Gym',
+                            'Dental & Vision',
+                            // Entertainment & Leisure
+                            'Movies & Events',
+                            'Hobbies & Crafts',
+                            'Travel & Hotels',
+                            'Gaming',
+                            // Education & Work
+                            'Education & Courses',
+                            'Office Supplies',
+                            'Professional Services',
+                            // Pets & Children
+                            'Pet Care & Supplies',
+                            'Children & Toys',
+                            'Baby Products',
+                            // Financial & Legal
+                            'Banking & Fees',
+                            'Taxes & Legal',
+                            'Donations & Charity',
+                            // Miscellaneous
+                            'Gifts',
+                            'Other',
+                        ],
+                    ],
                     'vendors' => [
                         'type' => 'array',
                         'description' => 'Product brands/vendors mentioned',
@@ -72,7 +129,7 @@ class ReceiptSchema
                     // Metadata
                     'confidence_score' => ['type' => 'number', 'description' => 'Extraction confidence (0.0-1.0)'],
                 ],
-                'required' => ['merchant_name', 'total_amount', 'receipt_date'],
+                'required' => ['merchant_name', 'total_amount', 'receipt_date', 'description', 'category'],
             ],
         ];
     }
@@ -92,8 +149,22 @@ Extract all receipt information from this document.
 3. **All line items**: Every product/service purchased with name, quantity, price
 4. **Totals**: Subtotal, tax, discounts, final amount
 5. **Payment**: Method (cash/card/mobile), card type, currency
-6. **Summary**: 1-2 sentence description of what was purchased
-7. **Vendors**: Product brands mentioned (e.g., "Apple", "Samsung", "Garmin")
+6. **Description**: Brief description combining merchant, purchase type, and key items (e.g., "Grocery shopping at Rema 1000 - purchased milk, bread, and eggs")
+7. **Category**: Choose the ONE most specific category that matches the purchase from these options:
+
+   **Food & Beverages:** Groceries, Restaurants & Dining, Coffee & Bakery
+   **Transportation:** Fuel & Gas, Public Transport, Parking & Tolls, Vehicle Maintenance
+   **Shopping:** Clothing & Accessories, Electronics, Books & Media, Sports & Outdoors, Personal Care & Beauty
+   **Home & Living:** Furniture, Home Improvement, Garden & Plants, Appliances, Home Decor
+   **Utilities & Bills:** Electricity & Water, Internet & Phone, Streaming Services, Insurance
+   **Healthcare & Wellness:** Pharmacy & Medicine, Doctor & Medical, Fitness & Gym, Dental & Vision
+   **Entertainment & Leisure:** Movies & Events, Hobbies & Crafts, Travel & Hotels, Gaming
+   **Education & Work:** Education & Courses, Office Supplies, Professional Services
+   **Pets & Children:** Pet Care & Supplies, Children & Toys, Baby Products
+   **Financial & Legal:** Banking & Fees, Taxes & Legal, Donations & Charity
+   **Miscellaneous:** Gifts, Other
+
+8. **Vendors**: Product brands mentioned (e.g., "Apple", "Samsung", "Garmin")
 
 **Important:**
 - Extract ALL items, not just a sample
@@ -118,7 +189,8 @@ Extract all receipt information from this document.
   "tax_amount": 107.94,
   "payment_method": "card",
   "currency": "NOK",
-  "summary": "Purchase of vacuum bags and potato press.",
+  "description": "Home improvement shopping at Clas Ohlson - purchased vacuum bags and potato press",
+  "category": "Home Improvement",
   "vendors": ["Clas Ohlson"],
   "confidence_score": 0.95
 }

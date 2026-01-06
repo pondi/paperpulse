@@ -53,7 +53,8 @@ class ReceiptDataNormalizer
             ]),
 
             // Metadata
-            'summary' => $geminiData['summary'] ?? null,
+            'receipt_description' => $geminiData['description'] ?? null,
+            'receipt_category' => $geminiData['category'] ?? null,
             'vendors' => $geminiData['vendors'] ?? [],
             'metadata' => [
                 'confidence_score' => $geminiData['confidence_score'] ?? 0.85,

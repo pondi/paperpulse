@@ -4,19 +4,20 @@ use App\Http\Middleware\Api\ApiRateLimit;
 use App\Http\Middleware\Api\ApiRequestLogger;
 use App\Http\Middleware\Api\ApiVersion;
 use App\Http\Middleware\ApiSecurityHeaders;
+use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
-use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Auth\AuthenticationException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -48,10 +49,11 @@ return Application::configure(basePath: dirname(__DIR__))
             ApiRequestLogger::class,
         ]);
 
-        // Register API middleware aliases
+        // Register middleware aliases
         $middleware->alias([
             'api.version' => ApiVersion::class,
             'api.rate_limit' => ApiRateLimit::class,
+            'admin' => EnsureUserIsAdmin::class,
         ]);
 
         //

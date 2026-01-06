@@ -14,7 +14,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::get('/analytics/processing', [AnalyticsController::class, 'processing'])->name('analytics.processing');
 
     // Jobs routes (admin only)
-    Route::prefix('jobs')->name('jobs.')->middleware('can:admin')->group(function () {
+    Route::prefix('jobs')->name('jobs.')->middleware('admin')->group(function () {
         Route::get('/', [JobController::class, 'index'])->name('index');
         Route::get('/status', [JobController::class, 'getStatus'])->name('status');
         Route::get('/{jobId}', [JobController::class, 'show'])->name('show');

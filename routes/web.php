@@ -34,53 +34,56 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 });
 
-    // Health check endpoint for Docker/Kubernetes
-    Route::get('/up', function () {
-        $status = 'ok';
-        $checks = [];
+// Health check endpoint for Docker/Kubernetes
+Route::get('/up', function () {
+    $status = 'ok';
+    $checks = [];
 
-        // Check database connection
-        try {
-            DB::connection()->getPdo();
-            $checks['database'] = true;
-        } catch (Exception) {
-            $status = 'error';
-            $checks['database'] = false;
-        }
+    // Check database connection
+    try {
+        DB::connection()->getPdo();
+        $checks['database'] = true;
+    } catch (Exception) {
+        $status = 'error';
+        $checks['database'] = false;
+    }
 
-        // Check Redis connection
-        try {
-            Cache::store('redis')->get('health-check');
-            $checks['redis'] = true;
-        } catch (Exception) {
-            $status = 'error';
-            $checks['redis'] = false;
-        }
+    // Check Redis connection
+    try {
+        Cache::store('redis')->get('health-check');
+        $checks['redis'] = true;
+    } catch (Exception) {
+        $status = 'error';
+        $checks['redis'] = false;
+    }
 
-        // Check if migrations are up to date
-        try {
-            $pendingMigrations = collect(DB::select('SELECT migration FROM migrations'))
-                ->pluck('migration')
-                ->diff(collect(File::files(database_path('migrations')))
-                    ->map(fn ($file) => str_replace('.php', '', $file->getFilename()))
-                )
-                ->isEmpty();
-            $checks['migrations'] = $pendingMigrations;
-        } catch (Exception) {
-            $checks['migrations'] = false;
-        }
+    // Check if migrations are up to date
+    try {
+        $pendingMigrations = collect(DB::select('SELECT migration FROM migrations'))
+            ->pluck('migration')
+            ->diff(collect(File::files(database_path('migrations')))
+                ->map(fn ($file) => str_replace('.php', '', $file->getFilename()))
+            )
+            ->isEmpty();
+        $checks['migrations'] = $pendingMigrations;
+    } catch (Exception) {
+        $checks['migrations'] = false;
+    }
 
-        return response()->json([
-            'status' => $status,
-            'timestamp' => now()->toIso8601String(),
-            'checks' => $checks,
-        ], $status === 'ok' ? 200 : 503);
-    })->name('health');
+    return response()->json([
+        'status' => $status,
+        'timestamp' => now()->toIso8601String(),
+        'checks' => $checks,
+    ], $status === 'ok' ? 200 : 503);
+})->name('health');
 
 // Include domain-specific routes
 require __DIR__.'/auth.php';
 require __DIR__.'/web/documents.php';
 require __DIR__.'/web/receipts.php';
+require __DIR__.'/web/invoices.php';
+require __DIR__.'/web/contracts.php';
+require __DIR__.'/web/vouchers.php';
 require __DIR__.'/web/files.php';
 require __DIR__.'/web/profile.php';
 require __DIR__.'/web/admin.php';

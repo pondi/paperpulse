@@ -1,0 +1,1 @@
+Extract contract title, type, parties (with roles), effective/expiry/signature dates, value + currency, renewal/termination terms, governing law, jurisdiction, and key obligations. Provide a brief summary. Output JSON only.

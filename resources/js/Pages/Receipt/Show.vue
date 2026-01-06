@@ -338,7 +338,6 @@ const receiptFields = computed(() => [
     { value: null, label: __('uncategorized') }
   ]},
   { key: 'receipt_description', label: __('description'), type: 'text' },
-  { key: 'summary', label: __('summary'), type: 'text' },
   { key: 'note', label: __('note'), type: 'text' }
 ]);
 

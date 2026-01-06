@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Contracts\Taggable;
 use App\Traits\BelongsToUser;
 use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
@@ -10,8 +11,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Laravel\Scout\Searchable;
-
 /**
  * App\Models\Receipt
  *
@@ -27,7 +26,6 @@ use Laravel\Scout\Searchable;
  * @property string|null $receipt_category
  * @property string|null $receipt_description
  * @property string|null $note
- * @property string|null $summary
  * @property array|null $receipt_data
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -42,7 +40,7 @@ use Laravel\Scout\Searchable;
  * @method static Builder|Receipt newQuery()
  * @method static Builder|Receipt query()
  */
-use App\Contracts\Taggable;
+use Laravel\Scout\Searchable;
 
 class Receipt extends Model implements Taggable
 {
@@ -64,7 +62,6 @@ class Receipt extends Model implements Taggable
         'receipt_category',
         'receipt_description',
         'note',
-        'summary',
         'receipt_data',
     ];
 
@@ -74,7 +71,6 @@ class Receipt extends Model implements Taggable
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'note' => 'string',
-        'summary' => 'string',
     ];
 
     public function file()
@@ -138,7 +134,6 @@ class Receipt extends Model implements Taggable
             'receipt_category' => $this->receipt_category,
             'receipt_description' => $this->receipt_description,
             'note' => $this->note,
-            'summary' => $this->summary,
             'merchant_name' => $this->merchant?->name,
             'merchant_address' => $this->merchant?->address,
             'merchant_vat_id' => $this->merchant?->vat_id,

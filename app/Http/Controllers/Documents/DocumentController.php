@@ -8,7 +8,6 @@ use App\Models\File;
 use App\Models\Tag;
 use App\Services\Documents\DocumentTransformer;
 use App\Services\Documents\DocumentUploadHandler;
-use App\Services\Documents\DocumentUploadValidator;
 use App\Services\FileProcessingService;
 use App\Services\StorageService;
 use App\Services\Tags\TagAttachmentService;
@@ -47,38 +46,95 @@ class DocumentController extends BaseResourceController
 
     /**
      * Display a listing of the resource.
+     *
+     * Shows all files uploaded as "document" type, regardless of their
+     * extracted entity type (Document, Contract, Invoice, etc.)
      */
     public function index(Request $request): Response
     {
-        $query = $this->model::query()->with($this->indexWith);
+        // Query files that were uploaded as "document" type
+        $query = File::query()
+            ->where('user_id', auth()->id())
+            ->where('file_type', 'document')
+            ->where('status', 'completed')
+            ->with('primaryEntity.entity');
 
-        // Apply user scope
-        $query->where('user_id', auth()->id());
-
-        // Apply search
+        // Apply search on file name
         if ($search = $request->input('search')) {
-            $query = $this->applySearch($query, $search);
+            $query->where('fileName', 'like', "%{$search}%");
         }
 
-        // Apply filters
-        foreach ($this->filterableFields as $field) {
-            if ($value = $request->input($field)) {
-                $query = $this->applyFilter($query, $field, $value);
-            }
-        }
+        // TODO: Category and tag filtering need to be updated to work with polymorphic entities
+        // For now, we'll skip these filters as they rely on Document model structure
 
         // Apply sorting
-        $sortField = $request->input('sort', $this->defaultSort);
-        $sortDirection = $request->input('sort_direction', $this->defaultSortDirection);
+        $sortField = $request->input('sort', 'uploaded_at');
+        $sortDirection = $request->input('sort_direction', 'desc');
         $query->orderBy($sortField, $sortDirection);
 
-        $documents = $query->paginate($request->get('per_page', $this->perPage));
+        $files = $query->paginate($request->get('per_page', $this->perPage));
 
         return Inertia::render('Documents/Index', [
-            'documents' => $documents->through(fn ($item) => DocumentTransformer::forIndex($item)),
+            'documents' => $files->through(function ($file) {
+                $entity = $file->primaryEntity?->entity;
+
+                if (! $entity) {
+                    // Fallback for files without entity (shouldn't happen with completed files)
+                    return [
+                        'id' => $file->id,
+                        'title' => $file->fileName,
+                        'file_id' => $file->id,
+                        'created_at' => $file->uploaded_at,
+                    ];
+                }
+
+                // Transform based on entity type
+                return $this->transformEntityForIndex($entity, $file);
+            }),
             'categories' => auth()->user()->categories()->orderBy('name')->get(['id', 'name', 'color']),
             'filters' => $this->getFilters($request),
         ]);
+    }
+
+    /**
+     * Transform any entity type for index display.
+     */
+    protected function transformEntityForIndex($entity, File $file): array
+    {
+        $entityType = class_basename($entity);
+
+        // Base data structure
+        $data = [
+            'id' => $entity->id,
+            'file_id' => $file->id,
+            'created_at' => $entity->created_at ?? $file->uploaded_at,
+            'updated_at' => $entity->updated_at ?? $file->uploaded_at,
+            'entity_type' => strtolower($entityType),
+        ];
+
+        // Extract title based on entity type
+        $data['title'] = match ($entityType) {
+            'Document' => $entity->title,
+            'Contract' => $entity->contract_title ?? $entity->title ?? $file->fileName,
+            'Invoice' => 'Invoice from '.($entity->vendor_name ?? 'Unknown'),
+            'Voucher' => $entity->voucher_name ?? $entity->code ?? 'Voucher',
+            'Warranty' => 'Warranty: '.($entity->product_name ?? 'Product'),
+            'ReturnPolicy' => 'Return Policy: '.($entity->store_name ?? 'Store'),
+            'BankStatement' => 'Bank Statement - '.($entity->account_name ?? 'Account'),
+            default => $file->fileName
+        };
+
+        // Add category if available (Document entities)
+        if ($entityType === 'Document' && $entity->category) {
+            $data['category'] = $entity->category;
+        }
+
+        // Add tags if available (Document entities)
+        if ($entityType === 'Document' && $entity->tags) {
+            $data['tags'] = $entity->tags;
+        }
+
+        return $data;
     }
 
     /**
@@ -381,5 +437,4 @@ class DocumentController extends BaseResourceController
             return back()->with('error', 'Failed to upload file: '.$e->getMessage());
         }
     }
-
 }

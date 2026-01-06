@@ -40,6 +40,7 @@ use App\Services\StorageService;
 use App\Services\TextExtractionService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -177,6 +178,18 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('admin', function ($user) {
             return $user && method_exists($user, 'isAdmin') ? $user->isAdmin() : false;
         });
+
+        // Register polymorphic morph map for extractable entities
+        Relation::morphMap([
+            'receipt' => \App\Models\Receipt::class,
+            'document' => \App\Models\Document::class,
+            'voucher' => \App\Models\Voucher::class,
+            'warranty' => \App\Models\Warranty::class,
+            'return_policy' => \App\Models\ReturnPolicy::class,
+            'invoice' => \App\Models\Invoice::class,
+            'contract' => \App\Models\Contract::class,
+            'bank_statement' => \App\Models\BankStatement::class,
+        ]);
     }
 
     /**

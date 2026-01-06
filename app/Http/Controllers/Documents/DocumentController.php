@@ -13,6 +13,7 @@ use App\Services\StorageService;
 use App\Services\Tags\TagAttachmentService;
 use App\Traits\ShareableController;
 use Exception;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -191,7 +192,7 @@ class DocumentController extends BaseResourceController
      * Override show to pass props expected by Vue component.
      * Handles polymorphic entities by redirecting to appropriate controller.
      */
-    public function show($id): Response
+    public function show($id): Response|RedirectResponse
     {
         // Try to find a Document with this ID
         $document = $this->model::with($this->showWith)->find($id);

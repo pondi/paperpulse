@@ -10,7 +10,9 @@ return [
     | OpenAI for text processing and analysis tasks.
     |
     */
-    'provider' => 'openai',
+    'file_processing_provider' => env('FILE_PROCESSING_PROVIDER', 'textract+openai'),
+
+    'provider' => env('AI_DEFAULT_PROVIDER', 'openai'),
 
     /*
     |--------------------------------------------------------------------------
@@ -26,6 +28,27 @@ return [
             'api_key' => env('OPENAI_API_KEY'),
             'organization' => env('OPENAI_ORGANIZATION'),
             'timeout' => env('OPENAI_REQUEST_TIMEOUT', 60),
+        ],
+        'gemini' => [
+            'api_key' => env('GEMINI_API_KEY'),
+            'model' => env('GEMINI_MODEL', 'gemini-3-flash-preview'),
+            'timeout' => env('GEMINI_REQUEST_TIMEOUT', 90),
+            'max_file_size_mb' => env('GEMINI_MAX_FILE_SIZE_MB', 50),
+            'large_file_threshold_mb' => env('GEMINI_LARGE_FILE_THRESHOLD_MB', 15),
+            'large_pdf_page_limit' => env('GEMINI_LARGE_PDF_PAGE_LIMIT', 25),
+            'large_pdf_sample_size' => env('GEMINI_LARGE_PDF_SAMPLE_SIZE', 4),
+            'text_max_bytes' => env('GEMINI_TEXT_MAX_BYTES', 200000),
+            'supported_mime_types' => [
+                'application/pdf',
+                'image/jpeg',
+                'image/png',
+                'image/webp',
+                'image/heic',
+                'image/heif',
+                'text/plain',
+                'text/csv',
+                'text/html',
+            ],
         ],
     ],
 
@@ -81,7 +104,7 @@ return [
     |
     */
     'ocr' => [
-        'provider' => 'textract',
+        'provider' => env('OCR_PROVIDER', 'textract'),
 
         'providers' => [
             'textract' => [

@@ -1,0 +1,1 @@
+Extract bank statement account info (bank, holder, account number/IBAN/SWIFT), statement date and period, opening/closing balances, totals for credits/debits, and full transaction list with dates, descriptions, references, type (credit/debit/fee/interest), amounts, balances, and counterparties. Return JSON only.

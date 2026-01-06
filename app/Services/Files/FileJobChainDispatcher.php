@@ -5,6 +5,7 @@ namespace App\Services\Files;
 use App\Jobs\Documents\AnalyzeDocument;
 use App\Jobs\Documents\ProcessDocument;
 use App\Jobs\Files\ProcessFile;
+use App\Jobs\Files\ProcessFileGemini;
 use App\Jobs\Maintenance\DeleteWorkingFiles;
 use App\Jobs\PulseDav\UpdatePulseDavFileStatus;
 use App\Jobs\Receipts\MatchMerchant;
@@ -49,18 +50,28 @@ class FileJobChainDispatcher
         $queue = $fileType === 'receipt' ? 'receipts' : 'documents';
         $jobs = [];
 
-        if ($fileType === 'receipt') {
+        $provider = config('ai.file_processing_provider', 'textract+openai');
+
+        if ($provider === 'gemini') {
+            Log::info('Routing to Gemini pipeline', ['jobId' => $jobId]);
             $jobs = [
                 (new ProcessFile($jobId))->onQueue($queue),
-                (new ProcessReceipt($jobId))->onQueue($queue),
-                (new MatchMerchant($jobId))->onQueue($queue),
+                (new ProcessFileGemini($jobId))->onQueue($queue),
             ];
         } else {
-            $jobs = [
-                (new ProcessFile($jobId))->onQueue($queue),
-                (new ProcessDocument($jobId))->onQueue($queue),
-                (new AnalyzeDocument($jobId))->onQueue($queue),
-            ];
+            if ($fileType === 'receipt') {
+                $jobs = [
+                    (new ProcessFile($jobId))->onQueue($queue),
+                    (new ProcessReceipt($jobId))->onQueue($queue),
+                    (new MatchMerchant($jobId))->onQueue($queue),
+                ];
+            } else {
+                $jobs = [
+                    (new ProcessFile($jobId))->onQueue($queue),
+                    (new ProcessDocument($jobId))->onQueue($queue),
+                    (new AnalyzeDocument($jobId))->onQueue($queue),
+                ];
+            }
         }
 
         if (! empty($tagIds) && isset($metadata['fileId'])) {

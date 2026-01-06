@@ -92,6 +92,18 @@ class File extends Model
         return $this->hasOne(Document::class)->latestOfMany();
     }
 
+    public function extractableEntities()
+    {
+        return $this->hasMany(ExtractableEntity::class);
+    }
+
+    public function primaryEntity()
+    {
+        return $this->hasOne(ExtractableEntity::class)
+            ->where('is_primary', true)
+            ->with('entity');
+    }
+
     public function conversion()
     {
         return $this->hasOne(FileConversion::class);
@@ -128,5 +140,14 @@ class File extends Model
             ->active()
             ->where('shared_with_user_id', $userId)
             ->first();
+    }
+
+    /**
+     * Accessor for lowercase 'filename' to map to camelCase 'fileName' column.
+     * Provides backwards compatibility and developer convenience.
+     */
+    public function getFilenameAttribute(): ?string
+    {
+        return $this->attributes['fileName'] ?? null;
     }
 }

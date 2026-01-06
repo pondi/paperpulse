@@ -1,0 +1,253 @@
+<template>
+  <AppLayout :title="`Contract: ${contract.contract_title || contract.id}`">
+    <div class="max-w-5xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <!-- Header -->
+      <div class="mb-6">
+        <Link :href="route('contracts.index')" class="text-blue-600 dark:text-blue-400 hover:underline mb-2 inline-block">
+          &larr; Back to Contracts
+        </Link>
+        <div class="flex justify-between items-start">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+              {{ contract.contract_title || 'Contract' }}
+            </h1>
+            <p v-if="contract.contract_number" class="text-gray-600 dark:text-gray-400 mt-1">
+              Contract #{{ contract.contract_number }}
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-sm font-medium" :class="statusClass">
+            {{ contract.status }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Contract Details Card -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+        <!-- Basic Information -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
+          <div>
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Contract Type</h3>
+            <p class="text-gray-900 dark:text-gray-100 font-medium">{{ formatContractType(contract.contract_type) }}</p>
+          </div>
+
+          <div>
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Duration</h3>
+            <p class="text-gray-900 dark:text-gray-100">{{ contract.duration || 'Not specified' }}</p>
+          </div>
+        </div>
+
+        <!-- Dates -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div v-if="contract.effective_date">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Effective Date</h3>
+            <p class="text-gray-900 dark:text-gray-100">{{ formatDate(contract.effective_date) }}</p>
+          </div>
+          <div v-if="contract.expiry_date">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Expiry Date</h3>
+            <p class="font-semibold" :class="{'text-red-600 dark:text-red-400': isExpiring}">
+              {{ formatDate(contract.expiry_date) }}
+              <span v-if="daysUntilExpiry > 0" class="text-sm text-gray-500 dark:text-gray-400 block">
+                ({{ daysUntilExpiry }} days remaining)
+              </span>
+            </p>
+          </div>
+          <div v-if="contract.signature_date">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Signature Date</h3>
+            <p class="text-gray-900 dark:text-gray-100">{{ formatDate(contract.signature_date) }}</p>
+          </div>
+        </div>
+
+        <!-- Parties -->
+        <div v-if="contract.parties && contract.parties.length > 0" class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Parties</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div
+              v-for="(party, index) in contract.parties"
+              :key="index"
+              class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4"
+            >
+              <p class="font-semibold text-gray-900 dark:text-gray-100">{{ party.name }}</p>
+              <p v-if="party.role" class="text-sm text-gray-600 dark:text-gray-400">{{ party.role }}</p>
+              <p v-if="party.contact" class="text-sm text-gray-600 dark:text-gray-300 mt-1">{{ party.contact }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Financial Details -->
+        <div v-if="contract.contract_value" class="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Financial Details</h3>
+          <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+            <div class="flex justify-between items-center">
+              <span class="text-green-700 dark:text-green-300 font-medium">Contract Value</span>
+              <span class="text-2xl font-bold text-green-900 dark:text-green-100">
+                {{ formatCurrency(contract.contract_value) }}
+              </span>
+            </div>
+            <div v-if="contract.payment_schedule && contract.payment_schedule.length > 0" class="mt-4">
+              <p class="text-sm text-green-700 dark:text-green-300 mb-2">Payment Schedule:</p>
+              <ul class="space-y-1 text-sm text-green-800 dark:text-green-200">
+                <li v-for="(payment, index) in contract.payment_schedule" :key="index">
+                  {{ payment.description || 'Payment' }}: {{ formatCurrency(payment.amount) }} - {{ formatDate(payment.date) }}
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Key Terms -->
+        <div v-if="contract.key_terms && contract.key_terms.length > 0" class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Key Terms</h3>
+          <ul class="space-y-2">
+            <li
+              v-for="(term, index) in contract.key_terms"
+              :key="index"
+              class="flex items-start"
+            >
+              <svg class="h-5 w-5 text-blue-500 dark:text-blue-400 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+              </svg>
+              <span class="text-gray-700 dark:text-gray-300">{{ term }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Obligations -->
+        <div v-if="contract.obligations && contract.obligations.length > 0" class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Obligations</h3>
+          <div class="space-y-3">
+            <div
+              v-for="(obligation, index) in contract.obligations"
+              :key="index"
+              class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4"
+            >
+              <p v-if="obligation.party" class="text-sm text-yellow-800 dark:text-yellow-300 font-medium">
+                {{ obligation.party }}
+              </p>
+              <p class="text-gray-700 dark:text-gray-300 mt-1">{{ obligation.description }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary -->
+        <div v-if="contract.summary" class="mb-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+          <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">Summary</h3>
+          <p class="text-blue-800 dark:text-blue-200 whitespace-pre-wrap">{{ contract.summary }}</p>
+        </div>
+
+        <!-- Renewal & Termination -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div v-if="contract.renewal_terms">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Renewal Terms</h3>
+            <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ contract.renewal_terms }}</p>
+          </div>
+          <div v-if="contract.termination_conditions">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Termination Conditions</h3>
+            <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ contract.termination_conditions }}</p>
+          </div>
+        </div>
+
+        <!-- Legal Information -->
+        <div v-if="contract.governing_law || contract.jurisdiction" class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-8">
+          <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Legal Information</h3>
+          <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div v-if="contract.governing_law">
+              <dt class="text-sm text-gray-600 dark:text-gray-400">Governing Law</dt>
+              <dd class="text-gray-900 dark:text-gray-100 font-medium">{{ contract.governing_law }}</dd>
+            </div>
+            <div v-if="contract.jurisdiction">
+              <dt class="text-sm text-gray-600 dark:text-gray-400">Jurisdiction</dt>
+              <dd class="text-gray-900 dark:text-gray-100 font-medium">{{ contract.jurisdiction }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex space-x-3">
+          <Link
+            v-if="contract.file_id"
+            :href="route('files.show', contract.file_id)"
+            class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-lg transition"
+          >
+            View Original File
+          </Link>
+        </div>
+      </div>
+
+      <!-- Tags -->
+      <div v-if="contract.tags && contract.tags.length > 0" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Tags</h3>
+        <div class="flex flex-wrap gap-2">
+          <span
+            v-for="tag in contract.tags"
+            :key="tag.id"
+            class="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-sm"
+          >
+            {{ tag.name }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </AppLayout>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+import { Link, router } from '@inertiajs/vue3'
+import AppLayout from '@/Layouts/AppLayout.vue'
+
+const props = defineProps({
+  contract: {
+    type: Object,
+    required: true
+  }
+})
+
+const isExpiring = computed(() => {
+  if (!props.contract.expiry_date) return false
+  const daysUntil = Math.ceil(
+    (new Date(props.contract.expiry_date) - new Date()) / (1000 * 60 * 60 * 24)
+  )
+  return daysUntil <= 90 && daysUntil > 0
+})
+
+const daysUntilExpiry = computed(() => {
+  if (!props.contract.expiry_date) return 0
+  return Math.ceil(
+    (new Date(props.contract.expiry_date) - new Date()) / (1000 * 60 * 60 * 24)
+  )
+})
+
+const statusClass = computed(() => {
+  const classes = {
+    'draft': 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300',
+    'active': 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
+    'expired': 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',
+    'terminated': 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300',
+    'renewed': 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+  }
+  return classes[props.contract.status] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+})
+
+function formatContractType(type) {
+  const types = {
+    'employment': 'Employment Contract',
+    'service': 'Service Agreement',
+    'rental': 'Rental Agreement',
+    'purchase': 'Purchase Agreement',
+    'nda': 'Non-Disclosure Agreement',
+  }
+  return types[type] || type
+}
+
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('no-NO', {
+    style: 'currency',
+    currency: props.contract.currency || 'NOK'
+  }).format(amount)
+}
+
+function formatDate(date) {
+  if (!date) return 'N/A'
+  return new Date(date).toLocaleDateString('no-NO')
+}
+</script>

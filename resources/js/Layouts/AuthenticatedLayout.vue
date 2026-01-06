@@ -240,6 +240,10 @@ import {
   UserCircleIcon,
   TagIcon,
   DocumentTextIcon,
+  TicketIcon,
+  DocumentCheckIcon,
+  BanknotesIcon,
+  ShieldCheckIcon,
 } from '@heroicons/vue/24/outline'
 import { ChevronDownIcon } from '@heroicons/vue/20/solid'
 import ApplicationLogo from '@/Components/Common/ApplicationLogo.vue';
@@ -267,8 +271,11 @@ const closePreview = () => {
 }
 
 const navigationItems = [
+  // Core Navigation
   { name: 'dashboard', href: route('dashboard'), icon: HomeIcon, current: route().current('dashboard') },
   { name: 'search', href: route('search'), icon: MagnifyingGlassIcon, current: route().current('search') },
+
+  // Financial Documents
   {
     name: 'receipts',
     href: route('receipts.index'),
@@ -280,6 +287,11 @@ const navigationItems = [
       { name: 'vendors', href: route('vendors.index'), current: route().current('vendors.index') },
     ]
   },
+  { name: 'invoices', href: route('invoices.index'), icon: BanknotesIcon, current: route().current('invoices.*') },
+  { name: 'contracts', href: route('contracts.index'), icon: DocumentCheckIcon, current: route().current('contracts.*') },
+  { name: 'vouchers', href: route('vouchers.index'), icon: TicketIcon, current: route().current('vouchers.*') },
+
+  // General Documents
   {
     name: 'documents',
     href: route('documents.index'),
@@ -291,15 +303,28 @@ const navigationItems = [
       { name: 'categories', href: route('documents.categories'), current: route().current('documents.categories') },
     ]
   },
-  { name: 'analytics', href: route('analytics.index'), icon: ChartBarIcon, current: route().current('analytics.*') },
+
+  // Organization
   { name: 'tags', href: route('tags.index'), icon: TagIcon, current: route().current('tags.*') },
+
+  // Tools
   { name: 'upload', href: route('documents.upload'), icon: CloudArrowUpIcon, current: route().current('documents.upload') },
+  { name: 'analytics', href: route('analytics.index'), icon: ChartBarIcon, current: route().current('analytics.*') },
   { name: 'scanner_imports', href: route('pulsedav.index'), icon: CloudArrowDownIcon, current: route().current('pulsedav.*') },
-  { name: 'job_status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index') },
+
+  // Admin (conditionally added)
+  { name: 'job_status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index'), adminOnly: true },
   { name: 'file_processing', href: route('files.index'), icon: DocumentTextIcon, current: route().current('files.*') }
 ];
 
-const navigation = navigationItems;
+// Filter navigation based on user permissions
+const navigation = navigationItems.filter(item => {
+  // If item is admin-only, check if user is admin
+  if (item.adminOnly && (!page.props.auth.user || !page.props.auth.user.is_admin)) {
+    return false;
+  }
+  return true;
+});
 
 const userNavigation = [
   { name: 'profile', href: route('profile.edit') },

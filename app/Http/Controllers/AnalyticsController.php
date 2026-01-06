@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LineItem;
 use App\Models\Receipt;
+use App\Services\Analytics\ProcessingAnalyticsService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -144,6 +145,113 @@ class AnalyticsController extends Controller
             ],
             'recent_receipts' => $recentReceipts,
             'current_period' => $period,
+        ]);
+    }
+
+    /**
+     * Admin-only dashboard for AI processing analytics.
+     *
+     * Displays production learning data: unknown types, low confidence,
+     * validation failures, and extraction quality metrics.
+     */
+    public function processing(Request $request, ProcessingAnalyticsService $analytics)
+    {
+        // Ensure user is admin
+        abort_unless(auth()->user()?->isAdmin(), 403, 'Admin access required');
+
+        $days = $request->get('days', 7);
+
+        // Get all analytics data
+        $documentTypes = $analytics->getDocumentTypeDistribution();
+        $unknownTypes = $analytics->findUnknownDocumentTypes(20);
+        $lowConfidence = $analytics->findLowConfidenceClassifications(0.7, 30);
+        $validationFailures = $analytics->findValidationFailuresByType(20);
+        $failureDistribution = $analytics->getFailureDistribution();
+        $timeline = $analytics->getProcessingTimeline($days);
+
+        // Get quality metrics for each document type
+        $qualityMetrics = [];
+        foreach ($documentTypes as $type) {
+            if ($type->document_type) {
+                $qualityMetrics[$type->document_type] = $analytics->getExtractionQualityMetrics($type->document_type);
+            }
+        }
+
+        return Inertia::render('Analytics/Processing', [
+            'stats' => [
+                'total_processed' => $documentTypes->sum('total_count'),
+                'total_success' => $documentTypes->sum('success_count'),
+                'total_failed' => $documentTypes->sum('failure_count'),
+                'success_rate' => $documentTypes->sum('total_count') > 0
+                    ? round(($documentTypes->sum('success_count') / $documentTypes->sum('total_count')) * 100, 2)
+                    : 0,
+                'avg_confidence' => round($documentTypes->avg('avg_confidence') ?? 0, 4),
+                'avg_duration_ms' => round($documentTypes->avg('avg_duration_ms') ?? 0),
+            ],
+            'documentTypes' => $documentTypes->map(function ($item) {
+                return [
+                    'type' => $item->document_type,
+                    'total' => $item->total_count,
+                    'success' => $item->success_count,
+                    'failed' => $item->failure_count,
+                    'success_rate' => $item->total_count > 0
+                        ? round(($item->success_count / $item->total_count) * 100, 2)
+                        : 0,
+                    'avg_confidence' => round($item->avg_confidence ?? 0, 4),
+                    'avg_extraction_confidence' => round($item->avg_extraction_confidence ?? 0, 4),
+                    'avg_duration_ms' => round($item->avg_duration_ms ?? 0),
+                ];
+            }),
+            'qualityMetrics' => $qualityMetrics,
+            'unknownTypes' => $unknownTypes->map(function ($item) {
+                return [
+                    'reasoning' => $item->classification_reasoning,
+                    'count' => $item->count,
+                    'first_seen' => $item->first_seen,
+                    'last_seen' => $item->last_seen,
+                ];
+            }),
+            'lowConfidence' => $lowConfidence->map(function ($item) {
+                return [
+                    'file_id' => $item->file_id,
+                    'filename' => $item->file?->filename ?? 'N/A',
+                    'document_type' => $item->document_type,
+                    'confidence' => round($item->classification_confidence, 4),
+                    'reasoning' => $item->classification_reasoning,
+                    'date' => $item->created_at->format('Y-m-d H:i'),
+                ];
+            }),
+            'validationFailures' => $validationFailures->map(function ($item) {
+                return [
+                    'type' => $item->document_type,
+                    'failure_count' => $item->failure_count,
+                    'avg_confidence' => round($item->avg_classification_confidence ?? 0, 4),
+                    'first_failure' => $item->first_failure,
+                    'last_failure' => $item->last_failure,
+                ];
+            }),
+            'failureDistribution' => $failureDistribution->map(function ($item) {
+                return [
+                    'category' => $item->failure_category,
+                    'count' => $item->count,
+                    'retryable_count' => $item->retryable_count,
+                    'first_seen' => $item->first_seen,
+                    'last_seen' => $item->last_seen,
+                ];
+            }),
+            'timeline' => $timeline->map(function ($item) {
+                return [
+                    'date' => $item->date,
+                    'total' => $item->total_count,
+                    'success' => $item->success_count,
+                    'failed' => $item->failure_count,
+                    'success_rate' => $item->total_count > 0
+                        ? round(($item->success_count / $item->total_count) * 100, 2)
+                        : 0,
+                    'avg_duration_ms' => round($item->avg_duration_ms ?? 0),
+                ];
+            }),
+            'current_days' => $days,
         ]);
     }
 

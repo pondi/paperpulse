@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth', 'verified', 'web'])->group(function () {
     // Analytics
     Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
+    Route::get('/analytics/processing', [AnalyticsController::class, 'processing'])->name('analytics.processing');
 
     // Jobs routes (admin only)
     Route::prefix('jobs')->name('jobs.')->middleware('can:admin')->group(function () {

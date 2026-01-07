@@ -46,7 +46,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 
 const props = defineProps({
   src: String,
-  initialRect: Object // { x, y, width, height } from OpenCV
+  initialPoints: Array // [{x,y}, {x,y}, {x,y}, {x,y}] (Natural coordinates from OpenCV)
 });
 
 const emit = defineEmits(['update:points']);
@@ -77,27 +77,15 @@ const initPoints = () => {
         imgTop: imgRect.top - contRect.top
     };
 
-    // If we have auto-detected rect from OpenCV (scaled to natural image size)
-    if (props.initialRect && props.initialRect.width > 0) {
-        // Map natural coordinates to displayed coordinates
+    // If we have auto-detected points from OpenCV (scaled to natural image size)
+    if (props.initialPoints && props.initialPoints.length === 4) {
         const scaleX = imgRect.width / imageRef.value.naturalWidth;
         const scaleY = imgRect.height / imageRef.value.naturalHeight;
         
-        // OpenCV usually returns rect (x,y,w,h) - convert to 4 points
-        // NOTE: If OpenCV returned a rotated rect or polygon, we would map those points directly.
-        // For now, assuming axis-aligned rect from the previous step, but we will make it independent corners.
-        
-        const x = props.initialRect.x * scaleX + dims.value.imgLeft;
-        const y = props.initialRect.y * scaleY + dims.value.imgTop;
-        const w = props.initialRect.width * scaleX;
-        const h = props.initialRect.height * scaleY;
-
-        points.value = [
-            { x: x, y: y },         // TL
-            { x: x + w, y: y },     // TR
-            { x: x + w, y: y + h }, // BR
-            { x: x, y: y + h }      // BL
-        ];
+        points.value = props.initialPoints.map(p => ({
+            x: p.x * scaleX + dims.value.imgLeft,
+            y: p.y * scaleY + dims.value.imgTop
+        }));
     } else {
         // Default to a slightly inset rectangle
         const padX = dims.value.imgWidth * 0.1;
@@ -123,7 +111,7 @@ const onImageLoad = () => {
 };
 
 // Watch for prop changes to re-init
-watch(() => props.initialRect, () => {
+watch(() => props.initialPoints, () => {
     initPoints();
 }, { deep: true });
 

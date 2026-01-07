@@ -137,6 +137,7 @@ const error = ref(null);
 const processing = ref(false);
 const detecting = ref(false);
 const cvLoaded = ref(false);
+const cameraReady = ref(false);
 
 // Refs
 const video = ref(null);
@@ -157,10 +158,10 @@ const loadOpenCV = () => {
   script.src = '/vendor/opencv.js';
   script.async = true;
   script.onload = () => {
-    if (cv.getBuildInformation) {
+    if (window.cv && window.cv.getBuildInformation) {
         cvLoaded.value = true;
     } else {
-        cv.onRuntimeInitialized = () => {
+        window.cv.onRuntimeInitialized = () => {
             cvLoaded.value = true;
         };
     }
@@ -168,92 +169,148 @@ const loadOpenCV = () => {
   document.body.appendChild(script);
 };
 
+const getCropperImageElement = () => {
+  if (!cropperRef.value || typeof cropperRef.value.getImageElement !== 'function') {
+    return null;
+  }
+
+  return cropperRef.value.getImageElement();
+};
+
+const orderPoints = (points) => {
+  if (!points || points.length !== 4) {
+    return null;
+  }
+
+  const pts = points.map((point) => ({ x: point.x, y: point.y }));
+  const sums = pts.map((point) => point.x + point.y);
+  const diffs = pts.map((point) => point.y - point.x);
+
+  const topLeft = pts[sums.indexOf(Math.min(...sums))];
+  const bottomRight = pts[sums.indexOf(Math.max(...sums))];
+  const topRight = pts[diffs.indexOf(Math.min(...diffs))];
+  const bottomLeft = pts[diffs.indexOf(Math.max(...diffs))];
+
+  return [topLeft, topRight, bottomRight, bottomLeft];
+};
+
+const ensureImageReady = async (imgElement) => {
+  if (!imgElement || imgElement.complete) {
+    return;
+  }
+
+  if (typeof imgElement.decode === 'function') {
+    await imgElement.decode();
+    return;
+  }
+
+  await new Promise((resolve) => {
+    imgElement.addEventListener('load', resolve, { once: true });
+  });
+};
+
+const readImageMat = (imgElement) => {
+  const width = imgElement.naturalWidth || imgElement.width;
+  const height = imgElement.naturalHeight || imgElement.height;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(imgElement, 0, 0, width, height);
+
+  return { mat: cv.imread(canvas), width, height };
+};
+
 // Document Detection (Return 4 points sorted TL, TR, BR, BL)
 const detectDocument = async (imgElement) => {
-    if (!cvLoaded.value) return null;
+    if (!cvLoaded.value || !imgElement) return null;
     
     try {
-        const src = cv.imread(imgElement);
-        const dst = new cv.Mat();
+        const { mat: src } = readImageMat(imgElement);
+        const gray = new cv.Mat();
+        const blurred = new cv.Mat();
+        const edges = new cv.Mat();
         
         // 1. Preprocessing
-        cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY, 0);
-        cv.GaussianBlur(dst, dst, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
-        cv.Canny(dst, dst, 75, 200);
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+        cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+        cv.Canny(blurred, edges, 75, 200);
+        const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
+        cv.morphologyEx(edges, edges, cv.MORPH_CLOSE, kernel);
+        kernel.delete();
 
         // 2. Find Contours
         const contours = new cv.MatVector();
         const hierarchy = new cv.Mat();
-        cv.findContours(dst, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+        cv.findContours(edges, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
 
-        let maxArea = 0;
+        const imageArea = src.rows * src.cols;
+        const minAreaRatio = mode.value === 'receipt' ? 0.08 : 0.2;
+        const minArea = imageArea * minAreaRatio;
         let finalPoints = null;
+        const contourList = [];
 
-        // 3. Find largest contour
         for (let i = 0; i < contours.size(); ++i) {
-            let contour = contours.get(i);
-            let area = cv.contourArea(contour);
-            
-            if (area > 5000) { 
-                let peri = cv.arcLength(contour, true);
-                let approx = new cv.Mat();
-                cv.approxPolyDP(contour, approx, 0.02 * peri, true);
+            const contour = contours.get(i);
+            contourList.push({ contour, area: cv.contourArea(contour) });
+        }
 
-                if (area > maxArea) {
-                    maxArea = area;
-                    
-                    if (approx.rows === 4) {
-                        // Found a quad!
-                        finalPoints = [];
-                        for(let j = 0; j < 4; j++) {
-                            finalPoints.push({
-                                x: approx.data32S[j * 2],
-                                y: approx.data32S[j * 2 + 1]
-                            });
-                        }
-                    } else {
-                        // Fallback: Use bounding rect if not a perfect quad
-                        const rect = cv.boundingRect(approx);
-                        finalPoints = [
-                            { x: rect.x, y: rect.y },
-                            { x: rect.x + rect.width, y: rect.y },
-                            { x: rect.x + rect.width, y: rect.y + rect.height },
-                            { x: rect.x, y: rect.y + rect.height }
-                        ];
-                    }
+        contourList.sort((a, b) => b.area - a.area);
+
+        for (const { contour, area } of contourList.slice(0, 5)) {
+            if (area < minArea) {
+                continue;
+            }
+            const peri = cv.arcLength(contour, true);
+            const approx = new cv.Mat();
+            cv.approxPolyDP(contour, approx, 0.02 * peri, true);
+
+            if (approx.rows === 4) {
+                finalPoints = [];
+                for (let j = 0; j < 4; j++) {
+                    finalPoints.push({
+                        x: approx.data32S[j * 2],
+                        y: approx.data32S[j * 2 + 1]
+                    });
                 }
                 approx.delete();
+                break;
+            }
+
+            approx.delete();
+        }
+
+        if (!finalPoints && contourList.length > 0) {
+            const largest = contourList[0];
+            if (largest.area >= minArea) {
+                const rect = cv.boundingRect(largest.contour);
+                finalPoints = [
+                    { x: rect.x, y: rect.y },
+                    { x: rect.x + rect.width, y: rect.y },
+                    { x: rect.x + rect.width, y: rect.y + rect.height },
+                    { x: rect.x, y: rect.y + rect.height }
+                ];
+            } else {
+                finalPoints = [
+                    { x: 0, y: 0 },
+                    { x: src.cols, y: 0 },
+                    { x: src.cols, y: src.rows },
+                    { x: 0, y: src.rows }
+                ];
             }
         }
 
         // Cleanup
+        contourList.forEach(({ contour }) => contour.delete());
         src.delete();
-        dst.delete();
+        gray.delete();
+        blurred.delete();
+        edges.delete();
         contours.delete();
         hierarchy.delete();
 
         if (finalPoints) {
-            // Sort points: TL, TR, BR, BL
-            // 1. Sort by Y to separate Top/Bottom
-            finalPoints.sort((a, b) => a.y - b.y);
-            const top = finalPoints.slice(0, 2).sort((a, b) => a.x - b.x); // TL, TR
-            const bottom = finalPoints.slice(2, 4).sort((a, b) => b.x - a.x); // BR, BL (ensure BR is right-most of bottom set? No, verify standard)
-            // Actually, for BR/BL logic:
-            // Standard order often: TL, TR, BR, BL. 
-            // My previous sort was: BR is bottom[0] (max X of bottom pair), BL is bottom[1] (min X of bottom pair).
-            // Let's stick to consistent TL, TR, BR, BL order for the component.
-            // Component draws polygon in array order. To avoid hourglass, order should be clock-wise: TL -> TR -> BR -> BL.
-            
-            // Re-sort bottom for clock-wise: TR -> BR -> BL -> TL
-            // Top: [TL, TR] (sorted by X)
-            // Bottom: need BR (max X), BL (min X)
-            const bl = bottom[1]; 
-            const br = bottom[0]; // If sorted by b.x - a.x (descending), index 0 is largest X (Right)
-
-            // BUT my previous sort was `b.x - a.x` (descending). So `bottom` is [Right-most, Left-most].
-            // So bottom[0] is BR, bottom[1] is BL.
-            // Clockwise: TL, TR, BR, BL.
-            return [top[0], top[1], bottom[0], bottom[1]]; 
+            return orderPoints(finalPoints);
         }
 
         return null;
@@ -265,14 +322,20 @@ const detectDocument = async (imgElement) => {
 
 const runAutoDetect = async () => {
     detecting.value = true;
-    if (cropperRef.value && cropperRef.value.imageElement) {
-        const points = await detectDocument(cropperRef.value.imageElement);
+    try {
+        const img = getCropperImageElement();
+        if (!img) {
+            return;
+        }
+
+        await ensureImageReady(img);
+        const points = await detectDocument(img);
         if (points) {
             detectedPoints.value = points;
-            step.value = 'review'; 
         }
+    } finally {
+        detecting.value = false;
     }
-    detecting.value = false;
 };
 
 // Update points from child
@@ -283,6 +346,7 @@ const onPointsUpdate = (points) => {
 // Camera Logic
 const startCamera = async () => {
   error.value = null;
+  cameraReady.value = false;
   try {
     const constraints = {
       video: {
@@ -294,6 +358,9 @@ const startCamera = async () => {
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     if (video.value) {
       video.value.srcObject = stream;
+      video.value.addEventListener('loadedmetadata', () => {
+        cameraReady.value = true;
+      }, { once: true });
     }
   } catch (err) {
     console.error("Camera error:", err);
@@ -306,6 +373,7 @@ const stopCamera = () => {
     stream.getTracks().forEach(track => track.stop());
     stream = null;
   }
+  cameraReady.value = false;
 };
 
 const setMode = (newMode) => {
@@ -313,8 +381,11 @@ const setMode = (newMode) => {
 };
 
 // Capture Logic
-const capture = () => {
+const capture = async () => {
   if (!video.value) return;
+  if (!cameraReady.value || video.value.videoWidth === 0 || video.value.videoHeight === 0) {
+    return;
+  }
 
   const canvas = document.createElement('canvas');
   canvas.width = video.value.videoWidth;
@@ -328,25 +399,14 @@ const capture = () => {
   
   // Attempt auto-detect immediately
   nextTick(async () => {
-    detecting.value = true;
-    if (cropperRef.value && cropperRef.value.imageElement) {
-        // Wait for image load
-        const img = cropperRef.value.imageElement;
-        if (img.complete) {
-            detectedPoints.value = await detectDocument(img);
-        } else {
-            img.onload = async () => {
-                detectedPoints.value = await detectDocument(img);
-            };
-        }
-    }
-    detecting.value = false;
+    await runAutoDetect();
   });
 };
 
 const retake = () => {
   capturedImage.value = null;
   detectedPoints.value = null;
+  currentPoints.value = [];
   step.value = 'camera';
   startCamera();
 };
@@ -358,21 +418,28 @@ const processAndUpload = async () => {
   processing.value = true;
 
   try {
-    const srcImg = cropperRef.value.imageElement;
-    const srcMat = cv.imread(srcImg);
+    if (!cvLoaded.value) {
+      error.value = 'Scanner is still loading. Please try again.';
+      processing.value = false;
+      return;
+    }
+
+    const srcImg = getCropperImageElement();
+    if (!srcImg) {
+      error.value = 'Image not ready yet. Please try again.';
+      processing.value = false;
+      return;
+    }
+
+    await ensureImageReady(srcImg);
+    const { mat: srcMat } = readImageMat(srcImg);
     
-    // Sort points: TL, TR, BR, BL
-    // currentPoints are {x, y} relative to natural image size
-    const pts = currentPoints.value;
-    
-    // Simple sort based on x/y to ensure order (TL, TR, BR, BL)
-    // 1. Sort by Y
-    pts.sort((a, b) => a.y - b.y);
-    // 2. Top two are TL/TR, Bottom two are BL/BR
-    const top = pts.slice(0, 2).sort((a, b) => a.x - b.x);
-    const bottom = pts.slice(2, 4).sort((a, b) => b.x - a.x); // BR is last
-    // Correct order: TL, TR, BR, BL (OpenCV perspective standard is often 4 points in order)
-    const sortedPts = [top[0], top[1], bottom[0], bottom[1]];
+    const sortedPts = orderPoints([...currentPoints.value]);
+    if (!sortedPts) {
+      error.value = 'Could not determine crop points.';
+      processing.value = false;
+      return;
+    }
 
     // Determine output width/height
     const widthTop = Math.hypot(sortedPts[1].x - sortedPts[0].x, sortedPts[1].y - sortedPts[0].y);

@@ -11,7 +11,7 @@ class SecurityHeaders
     /**
      * Handle an incoming request.
      *
-     * @param Closure(Request): (Response) $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -30,7 +30,7 @@ class SecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
         // Permissions Policy (formerly Feature Policy)
-        $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
 
         // Content Security Policy
         $viteServer = '';
@@ -47,7 +47,7 @@ class SecurityHeaders
                "style-src 'self' 'unsafe-inline' https://fonts.bunny.net {$appOrigin}; ".
                "img-src 'self' data: blob:; ".
                "font-src 'self' data: https://fonts.bunny.net; ".
-               "connect-src 'self'{$viteServer} ws://localhost:* wss://localhost:* ws://paperpulse.test:* wss://paperpulse.test:*; ".
+               "connect-src 'self' data:{$viteServer} ws://localhost:* wss://localhost:* ws://paperpulse.test:* wss://paperpulse.test:*; ".
                "media-src 'self'; ".
                "object-src 'none'; ".
                "base-uri 'self'; ".

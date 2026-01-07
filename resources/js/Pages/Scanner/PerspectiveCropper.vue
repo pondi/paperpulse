@@ -193,9 +193,8 @@ const getRelativePoints = () => {
     }));
 };
 
-// Expose internal image reference for OpenCV processing
 defineExpose({
-    imageElement: imageRef
+    getImageElement: () => imageRef.value
 });
 
 </script>

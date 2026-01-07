@@ -72,18 +72,36 @@
     <div v-show="step === 'review'" class="relative flex-1 bg-black flex flex-col">
       <div class="flex-1 relative bg-zinc-900 overflow-hidden">
         <img ref="imagePreview" :src="capturedImage" class="max-w-full max-h-full block" />
+        
+        <!-- Loading Overlay for Processing -->
+        <div v-if="processing || detecting" class="absolute inset-0 z-50 bg-black/50 flex items-center justify-center">
+            <div class="bg-zinc-900 px-6 py-4 rounded-xl flex items-center gap-3 border border-zinc-700 shadow-xl">
+                <span class="animate-spin rounded-full h-5 w-5 border-2 border-amber-500 border-t-transparent"></span>
+                <span class="text-white font-medium">{{ detecting ? 'Detecting document...' : 'Processing...' }}</span>
+            </div>
+        </div>
       </div>
 
       <div class="p-6 bg-zinc-900 border-t border-zinc-800 flex justify-between items-center z-20 pb-10">
-        <button @click="retake" class="text-white/70 hover:text-white font-medium px-4 py-2">
-          Retake
-        </button>
+        <div class="flex gap-2">
+            <button @click="retake" class="text-white/70 hover:text-white font-medium px-4 py-2">
+            Retake
+            </button>
+            <button 
+                @click="runAutoDetect" 
+                v-if="cvLoaded"
+                class="p-2 text-amber-500 hover:text-amber-400 hover:bg-white/5 rounded-full transition"
+                title="Auto-detect borders"
+            >
+                <SparklesIcon class="w-6 h-6" />
+            </button>
+        </div>
+        
         <button 
           @click="processAndUpload" 
-          :disabled="processing"
+          :disabled="processing || detecting"
           class="bg-amber-500 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-amber-400 active:scale-95 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <span v-if="processing" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
           {{ processing ? 'Processing...' : 'Keep Scan' }}
         </button>
       </div>
@@ -96,7 +114,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
-import { XMarkIcon, PencilSquareIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline';
+import { XMarkIcon, PencilSquareIcon, ExclamationTriangleIcon, SparklesIcon } from '@heroicons/vue/24/outline';
 import Toast from '@/Components/Common/Toast.vue';
 import Cropper from 'cropperjs';
 import 'cropperjs/dist/cropper.css';
@@ -109,6 +127,8 @@ const note = ref('');
 const showNoteInput = ref(false);
 const error = ref(null);
 const processing = ref(false);
+const detecting = ref(false);
+const cvLoaded = ref(false);
 
 // Refs
 const video = ref(null);
@@ -116,6 +136,102 @@ const imagePreview = ref(null);
 const capturedImage = ref(null);
 let stream = null;
 let cropper = null;
+
+// Load OpenCV
+const loadOpenCV = () => {
+  if (window.cv) {
+    cvLoaded.value = true;
+    return;
+  }
+  const script = document.createElement('script');
+  script.src = '/vendor/opencv.js';
+  script.async = true;
+  script.onload = () => {
+    // OpenCV needs a moment to initialize wasm
+    if (cv.getBuildInformation) {
+        cvLoaded.value = true;
+        console.log('OpenCV loaded');
+    } else {
+        cv.onRuntimeInitialized = () => {
+            cvLoaded.value = true;
+            console.log('OpenCV initialized');
+        };
+    }
+  };
+  document.body.appendChild(script);
+};
+
+// Document Detection Logic
+const detectDocument = async (imgElement) => {
+    if (!cvLoaded.value) return null;
+    
+    try {
+        const src = cv.imread(imgElement);
+        const dst = new cv.Mat();
+        
+        // 1. Preprocessing
+        cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY, 0);
+        cv.GaussianBlur(dst, dst, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+        cv.Canny(dst, dst, 75, 200);
+
+        // 2. Find Contours
+        const contours = new cv.MatVector();
+        const hierarchy = new cv.Mat();
+        cv.findContours(dst, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+        let maxArea = 0;
+        let maxRect = null;
+
+        // 3. Find largest contour
+        for (let i = 0; i < contours.size(); ++i) {
+            let contour = contours.get(i);
+            let area = cv.contourArea(contour);
+            
+            if (area > 5000) { // Filter small noise
+                let peri = cv.arcLength(contour, true);
+                let approx = new cv.Mat();
+                cv.approxPolyDP(contour, approx, 0.02 * peri, true);
+
+                if (area > maxArea) {
+                    maxArea = area;
+                    maxRect = cv.boundingRect(approx);
+                }
+                approx.delete();
+            }
+        }
+
+        // Cleanup
+        src.delete();
+        dst.delete();
+        contours.delete();
+        hierarchy.delete();
+
+        return maxRect;
+    } catch (e) {
+        console.error("OpenCV processing error:", e);
+        return null;
+    }
+};
+
+const runAutoDetect = async () => {
+    if (!cropper || !imagePreview.value || !cvLoaded.value) return;
+    
+    detecting.value = true;
+    // Give UI a moment to show spinner
+    setTimeout(async () => {
+        const rect = await detectDocument(imagePreview.value);
+        if (rect) {
+            cropper.setData({
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+                height: rect.height,
+                rotate: 0
+            });
+        }
+        detecting.value = false;
+    }, 100);
+};
 
 // Camera Logic
 const startCamera = async () => {
@@ -163,8 +279,8 @@ const capture = () => {
   stopCamera(); // Stop camera while reviewing
   step.value = 'review';
   
-  // Initialize Cropper
-  nextTick(() => {
+  // Initialize Cropper and Auto-Detect
+  nextTick(async () => {
     if (imagePreview.value) {
       cropper = new Cropper(imagePreview.value, {
         viewMode: 1,
@@ -177,6 +293,12 @@ const capture = () => {
         cropBoxMovable: true,
         cropBoxResizable: true,
         toggleDragModeOnDblclick: false,
+        ready() {
+            // Run auto-detect once cropper is ready
+            if (cvLoaded.value) {
+                runAutoDetect();
+            }
+        }
       });
     }
   });
@@ -251,6 +373,7 @@ const processAndUpload = async () => {
 
 // Lifecycle
 onMounted(() => {
+  loadOpenCV();
   startCamera();
 });
 

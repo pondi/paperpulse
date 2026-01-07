@@ -32,6 +32,11 @@ Route::post('/invitation-request', [InvitationRequestController::class, 'store']
 Route::middleware(['auth', 'verified', 'web'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Scanner
+    Route::get('/scanner', function () {
+        return Inertia::render('Scanner/Index');
+    })->name('scanner');
 });
 
 // Health check endpoint for Docker/Kubernetes

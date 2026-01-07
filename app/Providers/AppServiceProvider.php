@@ -9,6 +9,7 @@ use App\Contracts\Services\ReceiptValidatorContract;
 use App\Listeners\CreateUserPreferences;
 use App\Models\Category;
 use App\Models\Document;
+use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Receipt;
 use App\Models\Tag;
@@ -45,6 +46,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -177,6 +179,46 @@ class AppServiceProvider extends ServiceProvider
         // Admin gate for route/middleware checks
         Gate::define('admin', function ($user) {
             return $user && method_exists($user, 'isAdmin') ? $user->isAdmin() : false;
+        });
+
+        // Custom route binding for polymorphic document resolution
+        // Handles both Document models and ExtractableEntity redirects
+        Route::bind('document', function ($value) {
+            // First, try to find an actual Document with this ID
+            $document = Document::where('id', $value)
+                ->where('user_id', auth()->id())
+                ->first();
+
+            if ($document) {
+                return $document;
+            }
+
+            // Not a Document - check if it's another entity type via ExtractableEntity
+            $extractableEntity = ExtractableEntity::where('entity_id', $value)
+                ->where('user_id', auth()->id())
+                ->with('entity')
+                ->first();
+
+            if (! $extractableEntity) {
+                abort(404, 'Document not found');
+            }
+
+            $entity = $extractableEntity->entity;
+            $entityType = class_basename($entity);
+
+            // Redirect to appropriate controller based on entity type
+            $route = match ($entityType) {
+                'Contract' => 'contracts.show',
+                'Invoice' => 'invoices.show',
+                'Voucher' => 'vouchers.show',
+                default => null
+            };
+
+            if ($route) {
+                abort(redirect()->route($route, $entity->id));
+            }
+
+            abort(404, "No show page available for entity type: {$entityType}");
         });
 
         // Register polymorphic morph map for extractable entities

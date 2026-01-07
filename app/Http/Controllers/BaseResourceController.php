@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 abstract class BaseResourceController extends Controller
 {
@@ -102,7 +101,7 @@ abstract class BaseResourceController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show($id): HttpResponse
+    public function show($id): Response
     {
         $item = $this->model::with($this->showWith)->findOrFail($id);
 

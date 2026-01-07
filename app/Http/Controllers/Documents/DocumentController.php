@@ -18,7 +18,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class DocumentController extends BaseResourceController
 {
@@ -190,47 +189,22 @@ class DocumentController extends BaseResourceController
 
     /**
      * Override show to pass props expected by Vue component.
-     * Handles polymorphic entities by redirecting to appropriate controller.
+     * Route binding handles polymorphic entities (see AppServiceProvider).
+     *
+     * @param  Document  $document  Route-bound Document model
      */
-    public function show($id): HttpResponse
+    public function show($document): Response
     {
-        // Try to find a Document with this ID
-        $document = $this->model::with($this->showWith)->find($id);
+        $this->authorize('view', $document);
 
-        if ($document) {
-            $this->authorize('view', $document);
+        $meta = $this->getShowMeta();
 
-            $meta = $this->getShowMeta();
-
-            return Inertia::render("{$this->resource}/Show", [
-                'document' => DocumentTransformer::forShow($document),
-                // Flatten meta for Vue expectations
-                'categories' => $meta['categories'] ?? [],
-                'available_tags' => $meta['available_tags'] ?? [],
-            ]);
-        }
-
-        // Not a Document - check if it's another entity type
-        // Look for extractable_entity with this ID
-        $extractableEntity = \App\Models\ExtractableEntity::where('entity_id', $id)
-            ->where('user_id', auth()->id())
-            ->with('entity')
-            ->first();
-
-        if (! $extractableEntity) {
-            abort(404, 'Document not found');
-        }
-
-        $entity = $extractableEntity->entity;
-        $entityType = class_basename($entity);
-
-        // Redirect to appropriate controller based on entity type
-        return match ($entityType) {
-            'Contract' => redirect()->route('contracts.show', $entity->id),
-            'Invoice' => redirect()->route('invoices.show', $entity->id),
-            'Voucher' => redirect()->route('vouchers.show', $entity->id),
-            default => abort(404, "No show page available for entity type: {$entityType}")
-        };
+        return Inertia::render("{$this->resource}/Show", [
+            'document' => DocumentTransformer::forShow($document),
+            // Flatten meta for Vue expectations
+            'categories' => $meta['categories'] ?? [],
+            'available_tags' => $meta['available_tags'] ?? [],
+        ]);
     }
 
     /**

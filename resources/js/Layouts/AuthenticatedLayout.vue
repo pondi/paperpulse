@@ -146,6 +146,10 @@
               <SearchBar @preview="openPreview" />
             </div>
             <div class="flex items-center gap-x-4 lg:gap-x-6">
+              <Link :href="route('scanner')" class="-m-2.5 p-2.5 text-zinc-400 hover:text-zinc-500 dark:hover:text-zinc-300">
+                <span class="sr-only">Open scanner</span>
+                <QrCodeIcon class="size-6" aria-hidden="true" />
+              </Link>
               <NotificationBell />
               <ThemeToggle />
               <!-- Profile dropdown -->
@@ -244,6 +248,7 @@ import {
   DocumentCheckIcon,
   BanknotesIcon,
   ShieldCheckIcon,
+  QrCodeIcon,
 } from '@heroicons/vue/24/outline'
 import { ChevronDownIcon } from '@heroicons/vue/20/solid'
 import ApplicationLogo from '@/Components/Common/ApplicationLogo.vue';

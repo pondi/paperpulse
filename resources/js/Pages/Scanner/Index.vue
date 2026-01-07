@@ -77,7 +77,7 @@
         <PerspectiveCropper 
           ref="cropperRef"
           :src="capturedImage"
-          :initial-rect="detectedRect"
+          :initial-points="detectedPoints"
           @update:points="onPointsUpdate"
         />
         
@@ -142,7 +142,7 @@ const cvLoaded = ref(false);
 const video = ref(null);
 const capturedImage = ref(null);
 const cropperRef = ref(null);
-const detectedRect = ref(null); // {x, y, width, height} passed to cropper
+const detectedPoints = ref(null); // Array of 4 points {x,y}
 const currentPoints = ref([]); // Points from cropper
 
 let stream = null;
@@ -168,7 +168,7 @@ const loadOpenCV = () => {
   document.body.appendChild(script);
 };
 
-// Document Detection (simplified for initial rect, can be improved for polygons)
+// Document Detection (Return 4 points sorted TL, TR, BR, BL)
 const detectDocument = async (imgElement) => {
     if (!cvLoaded.value) return null;
     
@@ -187,7 +187,7 @@ const detectDocument = async (imgElement) => {
         cv.findContours(dst, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
         let maxArea = 0;
-        let maxRect = null;
+        let finalPoints = null;
 
         // 3. Find largest contour
         for (let i = 0; i < contours.size(); ++i) {
@@ -201,7 +201,26 @@ const detectDocument = async (imgElement) => {
 
                 if (area > maxArea) {
                     maxArea = area;
-                    maxRect = cv.boundingRect(approx);
+                    
+                    if (approx.rows === 4) {
+                        // Found a quad!
+                        finalPoints = [];
+                        for(let j = 0; j < 4; j++) {
+                            finalPoints.push({
+                                x: approx.data32S[j * 2],
+                                y: approx.data32S[j * 2 + 1]
+                            });
+                        }
+                    } else {
+                        // Fallback: Use bounding rect if not a perfect quad
+                        const rect = cv.boundingRect(approx);
+                        finalPoints = [
+                            { x: rect.x, y: rect.y },
+                            { x: rect.x + rect.width, y: rect.y },
+                            { x: rect.x + rect.width, y: rect.y + rect.height },
+                            { x: rect.x, y: rect.y + rect.height }
+                        ];
+                    }
                 }
                 approx.delete();
             }
@@ -213,7 +232,31 @@ const detectDocument = async (imgElement) => {
         contours.delete();
         hierarchy.delete();
 
-        return maxRect;
+        if (finalPoints) {
+            // Sort points: TL, TR, BR, BL
+            // 1. Sort by Y to separate Top/Bottom
+            finalPoints.sort((a, b) => a.y - b.y);
+            const top = finalPoints.slice(0, 2).sort((a, b) => a.x - b.x); // TL, TR
+            const bottom = finalPoints.slice(2, 4).sort((a, b) => b.x - a.x); // BR, BL (ensure BR is right-most of bottom set? No, verify standard)
+            // Actually, for BR/BL logic:
+            // Standard order often: TL, TR, BR, BL. 
+            // My previous sort was: BR is bottom[0] (max X of bottom pair), BL is bottom[1] (min X of bottom pair).
+            // Let's stick to consistent TL, TR, BR, BL order for the component.
+            // Component draws polygon in array order. To avoid hourglass, order should be clock-wise: TL -> TR -> BR -> BL.
+            
+            // Re-sort bottom for clock-wise: TR -> BR -> BL -> TL
+            // Top: [TL, TR] (sorted by X)
+            // Bottom: need BR (max X), BL (min X)
+            const bl = bottom[1]; 
+            const br = bottom[0]; // If sorted by b.x - a.x (descending), index 0 is largest X (Right)
+
+            // BUT my previous sort was `b.x - a.x` (descending). So `bottom` is [Right-most, Left-most].
+            // So bottom[0] is BR, bottom[1] is BL.
+            // Clockwise: TL, TR, BR, BL.
+            return [top[0], top[1], bottom[0], bottom[1]]; 
+        }
+
+        return null;
     } catch (e) {
         console.error("OpenCV processing error:", e);
         return null;
@@ -222,17 +265,11 @@ const detectDocument = async (imgElement) => {
 
 const runAutoDetect = async () => {
     detecting.value = true;
-    // We need the image element from the cropper component
     if (cropperRef.value && cropperRef.value.imageElement) {
-        const rect = await detectDocument(cropperRef.value.imageElement);
-        if (rect) {
-            // Force re-init of points in child by updating the prop key or logic
-            // For now, simple re-mount or method call would be better, but we rely on reactivity
-            detectedRect.value = rect;
-            // Trigger child update manually if needed, but prop change should handle it if implemented right.
-            // Since we passed rect as initial prop, we might need a method on child to 'reset'.
-            // For simplicity in this iteration:
-            step.value = 'review'; // Refresh
+        const points = await detectDocument(cropperRef.value.imageElement);
+        if (points) {
+            detectedPoints.value = points;
+            step.value = 'review'; 
         }
     }
     detecting.value = false;
@@ -296,10 +333,10 @@ const capture = () => {
         // Wait for image load
         const img = cropperRef.value.imageElement;
         if (img.complete) {
-            detectedRect.value = await detectDocument(img);
+            detectedPoints.value = await detectDocument(img);
         } else {
             img.onload = async () => {
-                detectedRect.value = await detectDocument(img);
+                detectedPoints.value = await detectDocument(img);
             };
         }
     }
@@ -309,7 +346,7 @@ const capture = () => {
 
 const retake = () => {
   capturedImage.value = null;
-  detectedRect.value = null;
+  detectedPoints.value = null;
   step.value = 'camera';
   startCamera();
 };

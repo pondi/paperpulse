@@ -1,11 +1,13 @@
 <template>
   <div class="fixed inset-0 bg-black text-white overflow-hidden flex flex-col z-50">
     <!-- Header -->
-    <div class="absolute top-0 left-0 right-0 z-20 p-4 flex justify-between items-center bg-gradient-to-b from-black/70 to-transparent">
-      <Link :href="route('dashboard')" class="text-white p-2 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition">
+    <div class="absolute top-0 left-0 right-0 z-30 p-4 flex justify-between items-center bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
+      <Link :href="route('dashboard')" class="text-white p-2 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition pointer-events-auto">
         <XMarkIcon class="w-6 h-6" />
       </Link>
-      <div v-if="step === 'camera'" class="bg-black/40 backdrop-blur-md rounded-full p-1 flex border border-white/20">
+      
+      <!-- Mode Switcher (Camera Step Only) -->
+      <div v-if="step === 'camera'" class="bg-black/40 backdrop-blur-md rounded-full p-1 flex border border-white/20 pointer-events-auto">
         <button 
           @click="setMode('receipt')"
           :class="['px-4 py-1.5 rounded-full text-sm font-medium transition-all', mode === 'receipt' ? 'bg-amber-500 text-white shadow-sm' : 'text-white/70 hover:text-white']"
@@ -19,11 +21,11 @@
           Document
         </button>
       </div>
-      <div class="w-10"></div> <!-- Spacer for alignment -->
+      <div class="w-10"></div>
     </div>
 
     <!-- Error/Permission Message -->
-    <div v-if="error" class="absolute inset-0 z-30 flex items-center justify-center bg-black/80 p-6 text-center">
+    <div v-if="error" class="absolute inset-0 z-50 flex items-center justify-center bg-black/90 p-6 text-center">
       <div class="max-w-md">
         <ExclamationTriangleIcon class="w-12 h-12 text-amber-500 mx-auto mb-4" />
         <p class="text-lg font-medium mb-2">{{ error }}</p>
@@ -34,11 +36,11 @@
     </div>
 
     <!-- Step 1: Camera -->
-    <div v-show="step === 'camera'" class="relative flex-1 bg-black flex flex-col">
+    <div v-show="step === 'camera'" class="relative flex-1 bg-black flex flex-col h-full">
       <video ref="video" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
       
       <!-- Note Input Overlay -->
-      <div v-if="showNoteInput" class="absolute inset-0 z-30 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div v-if="showNoteInput" class="absolute inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-zinc-900 border border-zinc-700 p-6 rounded-2xl w-full max-w-sm shadow-2xl">
           <h3 class="text-lg font-semibold mb-4 text-white">Add Note</h3>
           <textarea 
@@ -53,7 +55,7 @@
         </div>
       </div>
 
-      <!-- Controls -->
+      <!-- Camera Controls Footer -->
       <div class="absolute bottom-0 left-0 right-0 p-8 pb-12 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex justify-between items-center z-20">
         <button @click="showNoteInput = true" class="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition relative group">
           <PencilSquareIcon class="w-6 h-6 text-white" />
@@ -68,23 +70,30 @@
       </div>
     </div>
 
-    <!-- Step 2: Review & Crop -->
-    <div v-show="step === 'review'" class="relative flex-1 bg-black flex flex-col">
-      <div class="flex-1 relative bg-zinc-900 overflow-hidden">
-        <img ref="imagePreview" :src="capturedImage" class="max-w-full max-h-full block" />
+    <!-- Step 2: Review & Perspective Crop -->
+    <div v-if="step === 'review'" class="flex flex-col h-full bg-zinc-900">
+      <!-- Cropper Container (Flex Grow) -->
+      <div class="flex-1 relative overflow-hidden bg-black/50">
+        <PerspectiveCropper 
+          ref="cropperRef"
+          :src="capturedImage"
+          :initial-rect="detectedRect"
+          @update:points="onPointsUpdate"
+        />
         
-        <!-- Loading Overlay for Processing -->
+        <!-- Loading Overlay -->
         <div v-if="processing || detecting" class="absolute inset-0 z-50 bg-black/50 flex items-center justify-center">
             <div class="bg-zinc-900 px-6 py-4 rounded-xl flex items-center gap-3 border border-zinc-700 shadow-xl">
                 <span class="animate-spin rounded-full h-5 w-5 border-2 border-amber-500 border-t-transparent"></span>
-                <span class="text-white font-medium">{{ detecting ? 'Detecting document...' : 'Processing...' }}</span>
+                <span class="text-white font-medium">{{ detecting ? 'Detecting...' : 'Processing...' }}</span>
             </div>
         </div>
       </div>
 
-      <div class="p-6 bg-zinc-900 border-t border-zinc-800 flex justify-between items-center z-20 pb-10">
-        <div class="flex gap-2">
-            <button @click="retake" class="text-white/70 hover:text-white font-medium px-4 py-2">
+      <!-- Action Footer (Fixed Height) -->
+      <div class="h-24 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between px-6 z-30 shrink-0">
+        <div class="flex gap-4">
+            <button @click="retake" class="text-white/70 hover:text-white font-medium px-2 py-2">
             Retake
             </button>
             <button 
@@ -116,8 +125,7 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import { XMarkIcon, PencilSquareIcon, ExclamationTriangleIcon, SparklesIcon } from '@heroicons/vue/24/outline';
 import Toast from '@/Components/Common/Toast.vue';
-import Cropper from 'cropperjs';
-import 'cropperjs/dist/cropper.css';
+import PerspectiveCropper from './PerspectiveCropper.vue';
 import { jsPDF } from 'jspdf';
 
 // State
@@ -132,14 +140,16 @@ const cvLoaded = ref(false);
 
 // Refs
 const video = ref(null);
-const imagePreview = ref(null);
 const capturedImage = ref(null);
+const cropperRef = ref(null);
+const detectedRect = ref(null); // {x, y, width, height} passed to cropper
+const currentPoints = ref([]); // Points from cropper
+
 let stream = null;
-let cropper = null;
 
 // Load OpenCV
 const loadOpenCV = () => {
-  if (window.cv) {
+  if (window.cv && window.cv.getBuildInformation) {
     cvLoaded.value = true;
     return;
   }
@@ -147,21 +157,18 @@ const loadOpenCV = () => {
   script.src = '/vendor/opencv.js';
   script.async = true;
   script.onload = () => {
-    // OpenCV needs a moment to initialize wasm
     if (cv.getBuildInformation) {
         cvLoaded.value = true;
-        console.log('OpenCV loaded');
     } else {
         cv.onRuntimeInitialized = () => {
             cvLoaded.value = true;
-            console.log('OpenCV initialized');
         };
     }
   };
   document.body.appendChild(script);
 };
 
-// Document Detection Logic
+// Document Detection (simplified for initial rect, can be improved for polygons)
 const detectDocument = async (imgElement) => {
     if (!cvLoaded.value) return null;
     
@@ -187,7 +194,7 @@ const detectDocument = async (imgElement) => {
             let contour = contours.get(i);
             let area = cv.contourArea(contour);
             
-            if (area > 5000) { // Filter small noise
+            if (area > 5000) { 
                 let peri = cv.arcLength(contour, true);
                 let approx = new cv.Mat();
                 cv.approxPolyDP(contour, approx, 0.02 * peri, true);
@@ -214,23 +221,26 @@ const detectDocument = async (imgElement) => {
 };
 
 const runAutoDetect = async () => {
-    if (!cropper || !imagePreview.value || !cvLoaded.value) return;
-    
     detecting.value = true;
-    // Give UI a moment to show spinner
-    setTimeout(async () => {
-        const rect = await detectDocument(imagePreview.value);
+    // We need the image element from the cropper component
+    if (cropperRef.value && cropperRef.value.imageElement) {
+        const rect = await detectDocument(cropperRef.value.imageElement);
         if (rect) {
-            cropper.setData({
-                x: rect.x,
-                y: rect.y,
-                width: rect.width,
-                height: rect.height,
-                rotate: 0
-            });
+            // Force re-init of points in child by updating the prop key or logic
+            // For now, simple re-mount or method call would be better, but we rely on reactivity
+            detectedRect.value = rect;
+            // Trigger child update manually if needed, but prop change should handle it if implemented right.
+            // Since we passed rect as initial prop, we might need a method on child to 'reset'.
+            // For simplicity in this iteration:
+            step.value = 'review'; // Refresh
         }
-        detecting.value = false;
-    }, 100);
+    }
+    detecting.value = false;
+};
+
+// Update points from child
+const onPointsUpdate = (points) => {
+    currentPoints.value = points;
 };
 
 // Camera Logic
@@ -276,66 +286,110 @@ const capture = () => {
   ctx.drawImage(video.value, 0, 0);
   
   capturedImage.value = canvas.toDataURL('image/jpeg', 0.9);
-  stopCamera(); // Stop camera while reviewing
+  stopCamera(); 
   step.value = 'review';
   
-  // Initialize Cropper and Auto-Detect
+  // Attempt auto-detect immediately
   nextTick(async () => {
-    if (imagePreview.value) {
-      cropper = new Cropper(imagePreview.value, {
-        viewMode: 1,
-        dragMode: 'move',
-        autoCropArea: 0.8,
-        restore: false,
-        guides: true,
-        center: true,
-        highlight: false,
-        cropBoxMovable: true,
-        cropBoxResizable: true,
-        toggleDragModeOnDblclick: false,
-        ready() {
-            // Run auto-detect once cropper is ready
-            if (cvLoaded.value) {
-                runAutoDetect();
-            }
+    detecting.value = true;
+    if (cropperRef.value && cropperRef.value.imageElement) {
+        // Wait for image load
+        const img = cropperRef.value.imageElement;
+        if (img.complete) {
+            detectedRect.value = await detectDocument(img);
+        } else {
+            img.onload = async () => {
+                detectedRect.value = await detectDocument(img);
+            };
         }
-      });
     }
+    detecting.value = false;
   });
 };
 
 const retake = () => {
-  if (cropper) {
-    cropper.destroy();
-    cropper = null;
-  }
   capturedImage.value = null;
+  detectedRect.value = null;
   step.value = 'camera';
   startCamera();
 };
 
-// Processing & Upload Logic
+// --- Processing & Warping ---
+
 const processAndUpload = async () => {
-  if (!cropper) return;
+  if (!currentPoints.value || currentPoints.value.length !== 4) return;
   processing.value = true;
 
   try {
-    // 1. Get cropped canvas
-    const canvas = cropper.getCroppedCanvas({
-      maxWidth: 2048,
-      maxHeight: 2048,
-      fillColor: '#fff',
-    });
+    const srcImg = cropperRef.value.imageElement;
+    const srcMat = cv.imread(srcImg);
+    
+    // Sort points: TL, TR, BR, BL
+    // currentPoints are {x, y} relative to natural image size
+    const pts = currentPoints.value;
+    
+    // Simple sort based on x/y to ensure order (TL, TR, BR, BL)
+    // 1. Sort by Y
+    pts.sort((a, b) => a.y - b.y);
+    // 2. Top two are TL/TR, Bottom two are BL/BR
+    const top = pts.slice(0, 2).sort((a, b) => a.x - b.x);
+    const bottom = pts.slice(2, 4).sort((a, b) => b.x - a.x); // BR is last
+    // Correct order: TL, TR, BR, BL (OpenCV perspective standard is often 4 points in order)
+    const sortedPts = [top[0], top[1], bottom[0], bottom[1]];
+
+    // Determine output width/height
+    const widthTop = Math.hypot(sortedPts[1].x - sortedPts[0].x, sortedPts[1].y - sortedPts[0].y);
+    const widthBottom = Math.hypot(sortedPts[2].x - sortedPts[3].x, sortedPts[2].y - sortedPts[3].y);
+    const maxWidth = Math.max(widthTop, widthBottom);
+
+    const heightLeft = Math.hypot(sortedPts[0].x - sortedPts[3].x, sortedPts[0].y - sortedPts[3].y);
+    const heightRight = Math.hypot(sortedPts[1].x - sortedPts[2].x, sortedPts[1].y - sortedPts[2].y);
+    const maxHeight = Math.max(heightLeft, heightRight);
+
+    // Source points matrix
+    const srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
+        sortedPts[0].x, sortedPts[0].y,
+        sortedPts[1].x, sortedPts[1].y,
+        sortedPts[2].x, sortedPts[2].y,
+        sortedPts[3].x, sortedPts[3].y
+    ]);
+
+    // Destination points matrix (rect)
+    const dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
+        0, 0,
+        maxWidth, 0,
+        maxWidth, maxHeight,
+        0, maxHeight
+    ]);
+
+    // Compute Homography
+    const M = cv.getPerspectiveTransform(srcTri, dstTri);
+    const dstMat = new cv.Mat();
+    const dsize = new cv.Size(maxWidth, maxHeight);
+    
+    // Warp
+    cv.warpPerspective(srcMat, dstMat, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
+
+    // Convert back to canvas/blob
+    const canvas = document.createElement('canvas');
+    cv.imshow(canvas, dstMat);
+    
+    // Clean up mats
+    srcMat.delete();
+    dstMat.delete();
+    srcTri.delete();
+    dstTri.delete();
+    M.delete();
 
     // 2. Generate PDF
     const imgData = canvas.toDataURL('image/jpeg', 0.85);
     const pdf = new jsPDF({
-      orientation: canvas.width > canvas.height ? 'l' : 'p',
+      orientation: maxWidth > maxHeight ? 'l' : 'p',
       unit: 'px',
-      format: [canvas.width, canvas.height]
+      format: [maxWidth, maxHeight]
     });
     
-    pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+    pdf.addImage(imgData, 'JPEG', 0, 0, maxWidth, maxHeight);
     const pdfBlob = pdf.output('blob');
     
     // 3. Prepare Form Data
@@ -352,15 +406,11 @@ const processAndUpload = async () => {
     router.post(route('documents.store'), formData, {
       forceFormData: true,
       onSuccess: () => {
-        // Redirect is handled by the controller, but we can clean up here if needed
+         // Done
       },
       onError: (errors) => {
         processing.value = false;
-        error.value = "Upload failed. " + Object.values(errors).join(', ');
-        // Don't reset state fully so they can try again
-      },
-      onFinish: () => {
-         // processing.value = false; // Usually handled by redirect
+        error.value = "Upload failed: " + Object.values(errors).join(', ');
       }
     });
 
@@ -379,24 +429,5 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopCamera();
-  if (cropper) {
-    cropper.destroy();
-  }
 });
 </script>
-
-<style>
-/* Override Cropper styles for dark mode better visibility if needed */
-.cropper-modal {
-  background-color: rgba(0, 0, 0, 0.8);
-}
-.cropper-view-box {
-  outline: 2px solid #f59e0b; /* Amber-500 */
-}
-.cropper-line {
-  background-color: #f59e0b;
-}
-.cropper-point {
-  background-color: #f59e0b;
-}
-</style>

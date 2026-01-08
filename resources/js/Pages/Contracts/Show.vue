@@ -99,7 +99,8 @@
               <p class="text-sm text-green-700 dark:text-green-300 mb-2">Payment Schedule:</p>
               <ul class="space-y-1 text-sm text-green-800 dark:text-green-200">
                 <li v-for="(payment, index) in contract.payment_schedule" :key="index">
-                  {{ payment.description || 'Payment' }}: {{ formatCurrency(payment.amount) }} - {{ formatDate(payment.date) }}
+                  {{ paymentLabel(payment) }}: {{ formatCurrency(payment.amount) }}
+                  <span v-if="paymentDate(payment)">- {{ formatDate(paymentDate(payment)) }}</span>
                 </li>
               </ul>
             </div>
@@ -231,7 +232,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Head, Link, router } from '@inertiajs/vue3'
+import { Head, Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 const props = defineProps({
@@ -288,5 +289,13 @@ function formatCurrency(amount) {
 function formatDate(date) {
   if (!date) return 'N/A'
   return new Date(date).toLocaleDateString('no-NO')
+}
+
+function paymentLabel(payment) {
+  return payment.description || payment.milestone || payment.label || 'Payment'
+}
+
+function paymentDate(payment) {
+  return payment.date || payment.due_date || payment.scheduled_at || null
 }
 </script>

@@ -48,6 +48,8 @@
           v-for="voucher in filteredVouchers"
           :key="voucher.id"
           :voucher="voucher"
+          @redeem="markAsRedeemed"
+          @view="viewVoucher"
         />
       </div>
 
@@ -115,5 +117,19 @@ function isExpired(voucher) {
 function applyFilters() {
   // Optionally, you can debounce this or update URL params
   // For now, the computed property handles filtering reactively
+}
+
+function viewVoucher(id) {
+  router.visit(route('vouchers.show', id))
+}
+
+function markAsRedeemed(id) {
+  if (!confirm('Are you sure you want to mark this voucher as redeemed?')) {
+    return
+  }
+
+  router.post(route('vouchers.redeem', id), {}, {
+    preserveScroll: true,
+  })
 }
 </script>

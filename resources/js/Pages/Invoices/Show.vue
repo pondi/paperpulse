@@ -77,6 +77,25 @@
           </div>
         </div>
 
+        <!-- References -->
+        <div
+          v-if="invoice.payment_method || invoice.purchase_order_number || invoice.reference_number"
+          class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
+        >
+          <div v-if="invoice.payment_method">
+            <dt class="text-sm text-gray-600 dark:text-gray-400">Payment Method</dt>
+            <dd class="font-medium text-gray-900 dark:text-gray-100">{{ invoice.payment_method }}</dd>
+          </div>
+          <div v-if="invoice.purchase_order_number">
+            <dt class="text-sm text-gray-600 dark:text-gray-400">Purchase Order</dt>
+            <dd class="font-medium text-gray-900 dark:text-gray-100">{{ invoice.purchase_order_number }}</dd>
+          </div>
+          <div v-if="invoice.reference_number">
+            <dt class="text-sm text-gray-600 dark:text-gray-400">Reference Number</dt>
+            <dd class="font-medium text-gray-900 dark:text-gray-100">{{ invoice.reference_number }}</dd>
+          </div>
+        </div>
+
         <!-- Line Items -->
         <div v-if="invoice.line_items && invoice.line_items.length > 0" class="mb-8">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Line Items</h3>
@@ -150,15 +169,49 @@
           <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ invoice.notes }}</p>
         </div>
 
-        <!-- Actions -->
-        <div class="mt-6 flex space-x-3">
-          <Link
-            v-if="invoice.file_id"
-            :href="route('files.show', invoice.file_id)"
-            class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-lg transition"
-          >
-            View Original File
-          </Link>
+        <!-- File Preview & Actions -->
+        <div v-if="invoice.file" class="mt-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Original File</h3>
+          <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+            <div v-if="invoice.file.has_preview" class="mb-4">
+              <img
+                :src="invoice.file.previewUrl || invoice.file.url"
+                :alt="`Invoice ${invoice.invoice_number}`"
+                class="w-full rounded-lg"
+              />
+            </div>
+            <div class="flex flex-wrap gap-3">
+              <a
+                v-if="invoice.file.pdfUrl"
+                :href="invoice.file.pdfUrl"
+                target="_blank"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition inline-flex items-center"
+              >
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                View PDF
+              </a>
+              <a
+                :href="invoice.file.url"
+                download
+                class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-lg transition inline-flex items-center"
+              >
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download
+              </a>
+              <Link
+                v-if="invoice.file_id"
+                :href="route('files.show', invoice.file_id)"
+                class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg transition"
+              >
+                Open File Details
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -181,7 +234,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { Link } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 
 const props = defineProps({

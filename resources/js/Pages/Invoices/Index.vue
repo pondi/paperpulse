@@ -49,6 +49,7 @@
           v-for="invoice in filteredInvoices"
           :key="invoice.id"
           :invoice="invoice"
+          @view="viewInvoice"
         />
       </div>
 
@@ -108,5 +109,9 @@ const filteredInvoices = computed(() => {
 
 function applyFilters() {
   // Filters are applied reactively via computed property
+}
+
+function viewInvoice(id) {
+  router.visit(route('invoices.show', id))
 }
 </script>

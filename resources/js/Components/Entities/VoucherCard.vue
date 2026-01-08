@@ -3,7 +3,7 @@
     <div class="flex justify-between items-start mb-4">
       <div class="flex-1">
         <h3 class="font-semibold text-lg text-zinc-900 dark:text-zinc-100">{{ voucherTypeLabel }}</h3>
-        <p v-if="voucher.merchant" class="text-sm text-zinc-600 dark:text-zinc-400">{{ voucher.merchant.name }}</p>
+        <p v-if="merchantName" class="text-sm text-zinc-600 dark:text-zinc-400">{{ merchantName }}</p>
       </div>
       <span
         v-if="!voucher.is_redeemed && !isExpired"
@@ -104,6 +104,10 @@ const voucherTypeLabel = computed(() => {
     'promo_code': 'Promo Code'
   };
   return labels[props.voucher.voucher_type] || 'Voucher';
+});
+
+const merchantName = computed(() => {
+  return props.voucher.merchant?.name || props.voucher.merchant_name || null;
 });
 
 const isPaymentPlan = computed(() => {

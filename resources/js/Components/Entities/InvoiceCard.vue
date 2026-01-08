@@ -39,8 +39,8 @@
         </div>
       </div>
 
-      <div v-if="invoice.line_items && invoice.line_items.length > 0" class="text-xs text-zinc-600 dark:text-zinc-400">
-        <p class="font-medium mb-1">{{ invoice.line_items.length }} line item(s)</p>
+      <div v-if="lineItemsCount > 0" class="text-xs text-zinc-600 dark:text-zinc-400">
+        <p class="font-medium mb-1">{{ lineItemsCount }} line item(s)</p>
       </div>
 
       <div v-if="invoice.payment_terms" class="text-xs text-zinc-600 dark:text-zinc-400 border-t border-zinc-200 dark:border-zinc-700 pt-3">
@@ -79,6 +79,18 @@ defineEmits(['view']);
 const isOverdue = computed(() => {
   if (!props.invoice.due_date) return false;
   return new Date(props.invoice.due_date) < new Date() && props.invoice.payment_status !== 'paid';
+});
+
+const lineItemsCount = computed(() => {
+  if (typeof props.invoice.line_items_count === 'number') {
+    return props.invoice.line_items_count;
+  }
+
+  if (Array.isArray(props.invoice.line_items)) {
+    return props.invoice.line_items.length;
+  }
+
+  return 0;
 });
 
 const paymentStatusLabel = computed(() => {

@@ -51,6 +51,7 @@
           v-for="contract in filteredContracts"
           :key="contract.id"
           :contract="contract"
+          @view="viewContract"
         />
       </div>
 
@@ -109,5 +110,9 @@ const filteredContracts = computed(() => {
 
 function applyFilters() {
   // Filters are applied reactively via computed property
+}
+
+function viewContract(id) {
+  router.visit(route('contracts.show', id))
 }
 </script>

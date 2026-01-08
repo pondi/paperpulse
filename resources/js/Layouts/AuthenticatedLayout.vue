@@ -244,9 +244,6 @@ import {
   UserCircleIcon,
   TagIcon,
   DocumentTextIcon,
-  TicketIcon,
-  DocumentCheckIcon,
-  BanknotesIcon,
   ShieldCheckIcon,
   QrCodeIcon,
 } from '@heroicons/vue/24/outline'
@@ -285,27 +282,32 @@ const navigationItems = [
     name: 'receipts',
     href: route('receipts.index'),
     icon: DocumentDuplicateIcon,
-    current: route().current('receipts.*') || route().current('merchants.*') || route().current('vendors.*'),
+    current: route().current('receipts.*')
+      || route().current('merchants.*')
+      || route().current('vendors.*')
+      || route().current('vouchers.*'),
     children: [
       { name: 'all_receipts', href: route('receipts.index'), current: route().current('receipts.index') },
       { name: 'merchants', href: route('merchants.index'), current: route().current('merchants.*') },
       { name: 'vendors', href: route('vendors.index'), current: route().current('vendors.index') },
+      { name: 'vouchers', href: route('vouchers.index'), current: route().current('vouchers.*') },
     ]
   },
-  { name: 'invoices', href: route('invoices.index'), icon: BanknotesIcon, current: route().current('invoices.*') },
-  { name: 'contracts', href: route('contracts.index'), icon: DocumentCheckIcon, current: route().current('contracts.*') },
-  { name: 'vouchers', href: route('vouchers.index'), icon: TicketIcon, current: route().current('vouchers.*') },
 
   // General Documents
   {
     name: 'documents',
     href: route('documents.index'),
     icon: FolderIcon,
-    current: route().current('documents.*') && !route().current('documents.upload'),
+    current: (route().current('documents.*') && !route().current('documents.upload'))
+      || route().current('invoices.*')
+      || route().current('contracts.*'),
     children: [
       { name: 'all_documents', href: route('documents.index'), current: route().current('documents.index') },
       { name: 'shared_with_me', href: route('documents.shared'), current: route().current('documents.shared') },
       { name: 'categories', href: route('documents.categories'), current: route().current('documents.categories') },
+      { name: 'invoices', href: route('invoices.index'), current: route().current('invoices.*') },
+      { name: 'contracts', href: route('contracts.index'), current: route().current('contracts.*') },
     ]
   },
 

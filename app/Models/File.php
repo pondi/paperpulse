@@ -6,6 +6,7 @@ use App\Traits\BelongsToUser;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * App\\Models\\File
@@ -22,6 +23,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property Carbon|null $uploaded_at
  * @property Carbon|null $file_created_at
  * @property Carbon|null $file_modified_at
+ * @property-read \Illuminate\Database\Eloquent\Collection|Collection[] $collections
+ * @property-read Receipt|null $primaryReceipt
+ * @property-read Document|null $primaryDocument
+ * @property-read ExtractableEntity|null $primaryEntity
  */
 class File extends Model
 {
@@ -112,6 +117,12 @@ class File extends Model
     public function shares()
     {
         return $this->hasMany(FileShare::class);
+    }
+
+    public function collections(): BelongsToMany
+    {
+        return $this->belongsToMany(Collection::class)
+            ->withTimestamps();
     }
 
     /**

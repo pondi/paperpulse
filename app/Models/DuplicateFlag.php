@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DuplicateFlag extends Model
 {
@@ -25,12 +26,12 @@ class DuplicateFlag extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function file(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function file(): BelongsTo
     {
         return $this->belongsTo(File::class, 'file_id');
     }
 
-    public function duplicateFile(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function duplicateFile(): BelongsTo
     {
         return $this->belongsTo(File::class, 'duplicate_file_id');
     }

@@ -17,6 +17,8 @@ class StoreFileRequest extends FormRequest
             'file' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif|max:102400', // 100MB
             'file_type' => 'required|in:receipt,document',
             'note' => 'nullable|string|max:1000',
+            'collection_ids' => 'nullable|array',
+            'collection_ids.*' => 'integer|exists:collections,id',
         ];
     }
 

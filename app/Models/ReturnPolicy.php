@@ -9,6 +9,7 @@ use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Laravel\Scout\Searchable;
 
 class ReturnPolicy extends Model implements Taggable
@@ -49,17 +50,17 @@ class ReturnPolicy extends Model implements Taggable
         'restocking_fee_percentage' => 'decimal:2',
     ];
 
-    public function receipt(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function receipt(): BelongsTo
     {
         return $this->belongsTo(Receipt::class);
     }
 
-    public function invoice(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
     }
 
-    public function merchant(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function merchant(): BelongsTo
     {
         return $this->belongsTo(Merchant::class);
     }

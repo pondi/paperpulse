@@ -6,6 +6,8 @@ import Modal from '@/Components/Common/Modal.vue';
 import TagManager from '@/Components/Domain/TagManager.vue';
 import SharingControls from '@/Components/Domain/SharingControls.vue';
 import DocumentImage from '@/Components/Domain/DocumentImage.vue';
+import CollectionSelector from '@/Components/Domain/CollectionSelector.vue';
+import CollectionBadge from '@/Components/Domain/CollectionBadge.vue';
 import {
     DocumentIcon,
     FolderIcon,
@@ -13,7 +15,8 @@ import {
     TrashIcon,
     PencilIcon,
     CheckIcon,
-    ArrowLeftIcon
+    ArrowLeftIcon,
+    RectangleStackIcon
 } from '@heroicons/vue/24/outline';
 
 interface Tag {
@@ -25,6 +28,13 @@ interface Tag {
 interface Category {
     id: number;
     name: string;
+    color: string;
+}
+
+interface Collection {
+    id: number;
+    name: string;
+    icon: string;
     color: string;
 }
 
@@ -54,11 +64,13 @@ interface FileInfo {
 
 interface Document {
     id: number;
+    file_id: number;
     title: string;
     summary: string | null;
     note: string | null;
     category_id: number | null;
     tags: Tag[];
+    collections: Collection[];
     shared_users: SharedUser[];
     created_at: string | null;
     updated_at: string | null;
@@ -76,6 +88,7 @@ const props = defineProps<Props>();
 const isEditing = ref(false);
 const showDeleteModal = ref(false);
 const documentTags = ref(props.document.tags);
+const documentCollections = ref<number[]>(props.document.collections?.map(c => c.id) || []);
 const editedDocument = ref({
     title: props.document.title,
     summary: props.document.summary,
@@ -153,6 +166,35 @@ const handleTagRemoved = (tag: Tag) => {
     } else {
         router.delete(route('documents.tags.destroy', [props.document.id, tag.id]), {
             preserveScroll: true
+        });
+    }
+};
+
+const handleCollectionsChanged = (collectionIds: number[]) => {
+    documentCollections.value = collectionIds;
+
+    // If not in edit mode, save immediately
+    if (!isEditing.value && props.document.file_id) {
+        // Find collections to add and remove
+        const currentIds = props.document.collections?.map(c => c.id) || [];
+        const toAdd = collectionIds.filter(id => !currentIds.includes(id));
+        const toRemove = currentIds.filter(id => !collectionIds.includes(id));
+
+        // Add to new collections
+        toAdd.forEach(collectionId => {
+            router.post(route('collections.files.add', collectionId), {
+                file_ids: [props.document.file_id]
+            }, {
+                preserveScroll: true
+            });
+        });
+
+        // Remove from old collections
+        toRemove.forEach(collectionId => {
+            router.delete(route('collections.files.remove', collectionId), {
+                data: { file_ids: [props.document.file_id] },
+                preserveScroll: true
+            });
         });
     }
 };
@@ -320,6 +362,31 @@ const getDocumentTypeClass = () => {
                             @tag-added="handleTagAdded"
                             @tag-removed="handleTagRemoved"
                         />
+                    </div>
+
+                    <!-- Collections -->
+                    <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
+                        <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200 mb-4 flex items-center gap-2">
+                            <RectangleStackIcon class="size-5" />
+                            Collections
+                        </h3>
+                        <CollectionSelector
+                            v-model="documentCollections"
+                            placeholder="Add to collections..."
+                            :allow-create="true"
+                            @update:model-value="handleCollectionsChanged"
+                        />
+                        <div v-if="document.collections && document.collections.length > 0" class="mt-3 flex flex-wrap gap-2">
+                            <CollectionBadge
+                                v-for="collection in document.collections"
+                                :key="collection.id"
+                                :collection="collection"
+                                :linkable="true"
+                            />
+                        </div>
+                        <p v-else class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                            Not assigned to any collections
+                        </p>
                     </div>
 
                     <!-- File Metadata -->

@@ -13,7 +13,7 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    \Mockery::close();
+    Mockery::close();
 });
 
 it('requires authentication for v1 search', function () {
@@ -25,7 +25,7 @@ it('returns lightweight search results with content links', function () {
     $user = User::factory()->create();
     Sanctum::actingAs($user);
 
-    $mock = \Mockery::mock(SearchService::class);
+    $mock = Mockery::mock(SearchService::class);
     $mock->shouldReceive('search')
         ->once()
         ->andReturn([

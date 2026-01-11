@@ -93,3 +93,4 @@ require __DIR__.'/web/files.php';
 require __DIR__.'/web/profile.php';
 require __DIR__.'/web/admin.php';
 require __DIR__.'/web/integrations.php';
+require __DIR__.'/web/collections.php';

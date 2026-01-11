@@ -41,14 +41,27 @@
       
       <!-- Note Input Overlay -->
       <div v-if="showNoteInput" class="absolute inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-zinc-900 border border-zinc-700 p-6 rounded-2xl w-full max-w-sm shadow-2xl">
-          <h3 class="text-lg font-semibold mb-4 text-white">Add Note</h3>
-          <textarea 
-            v-model="note" 
-            rows="4" 
-            class="w-full bg-zinc-800 border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:ring-amber-500 focus:border-amber-500"
-            placeholder="Details about this scan..."
-          ></textarea>
+        <div class="bg-zinc-900 border border-zinc-700 p-6 rounded-2xl w-full max-w-md shadow-2xl">
+          <h3 class="text-lg font-semibold mb-4 text-white">Add Details</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-zinc-300 mb-2">Note</label>
+              <textarea
+                v-model="note"
+                rows="3"
+                class="w-full bg-zinc-800 border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:ring-amber-500 focus:border-amber-500"
+                placeholder="Details about this scan..."
+              ></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-zinc-300 mb-2">Collections</label>
+              <CollectionSelector
+                v-model="collectionIds"
+                placeholder="Search or create collections..."
+                :allow-create="true"
+              />
+            </div>
+          </div>
           <div class="mt-4 flex justify-end gap-3">
             <button @click="showNoteInput = false" class="px-4 py-2 text-zinc-300 hover:text-white">Done</button>
           </div>
@@ -126,12 +139,14 @@ import { Link, router } from '@inertiajs/vue3';
 import { XMarkIcon, PencilSquareIcon, ExclamationTriangleIcon, SparklesIcon } from '@heroicons/vue/24/outline';
 import Toast from '@/Components/Common/Toast.vue';
 import PerspectiveCropper from './PerspectiveCropper.vue';
+import CollectionSelector from '@/Components/Domain/CollectionSelector.vue';
 import { jsPDF } from 'jspdf';
 
 // State
 const step = ref('camera'); // 'camera', 'review'
 const mode = ref('receipt'); // 'receipt', 'document'
 const note = ref('');
+const collectionIds = ref([]);
 const showNoteInput = ref(false);
 const error = ref(null);
 const processing = ref(false);
@@ -505,12 +520,18 @@ const processAndUpload = async () => {
     if (note.value) {
       formData.append('note', note.value);
     }
+    if (collectionIds.value.length > 0) {
+      collectionIds.value.forEach((id, index) => {
+        formData.append(`collection_ids[${index}]`, id);
+      });
+    }
 
     // 4. Upload
     router.post(route('documents.store'), formData, {
       forceFormData: true,
       onSuccess: () => {
-         // Done
+         note.value = '';
+         collectionIds.value = [];
       },
       onError: (errors) => {
         processing.value = false;

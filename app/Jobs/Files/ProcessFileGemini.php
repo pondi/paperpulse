@@ -8,6 +8,9 @@ use App\Models\File;
 use App\Models\FileProcessingAnalytic;
 use App\Models\Invoice;
 use App\Models\Receipt;
+use App\Services\AI\Extractors\EntityExtractorFactory;
+use App\Services\AI\FileManager\GeminiFileManager;
+use App\Services\AI\TypeClassification\GeminiTypeClassifier;
 use App\Services\DuplicateDetectionService;
 use App\Services\EntityFactory;
 use App\Services\Files\FilePreviewManager;
@@ -82,8 +85,8 @@ class ProcessFileGemini extends BaseJob
         }
 
         $workerFileManager = app(WorkerFileManager::class);
-        $fileManager = app(\App\Services\AI\FileManager\GeminiFileManager::class);
-        $classifier = app(\App\Services\AI\TypeClassification\GeminiTypeClassifier::class);
+        $fileManager = app(GeminiFileManager::class);
+        $classifier = app(GeminiTypeClassifier::class);
         $entityFactory = app(EntityFactory::class);
         $previewManager = app(FilePreviewManager::class);
 
@@ -144,13 +147,13 @@ class ProcessFileGemini extends BaseJob
                     ]);
 
                     // Check if extractor exists for this type
-                    if (! \App\Services\AI\Extractors\EntityExtractorFactory::hasExtractor($classification->type)) {
+                    if (! EntityExtractorFactory::hasExtractor($classification->type)) {
                         throw new Exception(
                             "No extractor implemented for type '{$classification->type}'. Currently only 'receipt' is supported."
                         );
                     }
 
-                    $extractor = \App\Services\AI\Extractors\EntityExtractorFactory::create($classification->type);
+                    $extractor = EntityExtractorFactory::create($classification->type);
                     $extracted = $extractor->extract($fileUri, $file, [
                         'classification' => $classification,
                     ]);

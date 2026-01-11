@@ -93,6 +93,31 @@
             />
           </div>
 
+          <!-- Collections -->
+          <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
+            <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200 mb-4 flex items-center gap-2">
+              <RectangleStackIcon class="size-5" />
+              {{ __('collections') || 'Collections' }}
+            </h3>
+            <CollectionSelector
+              v-model="receiptCollections"
+              placeholder="Add to collections..."
+              :allow-create="true"
+              @update:model-value="handleCollectionsChanged"
+            />
+            <div v-if="receipt.collections && receipt.collections.length > 0" class="mt-3 flex flex-wrap gap-2">
+              <CollectionBadge
+                v-for="collection in receipt.collections"
+                :key="collection.id"
+                :collection="collection"
+                :linkable="true"
+              />
+            </div>
+            <p v-else class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+              {{ __('not_assigned_to_collections') || 'Not assigned to any collections' }}
+            </p>
+          </div>
+
           <!-- Line Items -->
           <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
             <div class="flex items-center justify-between mb-6">
@@ -212,12 +237,15 @@ import SharingControls from '@/Components/Domain/SharingControls.vue';
 import TagManager from '@/Components/Domain/TagManager.vue';
 import ReceiptImage from '@/Components/Domain/ReceiptImage.vue';
 import DatePicker from '@/Components/Forms/DatePicker.vue';
+import CollectionSelector from '@/Components/Domain/CollectionSelector.vue';
+import CollectionBadge from '@/Components/Domain/CollectionBadge.vue';
 import {
   ArrowLeftIcon,
   PencilIcon,
   CheckIcon,
   PlusIcon,
-  ReceiptRefundIcon
+  ReceiptRefundIcon,
+  RectangleStackIcon
 } from '@heroicons/vue/24/outline';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 
@@ -237,6 +265,7 @@ const showAddLineItem = ref(false);
 const editingLineItem = ref(null);
 const editedReceipt = ref({ ...props.receipt });
 const receiptTags = ref(props.receipt.tags || []);
+const receiptCollections = ref(props.receipt.collections?.map(c => c.id) || []);
 
 // Format date for HTML date input (YYYY-MM-DD format)
 const formatDateForInput = (date) => {
@@ -312,6 +341,35 @@ const handleTagRemoved = (tag) => {
       onSuccess: () => {
         receiptTags.value = receiptTags.value.filter(t => t.id !== tag.id);
       }
+    });
+  }
+};
+
+const handleCollectionsChanged = (collectionIds) => {
+  receiptCollections.value = collectionIds;
+
+  // If not in edit mode, save immediately
+  if (!isEditing.value && props.receipt.file_id) {
+    // Find collections to add and remove
+    const currentIds = props.receipt.collections?.map(c => c.id) || [];
+    const toAdd = collectionIds.filter(id => !currentIds.includes(id));
+    const toRemove = currentIds.filter(id => !collectionIds.includes(id));
+
+    // Add to new collections
+    toAdd.forEach(collectionId => {
+      router.post(route('collections.files.add', collectionId), {
+        file_ids: [props.receipt.file_id]
+      }, {
+        preserveScroll: true
+      });
+    });
+
+    // Remove from old collections
+    toRemove.forEach(collectionId => {
+      router.delete(route('collections.files.remove', collectionId), {
+        data: { file_ids: [props.receipt.file_id] },
+        preserveScroll: true
+      });
     });
   }
 };

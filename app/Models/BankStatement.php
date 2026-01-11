@@ -9,6 +9,7 @@ use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Scout\Searchable;
 
 class BankStatement extends Model implements Taggable
@@ -51,7 +52,7 @@ class BankStatement extends Model implements Taggable
         'total_debits' => 'decimal:2',
     ];
 
-    public function transactions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function transactions(): HasMany
     {
         return $this->hasMany(BankTransaction::class);
     }

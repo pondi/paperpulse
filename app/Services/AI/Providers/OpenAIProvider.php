@@ -69,7 +69,7 @@ class OpenAIProvider implements AIService
 
             try {
                 $response = OpenAI::chat()->create($requestPayload);
-            } catch (\Exception $apiError) {
+            } catch (Exception $apiError) {
                 Log::error('[OpenAIProvider] OpenAI API call failed', [
                     'model' => $requestPayload['model'],
                     'error_message' => $apiError->getMessage(),

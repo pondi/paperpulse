@@ -9,18 +9,20 @@ use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Laravel\Scout\Searchable;
 
 /**
  * @property int $id
  * @property int $user_id
  * @property int|null $merchant_id
- * @property \Illuminate\Support\Carbon|null $expiry_date
+ * @property Carbon|null $expiry_date
  * @property bool $is_redeemed
- * @property-read \App\Models\User $user
- * @property-read \App\Models\Merchant|null $merchant
- * @property-read \App\Models\File|null $file
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Tag> $tags
+ * @property-read User $user
+ * @property-read Merchant|null $merchant
+ * @property-read File|null $file
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Tag> $tags
  */
 class Voucher extends Model implements Taggable
 {
@@ -69,7 +71,7 @@ class Voucher extends Model implements Taggable
         'monthly_payment' => 'decimal:2',
     ];
 
-    public function merchant(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function merchant(): BelongsTo
     {
         return $this->belongsTo(Merchant::class);
     }

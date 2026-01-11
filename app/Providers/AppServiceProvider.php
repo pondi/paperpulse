@@ -7,13 +7,21 @@ use App\Contracts\Services\ReceiptEnricherContract;
 use App\Contracts\Services\ReceiptParserContract;
 use App\Contracts\Services\ReceiptValidatorContract;
 use App\Listeners\CreateUserPreferences;
+use App\Models\BankStatement;
 use App\Models\Category;
+use App\Models\Collection;
+use App\Models\Contract;
 use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
+use App\Models\Invoice;
 use App\Models\Receipt;
+use App\Models\ReturnPolicy;
 use App\Models\Tag;
+use App\Models\Voucher;
+use App\Models\Warranty;
 use App\Policies\CategoryPolicy;
+use App\Policies\CollectionPolicy;
 use App\Policies\DocumentPolicy;
 use App\Policies\FilePolicy;
 use App\Policies\ReceiptPolicy;
@@ -21,6 +29,8 @@ use App\Policies\TagPolicy;
 use App\Services\AI\AIService;
 use App\Services\AI\AIServiceFactory;
 use App\Services\AI\PromptTemplateService;
+use App\Services\CollectionService;
+use App\Services\CollectionSharingService;
 use App\Services\DocumentAnalysisService;
 use App\Services\DocumentService;
 use App\Services\File\FileMetadataService;
@@ -127,6 +137,15 @@ class AppServiceProvider extends ServiceProvider
             return new SharingService;
         });
 
+        // Register Collection services
+        $this->app->singleton(CollectionService::class, function ($app) {
+            return new CollectionService;
+        });
+
+        $this->app->singleton(CollectionSharingService::class, function ($app) {
+            return new CollectionSharingService;
+        });
+
         // Register SearchService
         $this->app->singleton(SearchService::class, function ($app) {
             return new SearchService;
@@ -223,14 +242,14 @@ class AppServiceProvider extends ServiceProvider
 
         // Register polymorphic morph map for extractable entities
         Relation::morphMap([
-            'receipt' => \App\Models\Receipt::class,
-            'document' => \App\Models\Document::class,
-            'voucher' => \App\Models\Voucher::class,
-            'warranty' => \App\Models\Warranty::class,
-            'return_policy' => \App\Models\ReturnPolicy::class,
-            'invoice' => \App\Models\Invoice::class,
-            'contract' => \App\Models\Contract::class,
-            'bank_statement' => \App\Models\BankStatement::class,
+            'receipt' => Receipt::class,
+            'document' => Document::class,
+            'voucher' => Voucher::class,
+            'warranty' => Warranty::class,
+            'return_policy' => ReturnPolicy::class,
+            'invoice' => Invoice::class,
+            'contract' => Contract::class,
+            'bank_statement' => BankStatement::class,
         ]);
     }
 
@@ -292,5 +311,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Category::class, CategoryPolicy::class);
         Gate::policy(Document::class, DocumentPolicy::class);
         Gate::policy(Tag::class, TagPolicy::class);
+        Gate::policy(Collection::class, CollectionPolicy::class);
     }
 }

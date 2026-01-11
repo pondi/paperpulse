@@ -154,6 +154,15 @@ class FileProcessingService
             // Create file record in database with hash
             $file = $this->fileMetadata->createFileRecordFromData($fileData, $fileGuid, $fileType, $userId, $fileHash);
 
+            // Attach collections if specified
+            if (! empty($metadata['collection_ids'])) {
+                $file->collections()->sync($metadata['collection_ids']);
+                Log::debug("[FileProcessing] [{$jobName}] Collections attached to file", [
+                    'file_id' => $file->id,
+                    'collection_ids' => $metadata['collection_ids'],
+                ]);
+            }
+
             // Store original file to S3 storage bucket (permanent)
             $s3Path = $this->fileStorage->storeToS3(
                 $fileData['content'],

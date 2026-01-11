@@ -3,6 +3,7 @@
 namespace App\Policies\Concerns;
 
 use App\Models\User;
+use App\Services\CollectionSharingService;
 use App\Services\SharingService;
 use Illuminate\Database\Eloquent\Model;
 
@@ -14,6 +15,14 @@ trait ShareableFilePolicy
     protected function sharingService(): SharingService
     {
         return app(SharingService::class);
+    }
+
+    /**
+     * Lazily resolve the CollectionSharingService from the container.
+     */
+    protected function collectionSharingService(): CollectionSharingService
+    {
+        return app(CollectionSharingService::class);
     }
 
     /**
@@ -33,11 +42,21 @@ trait ShareableFilePolicy
     }
 
     /**
-     * View if user has view access via ownership or share.
+     * View if user has view access via ownership, share, or shared collection.
      */
     public function view(User $user, Model $model): bool
     {
-        return $this->sharingService()->userHasAccess($model, $user, 'view');
+        // Check direct access via ownership or share
+        if ($this->sharingService()->userHasAccess($model, $user, 'view')) {
+            return true;
+        }
+
+        // Check transitive access via shared collection (if model has a file relationship)
+        if (method_exists($model, 'file') && $model->file_id) {
+            return $this->collectionSharingService()->userHasTransitiveFileAccess($model->file_id, $user);
+        }
+
+        return false;
     }
 
     /**

@@ -2,15 +2,15 @@
 
 namespace App\Models;
 
+use App\Contracts\Taggable;
 use App\Traits\BelongsToUser;
 use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Laravel\Scout\Searchable;
-
 /**
  * Document Model
  *
@@ -38,7 +38,7 @@ use Laravel\Scout\Searchable;
  * @property-read Collection|Tag[] $tags
  * @property-read Collection|FileShare[] $shares
  */
-use App\Contracts\Taggable;
+use Laravel\Scout\Searchable;
 
 class Document extends Model implements Taggable
 {
@@ -143,14 +143,17 @@ class Document extends Model implements Taggable
     public function toSearchableArray()
     {
         // Load relationships if not already loaded
-        if (!$this->relationLoaded('category')) {
+        if (! $this->relationLoaded('category')) {
             $this->load('category');
         }
-        if (!$this->relationLoaded('tags')) {
+        if (! $this->relationLoaded('tags')) {
             $this->load('tags');
         }
-        if (!$this->relationLoaded('file')) {
+        if (! $this->relationLoaded('file')) {
             $this->load('file');
+        }
+        if (! $this->relationLoaded('file.collections')) {
+            $this->load('file.collections');
         }
 
         return [
@@ -168,6 +171,7 @@ class Document extends Model implements Taggable
             'document_date' => $this->document_date?->format('Y-m-d'),
             'category_name' => $this->category?->name,
             'tags' => $this->tags?->pluck('name')->toArray() ?? [],
+            'collections' => $this->file?->collections?->pluck('name')->toArray() ?? [],
             'file_name' => $this->file?->original_filename,
             'file_type' => $this->file?->mime_type,
             'file_size' => $this->file?->file_size,
@@ -189,8 +193,8 @@ class Document extends Model implements Taggable
     /**
      * Modify the query used to retrieve models when making all of the models searchable.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  Builder  $query
+     * @return Builder
      */
     public static function makeAllSearchableUsing($query)
     {
@@ -199,6 +203,7 @@ class Document extends Model implements Taggable
             'category',
             'tags',
             'file',
+            'file.collections',
         ]);
     }
 }

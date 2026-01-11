@@ -4,6 +4,7 @@ namespace App\Services\Files;
 
 use App\Contracts\Services\FileDuplicationContract;
 use App\Models\File;
+use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -80,7 +81,7 @@ class FileDuplicationService implements FileDuplicationContract
                     Storage::disk('s3')->delete($s3Path);
                     Log::info('Deleted duplicate file from S3', ['path' => $s3Path]);
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to delete duplicate file from S3', [
                     'path' => $s3Path,
                     'error' => $e->getMessage(),
@@ -96,7 +97,7 @@ class FileDuplicationService implements FileDuplicationContract
                     unlink($localPath);
                     Log::info('Deleted duplicate file from local filesystem', ['path' => $localPath]);
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to delete duplicate file from local filesystem', [
                     'path' => $localPath,
                     'error' => $e->getMessage(),

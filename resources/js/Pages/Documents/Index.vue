@@ -3,8 +3,6 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import SearchBar from '@/Components/Features/SearchBar.vue';
-import Dropdown from '@/Components/Navigation/Dropdown.vue';
-import DropdownLink from '@/Components/Navigation/DropdownLink.vue';
 import Checkbox from '@/Components/Forms/Checkbox.vue';
 import Modal from '@/Components/Common/Modal.vue';
 import PdfViewer from '@/Components/Common/PdfViewer.vue';
@@ -385,12 +383,6 @@ const getShowRoute = (document: Document) => {
                             
                             <div class="mt-3 flex items-center justify-between">
                                 <div class="flex items-center space-x-2">
-                                    <Link
-                                        :href="getShowRoute(document)"
-                                        class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
-                                    >
-                                        <EyeIcon class="h-5 w-5" />
-                                    </Link>
                                     <div v-if="document.shared_with_count > 0" class="relative text-green-600 dark:text-green-400">
                                         <ShareIcon class="h-5 w-5" />
                                         <span class="absolute -top-2 -right-2 inline-flex items-center justify-center rounded-full bg-green-600 text-white text-[10px] h-4 min-w-4 px-1">
@@ -398,30 +390,29 @@ const getShowRoute = (document: Document) => {
                                         </span>
                                     </div>
                                 </div>
-                                <Dropdown align="right" width="48">
-                                    <template #trigger>
-                                        <button class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
-                                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                                            </svg>
-                                        </button>
-                                    </template>
-                                    <template #content>
-                                        <DropdownLink :href="route('documents.download', document.id)">
-                                            Download
-                                        </DropdownLink>
-                                        <DropdownLink :href="getShowRoute(document)">
-                                            View
-                                        </DropdownLink>
-                                        <DropdownLink
-                                            as="button"
-                                            @click="router.delete(route('documents.destroy', document.id))"
-                                            class="text-red-600 dark:text-red-400"
-                                        >
-                                            Delete
-                                        </DropdownLink>
-                                    </template>
-                                </Dropdown>
+                                <div class="flex items-center space-x-2">
+                                    <Link
+                                        :href="getShowRoute(document)"
+                                        class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
+                                        title="View"
+                                    >
+                                        <EyeIcon class="h-5 w-5" />
+                                    </Link>
+                                    <a
+                                        :href="route('documents.download', document.id)"
+                                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                                        title="Download"
+                                    >
+                                        <ArrowDownTrayIcon class="h-5 w-5" />
+                                    </a>
+                                    <button
+                                        @click="router.delete(route('documents.destroy', document.id))"
+                                        class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                        title="Delete"
+                                    >
+                                        <TrashIcon class="h-5 w-5" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -543,30 +534,29 @@ const getShowRoute = (document: Document) => {
                                         {{ formatDate(document.created_at) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <Dropdown align="right" width="48">
-                                            <template #trigger>
-                                                <button class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
-                                                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                                                    </svg>
-                                                </button>
-                                            </template>
-                                            <template #content>
-                                                <DropdownLink :href="getShowRoute(document)">
-                                                    View
-                                                </DropdownLink>
-                                                <DropdownLink :href="route('documents.download', document.id)">
-                                                    Download
-                                                </DropdownLink>
-                                                <DropdownLink
-                                                    as="button"
-                                                    @click="router.delete(route('documents.destroy', document.id))"
-                                                    class="text-red-600 dark:text-red-400"
-                                                >
-                                                    Delete
-                                                </DropdownLink>
-                                            </template>
-                                        </Dropdown>
+                                        <div class="flex items-center justify-end space-x-3">
+                                            <Link
+                                                :href="getShowRoute(document)"
+                                                class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
+                                                title="View"
+                                            >
+                                                <EyeIcon class="h-5 w-5" />
+                                            </Link>
+                                            <a
+                                                :href="route('documents.download', document.id)"
+                                                class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                                                title="Download"
+                                            >
+                                                <ArrowDownTrayIcon class="h-5 w-5" />
+                                            </a>
+                                            <button
+                                                @click="router.delete(route('documents.destroy', document.id))"
+                                                class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                                title="Delete"
+                                            >
+                                                <TrashIcon class="h-5 w-5" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>

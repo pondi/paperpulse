@@ -1,7 +1,7 @@
 <template>
   <div
-    class="group relative bg-white dark:bg-zinc-800 rounded-lg border border-amber-200 dark:border-zinc-700 hover:border-amber-300 dark:hover:border-amber-600 hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden"
-    @click="handleClick"
+    class="group relative bg-white dark:bg-zinc-800 rounded-lg border border-amber-200 dark:border-zinc-700 hover:border-amber-300 dark:hover:border-amber-600 hover:shadow-lg transition-all duration-200 overflow-hidden"
+    :class="{ 'ring-2 ring-amber-500 dark:ring-amber-400': selected }"
   >
     <!-- Type indicator stripe -->
     <div
@@ -10,6 +10,15 @@
     />
 
     <div class="flex gap-4 p-4 pl-5">
+      <!-- Selection checkbox -->
+      <div class="flex-shrink-0 flex items-center">
+        <input
+          type="checkbox"
+          :checked="selected"
+          @change.stop="emit('toggle-select')"
+          class="h-4 w-4 text-amber-600 focus:ring-amber-500 border-zinc-300 dark:border-zinc-600 rounded"
+        />
+      </div>
       <!-- Thumbnail (if available) -->
       <div
         v-if="result.file?.url"
@@ -31,7 +40,7 @@
       </div>
 
       <!-- Content -->
-      <div class="flex-1 min-w-0">
+      <div class="flex-1 min-w-0 cursor-pointer" @click="handleClick">
         <!-- Header -->
         <div class="flex items-start justify-between gap-2 mb-2">
           <div class="flex-1 min-w-0">
@@ -158,10 +167,14 @@ const props = defineProps({
   searchQuery: {
     type: String,
     default: ''
+  },
+  selected: {
+    type: Boolean,
+    default: false
   }
 });
 
-const emit = defineEmits(['preview', 'click']);
+const emit = defineEmits(['preview', 'click', 'toggle-select']);
 
 const handleImageError = (e) => {
   e.target.style.display = 'none';

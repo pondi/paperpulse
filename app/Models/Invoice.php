@@ -9,6 +9,8 @@ use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Scout\Searchable;
 
 class Invoice extends Model implements Taggable
@@ -71,17 +73,17 @@ class Invoice extends Model implements Taggable
         'amount_due' => 'decimal:2',
     ];
 
-    public function merchant(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function merchant(): BelongsTo
     {
         return $this->belongsTo(Merchant::class);
     }
 
-    public function category(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
-    public function lineItems(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function lineItems(): HasMany
     {
         return $this->hasMany(InvoiceLineItem::class);
     }

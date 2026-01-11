@@ -4,6 +4,7 @@ namespace App\Jobs\Documents;
 
 use App\Jobs\BaseJob;
 use App\Models\Document;
+use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Services\Files\FilePreviewManager;
 use App\Services\TextExtractionService;
@@ -280,7 +281,7 @@ class ProcessDocument extends BaseJob
                     ]);
 
                     // Also delete the extractable_entity record
-                    \App\Models\ExtractableEntity::where('file_id', $file->id)
+                    ExtractableEntity::where('file_id', $file->id)
                         ->where('entity_type', 'document')
                         ->where('entity_id', $existingDocument->id)
                         ->delete();
@@ -315,7 +316,7 @@ class ProcessDocument extends BaseJob
             $document->save();
 
             // Create extractable_entity record for consistency with Gemini pipeline
-            \App\Models\ExtractableEntity::create([
+            ExtractableEntity::create([
                 'file_id' => $file->id,
                 'user_id' => $file->user_id,
                 'entity_type' => 'document',

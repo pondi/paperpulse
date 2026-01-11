@@ -29,7 +29,7 @@ class DocumentController extends BaseResourceController
 
     protected array $indexWith = ['category', 'tags', 'sharedUsers', 'file'];
 
-    protected array $showWith = ['category', 'tags', 'sharedUsers', 'file'];
+    protected array $showWith = ['category', 'tags', 'sharedUsers', 'file.collections'];
 
     protected array $searchableFields = ['title', 'content', 'summary', 'note'];
 

@@ -3,6 +3,7 @@
 namespace App\Services\Analytics;
 
 use App\Models\FileProcessingAnalytic;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -19,7 +20,7 @@ class ProcessingAnalyticsService
      * Returns grouped data showing how many files failed classification
      * with "unknown" type, along with the AI's reasoning.
      *
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public function findUnknownDocumentTypes(int $limit = 20)
     {
@@ -40,7 +41,7 @@ class ProcessingAnalyticsService
      * Find low-confidence classifications that may need prompt refinement.
      *
      * @param  float  $threshold  Confidence threshold (default 0.7)
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public function findLowConfidenceClassifications(float $threshold = 0.7, int $limit = 50)
     {
@@ -65,7 +66,7 @@ class ProcessingAnalyticsService
      * Helps identify which extractors have validation issues
      * that need schema/prompt refinement.
      *
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public function findValidationFailuresByType(int $limit = 20)
     {
@@ -89,7 +90,7 @@ class ProcessingAnalyticsService
      * Shows how many files of each type are being processed
      * and their success/failure rates.
      *
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public function getDocumentTypeDistribution()
     {
@@ -114,7 +115,7 @@ class ProcessingAnalyticsService
      *
      * Shows common failure patterns to prioritize fixes.
      *
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public function getFailureDistribution()
     {
@@ -171,7 +172,7 @@ class ProcessingAnalyticsService
      *
      * Shows processing volume and success rate over time.
      *
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public function getProcessingTimeline(int $days = 7)
     {
@@ -194,7 +195,7 @@ class ProcessingAnalyticsService
      *
      * Identifies common validation issues to improve schema.
      *
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public function getValidationWarningsByType(string $documentType, int $limit = 20)
     {

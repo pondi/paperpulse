@@ -10,6 +10,7 @@ use App\Services\OCR\Textract\TextractResponseParser;
 use App\Services\OCR\TextractStorageBridge;
 use App\Services\StorageService;
 use Aws\Exception\AwsException;
+use Aws\Result;
 use Aws\Textract\TextractClient;
 use Exception;
 use Illuminate\Support\Facades\Log;
@@ -165,12 +166,14 @@ class TextractProvider implements OCRService
             // Check if required dependencies are available
             if (! extension_loaded('imagick')) {
                 Log::debug('[TextractProvider] Imagick not available for PDF page counting, assuming single page');
+
                 return 1;
             }
 
             $gsPath = exec('which gs 2>/dev/null');
             if (empty($gsPath)) {
                 Log::debug('[TextractProvider] Ghostscript not available for PDF page counting, assuming single page');
+
                 return 1;
             }
 
@@ -190,6 +193,7 @@ class TextractProvider implements OCRService
                 'file_path' => basename($filePath),
                 'error' => $e->getMessage(),
             ]);
+
             return 1; // Safe fallback
         }
     }
@@ -307,6 +311,7 @@ class TextractProvider implements OCRService
             // Fallback for unsupported PDFs
             if ($e->getAwsErrorCode() === 'UnsupportedDocumentException' && str_ends_with($s3Path, '.pdf')) {
                 Log::info('[TextractProvider] Attempting PDF to images fallback');
+
                 return TextractPdfImageProcessor::process($this->client, $this->bucket, $s3Path, $options);
             }
 
@@ -357,6 +362,7 @@ class TextractProvider implements OCRService
         // Handle expense analysis differently (doesn't use block streaming)
         if ($fileType === 'receipt') {
             $parsed = TextractResponseParser::parseExpense($response->toArray());
+
             return $this->cleanupBlocks($parsed);
         }
 
@@ -376,7 +382,7 @@ class TextractProvider implements OCRService
      * Poll Textract async job until completion.
      * Uses appropriate polling method based on file type (expense vs document).
      */
-    protected function pollForCompletion(string $jobId, string $fileType): \Aws\Result
+    protected function pollForCompletion(string $jobId, string $fileType): Result
     {
         $maxAttempts = config('ai.ocr.providers.textract.max_polling_attempts', 60);
         $pollingInterval = config('ai.ocr.providers.textract.polling_interval', 10);
@@ -409,6 +415,7 @@ class TextractProvider implements OCRService
                     'attempts' => $attempt,
                     'total_time' => $attempt * $pollingInterval,
                 ]);
+
                 return $response;
             }
 
@@ -427,7 +434,7 @@ class TextractProvider implements OCRService
      *
      * This avoids accumulating large block arrays in memory (which can exhaust the worker memory limit).
      */
-    protected function streamAsyncBlocksToDisk(string $jobId, \Aws\Result $response, string $fileType): array
+    protected function streamAsyncBlocksToDisk(string $jobId, Result $response, string $fileType): array
     {
         $baseDir = storage_path("app/textract/async/{$jobId}");
         if (! is_dir($baseDir) && ! mkdir($baseDir, 0755, true) && ! is_dir($baseDir)) {
@@ -768,6 +775,7 @@ class TextractProvider implements OCRService
         if (! (bool) config('ai.ocr.options.store_blocks', false)) {
             unset($parsed['blocks']);
         }
+
         return $parsed;
     }
 

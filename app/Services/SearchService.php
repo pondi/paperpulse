@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Document;
 use App\Models\Receipt;
-use Illuminate\Database\Eloquent\Model;
+use Exception;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -63,6 +63,7 @@ class SearchService
                 if (is_string($value) && $value !== '' && $value !== 'all') {
                     return true;
                 }
+
                 continue;
             }
 
@@ -70,6 +71,7 @@ class SearchService
                 if (! empty(array_filter($value, fn ($v) => $v !== null && $v !== ''))) {
                     return true;
                 }
+
                 continue;
             }
 
@@ -103,7 +105,7 @@ class SearchService
             $wordResults = $this->executeReceiptSearch($word, $filters);
             foreach ($wordResults as $result) {
                 $id = $result['id'];
-                if (!isset($resultsById[$id])) {
+                if (! isset($resultsById[$id])) {
                     $result['_matchedWords'] = 1;
                     $result['_matchedWordsList'] = [$word];
                     $result['_maxScore'] = $result['_rankingScore'] ?? 0;
@@ -125,6 +127,7 @@ class SearchService
         $allResults = collect($resultsById)->map(function ($result) use ($words) {
             $matchRatio = $result['_matchedWords'] / count($words);
             $result['_boostedScore'] = ($result['_matchedWords'] * 100) + ($result['_maxScore'] * 10);
+
             return $result;
         });
 
@@ -181,8 +184,15 @@ class SearchService
         }
 
         $results = $searchQuery
-            ->query(function ($builder) {
+            ->query(function ($builder) use ($filters) {
                 $builder->with(['merchant', 'lineItems', 'file', 'tags']);
+
+                // Apply collection filtering at the database level
+                if (isset($filters['collection_id']) && $filters['collection_id']) {
+                    $builder->whereHas('file.collections', function ($q) use ($filters) {
+                        $q->where('collections.id', $filters['collection_id']);
+                    });
+                }
             })
             ->get();
 
@@ -193,6 +203,7 @@ class SearchService
 
             return [
                 'id' => $receipt->id,
+                'file_id' => $receipt->file_id,
                 'type' => 'receipt',
                 'title' => $receipt->merchant?->name ?? 'Unknown Merchant',
                 'description' => $description,
@@ -246,7 +257,7 @@ class SearchService
             $wordResults = $this->executeDocumentSearch($word, $filters);
             foreach ($wordResults as $result) {
                 $id = $result['id'];
-                if (!isset($resultsById[$id])) {
+                if (! isset($resultsById[$id])) {
                     $result['_matchedWords'] = 1;
                     $result['_matchedWordsList'] = [$word];
                     $result['_maxScore'] = $result['_rankingScore'] ?? 0;
@@ -268,6 +279,7 @@ class SearchService
         $allResults = collect($resultsById)->map(function ($result) use ($words) {
             $matchRatio = $result['_matchedWords'] / count($words);
             $result['_boostedScore'] = ($result['_matchedWords'] * 100) + ($result['_maxScore'] * 10);
+
             return $result;
         });
 
@@ -315,6 +327,13 @@ class SearchService
                 if (isset($filters['tags']) && is_array($filters['tags'])) {
                     $builder->whereHas('tags', function ($q) use ($filters) {
                         $q->whereIn('name', $filters['tags']);
+                    });
+                }
+
+                // Apply collection filtering at the database level
+                if (isset($filters['collection_id']) && $filters['collection_id']) {
+                    $builder->whereHas('file.collections', function ($q) use ($filters) {
+                        $q->where('collections.id', $filters['collection_id']);
                     });
                 }
             })
@@ -380,6 +399,7 @@ class SearchService
 
             return [
                 'id' => $document->id,
+                'file_id' => $document->file_id,
                 'type' => 'document',
                 'title' => $document->title ?? 'Untitled Document',
                 'description' => $description,
@@ -427,7 +447,7 @@ class SearchService
         try {
             $receiptCount = $receiptQuery->raw()['estimatedTotalHits'] ?? 0;
             $documentCount = $documentQuery->raw()['estimatedTotalHits'] ?? 0;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $receiptCount = 0;
             $documentCount = 0;
         }

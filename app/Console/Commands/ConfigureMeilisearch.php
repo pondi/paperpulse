@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Document;
 use App\Models\Receipt;
+use Exception;
 use Illuminate\Console\Command;
 use MeiliSearch\Client;
 
@@ -126,7 +127,7 @@ class ConfigureMeilisearch extends Command
             $this->line('  php artisan scout:import "App\Models\Document"');
 
             return Command::SUCCESS;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('Error configuring Meilisearch: '.$e->getMessage());
 
             return Command::FAILURE;

@@ -170,7 +170,7 @@ class BatchProcessingService
     /**
      * Get batch processing status
      */
-    public function getBatchStatus(int $batchJobId, ?\App\Models\User $user = null): array
+    public function getBatchStatus(int $batchJobId, ?User $user = null): array
     {
         $query = BatchJob::where('id', $batchJobId);
 
@@ -204,7 +204,7 @@ class BatchProcessingService
     /**
      * Cancel a batch job
      */
-    public function cancelBatch(int $batchJobId, ?\App\Models\User $user = null): bool
+    public function cancelBatch(int $batchJobId, ?User $user = null): bool
     {
         try {
             $query = BatchJob::where('id', $batchJobId);

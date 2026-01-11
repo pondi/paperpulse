@@ -13,7 +13,7 @@ class SearchFilterBuilder
             'limit' => $request->input('limit', 20),
         ];
 
-        foreach (['date_from', 'date_to', 'amount_min', 'amount_max', 'category', 'document_type'] as $key) {
+        foreach (['date_from', 'date_to', 'amount_min', 'amount_max', 'category', 'document_type', 'collection_id'] as $key) {
             if ($request->has($key)) {
                 $filters[$key] = $request->input($key);
             }

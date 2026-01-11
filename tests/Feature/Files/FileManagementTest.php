@@ -15,7 +15,7 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    \Mockery::close();
+    Mockery::close();
 });
 
 it('lists failed files first', function () {
@@ -60,7 +60,7 @@ it('can restart a failed file', function () {
         's3_original_path' => $path,
     ]);
 
-    $dispatcher = \Mockery::mock(FileJobChainDispatcher::class);
+    $dispatcher = Mockery::mock(FileJobChainDispatcher::class);
     $dispatcher->shouldReceive('dispatch')
         ->once()
         ->withArgs(fn (string $jobId, string $fileType) => Str::isUuid($jobId) && $fileType === 'receipt');
@@ -93,7 +93,7 @@ it('can change type, move storage, and restart a failed file', function () {
         's3_original_path' => $oldPath,
     ]);
 
-    $dispatcher = \Mockery::mock(FileJobChainDispatcher::class);
+    $dispatcher = Mockery::mock(FileJobChainDispatcher::class);
     $dispatcher->shouldReceive('dispatch')
         ->once()
         ->withArgs(fn (string $jobId, string $fileType) => Str::isUuid($jobId) && $fileType === 'document');

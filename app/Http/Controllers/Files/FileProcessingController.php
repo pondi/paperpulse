@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Files;
 use App\Http\Controllers\Controller;
 use App\Services\ConversionService;
 use App\Services\Documents\DocumentUploadHandler;
-use App\Services\Documents\DocumentUploadValidator;
 use App\Services\FileProcessingService;
 use Exception;
 use Illuminate\Http\Request;
@@ -34,6 +33,8 @@ class FileProcessingController extends Controller
                 'files.*' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif,doc,docx,xls,xlsx,ppt,pptx,odt,ods,odp,rtf,txt,html,csv|max:102400', // 100MB
                 'file_type' => 'required|in:receipt,document',
                 'note' => 'nullable|string|max:1000',
+                'collection_ids' => 'nullable|array',
+                'collection_ids.*' => 'integer|exists:collections,id',
             ]);
         } else {
             $request->validate([
@@ -42,6 +43,8 @@ class FileProcessingController extends Controller
                 'files.*' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif|max:102400', // 100MB
                 'file_type' => 'required|in:receipt,document',
                 'note' => 'nullable|string|max:1000',
+                'collection_ids' => 'nullable|array',
+                'collection_ids.*' => 'integer|exists:collections,id',
             ]);
         }
 
@@ -71,6 +74,7 @@ class FileProcessingController extends Controller
                 $fileProcessingService,
                 [
                     'note' => $request->input('note'),
+                    'collection_ids' => $request->input('collection_ids', []),
                 ]
             );
 
@@ -126,5 +130,4 @@ class FileProcessingController extends Controller
             return back()->with('error', 'Failed to upload file: '.$e->getMessage());
         }
     }
-
 }

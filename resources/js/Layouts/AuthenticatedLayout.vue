@@ -246,6 +246,7 @@ import {
   DocumentTextIcon,
   ShieldCheckIcon,
   QrCodeIcon,
+  RectangleStackIcon,
 } from '@heroicons/vue/24/outline'
 import { ChevronDownIcon } from '@heroicons/vue/20/solid'
 import ApplicationLogo from '@/Components/Common/ApplicationLogo.vue';
@@ -313,6 +314,7 @@ const navigationItems = [
 
   // Organization
   { name: 'tags', href: route('tags.index'), icon: TagIcon, current: route().current('tags.*') },
+  { name: 'collections', href: route('collections.index'), icon: RectangleStackIcon, current: route().current('collections.*') },
 
   // Tools
   { name: 'upload', href: route('documents.upload'), icon: CloudArrowUpIcon, current: route().current('documents.upload') },

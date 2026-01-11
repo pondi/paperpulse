@@ -29,7 +29,7 @@ class ReceiptController extends BaseResourceController
 
     protected array $indexWith = ['merchant', 'file', 'lineItems', 'category', 'tags'];
 
-    protected array $showWith = ['merchant', 'file', 'lineItems', 'tags', 'sharedUsers'];
+    protected array $showWith = ['merchant', 'file.collections', 'lineItems', 'tags', 'sharedUsers'];
 
     protected array $searchableFields = ['receipt_description', 'note'];
 

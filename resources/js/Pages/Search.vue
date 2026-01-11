@@ -158,6 +158,26 @@
                   </select>
                 </div>
 
+                <!-- Collection Filter -->
+                <div class="border-t border-amber-200 dark:border-zinc-700 pt-4">
+                  <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    Collection
+                  </label>
+                  <select
+                    v-model="filters.collection_id"
+                    class="block w-full rounded-md border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
+                  >
+                    <option value="">All collections</option>
+                    <option
+                      v-for="collection in collections"
+                      :key="collection.id"
+                      :value="collection.id"
+                    >
+                      {{ collection.name }}
+                    </option>
+                  </select>
+                </div>
+
                 <!-- Apply Filters Button -->
                 <div class="border-t border-amber-200 dark:border-zinc-700 pt-4">
                   <button
@@ -173,14 +193,65 @@
 
           <!-- Results Area -->
           <div class="flex-1">
+            <!-- Bulk actions toolbar -->
+            <div v-if="selectedCount > 0" class="mb-4 bg-amber-50 dark:bg-zinc-800 border border-amber-200 dark:border-amber-600 rounded-lg p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                  <span class="text-sm font-medium text-zinc-900 dark:text-white">
+                    {{ selectedCount }} item{{ selectedCount !== 1 ? 's' : '' }} selected
+                  </span>
+                  <button
+                    @click="clearSelection"
+                    class="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                  >
+                    Clear selection
+                  </button>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button
+                    @click="openBulkActions('add')"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+                  >
+                    <svg class="size-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add to Collection
+                  </button>
+                  <button
+                    @click="openBulkActions('remove')"
+                    class="inline-flex items-center px-4 py-2 border border-zinc-300 dark:border-zinc-600 text-sm font-medium rounded-md text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+                  >
+                    <svg class="size-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                    </svg>
+                    Remove from Collection
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <!-- Results header -->
             <div v-if="results.length > 0 || searching" class="mb-4 flex items-center justify-between">
-              <div class="text-sm text-zinc-700 dark:text-zinc-300">
-                <span v-if="!searching">
-                  Found <span class="font-semibold">{{ results.length }}</span> result{{ results.length !== 1 ? 's' : '' }}
-                  <span v-if="searchQuery"> for "<span class="font-semibold">{{ searchQuery }}</span>"</span>
-                </span>
-                <span v-else>Searching...</span>
+              <div class="flex items-center gap-4">
+                <!-- Select all checkbox -->
+                <label v-if="results.length > 0" class="flex items-center">
+                  <input
+                    type="checkbox"
+                    :checked="allSelected"
+                    :indeterminate="someSelected"
+                    @change="toggleSelectAll"
+                    class="h-4 w-4 text-amber-600 focus:ring-amber-500 border-zinc-300 dark:border-zinc-600 rounded"
+                  />
+                  <span class="ml-2 text-sm text-zinc-700 dark:text-zinc-300">Select all</span>
+                </label>
+
+                <div class="text-sm text-zinc-700 dark:text-zinc-300">
+                  <span v-if="!searching">
+                    Found <span class="font-semibold">{{ results.length }}</span> result{{ results.length !== 1 ? 's' : '' }}
+                    <span v-if="searchQuery"> for "<span class="font-semibold">{{ searchQuery }}</span>"</span>
+                  </span>
+                  <span v-else>Searching...</span>
+                </div>
               </div>
 
               <!-- Sort options -->
@@ -206,8 +277,10 @@
                 :key="`${result.type}-${result.id}`"
                 :result="result"
                 :search-query="searchQuery"
+                :selected="isSelected(result)"
                 @preview="openPreview"
                 @click="navigateToResult"
+                @toggle-select="toggleSelect(result)"
               />
             </div>
 
@@ -253,15 +326,68 @@
       :item="previewItem"
       @close="closePreview"
     />
+
+    <!-- Bulk Actions Modal -->
+    <Modal :show="showBulkActions" @close="closeBulkActions">
+      <div class="p-6">
+        <h3 class="text-lg font-medium text-zinc-900 dark:text-white mb-4">
+          {{ bulkActionType === 'add' ? 'Add to Collection' : 'Remove from Collection' }}
+        </h3>
+
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+          {{ bulkActionType === 'add'
+            ? `Select a collection to add ${selectedCount} item${selectedCount !== 1 ? 's' : ''} to:`
+            : `Select a collection to remove ${selectedCount} item${selectedCount !== 1 ? 's' : ''} from:` }}
+        </p>
+
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+            Collection
+          </label>
+          <select
+            v-model="bulkActionCollection"
+            class="block w-full rounded-md border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
+          >
+            <option value="">Select a collection</option>
+            <option
+              v-for="collection in collections"
+              :key="collection.id"
+              :value="collection.id"
+            >
+              {{ collection.name }}
+            </option>
+          </select>
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <button
+            @click="closeBulkActions"
+            type="button"
+            class="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+          >
+            Cancel
+          </button>
+          <button
+            @click="executeBulkAction"
+            :disabled="!bulkActionCollection"
+            type="button"
+            class="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ bulkActionType === 'add' ? 'Add to Collection' : 'Remove from Collection' }}
+          </button>
+        </div>
+      </div>
+    </Modal>
   </AuthenticatedLayout>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import SearchResultCard from '@/Components/Search/SearchResultCard.vue';
 import FilePreviewModal from '@/Components/Common/FilePreviewModal.vue';
+import Modal from '@/Components/Common/Modal.vue';
 import { MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
 import axios from 'axios';
 
@@ -286,6 +412,7 @@ const searchQuery = ref(props.query || '');
 const searching = ref(false);
 const results = ref(props.initialResults || []);
 const facets = ref(props.initialFacets || { total: 0, receipts: 0, documents: 0 });
+const collections = ref([]);
 
 // Filter state
 const filters = ref({
@@ -294,7 +421,8 @@ const filters = ref({
   date_to: '',
   amount_min: null,
   amount_max: null,
-  category: ''
+  category: '',
+  collection_id: ''
 });
 
 // Sort state
@@ -304,6 +432,12 @@ const sortBy = ref('relevance');
 const showPreview = ref(false);
 const previewItem = ref(null);
 
+// Bulk selection state
+const selectedResults = ref(new Set());
+const showBulkActions = ref(false);
+const bulkActionCollection = ref('');
+const bulkActionType = ref(''); // 'add' or 'remove'
+
 // Computed
 const hasActiveFilters = computed(() => {
   return filters.value.type !== 'all' ||
@@ -311,7 +445,8 @@ const hasActiveFilters = computed(() => {
     filters.value.date_to ||
     filters.value.amount_min !== null ||
     filters.value.amount_max !== null ||
-    filters.value.category;
+    filters.value.category ||
+    filters.value.collection_id;
 });
 
 const sortedResults = computed(() => {
@@ -338,6 +473,16 @@ const sortedResults = computed(() => {
     default:
       return sorted.sort((a, b) => (b._rankingScore || 0) - (a._rankingScore || 0));
   }
+});
+
+const selectedCount = computed(() => selectedResults.value.size);
+
+const allSelected = computed(() => {
+  return results.value.length > 0 && selectedResults.value.size === results.value.length;
+});
+
+const someSelected = computed(() => {
+  return selectedResults.value.size > 0 && selectedResults.value.size < results.value.length;
 });
 
 // Methods
@@ -383,7 +528,8 @@ const clearFilters = () => {
     date_to: '',
     amount_min: null,
     amount_max: null,
-    category: ''
+    category: '',
+    collection_id: ''
   };
   performSearch();
 };
@@ -403,6 +549,87 @@ const navigateToResult = (result) => {
   openPreview(result);
 };
 
+// Bulk selection methods
+const toggleSelectAll = () => {
+  if (allSelected.value) {
+    selectedResults.value.clear();
+  } else {
+    results.value.forEach(result => {
+      selectedResults.value.add(`${result.type}-${result.id}`);
+    });
+  }
+};
+
+const toggleSelect = (result) => {
+  const key = `${result.type}-${result.id}`;
+  if (selectedResults.value.has(key)) {
+    selectedResults.value.delete(key);
+  } else {
+    selectedResults.value.add(key);
+  }
+};
+
+const isSelected = (result) => {
+  return selectedResults.value.has(`${result.type}-${result.id}`);
+};
+
+const clearSelection = () => {
+  selectedResults.value.clear();
+  showBulkActions.value = false;
+  bulkActionCollection.value = '';
+  bulkActionType.value = '';
+};
+
+const openBulkActions = (type) => {
+  bulkActionType.value = type;
+  showBulkActions.value = true;
+};
+
+const closeBulkActions = () => {
+  showBulkActions.value = false;
+  bulkActionCollection.value = '';
+  bulkActionType.value = '';
+};
+
+const executeBulkAction = async () => {
+  if (!bulkActionCollection.value) {
+    return;
+  }
+
+  const fileIds = [];
+
+  // Extract file IDs from selected results
+  selectedResults.value.forEach(key => {
+    const [type, id] = key.split('-');
+    const result = results.value.find(r => r.type === type && r.id === parseInt(id));
+    if (result?.file_id) {
+      fileIds.push(result.file_id);
+    }
+  });
+
+  if (fileIds.length === 0) {
+    return;
+  }
+
+  try {
+    const endpoint = bulkActionType.value === 'add'
+      ? route('collections.files.add', bulkActionCollection.value)
+      : route('collections.files.remove', bulkActionCollection.value);
+
+    await axios({
+      method: bulkActionType.value === 'add' ? 'post' : 'delete',
+      url: endpoint,
+      data: { file_ids: fileIds }
+    });
+
+    // Show success message or notification
+    clearSelection();
+    closeBulkActions();
+  } catch (error) {
+    console.error('Bulk action error:', error);
+  }
+};
+
 // Watch for filter changes
 watch(filters, () => {
   if (searchQuery.value.trim() || hasActiveFilters.value) {
@@ -417,5 +644,15 @@ watch(searchQuery, (newValue) => {
   searchTimeout = setTimeout(() => {
     performSearch();
   }, 300);
+});
+
+// Load collections on mount
+onMounted(async () => {
+  try {
+    const response = await axios.get(route('collections.all'));
+    collections.value = response.data.data || response.data || [];
+  } catch (error) {
+    console.error('Failed to load collections:', error);
+  }
 });
 </script>

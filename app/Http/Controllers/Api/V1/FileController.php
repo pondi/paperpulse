@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Exceptions\DuplicateFileException;
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Requests\Api\V1\StoreFileRequest;
-use App\Http\Resources\Api\V1\FileListResource;
 use App\Http\Resources\Api\V1\FileDetailResource;
+use App\Http\Resources\Api\V1\FileListResource;
 use App\Models\File;
 use App\Services\FileProcessingService;
 use App\Services\Files\FileDetailService;
@@ -118,6 +118,7 @@ class FileController extends BaseApiController
                 $request->user()->id,
                 [
                     'note' => $request->input('note'),
+                    'collection_ids' => $request->input('collection_ids', []),
                 ]
             );
 

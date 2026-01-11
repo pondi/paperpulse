@@ -9,15 +9,17 @@ use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Laravel\Scout\Searchable;
 
 /**
  * @property int $id
  * @property int $user_id
- * @property \Illuminate\Support\Carbon|null $warranty_end_date
- * @property-read \App\Models\User $user
- * @property-read \App\Models\File|null $file
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Tag> $tags
+ * @property Carbon|null $warranty_end_date
+ * @property-read User $user
+ * @property-read File|null $file
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Tag> $tags
  */
 class Warranty extends Model implements Taggable
 {
@@ -61,12 +63,12 @@ class Warranty extends Model implements Taggable
         'warranty_end_date' => 'date',
     ];
 
-    public function receipt(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function receipt(): BelongsTo
     {
         return $this->belongsTo(Receipt::class);
     }
 
-    public function invoice(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
     }

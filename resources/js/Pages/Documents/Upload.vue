@@ -207,6 +207,18 @@
                                 />
                             </div>
 
+                            <!-- Collections -->
+                            <div class="mt-4 text-left">
+                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                                    Collections (optional)
+                                </label>
+                                <CollectionSelector
+                                    v-model="collectionIds"
+                                    placeholder="Search or create collections..."
+                                    :allow-create="true"
+                                />
+                            </div>
+
                             <!-- Submit Button -->
                             <div class="mt-6 flex justify-center">
                                 <button type="submit"
@@ -231,6 +243,7 @@
 
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CollectionSelector from '@/Components/Domain/CollectionSelector.vue';
 import { Head } from '@inertiajs/vue3';
 import { useForm } from '@inertiajs/vue3';
 import { CheckCircleIcon, XMarkIcon, PhotoIcon, DocumentIcon, ReceiptRefundIcon } from '@heroicons/vue/20/solid'
@@ -270,6 +283,7 @@ const fileType = ref<'receipt' | 'document'>('receipt'); // Default to receipt
 const isUploading = ref(false);
 const uploadProgress = ref(0);
 const note = ref<string>('');
+const collectionIds = ref<number[]>([]);
 
 // Custom file upload state (not using composable's validation since we need dynamic types)
 const selectedFiles = ref<FileObject[]>([]);
@@ -381,6 +395,7 @@ async function submit() {
         files: selectedFiles.value.map(f => f.file),
         file_type: fileType.value,
         note: note.value || null,
+        collection_ids: collectionIds.value.length > 0 ? collectionIds.value : null,
     });
     
     try {
@@ -389,6 +404,7 @@ async function submit() {
             onSuccess: () => {
                 resetFiles();
                 note.value = '';
+                collectionIds.value = [];
                 uploadSuccess.value = true;
                 isUploading.value = false;
                 uploadProgress.value = 0;

@@ -2,6 +2,8 @@
 
 namespace App\Services\AI\OpenAI;
 
+use Illuminate\Support\Facades\Log;
+
 /**
  * Helpers to parse OpenAI chat responses into arrays.
  */
@@ -17,7 +19,7 @@ class ResponseParser
         $content = $response->choices[0]->message->content ?? '{}';
         $decoded = json_decode($content, true);
 
-        \Illuminate\Support\Facades\Log::debug('[ResponseParser] AI response content', [
+        Log::debug('[ResponseParser] AI response content', [
             'raw_content' => $content,
             'decoded' => $decoded,
             'is_array' => is_array($decoded),

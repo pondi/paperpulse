@@ -135,8 +135,20 @@ class DocumentTransformer
             })->values();
         }
 
+        // Get collections from the file relationship
+        $collections = [];
+        if ($document->file && $document->file->relationLoaded('collections')) {
+            $collections = $document->file->collections->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'icon' => $c->icon,
+                'color' => $c->color,
+            ])->values();
+        }
+
         return [
             'id' => $document->id,
+            'file_id' => $document->file_id,
             'title' => $document->title,
             'summary' => $document->summary,
             'note' => $document->note,
@@ -146,6 +158,7 @@ class DocumentTransformer
                 'name' => $t->name,
                 'color' => $t->color,
             ])->values(),
+            'collections' => $collections,
             'shared_users' => $sharedUsers,
             'created_at' => $document->created_at?->toIso8601String(),
             'updated_at' => $document->updated_at?->toIso8601String(),

@@ -75,8 +75,20 @@ class ReceiptTransformer
             })->values();
         }
 
+        // Get collections from the file relationship
+        $collections = [];
+        if ($receipt->file && $receipt->file->relationLoaded('collections')) {
+            $collections = $receipt->file->collections->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'icon' => $c->icon,
+                'color' => $c->color,
+            ])->values();
+        }
+
         return [
             'id' => $receipt->id,
+            'file_id' => $receipt->file_id,
             'merchant' => $receipt->merchant,
             'receipt_date' => $receipt->receipt_date,
             'tax_amount' => $receipt->tax_amount,
@@ -103,6 +115,7 @@ class ReceiptTransformer
                     'color' => $tag->color,
                 ];
             }) : [],
+            'collections' => $collections,
             'shared_users' => $sharedUsers,
         ];
     }

@@ -3,6 +3,7 @@
 use App\Exceptions\GeminiApiException;
 use App\Jobs\Files\ProcessFileGemini;
 use App\Models\File;
+use App\Models\User;
 use App\Services\Files\StoragePathBuilder;
 use App\Services\Jobs\JobMetadataPersistence;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 uses(RefreshDatabase::class);
 
 it('processes a receipt image with gemini and stores metadata', function () {
-    $user = \App\Models\User::factory()->create();
+    $user = User::factory()->create();
     $guid = 'receipt-fixture-'.uniqid();
     $file = File::factory()->create([
         'user_id' => $user->id,
@@ -42,7 +43,7 @@ it('processes a receipt image with gemini and stores metadata', function () {
 });
 
 it('records document subtype for text files', function () {
-    $user = \App\Models\User::factory()->create();
+    $user = User::factory()->create();
     $guid = 'text-fixture-'.uniqid();
     $file = File::factory()->create([
         'user_id' => $user->id,
@@ -72,7 +73,7 @@ it('records document subtype for text files', function () {
 it('marks the file as failed on gemini validation errors', function () {
     config(['ai.providers.gemini.max_file_size_mb' => 1]);
 
-    $user = \App\Models\User::factory()->create();
+    $user = User::factory()->create();
     $guid = 'oversize-fixture-'.uniqid();
     $file = File::factory()->create([
         'user_id' => $user->id,

@@ -2,22 +2,17 @@
 
 namespace App\Policies;
 
-use App\Policies\Concerns\ShareableFilePolicy;
+use App\Policies\Concerns\OwnedResourcePolicy;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 /**
  * VoucherPolicy
  *
- * Delegates to ShareableFilePolicy for shared-file permissions:
- * - view: owner or active share (permission >= view)
- * - update: owner or active share with edit permission
- * - delete/share/restore/forceDelete: owner-only
- * - download: allowed if view is allowed
- *
- * See: App\Policies\Concerns\ShareableFilePolicy
+ * Vouchers are extracted entities belonging to a user.
+ * Access is determined by ownership only.
  */
 class VoucherPolicy
 {
     use HandlesAuthorization;
-    use ShareableFilePolicy;
+    use OwnedResourcePolicy;
 }

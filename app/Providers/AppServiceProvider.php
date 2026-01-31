@@ -23,11 +23,14 @@ use App\Models\Voucher;
 use App\Models\Warranty;
 use App\Policies\CategoryPolicy;
 use App\Policies\CollectionPolicy;
+use App\Policies\ContractPolicy;
 use App\Policies\DocumentPolicy;
 use App\Policies\DuplicateFlagPolicy;
 use App\Policies\FilePolicy;
+use App\Policies\InvoicePolicy;
 use App\Policies\ReceiptPolicy;
 use App\Policies\TagPolicy;
+use App\Policies\VoucherPolicy;
 use App\Services\AI\AIService;
 use App\Services\AI\AIServiceFactory;
 use App\Services\AI\PromptTemplateService;
@@ -315,5 +318,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Tag::class, TagPolicy::class);
         Gate::policy(Collection::class, CollectionPolicy::class);
         Gate::policy(DuplicateFlag::class, DuplicateFlagPolicy::class);
+        Gate::policy(Invoice::class, InvoicePolicy::class);
+        Gate::policy(Contract::class, ContractPolicy::class);
+        Gate::policy(Voucher::class, VoucherPolicy::class);
     }
 }

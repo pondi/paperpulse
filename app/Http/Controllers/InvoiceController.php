@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\Inertia\InvoiceInertiaResource;
 use App\Models\Invoice;
-use App\Services\Invoices\InvoiceTransformer;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,7 +19,7 @@ class InvoiceController extends Controller
             ->withCount('lineItems')
             ->orderBy('invoice_date', 'desc')
             ->get()
-            ->map(fn (Invoice $invoice) => InvoiceTransformer::forIndex($invoice));
+            ->map(fn (Invoice $invoice) => InvoiceInertiaResource::forIndex($invoice));
 
         return Inertia::render('Invoices/Index', [
             'invoices' => $invoices,
@@ -31,15 +31,12 @@ class InvoiceController extends Controller
      */
     public function show(Request $request, Invoice $invoice): Response
     {
-        // Authorization check
-        if ($invoice->user_id !== $request->user()->id) {
-            abort(403);
-        }
+        $this->authorize('view', $invoice);
 
         $invoice->load(['merchant', 'file', 'tags', 'lineItems']);
 
         return Inertia::render('Invoices/Show', [
-            'invoice' => InvoiceTransformer::forShow($invoice),
+            'invoice' => InvoiceInertiaResource::forShow($invoice),
         ]);
     }
 }

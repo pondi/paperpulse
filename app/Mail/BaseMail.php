@@ -115,7 +115,7 @@ abstract class BaseMail extends Mailable implements ShouldQueue
             'dashboard_url' => route('dashboard'),
             'receipts_url' => route('receipts.index'),
             'upload_url' => route('documents.upload'),
-            'current_year' => date('Y'),
+            'current_year' => now()->year,
         ];
     }
 

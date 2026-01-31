@@ -123,7 +123,7 @@ class EmailService
             'app_name' => config('app.name'),
             'app_url' => config('app.url'),
             'dashboard_url' => route('dashboard'),
-            'current_year' => date('Y'),
+            'current_year' => now()->year,
         ], $variables);
 
         return $template->render($allVariables);

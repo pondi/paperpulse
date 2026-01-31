@@ -9,7 +9,7 @@ use App\Models\File;
 use App\Services\Files\FilePreviewManager;
 use App\Services\TextExtractionService;
 use App\Services\Workers\WorkerFileManager;
-use DateTime;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -512,7 +512,7 @@ class ProcessDocument extends BaseJob
         foreach ($patterns as $pattern => $format) {
             if (preg_match($pattern, $text, $matches)) {
                 try {
-                    return DateTime::createFromFormat($format, $matches[0]);
+                    return Carbon::createFromFormat($format, $matches[0]);
                 } catch (Exception $e) {
                     continue;
                 }

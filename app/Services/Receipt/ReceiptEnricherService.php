@@ -6,6 +6,7 @@ use App\Contracts\Services\ReceiptEnricherContract;
 use App\Models\Category;
 use App\Models\Merchant;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class ReceiptEnricherService implements ReceiptEnricherContract
@@ -169,7 +170,7 @@ class ReceiptEnricherService implements ReceiptEnricherContract
 
         // Analyze time of purchase (if available)
         if (! empty($receiptData['receipt_date'])) {
-            $hour = (int) date('H', strtotime($receiptData['receipt_date']));
+            $hour = Carbon::parse($receiptData['receipt_date'])->hour;
             if ($hour >= 6 && $hour < 12) {
                 $analysis['time_category'] = 'morning';
             } elseif ($hour >= 12 && $hour < 18) {

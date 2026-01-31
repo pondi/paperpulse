@@ -59,7 +59,7 @@ abstract class TemplatedNotification extends Notification implements ShouldQueue
             'upload_url' => route('documents.upload'),
             'user_name' => $notifiable->name ?? '',
             'user_email' => $notifiable->email ?? '',
-            'current_year' => date('Y'),
+            'current_year' => now()->year,
         ], $variables);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Services\Receipt;
 
 use App\Contracts\Services\ReceiptValidatorContract;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class ReceiptValidatorService implements ReceiptValidatorContract
@@ -248,7 +249,13 @@ class ReceiptValidatorService implements ReceiptValidatorContract
      */
     protected function isValidDate(string $date): bool
     {
-        return (bool) strtotime($date);
+        try {
+            Carbon::parse($date);
+
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     /**
@@ -256,7 +263,13 @@ class ReceiptValidatorService implements ReceiptValidatorContract
      */
     protected function isValidTime(string $time): bool
     {
-        return (bool) strtotime($time);
+        try {
+            Carbon::parse($time);
+
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     /**

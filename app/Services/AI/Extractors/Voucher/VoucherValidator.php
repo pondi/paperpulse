@@ -2,6 +2,8 @@
 
 namespace App\Services\AI\Extractors\Voucher;
 
+use Carbon\Carbon;
+
 /**
  * Validates extracted voucher data.
  */
@@ -51,9 +53,13 @@ class VoucherValidator
 
         // Check if voucher is expired
         if (! empty($data['expiry_date'])) {
-            $expiryDate = strtotime($data['expiry_date']);
-            if ($expiryDate && $expiryDate < time()) {
-                $warnings[] = 'Voucher has expired';
+            try {
+                $expiryDate = Carbon::parse($data['expiry_date']);
+                if ($expiryDate->isPast()) {
+                    $warnings[] = 'Voucher has expired';
+                }
+            } catch (\Exception $e) {
+                // Invalid date format, skip expiry check
             }
         }
 

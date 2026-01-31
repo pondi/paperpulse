@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Merchant;
 use App\Services\LogoService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -59,7 +60,7 @@ class MerchantController extends Controller
                 'imageUrl' => $this->logoService->getImageUrl($merchant, $merchant->logo_data, $merchant->mime_type),
                 'lastInvoice' => [
                     'date' => $merchant->last_receipt_date
-                        ? date('F j, Y', strtotime($merchant->last_receipt_date))
+                        ? Carbon::parse($merchant->last_receipt_date)->format('F j, Y')
                         : 'Ingen kvitteringer',
                     'dateTime' => $merchant->last_receipt_date,
                     'amount' => number_format((float) $merchant->total_amount, 2, ',', ' ').' kr',

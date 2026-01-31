@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BulkReceiptIdsRequest;
 use App\Models\Category;
 use App\Models\Receipt;
 use App\Notifications\BulkOperationCompleted;
@@ -18,19 +19,14 @@ class BulkOperationsController extends Controller
     /**
      * Delete multiple receipts
      */
-    public function bulkDelete(Request $request)
+    public function bulkDelete(BulkReceiptIdsRequest $request)
     {
-        $request->validate([
-            'receipt_ids' => 'required|array',
-            'receipt_ids.*' => 'integer|exists:receipts,id',
-        ]);
-
         $receiptService = app(ReceiptService::class);
         $deletedCount = 0;
 
         // Delete receipts owned by the user via ReceiptService to ensure
         // related files/artifacts are cleaned up and don't affect deduplication.
-        $receipts = Receipt::whereIn('id', $request->receipt_ids)
+        $receipts = Receipt::whereIn('id', $request->validated()['receipt_ids'])
             ->where('user_id', auth()->id())
             ->with('file')
             ->get();
@@ -61,7 +57,7 @@ class BulkOperationsController extends Controller
      */
     public function bulkCategorize(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'receipt_ids' => 'required|array',
             'receipt_ids.*' => 'integer|exists:receipts,id',
             'category_id' => 'nullable|integer|exists:categories,id',
@@ -69,26 +65,24 @@ class BulkOperationsController extends Controller
         ]);
 
         // Ensure either category_id or category is provided
-        if (! $request->category_id && ! $request->category) {
+        if (! ($validated['category_id'] ?? null) && ! ($validated['category'] ?? null)) {
             return redirect()->back()->with('error', 'Please select a category.');
         }
 
         $data = [];
-        if ($request->category_id) {
+        if ($validated['category_id'] ?? null) {
             // Verify user owns the category
-            $category = Category::find($request->category_id);
-            if ($category && $category->user_id !== auth()->id()) {
-                abort(403);
-            }
-            $data['category_id'] = $request->category_id;
+            $category = Category::find($validated['category_id']);
+            $this->authorize('update', $category);
+            $data['category_id'] = $validated['category_id'];
         }
 
-        if ($request->category) {
-            $data['receipt_category'] = $request->category;
+        if ($validated['category'] ?? null) {
+            $data['receipt_category'] = $validated['category'];
         }
 
         // Only update receipts owned by the user
-        $updatedCount = Receipt::whereIn('id', $request->receipt_ids)
+        $updatedCount = Receipt::whereIn('id', $validated['receipt_ids'])
             ->where('user_id', auth()->id())
             ->update($data);
 
@@ -110,15 +104,10 @@ class BulkOperationsController extends Controller
     /**
      * Export multiple receipts as CSV
      */
-    public function bulkExportCsv(Request $request)
+    public function bulkExportCsv(BulkReceiptIdsRequest $request)
     {
-        $request->validate([
-            'receipt_ids' => 'required|array',
-            'receipt_ids.*' => 'integer|exists:receipts,id',
-        ]);
-
         $receipts = Receipt::with(['merchant', 'lineItems'])
-            ->whereIn('id', $request->receipt_ids)
+            ->whereIn('id', $request->validated()['receipt_ids'])
             ->where('user_id', auth()->id())
             ->orderBy('receipt_date', 'desc')
             ->get();
@@ -173,15 +162,10 @@ class BulkOperationsController extends Controller
     /**
      * Export multiple receipts as PDF
      */
-    public function bulkExportPdf(Request $request)
+    public function bulkExportPdf(BulkReceiptIdsRequest $request)
     {
-        $request->validate([
-            'receipt_ids' => 'required|array',
-            'receipt_ids.*' => 'integer|exists:receipts,id',
-        ]);
-
         $receipts = Receipt::with(['merchant', 'lineItems'])
-            ->whereIn('id', $request->receipt_ids)
+            ->whereIn('id', $request->validated()['receipt_ids'])
             ->where('user_id', auth()->id())
             ->orderBy('receipt_date', 'desc')
             ->get();
@@ -203,14 +187,11 @@ class BulkOperationsController extends Controller
     /**
      * Get bulk operation statistics
      */
-    public function getStats(Request $request)
+    public function getStats(BulkReceiptIdsRequest $request)
     {
-        $request->validate([
-            'receipt_ids' => 'required|array',
-            'receipt_ids.*' => 'integer|exists:receipts,id',
-        ]);
+        $validated = $request->validated();
 
-        $stats = Receipt::whereIn('id', $request->receipt_ids)
+        $stats = Receipt::whereIn('id', $validated['receipt_ids'])
             ->where('user_id', auth()->id())
             ->selectRaw('
                 COUNT(*) as count,
@@ -221,7 +202,7 @@ class BulkOperationsController extends Controller
             ')
             ->first();
 
-        $categories = Receipt::whereIn('id', $request->receipt_ids)
+        $categories = Receipt::whereIn('id', $validated['receipt_ids'])
             ->where('user_id', auth()->id())
             ->select('receipt_category', DB::raw('COUNT(*) as count'))
             ->groupBy('receipt_category')

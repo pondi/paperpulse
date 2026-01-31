@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreTagRequest;
+use App\Http\Requests\UpdateTagRequest;
 use App\Models\Tag;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -65,12 +67,9 @@ class TagController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreTagRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:50',
-            'color' => 'nullable|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
-        ]);
+        $validated = $request->validated();
 
         $tag = Tag::findOrCreateByName(
             $validated['name'],
@@ -84,16 +83,11 @@ class TagController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Tag $tag)
+    public function update(UpdateTagRequest $request, Tag $tag)
     {
         $this->authorize('update', $tag);
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:50',
-            'color' => 'nullable|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
-        ]);
-
-        $tag->update($validated);
+        $tag->update($request->validated());
 
         return back()->with('success', __('Tag updated successfully.'));
     }

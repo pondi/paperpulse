@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Files;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Inertia\FileInertiaResource;
 use App\Models\File;
 use App\Services\Files\FileReprocessingService;
-use App\Services\Files\FileTransformer;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -24,7 +24,7 @@ class FileManagementController extends Controller
 
         $files = $filesQuery
             ->paginate($perPage)
-            ->through(fn (File $file) => FileTransformer::forIndex($file));
+            ->through(fn (File $file) => FileInertiaResource::forIndex($file));
 
         // Get statistics for all files (not just current page)
         $stats = [

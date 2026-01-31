@@ -42,9 +42,7 @@ class DuplicateController extends BaseApiController
 
     public function resolve(Request $request, DuplicateFlag $duplicateFlag)
     {
-        if ($duplicateFlag->user_id !== $request->user()->id) {
-            return $this->forbidden('Unauthorized duplicate access');
-        }
+        $this->authorize('update', $duplicateFlag);
 
         $validated = $request->validate([
             'delete_file_id' => 'required|integer',
@@ -92,9 +90,7 @@ class DuplicateController extends BaseApiController
 
     public function ignore(Request $request, DuplicateFlag $duplicateFlag)
     {
-        if ($duplicateFlag->user_id !== $request->user()->id) {
-            return $this->forbidden('Unauthorized duplicate access');
-        }
+        $this->authorize('delete', $duplicateFlag);
 
         $duplicateFlag->delete();
 

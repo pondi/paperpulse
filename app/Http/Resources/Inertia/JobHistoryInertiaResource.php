@@ -11,11 +11,6 @@ class JobHistoryInertiaResource extends JsonResource
 {
     protected bool $isChild = false;
 
-    public static function make($resource): self
-    {
-        return new self($resource);
-    }
-
     public static function asChild($resource): self
     {
         $instance = new self($resource);

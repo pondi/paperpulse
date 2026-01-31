@@ -164,13 +164,23 @@ class ReceiptService
             // Delete line items first (they reference the receipt)
             $receipt->lineItems()->delete();
 
-            // Delete the receipt itself
-            $receipt->delete();
+            // Delete the receipt itself, bypassing Scout to avoid Meilisearch errors
+            Receipt::withoutSyncingToSearch(function () use ($receipt) {
+                $receipt->delete();
+            });
 
             // Delete files from permanent storage
             if ($fileGuid) {
-                $this->documentService->deleteDocument($fileGuid, 'ReceiptService', 'receipts', 'pdf');
-                $this->documentService->deleteDocument($fileGuid, 'ReceiptService', 'receipts', 'jpg');
+                try {
+                    $this->documentService->deleteDocument($fileGuid, 'ReceiptService', 'receipts', 'pdf');
+                    $this->documentService->deleteDocument($fileGuid, 'ReceiptService', 'receipts', 'jpg');
+                } catch (Exception $e) {
+                    Log::warning('[ReceiptService] Failed to delete S3 files during receipt deletion', [
+                        'receipt_id' => $receipt->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                    // Continue with deletion even if S3 delete fails
+                }
             }
 
             // Delete the file record after the receipt is deleted

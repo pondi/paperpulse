@@ -52,11 +52,13 @@ class DocumentController extends BaseResourceController
      */
     public function index(Request $request): Response
     {
-        // Query files that were uploaded as "document" type
+        // Query files that were uploaded as "document" type and have been processed
+        // Only include files that have an associated entity (data integrity requirement)
         $query = File::query()
             ->where('user_id', auth()->id())
             ->where('file_type', 'document')
             ->where('status', 'completed')
+            ->whereHas('primaryEntity')
             ->with('primaryEntity.entity');
 
         // Apply search on file name
@@ -76,20 +78,7 @@ class DocumentController extends BaseResourceController
 
         return Inertia::render('Documents/Index', [
             'documents' => $files->through(function ($file) {
-                $entity = $file->primaryEntity?->entity;
-
-                if (! $entity) {
-                    // Fallback for files without entity (shouldn't happen with completed files)
-                    return [
-                        'id' => $file->id,
-                        'title' => $file->fileName,
-                        'file_id' => $file->id,
-                        'created_at' => $file->uploaded_at,
-                    ];
-                }
-
-                // Transform based on entity type
-                return $this->transformEntityForIndex($entity, $file);
+                return $this->transformEntityForIndex($file->primaryEntity->entity, $file);
             }),
             'categories' => auth()->user()->categories()->orderBy('name')->get(['id', 'name', 'color']),
             'filters' => $this->getFilters($request),
@@ -104,11 +93,14 @@ class DocumentController extends BaseResourceController
         $entityType = class_basename($entity);
 
         // Base data structure
+        $createdAt = $entity->created_at ?? $file->uploaded_at;
+        $updatedAt = $entity->updated_at ?? $file->uploaded_at;
+
         $data = [
             'id' => $entity->id,
             'file_id' => $file->id,
-            'created_at' => $entity->created_at ?? $file->uploaded_at,
-            'updated_at' => $entity->updated_at ?? $file->uploaded_at,
+            'created_at' => $createdAt?->toIso8601String(),
+            'updated_at' => $updatedAt?->toIso8601String(),
             'entity_type' => strtolower($entityType),
         ];
 
@@ -125,9 +117,12 @@ class DocumentController extends BaseResourceController
         };
 
         // Add file size for display
-        $data['size'] = $file->fileSize ?? 0;
-        $data['file_name'] = $file->fileName;
-        $data['file_type'] = $file->fileType;
+        $data['size'] = $file->fileSize ?? $file->file_size ?? 0;
+        $data['file_name'] = $file->fileName ?? $file->original_filename;
+        $data['file_type'] = $file->fileType ?? $file->mime_type;
+
+        // Add note if available on the entity
+        $data['note'] = $entity->note ?? null;
 
         // Add category if available (Document entities)
         if ($entityType === 'Document' && $entity->category) {
@@ -272,27 +267,48 @@ class DocumentController extends BaseResourceController
 
         $fileId = $document->file_id;
 
-        DB::transaction(function () use ($document, $fileId) {
-            // Delete stored file using StorageService and GUID path.
-            if ($document->file && $document->file->guid) {
-                $storageService = app(StorageService::class);
-                $extension = $document->file->fileExtension ?? 'pdf';
-                $fullPath = 'documents/'.$document->user_id.'/'.$document->file->guid.'/original.'.$extension;
-                $storageService->deleteFile($fullPath);
-            }
-
-            $document->delete();
-
-            // Delete the file record if it no longer has any owners.
-            if ($fileId) {
-                $file = File::find($fileId);
-                if ($file && ! $file->receipts()->exists() && ! $file->documents()->exists()) {
-                    $file->delete();
+        try {
+            DB::transaction(function () use ($document, $fileId) {
+                // Delete stored file using StorageService and GUID path.
+                if ($document->file && $document->file->guid) {
+                    try {
+                        $storageService = app(StorageService::class);
+                        $extension = $document->file->fileExtension ?? 'pdf';
+                        $fullPath = 'documents/'.$document->user_id.'/'.$document->file->guid.'/original.'.$extension;
+                        $storageService->deleteFile($fullPath);
+                    } catch (Exception $e) {
+                        Log::warning('Failed to delete S3 file during document deletion', [
+                            'document_id' => $document->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                        // Continue with deletion even if S3 delete fails
+                    }
                 }
-            }
-        });
 
-        return redirect()->route('documents.index')->with('success', 'Document deleted successfully');
+                // Disable Scout indexing temporarily to avoid Meilisearch errors
+                Document::withoutSyncingToSearch(function () use ($document) {
+                    $document->delete();
+                });
+
+                // Delete the file record if it no longer has any owners.
+                if ($fileId) {
+                    $file = File::find($fileId);
+                    if ($file && ! $file->receipts()->exists() && ! $file->documents()->exists()) {
+                        $file->delete();
+                    }
+                }
+            });
+
+            return redirect()->route('documents.index')->with('success', 'Document deleted successfully');
+        } catch (Exception $e) {
+            Log::error('Failed to delete document', [
+                'document_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()->with('error', 'Failed to delete document: '.$e->getMessage());
+        }
     }
 
     /**

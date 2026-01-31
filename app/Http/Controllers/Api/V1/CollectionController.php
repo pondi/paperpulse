@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseApiController;
+use App\Http\Requests\CollectionFilesRequest;
+use App\Http\Requests\ShareCollectionRequest;
+use App\Http\Requests\StoreCollectionRequest;
+use App\Http\Requests\UpdateCollectionRequest;
 use App\Http\Resources\Api\V1\CollectionResource;
 use App\Http\Resources\Api\V1\CollectionShareResource;
 use App\Models\Collection;
@@ -83,16 +87,9 @@ class CollectionController extends BaseApiController
     /**
      * Store a new collection
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreCollectionRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:100',
-            'description' => 'nullable|string|max:500',
-            'icon' => 'nullable|string|max:50',
-            'color' => 'nullable|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
-        ]);
-
-        $collection = $this->collectionService->create($validated, $request->user()->id);
+        $collection = $this->collectionService->create($request->validated(), $request->user()->id);
 
         return $this->success(
             new CollectionResource($collection),
@@ -133,7 +130,7 @@ class CollectionController extends BaseApiController
     /**
      * Update a collection
      */
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateCollectionRequest $request, int $id): JsonResponse
     {
         try {
             $collection = Collection::findOrFail($id);
@@ -142,14 +139,7 @@ class CollectionController extends BaseApiController
                 return $this->forbidden('You do not have permission to edit this collection');
             }
 
-            $validated = $request->validate([
-                'name' => 'sometimes|string|max:100',
-                'description' => 'nullable|string|max:500',
-                'icon' => 'nullable|string|max:50',
-                'color' => 'nullable|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
-            ]);
-
-            $collection = $this->collectionService->update($collection, $validated);
+            $collection = $this->collectionService->update($collection, $request->validated());
 
             return $this->success(
                 new CollectionResource($collection),
@@ -229,7 +219,7 @@ class CollectionController extends BaseApiController
     /**
      * Add files to a collection
      */
-    public function addFiles(Request $request, int $id): JsonResponse
+    public function addFiles(CollectionFilesRequest $request, int $id): JsonResponse
     {
         try {
             $collection = Collection::findOrFail($id);
@@ -238,12 +228,7 @@ class CollectionController extends BaseApiController
                 return $this->forbidden('You do not have permission to add files to this collection');
             }
 
-            $validated = $request->validate([
-                'file_ids' => 'required|array|min:1',
-                'file_ids.*' => 'integer|exists:files,id',
-            ]);
-
-            $this->collectionService->addFiles($collection, $validated['file_ids'], $request->user()->id);
+            $this->collectionService->addFiles($collection, $request->validated()['file_ids'], $request->user()->id);
 
             return $this->success(
                 new CollectionResource($collection->fresh()->loadCount('files')),
@@ -257,7 +242,7 @@ class CollectionController extends BaseApiController
     /**
      * Remove files from a collection
      */
-    public function removeFiles(Request $request, int $id): JsonResponse
+    public function removeFiles(CollectionFilesRequest $request, int $id): JsonResponse
     {
         try {
             $collection = Collection::findOrFail($id);
@@ -266,12 +251,7 @@ class CollectionController extends BaseApiController
                 return $this->forbidden('You do not have permission to remove files from this collection');
             }
 
-            $validated = $request->validate([
-                'file_ids' => 'required|array|min:1',
-                'file_ids.*' => 'integer|exists:files,id',
-            ]);
-
-            $this->collectionService->removeFiles($collection, $validated['file_ids']);
+            $this->collectionService->removeFiles($collection, $request->validated()['file_ids']);
 
             return $this->success(
                 new CollectionResource($collection->fresh()->loadCount('files')),
@@ -285,7 +265,7 @@ class CollectionController extends BaseApiController
     /**
      * Share a collection with another user
      */
-    public function share(Request $request, int $id): JsonResponse
+    public function share(ShareCollectionRequest $request, int $id): JsonResponse
     {
         try {
             $collection = Collection::findOrFail($id);
@@ -294,12 +274,7 @@ class CollectionController extends BaseApiController
                 return $this->forbidden('Only the owner can share this collection');
             }
 
-            $validated = $request->validate([
-                'email' => 'required|email|exists:users,email',
-                'permission' => 'nullable|in:view,edit',
-                'expires_at' => 'nullable|date|after:now',
-            ]);
-
+            $validated = $request->validated();
             $targetUser = User::where('email', $validated['email'])->first();
 
             if ($targetUser->id === $request->user()->id) {

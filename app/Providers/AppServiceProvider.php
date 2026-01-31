@@ -12,6 +12,7 @@ use App\Models\Category;
 use App\Models\Collection;
 use App\Models\Contract;
 use App\Models\Document;
+use App\Models\DuplicateFlag;
 use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Invoice;
@@ -23,6 +24,7 @@ use App\Models\Warranty;
 use App\Policies\CategoryPolicy;
 use App\Policies\CollectionPolicy;
 use App\Policies\DocumentPolicy;
+use App\Policies\DuplicateFlagPolicy;
 use App\Policies\FilePolicy;
 use App\Policies\ReceiptPolicy;
 use App\Policies\TagPolicy;
@@ -312,5 +314,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Document::class, DocumentPolicy::class);
         Gate::policy(Tag::class, TagPolicy::class);
         Gate::policy(Collection::class, CollectionPolicy::class);
+        Gate::policy(DuplicateFlag::class, DuplicateFlagPolicy::class);
     }
 }

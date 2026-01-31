@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\Inertia\ContractInertiaResource;
 use App\Models\Contract;
-use App\Services\Contracts\ContractTransformer;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,7 +18,7 @@ class ContractController extends Controller
         $contracts = Contract::where('user_id', $request->user()->id)
             ->orderBy('effective_date', 'desc')
             ->get()
-            ->map(fn (Contract $contract) => ContractTransformer::forIndex($contract));
+            ->map(fn (Contract $contract) => ContractInertiaResource::forIndex($contract));
 
         return Inertia::render('Contracts/Index', [
             'contracts' => $contracts,
@@ -30,15 +30,12 @@ class ContractController extends Controller
      */
     public function show(Request $request, Contract $contract): Response
     {
-        // Authorization check
-        if ($contract->user_id !== $request->user()->id) {
-            abort(403);
-        }
+        $this->authorize('view', $contract);
 
         $contract->load(['file', 'tags']);
 
         return Inertia::render('Contracts/Show', [
-            'contract' => ContractTransformer::forShow($contract),
+            'contract' => ContractInertiaResource::forShow($contract),
         ]);
     }
 }

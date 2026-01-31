@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreCategoryRequest;
+use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
 use App\Models\User;
 use App\Services\SharingService;
@@ -51,21 +53,16 @@ class CategoryController extends Controller
     /**
      * Store a newly created category.
      */
-    public function store(Request $request)
+    public function store(StoreCategoryRequest $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'color' => 'nullable|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
-            'icon' => 'nullable|string|max:50',
-            'description' => 'nullable|string|max:500',
-        ]);
+        $validated = $request->validated();
 
         auth()->user()->categories()->create([
-            'name' => $request->name,
-            'slug' => Category::generateUniqueSlug($request->name, auth()->id()),
-            'color' => $request->color ?? '#6B7280',
-            'icon' => $request->icon,
-            'description' => $request->description,
+            'name' => $validated['name'],
+            'slug' => Category::generateUniqueSlug($validated['name'], auth()->id()),
+            'color' => $validated['color'] ?? '#6B7280',
+            'icon' => $validated['icon'] ?? null,
+            'description' => $validated['description'] ?? null,
             'sort_order' => auth()->user()->categories()->max('sort_order') + 1,
         ]);
 
@@ -75,29 +72,23 @@ class CategoryController extends Controller
     /**
      * Update the specified category.
      */
-    public function update(Request $request, Category $category)
+    public function update(UpdateCategoryRequest $request, Category $category)
     {
         $this->authorize('update', $category);
 
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'color' => 'nullable|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
-            'icon' => 'nullable|string|max:50',
-            'description' => 'nullable|string|max:500',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         $data = [
-            'name' => $request->name,
-            'color' => $request->color ?? '#6B7280',
-            'icon' => $request->icon,
-            'description' => $request->description,
-            'is_active' => $request->is_active ?? true,
+            'name' => $validated['name'],
+            'color' => $validated['color'] ?? '#6B7280',
+            'icon' => $validated['icon'] ?? null,
+            'description' => $validated['description'] ?? null,
+            'is_active' => $validated['is_active'] ?? true,
         ];
 
         // Only update slug if name changed
-        if ($request->name !== $category->name) {
-            $data['slug'] = Category::generateUniqueSlug($request->name, auth()->id(), $category->id);
+        if ($validated['name'] !== $category->name) {
+            $data['slug'] = Category::generateUniqueSlug($validated['name'], auth()->id(), $category->id);
         }
 
         $category->update($data);

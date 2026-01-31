@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\Inertia\VoucherInertiaResource;
 use App\Models\Voucher;
-use App\Services\Vouchers\VoucherTransformer;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,7 +19,7 @@ class VoucherController extends Controller
             ->with(['merchant'])
             ->orderBy('expiry_date', 'asc')
             ->get()
-            ->map(fn (Voucher $voucher) => VoucherTransformer::forIndex($voucher));
+            ->map(fn (Voucher $voucher) => VoucherInertiaResource::forIndex($voucher));
 
         return Inertia::render('Vouchers/Index', [
             'vouchers' => $vouchers,
@@ -31,15 +31,12 @@ class VoucherController extends Controller
      */
     public function show(Request $request, Voucher $voucher): Response
     {
-        // Authorization check
-        if ($voucher->user_id !== $request->user()->id) {
-            abort(403);
-        }
+        $this->authorize('view', $voucher);
 
         $voucher->load(['merchant', 'file', 'tags']);
 
         return Inertia::render('Vouchers/Show', [
-            'voucher' => VoucherTransformer::forShow($voucher),
+            'voucher' => VoucherInertiaResource::forShow($voucher),
         ]);
     }
 
@@ -48,10 +45,7 @@ class VoucherController extends Controller
      */
     public function redeem(Request $request, Voucher $voucher)
     {
-        // Authorization check
-        if ($voucher->user_id !== $request->user()->id) {
-            abort(403);
-        }
+        $this->authorize('update', $voucher);
 
         $voucher->update([
             'is_redeemed' => true,

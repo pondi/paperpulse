@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Documents;
 
 use App\Http\Controllers\BaseResourceController;
+use App\Http\Resources\Inertia\DocumentInertiaResource;
 use App\Models\Document;
 use App\Models\File;
 use App\Models\Tag;
-use App\Services\Documents\DocumentTransformer;
 use App\Services\Documents\DocumentUploadHandler;
 use App\Services\FileProcessingService;
 use App\Services\StorageService;
@@ -195,7 +195,7 @@ class DocumentController extends BaseResourceController
         $meta = $this->getShowMeta();
 
         return Inertia::render("{$this->resource}/Show", [
-            'document' => DocumentTransformer::forShow($document),
+            'document' => DocumentInertiaResource::forShow($document),
             // Flatten meta for Vue expectations
             'categories' => $meta['categories'] ?? [],
             'available_tags' => $meta['available_tags'] ?? [],
@@ -207,7 +207,7 @@ class DocumentController extends BaseResourceController
      */
     protected function transformForIndex($document): array
     {
-        return DocumentTransformer::forIndex($document);
+        return DocumentInertiaResource::forIndex($document)->toArray(request());
     }
 
     /**
@@ -215,7 +215,7 @@ class DocumentController extends BaseResourceController
      */
     protected function transformForShow($document): array
     {
-        return DocumentTransformer::forShow($document);
+        return DocumentInertiaResource::forShow($document)->toArray(request());
     }
 
     /**

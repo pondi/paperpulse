@@ -195,7 +195,7 @@ class DocumentController extends BaseResourceController
         $meta = $this->getShowMeta();
 
         return Inertia::render("{$this->resource}/Show", [
-            'document' => DocumentInertiaResource::forShow($document),
+            'document' => DocumentInertiaResource::forShow($document)->toArray(request()),
             // Flatten meta for Vue expectations
             'categories' => $meta['categories'] ?? [],
             'available_tags' => $meta['available_tags'] ?? [],

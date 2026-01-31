@@ -19,7 +19,7 @@ class VoucherController extends Controller
             ->with(['merchant'])
             ->orderBy('expiry_date', 'asc')
             ->get()
-            ->map(fn (Voucher $voucher) => VoucherInertiaResource::forIndex($voucher));
+            ->map(fn (Voucher $voucher) => VoucherInertiaResource::forIndex($voucher)->toArray(request()));
 
         return Inertia::render('Vouchers/Index', [
             'vouchers' => $vouchers,
@@ -36,7 +36,7 @@ class VoucherController extends Controller
         $voucher->load(['merchant', 'file', 'tags']);
 
         return Inertia::render('Vouchers/Show', [
-            'voucher' => VoucherInertiaResource::forShow($voucher),
+            'voucher' => VoucherInertiaResource::forShow($voucher)->toArray(request()),
         ]);
     }
 

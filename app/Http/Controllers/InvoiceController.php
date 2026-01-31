@@ -19,7 +19,7 @@ class InvoiceController extends Controller
             ->withCount('lineItems')
             ->orderBy('invoice_date', 'desc')
             ->get()
-            ->map(fn (Invoice $invoice) => InvoiceInertiaResource::forIndex($invoice));
+            ->map(fn (Invoice $invoice) => InvoiceInertiaResource::forIndex($invoice)->toArray(request()));
 
         return Inertia::render('Invoices/Index', [
             'invoices' => $invoices,
@@ -36,7 +36,7 @@ class InvoiceController extends Controller
         $invoice->load(['merchant', 'file', 'tags', 'lineItems']);
 
         return Inertia::render('Invoices/Show', [
-            'invoice' => InvoiceInertiaResource::forShow($invoice),
+            'invoice' => InvoiceInertiaResource::forShow($invoice)->toArray(request()),
         ]);
     }
 }

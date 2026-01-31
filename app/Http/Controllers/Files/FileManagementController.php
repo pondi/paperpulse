@@ -24,7 +24,7 @@ class FileManagementController extends Controller
 
         $files = $filesQuery
             ->paginate($perPage)
-            ->through(fn (File $file) => FileInertiaResource::forIndex($file));
+            ->through(fn (File $file) => FileInertiaResource::forIndex($file)->toArray(request()));
 
         // Get statistics for all files (not just current page)
         $stats = [

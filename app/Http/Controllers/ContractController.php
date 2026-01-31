@@ -18,7 +18,7 @@ class ContractController extends Controller
         $contracts = Contract::where('user_id', $request->user()->id)
             ->orderBy('effective_date', 'desc')
             ->get()
-            ->map(fn (Contract $contract) => ContractInertiaResource::forIndex($contract));
+            ->map(fn (Contract $contract) => ContractInertiaResource::forIndex($contract)->toArray(request()));
 
         return Inertia::render('Contracts/Index', [
             'contracts' => $contracts,
@@ -35,7 +35,7 @@ class ContractController extends Controller
         $contract->load(['file', 'tags']);
 
         return Inertia::render('Contracts/Show', [
-            'contract' => ContractInertiaResource::forShow($contract),
+            'contract' => ContractInertiaResource::forShow($contract)->toArray(request()),
         ]);
     }
 }

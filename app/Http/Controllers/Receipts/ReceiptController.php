@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Receipts;
 
 use App\Http\Controllers\BaseResourceController;
+use App\Http\Resources\Inertia\ReceiptInertiaResource;
 use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Models\Tag;
 use App\Services\DocumentService;
 use App\Services\Receipts\Analysis\DateUpdateNotifier;
 use App\Services\Receipts\ReceiptSortApplier;
-use App\Services\Receipts\ReceiptTransformer;
 use App\Services\ReceiptService;
 use App\Services\Tags\TagAttachmentService;
 use App\Traits\SanitizesInput;
@@ -65,7 +65,7 @@ class ReceiptController extends BaseResourceController
         $this->authorize('view', $receipt);
 
         return Inertia::render("{$this->resource}/Show", [
-            'receipt' => ReceiptTransformer::forShow($receipt),
+            'receipt' => ReceiptInertiaResource::forShow($receipt),
             'meta' => $this->getShowMeta(),
         ]);
     }
@@ -104,7 +104,7 @@ class ReceiptController extends BaseResourceController
             ->get();
 
         return inertia("{$this->resource}/Index", [
-            'receipts' => $receipts->through(fn ($receipt) => ReceiptTransformer::forIndex($receipt))->items(),
+            'receipts' => $receipts->through(fn ($receipt) => ReceiptInertiaResource::forIndex($receipt))->items(),
             'categories' => $categories,
             'pagination' => [
                 'current_page' => $receipts->currentPage(),
@@ -128,7 +128,7 @@ class ReceiptController extends BaseResourceController
      */
     protected function transformForIndex($receipt): array
     {
-        return ReceiptTransformer::forIndex($receipt);
+        return ReceiptInertiaResource::forIndex($receipt)->toArray(request());
     }
 
     /**
@@ -136,7 +136,7 @@ class ReceiptController extends BaseResourceController
      */
     protected function transformForShow($receipt): array
     {
-        return ReceiptTransformer::forShow($receipt);
+        return ReceiptInertiaResource::forShow($receipt)->toArray(request());
     }
 
     /**

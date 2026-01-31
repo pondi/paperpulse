@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\Inertia\DuplicateFlagInertiaResource;
 use App\Models\DuplicateFlag;
-use App\Services\Duplicates\DuplicateFlagTransformer;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -21,7 +21,7 @@ class DuplicateController extends Controller
             ])
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn (DuplicateFlag $flag) => DuplicateFlagTransformer::forIndex($flag));
+            ->map(fn (DuplicateFlag $flag) => DuplicateFlagInertiaResource::forIndex($flag));
 
         return Inertia::render('Duplicates/Index', [
             'duplicates' => $duplicates,

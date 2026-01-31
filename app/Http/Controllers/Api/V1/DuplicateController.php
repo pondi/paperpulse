@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseApiController;
+use App\Http\Resources\Inertia\DuplicateFlagInertiaResource;
 use App\Models\DuplicateFlag;
 use App\Models\File;
 use App\Services\DocumentService;
-use App\Services\Duplicates\DuplicateFlagTransformer;
 use App\Services\StorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +35,7 @@ class DuplicateController extends BaseApiController
 
         $duplicates = $query
             ->paginate($validated['per_page'] ?? 20)
-            ->through(fn (DuplicateFlag $flag) => DuplicateFlagTransformer::forIndex($flag));
+            ->through(fn (DuplicateFlag $flag) => DuplicateFlagInertiaResource::forIndex($flag));
 
         return $this->paginated($duplicates, 'Duplicate flags retrieved successfully');
     }
@@ -85,7 +85,7 @@ class DuplicateController extends BaseApiController
         });
 
         return $this->success(
-            DuplicateFlagTransformer::forIndex($duplicateFlag->fresh()),
+            DuplicateFlagInertiaResource::forIndex($duplicateFlag->fresh()),
             'Duplicate resolved successfully'
         );
     }

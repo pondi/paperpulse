@@ -158,9 +158,7 @@ class CollectionController extends BaseApiController
         try {
             $collection = Collection::findOrFail($id);
 
-            if ($collection->user_id !== $request->user()->id) {
-                return $this->forbidden('Only the owner can delete this collection');
-            }
+            $this->authorize('delete', $collection);
 
             $this->collectionService->delete($collection);
 
@@ -178,9 +176,7 @@ class CollectionController extends BaseApiController
         try {
             $collection = Collection::findOrFail($id);
 
-            if ($collection->user_id !== $request->user()->id) {
-                return $this->forbidden('Only the owner can archive this collection');
-            }
+            $this->authorize('archive', $collection);
 
             $collection = $this->collectionService->archive($collection);
 
@@ -201,9 +197,7 @@ class CollectionController extends BaseApiController
         try {
             $collection = Collection::findOrFail($id);
 
-            if ($collection->user_id !== $request->user()->id) {
-                return $this->forbidden('Only the owner can unarchive this collection');
-            }
+            $this->authorize('archive', $collection);
 
             $collection = $this->collectionService->unarchive($collection);
 
@@ -270,9 +264,7 @@ class CollectionController extends BaseApiController
         try {
             $collection = Collection::findOrFail($id);
 
-            if ($collection->user_id !== $request->user()->id) {
-                return $this->forbidden('Only the owner can share this collection');
-            }
+            $this->authorize('share', $collection);
 
             $validated = $request->validated();
             $targetUser = User::where('email', $validated['email'])->first();
@@ -305,9 +297,7 @@ class CollectionController extends BaseApiController
         try {
             $collection = Collection::findOrFail($id);
 
-            if ($collection->user_id !== $request->user()->id) {
-                return $this->forbidden('Only the owner can manage shares for this collection');
-            }
+            $this->authorize('share', $collection);
 
             $targetUser = User::findOrFail($userId);
             $this->sharingService->unshare($collection, $targetUser);
@@ -326,9 +316,7 @@ class CollectionController extends BaseApiController
         try {
             $collection = Collection::findOrFail($id);
 
-            if ($collection->user_id !== $request->user()->id) {
-                return $this->forbidden('Only the owner can view shares for this collection');
-            }
+            $this->authorize('share', $collection);
 
             $shares = $this->sharingService->getShares($collection);
 

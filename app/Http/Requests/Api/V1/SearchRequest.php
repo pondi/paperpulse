@@ -28,4 +28,3 @@ class SearchRequest extends FormRequest
         ];
     }
 }
-

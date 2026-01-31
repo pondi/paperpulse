@@ -65,7 +65,11 @@ class FileInertiaResource extends JsonResource
         ];
 
         if ($this->includeDetailsUrl) {
-            $data['detailsUrl'] = route('files.show', $this->id);
+            // Route to appropriate show page based on file type
+            // Files themselves don't have a show page - their associated entities do
+            $data['detailsUrl'] = $this->file_type === 'receipt'
+                ? route('receipts.show', $this->primaryReceipt?->id ?? $this->id)
+                : route('documents.show', $this->primaryDocument?->id ?? $this->id);
         }
 
         if ($this->detailed) {

@@ -2,13 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Http\Resources\Inertia\ReceiptInertiaResource;
 use App\Models\File;
 use App\Models\Receipt;
 use App\Models\User;
 use App\Services\Files\FilePreviewManager;
-use App\Services\Files\ImagePreviewGenerator;
 use App\Services\Files\StoragePathBuilder;
-use App\Services\Receipts\ReceiptTransformer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -19,6 +18,7 @@ class ImagePreviewGenerationTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected File $file;
 
     protected function setUp(): void
@@ -150,7 +150,7 @@ class ImagePreviewGenerationTest extends TestCase
         ]);
 
         $receipt->load('file');
-        $transformed = ReceiptTransformer::forShow($receipt);
+        $transformed = ReceiptInertiaResource::forShow($receipt)->toArray(request());
 
         $this->assertArrayHasKey('file', $transformed);
         $this->assertTrue($transformed['file']['has_preview']);

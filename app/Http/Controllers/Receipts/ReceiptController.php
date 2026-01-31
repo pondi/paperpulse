@@ -104,7 +104,7 @@ class ReceiptController extends BaseResourceController
             ->get();
 
         return inertia("{$this->resource}/Index", [
-            'receipts' => $receipts->through(fn ($receipt) => ReceiptInertiaResource::forIndex($receipt))->items(),
+            'receipts' => $receipts->through(fn ($receipt) => $this->transformForIndex($receipt))->items(),
             'categories' => $categories,
             'pagination' => [
                 'current_page' => $receipts->currentPage(),

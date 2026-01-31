@@ -262,7 +262,10 @@ class DocumentController extends BaseResourceController
      */
     public function destroy($id)
     {
-        $document = Document::with('file')->findOrFail($id);
+        // Handle both route-bound Document model and raw ID
+        $document = $id instanceof Document
+            ? $id->load('file')
+            : Document::with('file')->findOrFail($id);
         $this->authorize('delete', $document);
 
         $fileId = $document->file_id;

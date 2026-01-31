@@ -207,19 +207,20 @@ class AppServiceProvider extends ServiceProvider
 
         // Custom route binding for polymorphic document resolution
         // Handles both Document models and ExtractableEntity redirects
+        // Note: Route bindings execute before authentication middleware, so
+        // we cannot use auth()->id() here. Authorization is handled by policies.
         Route::bind('document', function ($value) {
             // First, try to find an actual Document with this ID
-            $document = Document::where('id', $value)
-                ->where('user_id', auth()->id())
-                ->first();
+            $document = Document::find($value);
 
             if ($document) {
                 return $document;
             }
 
             // Not a Document - check if it's another entity type via ExtractableEntity
+            // Only check for entity types other than 'document' to avoid confusion
             $extractableEntity = ExtractableEntity::where('entity_id', $value)
-                ->where('user_id', auth()->id())
+                ->whereNot('entity_type', 'document')
                 ->with('entity')
                 ->first();
 

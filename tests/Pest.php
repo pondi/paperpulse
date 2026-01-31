@@ -46,3 +46,16 @@ function something()
 {
     // ..
 }
+
+/**
+ * Create a temporary PNG file and return its path.
+ * Uses a 1x1 pixel transparent PNG.
+ */
+function createFixturePngPath(): string
+{
+    $pngData = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAE/wH+rkzHAAAAAElFTkSuQmCC');
+    $path = sys_get_temp_dir().'/'.uniqid('fixture_', true).'.png';
+    file_put_contents($path, $pngData);
+
+    return $path;
+}

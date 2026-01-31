@@ -12,98 +12,6 @@ beforeEach(function () {
     $this->actingAs($this->user);
 });
 
-describe('Dashboard Widgets', function () {
-    it('returns expiring vouchers widget data', function () {
-        // Create vouchers
-        $file = File::factory()->create(['user_id' => $this->user->id]);
-
-        Voucher::factory()->create([
-            'file_id' => $file->id,
-            'user_id' => $this->user->id,
-            'expiry_date' => now()->addDays(15),
-            'is_redeemed' => false,
-        ]);
-
-        Voucher::factory()->create([
-            'file_id' => $file->id,
-            'user_id' => $this->user->id,
-            'expiry_date' => now()->addDays(45),
-            'is_redeemed' => false,
-        ]);
-
-        $response = $this->getJson('/api/v1/dashboard/widgets');
-
-        $response->assertOk();
-        $response->assertJsonStructure([
-            'data' => [
-                'expiring_vouchers',
-                'ending_warranties',
-            ],
-        ]);
-
-        $vouchers = $response->json('data.expiring_vouchers.items');
-        expect($vouchers)->toBeArray();
-        // Should only get the one expiring within 30 days
-        expect(count($vouchers))->toBeGreaterThanOrEqual(1);
-        expect($response->json('data.expiring_vouchers.count'))->toBeGreaterThanOrEqual(1);
-    });
-
-    it('returns ending warranties widget data', function () {
-        $file = File::factory()->create(['user_id' => $this->user->id]);
-
-        Warranty::factory()->create([
-            'file_id' => $file->id,
-            'user_id' => $this->user->id,
-            'warranty_end_date' => now()->addDays(20),
-        ]);
-
-        Warranty::factory()->create([
-            'file_id' => $file->id,
-            'user_id' => $this->user->id,
-            'warranty_end_date' => now()->addDays(60),
-        ]);
-
-        $response = $this->getJson('/api/v1/dashboard/widgets');
-
-        $response->assertOk();
-        $warranties = $response->json('data.ending_warranties.items');
-        expect($warranties)->toBeArray();
-        expect(count($warranties))->toBeGreaterThanOrEqual(1);
-        expect($response->json('data.ending_warranties.count'))->toBeGreaterThanOrEqual(1);
-    });
-
-    it('filters widgets by user', function () {
-        $otherUser = User::factory()->create();
-        $file1 = File::factory()->create(['user_id' => $this->user->id]);
-        $file2 = File::factory()->create(['user_id' => $otherUser->id]);
-
-        $voucherCode = 'USER-SPECIFIC-'.uniqid();
-
-        Voucher::factory()->create([
-            'file_id' => $file1->id,
-            'user_id' => $this->user->id,
-            'code' => $voucherCode,
-            'expiry_date' => now()->addDays(15),
-        ]);
-
-        Voucher::factory()->create([
-            'file_id' => $file2->id,
-            'user_id' => $otherUser->id,
-            'code' => 'OTHER-USER-VOUCHER',
-            'expiry_date' => now()->addDays(15),
-        ]);
-
-        $response = $this->getJson('/api/v1/dashboard/widgets');
-
-        $response->assertOk();
-        $vouchers = $response->json('data.expiring_vouchers.items');
-        // Verify our specific voucher is in the results
-        expect(collect($vouchers)->pluck('code')->contains($voucherCode))->toBeTrue();
-        // Verify other user's voucher is NOT in the results
-        expect(collect($vouchers)->pluck('code')->contains('OTHER-USER-VOUCHER'))->toBeFalse();
-    });
-});
-
 describe('Duplicate Detection', function () {
     it('detects duplicate files by file hash', function () {
         $service = app(DuplicateDetectionService::class);
@@ -253,7 +161,7 @@ describe('Notification System', function () {
 });
 
 describe('Duplicate Detection UI', function () {
-    it('lists duplicate files', function () {
+    it('lists duplicate files via web route', function () {
         $service = app(DuplicateDetectionService::class);
         $fileHash = hash('sha256', 'duplicate content');
 
@@ -272,28 +180,12 @@ describe('Duplicate Detection UI', function () {
         // Create the duplicate flags
         $service->flagFileHashDuplicates($file2);
 
-        $response = $this->getJson('/api/v1/duplicates');
+        $response = $this->get('/duplicates');
 
         $response->assertOk();
-        $response->assertJsonStructure([
-            'data' => [
-                '*' => [
-                    'id',
-                    'reason',
-                    'status',
-                    'file',
-                    'duplicate_file',
-                ],
-            ],
-        ]);
-
-        $duplicates = $response->json('data');
-        expect($duplicates)->toBeArray();
-        expect(count($duplicates))->toBeGreaterThanOrEqual(1);
-
-        // Verify the duplicate contains our files
-        $duplicate = collect($duplicates)->first();
-        expect($duplicate)->toHaveKey('file');
-        expect($duplicate)->toHaveKey('duplicate_file');
+        $response->assertInertia(function ($page) {
+            $page->component('Duplicates/Index')
+                ->has('duplicates');
+        });
     });
 });

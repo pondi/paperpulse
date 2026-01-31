@@ -52,15 +52,12 @@ class DuplicateFlagInertiaResource extends JsonResource
             ];
         }
 
-        $invoice = $file->invoices->first();
-        if ($invoice) {
+        $document = $file->primaryDocument;
+        if ($document) {
             return [
-                'type' => 'invoice',
-                'date' => $invoice->invoice_date?->toDateString(),
-                'total_amount' => $invoice->total_amount,
-                'currency' => $invoice->currency,
-                'invoice_number' => $invoice->invoice_number,
-                'from_name' => $invoice->from_name,
+                'type' => 'document',
+                'title' => $document->title,
+                'document_type' => $document->document_type,
             ];
         }
 

@@ -69,7 +69,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
-import axios from 'axios';
+import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Link } from '@inertiajs/vue3';
 import { useTranslations } from '@/Composables/useTranslations';
@@ -85,7 +85,6 @@ const props = defineProps({
 const { __ } = useTranslations();
 const { formatDate } = useDateFormatter();
 
-const duplicates = ref([...props.duplicates]);
 const errorMessage = ref('');
 const busyFlags = ref({});
 
@@ -110,7 +109,7 @@ const formatReason = (reason) => {
         .join(', ');
 };
 
-const ignoreDuplicate = async (flag) => {
+const ignoreDuplicate = (flag) => {
     if (!confirm(__('ignore_duplicate_confirm'))) {
         return;
     }
@@ -118,17 +117,18 @@ const ignoreDuplicate = async (flag) => {
     setBusy(flag.id, true);
     errorMessage.value = '';
 
-    try {
-        await axios.post(`/api/v1/duplicates/${flag.id}/ignore`);
-        duplicates.value = duplicates.value.filter((item) => item.id !== flag.id);
-    } catch (error) {
-        errorMessage.value = __('duplicate_action_failed');
-    } finally {
-        setBusy(flag.id, false);
-    }
+    router.post(route('duplicates.ignore', flag.id), {}, {
+        preserveScroll: true,
+        onError: () => {
+            errorMessage.value = __('duplicate_action_failed');
+        },
+        onFinish: () => {
+            setBusy(flag.id, false);
+        }
+    });
 };
 
-const resolveDuplicate = async (flag, fileId) => {
+const resolveDuplicate = (flag, fileId) => {
     if (!fileId) {
         return;
     }
@@ -140,17 +140,17 @@ const resolveDuplicate = async (flag, fileId) => {
     setBusy(flag.id, true);
     errorMessage.value = '';
 
-    try {
-        await axios.post(`/api/v1/duplicates/${flag.id}/resolve`, {
-            delete_file_id: fileId
-        });
-
-        duplicates.value = duplicates.value.filter((item) => item.id !== flag.id);
-    } catch (error) {
-        errorMessage.value = __('duplicate_action_failed');
-    } finally {
-        setBusy(flag.id, false);
-    }
+    router.post(route('duplicates.resolve', flag.id), {
+        delete_file_id: fileId
+    }, {
+        preserveScroll: true,
+        onError: () => {
+            errorMessage.value = __('duplicate_action_failed');
+        },
+        onFinish: () => {
+            setBusy(flag.id, false);
+        }
+    });
 };
 
 const FileCard = {
@@ -189,12 +189,12 @@ const FileCard = {
                 };
             }
 
-            if (summary.type === 'invoice') {
+            if (summary.type === 'document') {
                 return {
-                    title: summary.invoice_number || summary.from_name || __('invoice'),
-                    date: summary.date,
-                    amount: summary.total_amount,
-                    currency: summary.currency,
+                    title: summary.title || __('document'),
+                    date: null,
+                    amount: null,
+                    currency: null,
                 };
             }
 

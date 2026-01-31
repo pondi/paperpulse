@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\File;
 use App\Models\Category;
 use App\Models\Document;
+use App\Models\File;
 use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Models\User;
@@ -124,8 +124,8 @@ it('combines file type and status filters', function () {
     $response->assertJsonCount(2, 'data');
 
     $data = collect($response->json('data'));
-    expect($data->every(fn($file) => $file['file_type'] === 'receipt'))->toBeTrue();
-    expect($data->every(fn($file) => $file['status'] === 'completed'))->toBeTrue();
+    expect($data->every(fn ($file) => $file['file_type'] === 'receipt'))->toBeTrue();
+    expect($data->every(fn ($file) => $file['status'] === 'completed'))->toBeTrue();
 });
 
 it('validates file_type parameter', function () {
@@ -253,7 +253,7 @@ it('includes receipt metadata for list view', function () {
         'receipt_date' => '2025-01-01',
         'total_amount' => 123.45,
         'currency' => 'USD',
-        'summary' => 'Lunch with client',
+        'note' => 'Lunch with client',
     ]);
 
     $response = $this->getJson(route('api.files.index', ['file_type' => 'receipt']));

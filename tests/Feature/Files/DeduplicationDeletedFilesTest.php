@@ -72,6 +72,7 @@ it('does not treat a deleted document as a duplicate source', function () {
         'fileSize' => 123,
         'status' => 'completed',
         'file_hash' => $hash,
+        'file_type' => 'document',
     ]);
 
     $document = Document::create([

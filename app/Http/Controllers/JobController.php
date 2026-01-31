@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\Inertia\JobHistoryInertiaResource;
 use App\Jobs\System\RestartJobChain;
 use App\Models\JobHistory;
 use App\Models\PulseDavFile;
 use App\Services\JobChainService;
-use App\Services\Jobs\JobHistoryTransformer;
 use App\Services\Jobs\JobStatisticsProvider;
 use App\Services\Jobs\PendingJobsReader;
 use App\Services\Jobs\PulseDavStatisticsProvider;
@@ -28,7 +28,11 @@ class JobController extends Controller
      */
     private function transformJob(JobHistory $job, bool $isChild = false): array
     {
-        return JobHistoryTransformer::transform($job, $isChild);
+        if ($isChild) {
+            return JobHistoryInertiaResource::asChild($job)->toArray(request());
+        }
+
+        return JobHistoryInertiaResource::make($job)->toArray(request());
     }
 
     /**

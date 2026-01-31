@@ -117,7 +117,7 @@ const openDeleteModal = (category: Category) => {
                 </h2>
                 <button
                     @click="showCreateModal = true"
-                    class="inline-flex items-center px-4 py-2 bg-orange-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-orange-700"
+                    class="inline-flex items-center px-4 py-2 bg-zinc-900 dark:bg-orange-600 border border-transparent rounded-md font-bold text-sm text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200"
                 >
                     <PlusIcon class="h-4 w-4 mr-2" />
                     New Category
@@ -127,18 +127,18 @@ const openDeleteModal = (category: Category) => {
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white dark:bg-zinc-800 overflow-hidden shadow-lg sm:rounded-lg">
+                <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-orange-600 dark:border-orange-500">
                     <div class="p-6">
                         <div v-if="categories.length === 0" class="text-center py-12">
-                            <FolderIcon class="mx-auto h-12 w-12 text-zinc-400" />
-                            <h3 class="mt-2 text-sm font-medium text-zinc-900 dark:text-white">No categories</h3>
-                            <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                            <FolderIcon class="mx-auto h-16 w-16 text-zinc-400 dark:text-zinc-600" />
+                            <h3 class="mt-4 text-lg font-black text-zinc-900 dark:text-zinc-100">No categories</h3>
+                            <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                                 Get started by creating a new category.
                             </p>
-                            <div class="mt-6">
+                            <div class="mt-8">
                                 <button
                                     @click="showCreateModal = true"
-                                    class="inline-flex items-center px-4 py-2 bg-orange-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-orange-700"
+                                    class="inline-flex items-center px-6 py-3 bg-zinc-900 dark:bg-orange-600 border border-transparent rounded-md font-bold text-sm text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-orange-700 transition-all duration-200"
                                 >
                                     <PlusIcon class="h-4 w-4 mr-2" />
                                     New Category
@@ -150,7 +150,7 @@ const openDeleteModal = (category: Category) => {
                             <div
                                 v-for="category in categories"
                                 :key="category.id"
-                                class="relative group border dark:border-zinc-700 rounded-lg p-4 hover:shadow-lg transition-shadow"
+                                class="relative group bg-white dark:bg-zinc-900 border border-amber-200 dark:border-zinc-700 rounded-lg p-4 shadow-lg hover:shadow-xl transition-all duration-200"
                             >
                                 <div class="flex items-start justify-between">
                                     <div class="flex items-center">
@@ -164,7 +164,7 @@ const openDeleteModal = (category: Category) => {
                                             />
                                         </div>
                                         <div class="ml-3">
-                                            <h3 class="text-lg font-medium text-zinc-900 dark:text-white">
+                                            <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-100">
                                                 {{ category.name }}
                                             </h3>
                                             <p class="text-sm text-zinc-500 dark:text-zinc-400">
@@ -208,7 +208,7 @@ const openDeleteModal = (category: Category) => {
         <!-- Create Category Modal -->
         <Modal :show="showCreateModal" @close="showCreateModal = false">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-zinc-900 dark:text-white mb-4">
+                <h2 class="text-lg font-black text-zinc-900 dark:text-zinc-100 mb-4">
                     Create New Category
                 </h2>
                 
@@ -258,7 +258,7 @@ const openDeleteModal = (category: Category) => {
         <!-- Edit Category Modal -->
         <Modal :show="showEditModal" @close="showEditModal = false">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-zinc-900 dark:text-white mb-4">
+                <h2 class="text-lg font-black text-zinc-900 dark:text-zinc-100 mb-4">
                     Edit Category
                 </h2>
                 
@@ -308,7 +308,7 @@ const openDeleteModal = (category: Category) => {
         <!-- Delete Confirmation Modal -->
         <Modal :show="showDeleteModal" @close="showDeleteModal = false">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-zinc-900 dark:text-white">
+                <h2 class="text-lg font-black text-zinc-900 dark:text-zinc-100">
                     Delete Category
                 </h2>
                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">

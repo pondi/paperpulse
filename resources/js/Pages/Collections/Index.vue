@@ -10,7 +10,7 @@
                 <button
                     @click="openCreateModal"
                     type="button"
-                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-md shadow-sm hover:shadow text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+                    class="inline-flex items-center px-4 py-2 bg-zinc-900 dark:bg-orange-600 border border-transparent rounded-md font-bold text-sm text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200"
                 >
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -23,7 +23,7 @@
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <!-- Search and Filters -->
-                <div class="bg-white dark:bg-zinc-800 overflow-hidden shadow-lg sm:rounded-lg mb-6">
+                <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg mb-6">
                     <div class="p-6">
                         <div class="flex flex-col sm:flex-row gap-4">
                             <div class="flex-1">
@@ -32,14 +32,14 @@
                                     @input="debounceSearch"
                                     type="search"
                                     placeholder="Search collections..."
-                                    class="w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 focus:border-blue-500 dark:focus:border-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600"
+                                    class="w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 focus:border-amber-500 dark:focus:border-amber-600 focus:ring-amber-500 dark:focus:ring-amber-600"
                                 />
                             </div>
                             <div class="flex gap-2">
                                 <select
                                     v-model="showArchived"
                                     @change="applyFilters"
-                                    class="rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 focus:border-blue-500 dark:focus:border-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600"
+                                    class="rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 focus:border-amber-500 dark:focus:border-amber-600 focus:ring-amber-500 dark:focus:ring-amber-600"
                                 >
                                     <option :value="false">Active Collections</option>
                                     <option :value="true">Archived Collections</option>
@@ -50,7 +50,7 @@
                 </div>
 
                 <!-- Collections Grid -->
-                <div class="bg-white dark:bg-zinc-800 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-blue-600">
+                <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-orange-600 dark:border-orange-500">
                     <div class="p-6">
                         <div v-if="collections.data.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <CollectionCard
@@ -79,7 +79,7 @@
                                 <button
                                     @click="openCreateModal"
                                     type="button"
-                                    class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-bold rounded-md shadow-sm hover:shadow text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200"
+                                    class="inline-flex items-center px-6 py-3 bg-zinc-900 dark:bg-orange-600 border border-transparent rounded-md font-bold text-sm text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-orange-700 transition-all duration-200"
                                 >
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -120,7 +120,7 @@
                             v-model="form.name"
                             type="text"
                             required
-                            class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
                             :class="{ 'border-red-300': form.errors.name }"
                         />
                         <p v-if="form.errors.name" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.errors.name }}</p>
@@ -134,7 +134,7 @@
                             id="collection-description"
                             v-model="form.description"
                             rows="3"
-                            class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
                         ></textarea>
                     </div>
 
@@ -159,7 +159,7 @@
                         <button
                             type="submit"
                             :disabled="form.processing"
-                            class="inline-flex justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50"
+                            class="inline-flex justify-center rounded-md bg-zinc-900 dark:bg-orange-600 px-3 py-2 text-sm font-bold text-white shadow-sm hover:bg-zinc-800 dark:hover:bg-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:opacity-50"
                         >
                             {{ editingCollection ? 'Update' : 'Create' }}
                         </button>

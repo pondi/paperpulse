@@ -1,5 +1,7 @@
 <template>
-    <AuthenticatedLayout title="Tags">
+    <Head title="Tags" />
+
+    <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center justify-between">
                 <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
@@ -17,7 +19,7 @@
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <!-- Search and Filters -->
-                <div class="bg-white dark:bg-zinc-800 overflow-hidden shadow-lg sm:rounded-lg mb-6">
+                <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg mb-6">
                     <div class="p-6">
                         <div class="flex flex-col sm:flex-row gap-4">
                             <div class="flex-1">
@@ -46,15 +48,15 @@
                 </div>
 
                 <!-- Tags Grid -->
-                <div class="bg-white dark:bg-zinc-800 overflow-hidden shadow-lg sm:rounded-lg">
+                <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-orange-600 dark:border-orange-500">
                     <div class="p-6">
                         <div v-if="tags.data.length === 0" class="text-center py-12">
-                            <svg class="mx-auto h-12 w-12 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="mx-auto h-16 w-16 text-zinc-400 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                             </svg>
-                            <h3 class="mt-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">No tags</h3>
-                            <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Get started by creating a new tag.</p>
-                            <div class="mt-6">
+                            <h3 class="mt-4 text-lg font-black text-zinc-900 dark:text-zinc-100">No tags</h3>
+                            <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Get started by creating a new tag.</p>
+                            <div class="mt-8">
                                 <PrimaryButton @click="openCreateModal">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -68,7 +70,7 @@
                             <div
                                 v-for="tag in tags.data"
                                 :key="tag.id"
-                                class="relative group bg-amber-50 dark:bg-zinc-700 rounded-lg p-4 hover:shadow-md transition-shadow"
+                                class="relative group bg-white dark:bg-zinc-900 border border-amber-200 dark:border-zinc-700 rounded-lg p-4 shadow-lg hover:shadow-xl transition-all duration-200"
                             >
                                 <div class="flex items-start justify-between">
                                     <div class="flex-1">
@@ -256,7 +258,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
 import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';

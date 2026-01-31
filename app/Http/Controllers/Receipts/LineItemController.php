@@ -3,25 +3,19 @@
 namespace App\Http\Controllers\Receipts;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreLineItemRequest;
 use App\Models\Receipt;
 use App\Traits\SanitizesInput;
-use Illuminate\Http\Request;
 
 class LineItemController extends Controller
 {
     use SanitizesInput;
 
-    public function store(Request $request, Receipt $receipt)
+    public function store(StoreLineItemRequest $request, Receipt $receipt)
     {
         $this->authorize('update', $receipt);
 
-        $validated = $request->validate([
-            'text' => 'required|string|max:255',
-            'sku' => 'nullable|string|max:100',
-            'qty' => 'required|numeric|min:0',
-            'price' => 'required|numeric|min:0',
-            'total' => 'required|numeric|min:0',
-        ]);
+        $validated = $request->validated();
 
         // Sanitize string inputs
         $validated = $this->sanitizeData($validated, ['text', 'sku']);
@@ -34,17 +28,11 @@ class LineItemController extends Controller
         return redirect()->back()->with('success', 'Line item added successfully');
     }
 
-    public function update(Request $request, Receipt $receipt, $lineItemId)
+    public function update(StoreLineItemRequest $request, Receipt $receipt, $lineItemId)
     {
         $this->authorize('update', $receipt);
 
-        $validated = $request->validate([
-            'text' => 'required|string|max:255',
-            'sku' => 'nullable|string|max:100',
-            'qty' => 'required|numeric|min:0',
-            'price' => 'required|numeric|min:0',
-            'total' => 'required|numeric|min:0',
-        ]);
+        $validated = $request->validated();
 
         // Sanitize string inputs
         $validated = $this->sanitizeData($validated, ['text', 'sku']);

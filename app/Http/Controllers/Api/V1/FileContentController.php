@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseApiController;
 use App\Models\File;
-use App\Services\StorageService;
 use App\Services\Files\StoragePathBuilder;
+use App\Services\StorageService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -13,9 +13,7 @@ class FileContentController extends BaseApiController
 {
     public function show(Request $request, File $file, StorageService $storageService)
     {
-        if ($file->user_id !== $request->user()->id) {
-            return $this->notFound('File not found');
-        }
+        $this->authorize('view', $file);
 
         $validated = $request->validate([
             'variant' => 'nullable|string|in:original,archive,preview',

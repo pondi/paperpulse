@@ -34,8 +34,8 @@ class DocumentInertiaResource extends JsonResource
                 'file_name' => $this->file?->fileName,
                 'file_type' => $this->file?->fileType,
                 'size' => $this->file?->fileSize ?? 0,
-                'created_at' => $this->created_at?->toIso8601String(),
-                'updated_at' => $this->updated_at?->toIso8601String(),
+                'created_at' => $this->created_at,
+                'updated_at' => $this->updated_at,
                 'category' => $this->category?->only(['id', 'name', 'color']),
                 'tags' => $this->tags?->map(fn ($t) => $t->only(['id', 'name']))->values(),
                 'shared_with_count' => $this->sharedUsers?->count() ?? 0,
@@ -51,7 +51,7 @@ class DocumentInertiaResource extends JsonResource
                 'name' => $user->name,
                 'email' => $user->email,
                 'permission' => $user->pivot->permission ?? 'view',
-                'shared_at' => optional($user->pivot->shared_at)->toIso8601String(),
+                'shared_at' => optional($user->pivot->shared_at),
             ])->values();
         }
 
@@ -79,8 +79,8 @@ class DocumentInertiaResource extends JsonResource
             ])->values(),
             'collections' => $collections,
             'shared_users' => $sharedUsers,
-            'created_at' => $this->created_at?->toIso8601String(),
-            'updated_at' => $this->updated_at?->toIso8601String(),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
             'file' => $fileInfo,
         ];
     }
@@ -134,9 +134,9 @@ class DocumentInertiaResource extends JsonResource
             $data = array_merge($data, [
                 'mime_type' => $this->file->mime_type,
                 'guid' => $this->file->guid,
-                'uploaded_at' => $this->file->uploaded_at?->toIso8601String(),
-                'file_created_at' => $this->file->file_created_at?->toIso8601String(),
-                'file_modified_at' => $this->file->file_modified_at?->toIso8601String(),
+                'uploaded_at' => $this->file->uploaded_at,
+                'file_created_at' => $this->file->file_created_at,
+                'file_modified_at' => $this->file->file_modified_at,
             ]);
         }
 

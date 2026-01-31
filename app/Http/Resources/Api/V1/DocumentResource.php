@@ -20,7 +20,7 @@ class DocumentResource extends JsonResource
             'summary' => $this->summary,
             'note' => $this->note,
             'document_type' => $this->document_type,
-            'document_date' => $this->document_date?->toISOString(),
+            'document_date' => $this->document_date,
             'entities' => $this->entities,
             'ai_entities' => $this->ai_entities,
             'metadata' => $this->metadata,

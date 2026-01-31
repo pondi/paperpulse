@@ -27,9 +27,9 @@ class InvoiceResource extends JsonResource
             'to_vat_number' => $this->to_vat_number,
             'to_email' => $this->to_email,
             'to_phone' => $this->to_phone,
-            'invoice_date' => $this->invoice_date?->toISOString(),
-            'due_date' => $this->due_date?->toISOString(),
-            'delivery_date' => $this->delivery_date?->toISOString(),
+            'invoice_date' => $this->invoice_date,
+            'due_date' => $this->due_date,
+            'delivery_date' => $this->delivery_date,
             'subtotal' => $this->subtotal,
             'tax_amount' => $this->tax_amount,
             'discount_amount' => $this->discount_amount,
@@ -48,8 +48,8 @@ class InvoiceResource extends JsonResource
             'category' => $this->whenLoaded('category', fn () => CategoryResource::make($this->category)),
             'line_items' => $this->whenLoaded('lineItems', fn () => InvoiceLineItemResource::collection($this->lineItems)),
             'tags' => $this->whenLoaded('tags', fn () => TagResource::collection($this->tags)),
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

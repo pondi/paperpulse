@@ -19,7 +19,7 @@ class ReceiptResource extends JsonResource
             'total_amount' => $this->total_amount,
             'tax_amount' => $this->tax_amount,
             'currency' => $this->currency,
-            'receipt_date' => $this->receipt_date?->toISOString(),
+            'receipt_date' => $this->receipt_date,
             'summary' => $this->summary,
             'note' => $this->note,
             'receipt_description' => $this->receipt_description,

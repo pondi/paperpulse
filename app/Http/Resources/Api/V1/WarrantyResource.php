@@ -20,9 +20,9 @@ class WarrantyResource extends JsonResource
             'manufacturer' => $this->manufacturer,
             'model_number' => $this->model_number,
             'serial_number' => $this->serial_number,
-            'purchase_date' => $this->purchase_date?->toISOString(),
-            'warranty_start_date' => $this->warranty_start_date?->toISOString(),
-            'warranty_end_date' => $this->warranty_end_date?->toISOString(),
+            'purchase_date' => $this->purchase_date,
+            'warranty_start_date' => $this->warranty_start_date,
+            'warranty_end_date' => $this->warranty_end_date,
             'warranty_duration' => $this->warranty_duration,
             'warranty_type' => $this->warranty_type,
             'warranty_provider' => $this->warranty_provider,
@@ -34,8 +34,8 @@ class WarrantyResource extends JsonResource
             'support_email' => $this->support_email,
             'support_website' => $this->support_website,
             'tags' => $this->whenLoaded('tags', fn () => TagResource::collection($this->tags)),
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

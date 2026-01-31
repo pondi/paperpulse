@@ -15,8 +15,8 @@ class ReturnPolicyResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'return_deadline' => $this->return_deadline?->toISOString(),
-            'exchange_deadline' => $this->exchange_deadline?->toISOString(),
+            'return_deadline' => $this->return_deadline,
+            'exchange_deadline' => $this->exchange_deadline,
             'conditions' => $this->conditions,
             'refund_method' => $this->refund_method,
             'restocking_fee' => $this->restocking_fee,
@@ -26,8 +26,8 @@ class ReturnPolicyResource extends JsonResource
             'requires_original_packaging' => $this->requires_original_packaging,
             'merchant' => $this->whenLoaded('merchant', fn () => MerchantResource::make($this->merchant)),
             'tags' => $this->whenLoaded('tags', fn () => TagResource::collection($this->tags)),
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

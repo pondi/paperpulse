@@ -19,9 +19,9 @@ class ContractResource extends JsonResource
             'contract_title' => $this->contract_title,
             'contract_type' => $this->contract_type,
             'parties' => $this->parties,
-            'effective_date' => $this->effective_date?->toISOString(),
-            'expiry_date' => $this->expiry_date?->toISOString(),
-            'signature_date' => $this->signature_date?->toISOString(),
+            'effective_date' => $this->effective_date,
+            'expiry_date' => $this->expiry_date,
+            'signature_date' => $this->signature_date,
             'duration' => $this->duration,
             'renewal_terms' => $this->renewal_terms,
             'termination_conditions' => $this->termination_conditions,
@@ -35,8 +35,8 @@ class ContractResource extends JsonResource
             'obligations' => $this->obligations,
             'summary' => $this->summary,
             'tags' => $this->whenLoaded('tags', fn () => TagResource::collection($this->tags)),
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

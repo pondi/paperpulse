@@ -66,8 +66,8 @@ class InvoiceInertiaResource extends JsonResource
                 'line_items' => $this->mapLineItems(),
                 'file' => $this->buildFileInfo(),
                 'tags' => $this->mapTags(),
-                'created_at' => $this->created_at?->toIso8601String(),
-                'updated_at' => $this->updated_at?->toIso8601String(),
+                'created_at' => $this->created_at,
+                'updated_at' => $this->updated_at,
             ]);
         }
 
@@ -119,9 +119,9 @@ class InvoiceInertiaResource extends JsonResource
             'guid' => $this->file->guid,
             'has_preview' => $this->file->has_image_preview,
             'is_pdf' => $hasPdfVariant,
-            'uploaded_at' => $this->file->uploaded_at?->toIso8601String(),
-            'file_created_at' => $this->file->file_created_at?->toIso8601String(),
-            'file_modified_at' => $this->file->file_modified_at?->toIso8601String(),
+            'uploaded_at' => $this->file->uploaded_at,
+            'file_created_at' => $this->file->file_created_at,
+            'file_modified_at' => $this->file->file_modified_at,
         ];
     }
 

@@ -39,14 +39,14 @@ class FileListResource extends JsonResource
             'extension' => $this->fileExtension,
             'mime_type' => $this->fileType ?? $this->mime_type,
             'size' => $this->fileSize ?? $this->file_size,
-            'uploaded_at' => $this->uploaded_at?->toISOString(),
+            'uploaded_at' => $this->uploaded_at,
 
             'has_image_preview' => $hasPreview,
             'has_archive_pdf' => $hasArchivePdf,
 
             'title' => $title,
             'snippet' => $snippet,
-            'date' => $primaryDate?->toISOString(),
+            'date' => $primaryDate,
 
             'total' => $receipt?->total_amount,
             'currency' => $receipt?->currency,

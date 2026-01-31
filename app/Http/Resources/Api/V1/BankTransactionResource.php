@@ -15,8 +15,8 @@ class BankTransactionResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'transaction_date' => $this->transaction_date?->toISOString(),
-            'posting_date' => $this->posting_date?->toISOString(),
+            'transaction_date' => $this->transaction_date,
+            'posting_date' => $this->posting_date,
             'description' => $this->description,
             'reference' => $this->reference,
             'transaction_type' => $this->transaction_type,

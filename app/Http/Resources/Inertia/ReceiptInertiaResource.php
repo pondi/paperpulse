@@ -53,7 +53,7 @@ class ReceiptInertiaResource extends JsonResource
                 'name' => $user->name,
                 'email' => $user->email,
                 'permission' => $user->pivot->permission ?? 'view',
-                'shared_at' => optional($user->pivot->shared_at)->toIso8601String(),
+                'shared_at' => optional($user->pivot->shared_at),
             ])->values();
         }
 

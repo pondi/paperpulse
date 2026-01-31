@@ -25,7 +25,7 @@ class FileResource extends JsonResource
             'processing_type' => $this->processing_type,
             'size' => $this->fileSize ?? $this->file_size,
             'status' => $this->status,
-            'uploaded_at' => $this->uploaded_at?->toISOString(),
+            'uploaded_at' => $this->uploaded_at,
             'has_image_preview' => (bool) $this->has_image_preview,
         ];
     }

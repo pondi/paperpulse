@@ -19,8 +19,8 @@ class DuplicateFlagInertiaResource extends JsonResource
             'id' => $this->id,
             'reason' => $this->reason,
             'status' => $this->status,
-            'created_at' => $this->created_at?->toIso8601String(),
-            'resolved_at' => $this->resolved_at?->toIso8601String(),
+            'created_at' => $this->created_at,
+            'resolved_at' => $this->resolved_at,
             'file' => $this->transformFile($this->file),
             'duplicate_file' => $this->transformFile($this->duplicateFile),
         ];

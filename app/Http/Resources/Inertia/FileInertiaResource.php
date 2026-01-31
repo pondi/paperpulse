@@ -51,7 +51,7 @@ class FileInertiaResource extends JsonResource
             'name' => $this->fileName,
             'file_type' => $this->file_type,
             'status' => $this->status,
-            'uploaded_at' => $this->uploaded_at?->toIso8601String(),
+            'uploaded_at' => $this->uploaded_at,
             'extension' => $extension,
             'mime_type' => $this->fileType,
             'has_preview' => (bool) $this->has_image_preview,
@@ -91,8 +91,8 @@ class FileInertiaResource extends JsonResource
                 'pdfUrl' => $pdfUrl,
                 'size' => $this->fileSize,
                 'is_pdf' => $hasPdfVariant,
-                'file_created_at' => $this->file_created_at?->toIso8601String(),
-                'file_modified_at' => $this->file_modified_at?->toIso8601String(),
+                'file_created_at' => $this->file_created_at,
+                'file_modified_at' => $this->file_modified_at,
             ]);
         }
 

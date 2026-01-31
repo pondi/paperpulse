@@ -44,7 +44,7 @@ class VoucherInertiaResource extends JsonResource
             'terms_and_conditions' => $this->terms_and_conditions,
             'restrictions' => $this->restrictions,
             'is_redeemed' => $this->is_redeemed,
-            'redeemed_at' => $this->redeemed_at?->toIso8601String(),
+            'redeemed_at' => $this->redeemed_at,
             'file_id' => $this->file_id,
         ];
 
@@ -106,9 +106,9 @@ class VoucherInertiaResource extends JsonResource
             'guid' => $this->file->guid,
             'has_preview' => $this->file->has_image_preview,
             'is_pdf' => $hasPdfVariant,
-            'uploaded_at' => $this->file->uploaded_at?->toIso8601String(),
-            'file_created_at' => $this->file->file_created_at?->toIso8601String(),
-            'file_modified_at' => $this->file->file_modified_at?->toIso8601String(),
+            'uploaded_at' => $this->file->uploaded_at,
+            'file_created_at' => $this->file->file_created_at,
+            'file_modified_at' => $this->file->file_modified_at,
         ];
     }
 

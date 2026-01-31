@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CollectionFilesRequest;
+use App\Http\Requests\ShareCollectionRequest;
+use App\Http\Requests\StoreCollectionRequest;
+use App\Http\Requests\UpdateCollectionRequest;
 use App\Models\Collection;
 use App\Models\User;
 use App\Services\CollectionService;
@@ -89,16 +93,9 @@ class CollectionController extends Controller
     /**
      * Store a newly created collection.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreCollectionRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:100',
-            'description' => 'nullable|string|max:500',
-            'icon' => 'nullable|string|max:50',
-            'color' => 'nullable|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
-        ]);
-
-        $collection = $this->collectionService->create($validated, auth()->id());
+        $collection = $this->collectionService->create($request->validated(), auth()->id());
 
         return back()->with('success', __('Collection created successfully.'));
     }
@@ -128,18 +125,11 @@ class CollectionController extends Controller
     /**
      * Update the specified collection.
      */
-    public function update(Request $request, Collection $collection): RedirectResponse
+    public function update(UpdateCollectionRequest $request, Collection $collection): RedirectResponse
     {
         $this->authorize('update', $collection);
 
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:100',
-            'description' => 'nullable|string|max:500',
-            'icon' => 'nullable|string|max:50',
-            'color' => 'nullable|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
-        ]);
-
-        $this->collectionService->update($collection, $validated);
+        $this->collectionService->update($collection, $request->validated());
 
         return back()->with('success', __('Collection updated successfully.'));
     }
@@ -184,16 +174,11 @@ class CollectionController extends Controller
     /**
      * Add files to the collection.
      */
-    public function addFiles(Request $request, Collection $collection): RedirectResponse|JsonResponse
+    public function addFiles(CollectionFilesRequest $request, Collection $collection): RedirectResponse|JsonResponse
     {
         $this->authorize('addItems', $collection);
 
-        $validated = $request->validate([
-            'file_ids' => 'required|array|min:1',
-            'file_ids.*' => 'integer|exists:files,id',
-        ]);
-
-        $this->collectionService->addFiles($collection, $validated['file_ids']);
+        $this->collectionService->addFiles($collection, $request->validated()['file_ids']);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -208,16 +193,11 @@ class CollectionController extends Controller
     /**
      * Remove files from the collection.
      */
-    public function removeFiles(Request $request, Collection $collection): RedirectResponse|JsonResponse
+    public function removeFiles(CollectionFilesRequest $request, Collection $collection): RedirectResponse|JsonResponse
     {
         $this->authorize('removeItems', $collection);
 
-        $validated = $request->validate([
-            'file_ids' => 'required|array|min:1',
-            'file_ids.*' => 'integer|exists:files,id',
-        ]);
-
-        $this->collectionService->removeFiles($collection, $validated['file_ids']);
+        $this->collectionService->removeFiles($collection, $request->validated()['file_ids']);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -232,16 +212,11 @@ class CollectionController extends Controller
     /**
      * Share the collection with another user.
      */
-    public function share(Request $request, Collection $collection): RedirectResponse
+    public function share(ShareCollectionRequest $request, Collection $collection): RedirectResponse
     {
         $this->authorize('share', $collection);
 
-        $validated = $request->validate([
-            'email' => 'required|email|exists:users,email',
-            'permission' => 'nullable|in:view,edit',
-            'expires_at' => 'nullable|date|after:now',
-        ]);
-
+        $validated = $request->validated();
         $targetUser = User::where('email', $validated['email'])->first();
 
         if ($targetUser->id === auth()->id()) {

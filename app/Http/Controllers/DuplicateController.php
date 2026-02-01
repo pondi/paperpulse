@@ -18,10 +18,8 @@ class DuplicateController extends Controller
         $duplicates = DuplicateFlag::where('user_id', $request->user()->id)
             ->where('status', 'open')
             ->with([
-                'file.primaryReceipt.merchant',
-                'file.primaryDocument',
-                'duplicateFile.primaryReceipt.merchant',
-                'duplicateFile.primaryDocument',
+                'file.primaryEntity.entity',
+                'duplicateFile.primaryEntity.entity',
             ])
             ->orderByDesc('created_at')
             ->get()

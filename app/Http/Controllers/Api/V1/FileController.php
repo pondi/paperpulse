@@ -58,28 +58,16 @@ class FileController extends BaseApiController
      */
     private function relationshipsForList(?string $fileType): array
     {
-        if ($fileType === 'receipt') {
-            return [
-                'primaryReceipt' => function ($query) {
-                    $query->with(['merchant', 'category']);
-                },
-            ];
-        }
-
-        if ($fileType === 'document') {
-            return [
-                'primaryDocument' => function ($query) {
-                    $query->with(['category']);
-                },
-            ];
-        }
-
+        // Use polymorphic primaryEntity for all file types
         return [
-            'primaryReceipt' => function ($query) {
-                $query->with(['merchant', 'category']);
-            },
-            'primaryDocument' => function ($query) {
-                $query->with(['category']);
+            'primaryEntity.entity' => function ($morphTo) {
+                // Eager load relationships based on entity type
+                $morphTo->morphWith([
+                    \App\Models\Receipt::class => ['merchant', 'category'],
+                    \App\Models\Document::class => ['category'],
+                    \App\Models\Invoice::class => [],
+                    \App\Models\Contract::class => [],
+                ]);
             },
         ];
     }

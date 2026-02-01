@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Document;
+use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Receipt;
 use App\Models\User;
@@ -42,6 +43,16 @@ it('does not treat a bulk-deleted receipt as a duplicate source', function () {
         'file_id' => $file->id,
     ]);
 
+    // Create extractable entity record (required for deduplication check)
+    ExtractableEntity::create([
+        'file_id' => $file->id,
+        'user_id' => $user->id,
+        'entity_type' => 'receipt',
+        'entity_id' => $receipt->id,
+        'is_primary' => true,
+        'extracted_at' => now(),
+    ]);
+
     $dedupe = app(FileDuplicationService::class);
     expect($dedupe->checkDuplication($content, $user->id)['isDuplicate'])->toBeTrue();
 
@@ -80,6 +91,16 @@ it('does not treat a deleted document as a duplicate source', function () {
         'file_id' => $file->id,
         'title' => 'Test Document',
         'document_type' => 'other',
+    ]);
+
+    // Create extractable entity record (required for deduplication check)
+    ExtractableEntity::create([
+        'file_id' => $file->id,
+        'user_id' => $user->id,
+        'entity_type' => 'document',
+        'entity_id' => $document->id,
+        'is_primary' => true,
+        'extracted_at' => now(),
     ]);
 
     $fullPath = 'documents/'.$user->id.'/'.$guid.'/original.pdf';

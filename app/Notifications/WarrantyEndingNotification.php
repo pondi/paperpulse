@@ -13,10 +13,8 @@ class WarrantyEndingNotification extends TemplatedNotification
 
     public function __construct(Warranty $warranty, int $daysRemaining)
     {
-        // Warranties are associated with documents, so link to the document or documents index
-        $fileUrl = $warranty->file_id && $warranty->file
-            ? route('documents.show', $warranty->file->primaryDocument?->id ?? $warranty->id)
-            : route('documents.index');
+        // Link directly to the warranty show page
+        $fileUrl = route('warranties.show', $warranty->id);
 
         $this->warrantyData = [
             'id' => $warranty->id,

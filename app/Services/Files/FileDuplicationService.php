@@ -33,12 +33,11 @@ class FileDuplicationService implements FileDuplicationContract
         return File::where('user_id', $userId)
             ->where('file_hash', $hash)
             ->whereNotNull('file_hash')
-            // If a file is marked completed but has no linked receipt/document,
+            // If a file is marked completed but has no linked entities,
             // treat it as non-existent for deduplication purposes (e.g. after deletion).
             ->where(function ($query) {
                 $query->where('status', '!=', 'completed')
-                    ->orWhereHas('receipts')
-                    ->orWhereHas('documents');
+                    ->orWhereHas('extractableEntities');
             })
             ->first();
     }

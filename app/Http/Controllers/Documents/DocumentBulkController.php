@@ -42,10 +42,10 @@ class DocumentBulkController extends Controller
 
                     $document->delete();
 
-                    // Delete the file record if it no longer has any owners.
+                    // Delete the file record if it no longer has any entities
                     if ($fileId) {
                         $file = File::find($fileId);
-                        if ($file && ! $file->receipts()->exists() && ! $file->documents()->exists()) {
+                        if ($file && ! $file->extractableEntities()->exists()) {
                             $file->delete();
                         }
                     }

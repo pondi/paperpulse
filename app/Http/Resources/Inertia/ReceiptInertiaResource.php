@@ -139,11 +139,12 @@ class ReceiptInertiaResource extends JsonResource
 
     private function mapTags(): array
     {
-        if (! $this->relationLoaded('tags')) {
+        // Tags are stored on File, not Receipt (to survive reprocessing)
+        if (! $this->file || ! $this->file->relationLoaded('tags')) {
             return [];
         }
 
-        return $this->getRelation('tags')->map(fn ($tag) => [
+        return $this->file->tags->map(fn ($tag) => [
             'id' => $tag->id,
             'name' => $tag->name,
             'color' => $tag->color,

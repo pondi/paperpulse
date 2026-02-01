@@ -48,7 +48,7 @@
                 </div>
 
                 <!-- Tags Grid -->
-                <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-orange-600 dark:border-orange-500">
+                <div class="bg-white dark:bg-zinc-900 overflow-visible shadow-lg sm:rounded-lg border-t-4 border-orange-600 dark:border-orange-500">
                     <div class="p-6">
                         <div v-if="tags.data.length === 0" class="text-center py-12">
                             <svg class="mx-auto h-16 w-16 text-zinc-400 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,14 +84,10 @@
                                             </h3>
                                         </div>
                                         <div class="text-sm text-zinc-500 dark:text-zinc-400">
-                                            <span v-if="tag.documents_count > 0">
-                                                {{ tag.documents_count }} {{ tag.documents_count === 1 ? 'document' : 'documents' }}
+                                            <span v-if="tag.files_count > 0">
+                                                {{ tag.files_count }} {{ tag.files_count === 1 ? 'file' : 'files' }}
                                             </span>
-                                            <span v-if="tag.documents_count > 0 && tag.receipts_count > 0" class="mx-1">•</span>
-                                            <span v-if="tag.receipts_count > 0">
-                                                {{ tag.receipts_count }} {{ tag.receipts_count === 1 ? 'receipt' : 'receipts' }}
-                                            </span>
-                                            <span v-if="tag.documents_count === 0 && tag.receipts_count === 0">
+                                            <span v-else>
                                                 Not used yet
                                             </span>
                                         </div>
@@ -168,13 +164,18 @@
 
                 <div class="mt-4">
                     <InputLabel for="tag-color" value="Tag Color" />
-                    <div class="mt-1 flex items-center gap-2">
-                        <input
-                            id="tag-color"
-                            v-model="tagForm.color"
-                            type="color"
-                            class="h-10 w-20 rounded cursor-pointer"
-                        />
+                    <div class="mt-1 flex items-center gap-3">
+                        <label
+                            class="relative h-10 w-10 rounded-full cursor-pointer overflow-hidden border-2 border-zinc-300 dark:border-zinc-600 hover:border-amber-500 transition-colors"
+                            :style="{ backgroundColor: tagForm.color }"
+                        >
+                            <input
+                                id="tag-color"
+                                v-model="tagForm.color"
+                                type="color"
+                                class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                            />
+                        </label>
                         <span class="text-sm text-zinc-600 dark:text-zinc-400">{{ tagForm.color }}</span>
                     </div>
                     <InputError :message="tagForm.errors.color" class="mt-2" />

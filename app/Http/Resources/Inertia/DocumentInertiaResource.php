@@ -37,7 +37,7 @@ class DocumentInertiaResource extends JsonResource
                 'created_at' => $this->created_at,
                 'updated_at' => $this->updated_at,
                 'category' => $this->category?->only(['id', 'name', 'color']),
-                'tags' => $this->tags?->map(fn ($t) => $t->only(['id', 'name']))->values(),
+                'tags' => $this->file?->tags?->map(fn ($t) => $t->only(['id', 'name']))->values(),
                 'shared_with_count' => $this->sharedUsers?->count() ?? 0,
                 'file' => $fileInfo,
             ];
@@ -72,11 +72,11 @@ class DocumentInertiaResource extends JsonResource
             'summary' => $this->summary,
             'note' => $this->note,
             'category_id' => $this->category_id,
-            'tags' => $this->tags?->map(fn ($t) => [
+            'tags' => $this->file?->tags?->map(fn ($t) => [
                 'id' => $t->id,
                 'name' => $t->name,
                 'color' => $t->color,
-            ])->values(),
+            ])->values() ?? [],
             'collections' => $collections,
             'shared_users' => $sharedUsers,
             'created_at' => $this->created_at,

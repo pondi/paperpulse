@@ -27,9 +27,9 @@ class ReceiptController extends BaseResourceController
 
     protected string $resource = 'Receipt';
 
-    protected array $indexWith = ['merchant', 'file', 'lineItems', 'category', 'tags'];
+    protected array $indexWith = ['merchant', 'file.tags', 'lineItems', 'category'];
 
-    protected array $showWith = ['merchant', 'file.collections', 'lineItems', 'tags', 'sharedUsers'];
+    protected array $showWith = ['merchant', 'file.collections', 'file.tags', 'lineItems', 'sharedUsers'];
 
     protected array $searchableFields = ['receipt_description', 'note'];
 
@@ -65,7 +65,7 @@ class ReceiptController extends BaseResourceController
         $this->authorize('view', $receipt);
 
         return Inertia::render("{$this->resource}/Show", [
-            'receipt' => ReceiptInertiaResource::forShow($receipt),
+            'receipt' => ReceiptInertiaResource::forShow($receipt)->toArray(request()),
             'meta' => $this->getShowMeta(),
         ]);
     }

@@ -23,23 +23,24 @@ class TagController extends Controller
 
         $sort = $request->get('sort', 'desc');
 
-        $tags = $query->withCount('files');
-
+        // Note: orderByUsage() already calls withCount('files'), so we only add it for name sorting
         switch ($sort) {
             case 'name':
-                $tags->orderBy('name', 'asc');
+                $query->withCount('files')->orderBy('name', 'asc');
                 break;
             case '-name':
-                $tags->orderBy('name', 'desc');
+                $query->withCount('files')->orderBy('name', 'desc');
                 break;
             case 'asc':
-                $tags->orderByUsage('asc');
+                $query->orderByUsage('asc');
                 break;
             case 'desc':
             default:
-                $tags->orderByUsage('desc');
+                $query->orderByUsage('desc');
                 break;
         }
+
+        $tags = $query;
 
         $tags = $tags->paginate(20)->withQueryString();
 

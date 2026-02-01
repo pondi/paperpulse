@@ -23,7 +23,7 @@ class TagController extends Controller
 
         $sort = $request->get('sort', 'desc');
 
-        $tags = $query->withCount(['documents', 'receipts']);
+        $tags = $query->withCount('files');
 
         switch ($sort) {
             case 'name':
@@ -99,9 +99,8 @@ class TagController extends Controller
     {
         $this->authorize('delete', $tag);
 
-        // Detach tag from all documents and receipts
-        $tag->documents()->detach();
-        $tag->receipts()->detach();
+        // Detach tag from all files
+        $tag->files()->detach();
 
         $tag->delete();
 
@@ -127,16 +126,10 @@ class TagController extends Controller
             return back()->withErrors(['target_tag_id' => 'Cannot merge a tag into itself.']);
         }
 
-        // Move all documents and receipts to the target tag
-        foreach ($tag->documents as $document) {
-            if (! $targetTag->documents->contains($document->id)) {
-                $targetTag->documents()->attach($document->id, ['file_type' => 'document']);
-            }
-        }
-
-        foreach ($tag->receipts as $receipt) {
-            if (! $targetTag->receipts->contains($receipt->id)) {
-                $targetTag->receipts()->attach($receipt->id, ['file_type' => 'receipt']);
+        // Move all files to the target tag
+        foreach ($tag->files as $file) {
+            if (! $targetTag->files->contains($file->id)) {
+                $targetTag->files()->attach($file->id);
             }
         }
 

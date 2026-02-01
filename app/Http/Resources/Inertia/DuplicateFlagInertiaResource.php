@@ -41,26 +41,41 @@ class DuplicateFlagInertiaResource extends JsonResource
 
     protected function buildSummary(File $file): ?array
     {
-        $receipt = $file->primaryReceipt;
-        if ($receipt) {
-            return [
+        $primaryEntity = $file->primaryEntity;
+        $entity = $primaryEntity?->entity;
+
+        if (! $entity) {
+            return null;
+        }
+
+        $entityType = $primaryEntity->entity_type;
+
+        return match ($entityType) {
+            'receipt' => [
                 'type' => 'receipt',
-                'date' => $receipt->receipt_date?->toDateString(),
-                'total_amount' => $receipt->total_amount,
-                'currency' => $receipt->currency,
-                'merchant_name' => $receipt->merchant?->name,
-            ];
-        }
-
-        $document = $file->primaryDocument;
-        if ($document) {
-            return [
+                'date' => $entity->receipt_date?->toDateString(),
+                'total_amount' => $entity->total_amount,
+                'currency' => $entity->currency,
+                'merchant_name' => $entity->merchant?->name,
+            ],
+            'document' => [
                 'type' => 'document',
-                'title' => $document->title,
-                'document_type' => $document->document_type,
-            ];
-        }
-
-        return null;
+                'title' => $entity->title,
+                'document_type' => $entity->document_type,
+            ],
+            'contract' => [
+                'type' => 'contract',
+                'title' => $entity->contract_title ?? $entity->title,
+            ],
+            'invoice' => [
+                'type' => 'invoice',
+                'vendor_name' => $entity->vendor_name ?? $entity->from_name,
+                'total_amount' => $entity->total_amount,
+                'currency' => $entity->currency,
+            ],
+            default => [
+                'type' => $entityType,
+            ],
+        };
     }
 }

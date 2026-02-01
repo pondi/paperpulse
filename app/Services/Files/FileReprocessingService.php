@@ -4,7 +4,6 @@ namespace App\Services\Files;
 
 use App\Models\File;
 use App\Models\FileShare;
-use App\Services\Files\FileJobChainDispatcher;
 use App\Services\Jobs\JobHistoryCreator;
 use App\Services\Jobs\JobMetadataPersistence;
 use App\Services\StorageService;
@@ -149,7 +148,6 @@ class FileReprocessingService
      * Reprocess multiple files.
      *
      * @param  \Illuminate\Support\Collection  $files
-     * @param  bool  $force
      * @return array{successful:int,failed:int,skipped:int,results:array}
      */
     public function reprocessFiles($files, bool $force = false): array
@@ -191,8 +189,6 @@ class FileReprocessingService
     /**
      * Validate if a file can be reprocessed.
      *
-     * @param  File  $file
-     * @param  bool  $force
      * @return array{canReprocess:bool,reason:string|null}
      */
     protected function validateReprocessing(File $file, bool $force): array
@@ -245,11 +241,6 @@ class FileReprocessingService
 
     /**
      * Prepare metadata for reprocessing job chain.
-     *
-     * @param  File  $file
-     * @param  string  $jobId
-     * @param  string  $jobName
-     * @return array
      */
     protected function prepareReprocessingMetadata(File $file, string $jobId, string $jobName): array
     {
@@ -339,9 +330,11 @@ class FileReprocessingService
         // Clear any derived outputs (they will be regenerated)
         $this->resetFileProcessingState($file);
 
-        // Remove any partial/old resource models for this file.
-        $file->receipts()->delete();
-        $file->documents()->delete();
+        // Remove any extracted entities for this file
+        foreach ($file->extractableEntities as $extractableEntity) {
+            $extractableEntity->entity?->delete();
+            $extractableEntity->delete();
+        }
 
         FileShare::where('file_id', $file->id)->update(['file_type' => $newFileType]);
 
@@ -403,8 +396,6 @@ class FileReprocessingService
 
     /**
      * Get statistics about reprocessable files.
-     *
-     * @return array
      */
     public function getReprocessingStats(): array
     {

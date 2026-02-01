@@ -30,14 +30,20 @@ class DuplicateFileDetected extends TemplatedNotification
             'uploadedAt' => $existingFile->uploaded_at?->toISOString(),
         ];
 
-        // Get the associated receipt or document for linking
-        $receipt = $existingFile->receipts()->first();
-        $document = $existingFile->documents()->first();
+        // Get the primary entity for linking
+        $primaryEntity = $existingFile->primaryEntity;
+        $entity = $primaryEntity?->entity;
+        $entityType = $primaryEntity?->entity_type;
 
-        $this->existingFileData['receipt_id'] = $receipt?->id;
-        $this->existingFileData['document_id'] = $document?->id;
-        $this->existingFileData['merchant_name'] = $receipt?->merchant?->name;
-        $this->existingFileData['document_title'] = $document?->title;
+        $this->existingFileData['entity_type'] = $entityType;
+        $this->existingFileData['entity_id'] = $entity?->id;
+        $this->existingFileData['entity_title'] = match ($entityType) {
+            'receipt' => $entity?->merchant?->name,
+            'document' => $entity?->title,
+            'contract' => $entity?->contract_title ?? $entity?->title,
+            'invoice' => $entity?->vendor_name ?? $entity?->from_name,
+            default => null,
+        };
     }
 
     /**
@@ -74,19 +80,36 @@ class DuplicateFileDetected extends TemplatedNotification
             'file_type' => $this->existingFileData['fileType'],
         ];
 
-        // Add link to the existing file's receipt or document
-        if ($this->existingFileData['receipt_id']) {
-            $variables['file_url'] = route('receipts.show', $this->existingFileData['receipt_id']);
-            $variables['file_link_text'] = 'View Receipt';
-        } elseif ($this->existingFileData['document_id']) {
-            $variables['file_url'] = route('documents.show', $this->existingFileData['document_id']);
-            $variables['file_link_text'] = 'View Document';
+        // Add link to the existing entity
+        $entityType = $this->existingFileData['entity_type'];
+        $entityId = $this->existingFileData['entity_id'];
+
+        if ($entityType && $entityId) {
+            $variables['file_url'] = $this->getEntityRoute($entityType, $entityId);
+            $variables['file_link_text'] = 'View '.ucfirst($entityType);
         } else {
             $variables['file_url'] = route('files.index');
             $variables['file_link_text'] = 'View Files';
         }
 
         return $variables;
+    }
+
+    /**
+     * Get the route for an entity type
+     */
+    protected function getEntityRoute(string $entityType, int $entityId): string
+    {
+        return match ($entityType) {
+            'receipt' => route('receipts.show', $entityId),
+            'document' => route('documents.show', $entityId),
+            'contract' => route('contracts.show', $entityId),
+            'invoice' => route('invoices.show', $entityId),
+            'voucher' => route('vouchers.show', $entityId),
+            'warranty' => route('warranties.show', $entityId),
+            'bank_statement' => route('bank-statements.show', $entityId),
+            default => route('files.index'),
+        };
     }
 
     /**
@@ -100,11 +123,12 @@ class DuplicateFileDetected extends TemplatedNotification
             ->line("The file \"{$this->uploadedFileName}\" was not uploaded because it's a duplicate.")
             ->line("An identical file \"{$this->existingFileData['fileName']}\" already exists in your account.");
 
-        // Add action button to view the existing file
-        if ($this->existingFileData['receipt_id']) {
-            $mailMessage->action('View Receipt', route('receipts.show', $this->existingFileData['receipt_id']));
-        } elseif ($this->existingFileData['document_id']) {
-            $mailMessage->action('View Document', route('documents.show', $this->existingFileData['document_id']));
+        // Add action button to view the existing entity
+        $entityType = $this->existingFileData['entity_type'];
+        $entityId = $this->existingFileData['entity_id'];
+
+        if ($entityType && $entityId) {
+            $mailMessage->action('View '.ucfirst($entityType), $this->getEntityRoute($entityType, $entityId));
         } else {
             $mailMessage->action('View Files', route('files.index'));
         }
@@ -125,10 +149,9 @@ class DuplicateFileDetected extends TemplatedNotification
             'existing_file_name' => $this->existingFileData['fileName'],
             'file_type' => $this->existingFileData['fileType'],
             'file_hash' => $this->fileHash,
-            'receipt_id' => $this->existingFileData['receipt_id'],
-            'document_id' => $this->existingFileData['document_id'],
-            'merchant_name' => $this->existingFileData['merchant_name'],
-            'document_title' => $this->existingFileData['document_title'],
+            'entity_type' => $this->existingFileData['entity_type'],
+            'entity_id' => $this->existingFileData['entity_id'],
+            'entity_title' => $this->existingFileData['entity_title'],
             'uploaded_at' => $this->existingFileData['uploadedAt'],
             'created_at' => now()->toISOString(),
         ];

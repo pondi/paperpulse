@@ -24,8 +24,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property Carbon|null $file_created_at
  * @property Carbon|null $file_modified_at
  * @property-read \Illuminate\Database\Eloquent\Collection|Collection[] $collections
- * @property-read Receipt|null $primaryReceipt
- * @property-read Document|null $primaryDocument
  * @property-read ExtractableEntity|null $primaryEntity
  */
 class File extends Model
@@ -75,26 +73,6 @@ class File extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function receipts()
-    {
-        return $this->hasMany(Receipt::class);
-    }
-
-    public function primaryReceipt()
-    {
-        return $this->hasOne(Receipt::class)->latestOfMany();
-    }
-
-    public function documents()
-    {
-        return $this->hasMany(Document::class);
-    }
-
-    public function primaryDocument()
-    {
-        return $this->hasOne(Document::class)->latestOfMany();
     }
 
     public function extractableEntities()

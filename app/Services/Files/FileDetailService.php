@@ -9,17 +9,13 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * File Detail Service
  *
  * Single Responsibility: Retrieve detailed file data with appropriate relationships
- * - Loads file with receipt or document based on file_type
+ * - Loads file with primary entity based on file_type
  * - Eager loads all necessary relationships for efficient queries
  */
 class FileDetailService
 {
     /**
-     * Get file with detailed data (receipt or document) and relationships
-     *
-     * @param  int  $fileId
-     * @param  int  $userId
-     * @return File
+     * Get file with detailed data and relationships
      *
      * @throws ModelNotFoundException
      */
@@ -34,42 +30,21 @@ class FileDetailService
 
     /**
      * Load appropriate relationships based on file type
-     *
-     * @param  File  $file
-     * @return File
      */
     private function loadRelationships(File $file): File
     {
-        if ($file->file_type === 'receipt') {
-            return $this->loadReceiptRelationships($file);
-        }
-
-        if ($file->file_type === 'document') {
-            return $this->loadDocumentRelationships($file);
-        }
-
-        return $file;
-    }
-
-    /**
-     * Load receipt with all related data
-     *
-     * @param  File  $file
-     * @return File
-     */
-    private function loadReceiptRelationships(File $file): File
-    {
+        // Load primary entity with type-specific nested relationships
         $file->load([
-            'receipts' => function ($query) {
-                $query->latest()
-                    ->with([
-                        'merchant',
-                        'category',
-                        'tags',
-                        'lineItems' => function ($itemQuery) {
-                            $itemQuery->orderBy('id');
-                        },
-                    ]);
+            'primaryEntity.entity' => function ($morphTo) {
+                $morphTo->morphWith([
+                    \App\Models\Receipt::class => ['merchant', 'category', 'tags', 'lineItems'],
+                    \App\Models\Document::class => ['category', 'tags'],
+                    \App\Models\Invoice::class => ['lineItems'],
+                    \App\Models\Contract::class => [],
+                    \App\Models\Voucher::class => [],
+                    \App\Models\Warranty::class => [],
+                    \App\Models\BankStatement::class => ['transactions'],
+                ]);
             },
         ]);
 
@@ -77,45 +52,10 @@ class FileDetailService
     }
 
     /**
-     * Load document with all related data
-     *
-     * @param  File  $file
-     * @return File
+     * Get the primary entity for a file
      */
-    private function loadDocumentRelationships(File $file): File
+    public function getPrimaryEntity(File $file): mixed
     {
-        $file->load([
-            'documents' => function ($query) {
-                $query->latest()
-                    ->with([
-                        'category',
-                        'tags',
-                    ]);
-            },
-        ]);
-
-        return $file;
-    }
-
-    /**
-     * Get the primary receipt for a file
-     *
-     * @param  File  $file
-     * @return mixed
-     */
-    public function getPrimaryReceipt(File $file)
-    {
-        return $file->receipts?->first();
-    }
-
-    /**
-     * Get the primary document for a file
-     *
-     * @param  File  $file
-     * @return mixed
-     */
-    public function getPrimaryDocument(File $file)
-    {
-        return $file->documents?->first();
+        return $file->primaryEntity?->entity;
     }
 }

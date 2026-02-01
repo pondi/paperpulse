@@ -2,7 +2,9 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Models\Contract;
 use App\Models\Document;
+use App\Models\Invoice;
 use App\Models\Receipt;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
@@ -11,18 +13,16 @@ class FileListResource extends JsonResource
 {
     public function toArray($request): array
     {
-        /** @var Receipt|null $receipt */
-        $receipt = $this->relationLoaded('primaryReceipt') ? $this->primaryReceipt : null;
-
-        /** @var Document|null $document */
-        $document = $this->relationLoaded('primaryDocument') ? $this->primaryDocument : null;
+        $primaryEntity = $this->relationLoaded('primaryEntity') ? $this->primaryEntity : null;
+        $entity = $primaryEntity?->entity;
+        $entityType = $primaryEntity?->entity_type;
 
         $extension = $this->fileExtension ?: pathinfo((string) $this->original_filename, PATHINFO_EXTENSION);
         $hasArchivePdf = ! empty($this->s3_archive_path) || strtolower((string) $extension) === 'pdf';
 
-        $title = $this->buildTitle($receipt, $document);
-        $snippet = $this->buildSnippet($receipt, $document);
-        $primaryDate = $this->buildPrimaryDate($receipt, $document);
+        $title = $this->buildTitle($entity, $entityType);
+        $snippet = $this->buildSnippet($entity, $entityType);
+        $primaryDate = $this->buildPrimaryDate($entity, $entityType);
 
         $fileId = $this->id;
         $hasPreview = (bool) $this->has_image_preview;
@@ -48,33 +48,12 @@ class FileListResource extends JsonResource
             'snippet' => $snippet,
             'date' => $primaryDate,
 
-            'total' => $receipt?->total_amount,
-            'currency' => $receipt?->currency,
-            'document_type' => $document?->document_type,
-            'page_count' => $document?->page_count,
+            'total' => $entity instanceof Receipt ? $entity->total_amount : ($entity instanceof Invoice ? $entity->total_amount : null),
+            'currency' => $entity instanceof Receipt ? $entity->currency : ($entity instanceof Invoice ? $entity->currency : null),
+            'document_type' => $entity instanceof Document ? $entity->document_type : null,
+            'page_count' => $entity instanceof Document ? $entity->page_count : null,
 
-            'receipt' => $receipt ? [
-                'id' => $receipt->id,
-                'merchant' => $receipt->relationLoaded('merchant') && $receipt->merchant ? [
-                    'id' => $receipt->merchant->id,
-                    'name' => $receipt->merchant->name,
-                ] : null,
-                'category' => $receipt->relationLoaded('category') && $receipt->category ? [
-                    'id' => $receipt->category->id,
-                    'name' => $receipt->category->name,
-                    'color' => $receipt->category->color,
-                ] : null,
-            ] : null,
-
-            'document' => $document ? [
-                'id' => $document->id,
-                'title' => $document->title,
-                'category' => $document->relationLoaded('category') && $document->category ? [
-                    'id' => $document->category->id,
-                    'name' => $document->category->name,
-                    'color' => $document->category->color,
-                ] : null,
-            ] : null,
+            'entity' => $entity ? $this->buildEntityData($entity, $entityType) : null,
 
             'links' => [
                 'content' => route('api.files.content', ['file' => $fileId]),
@@ -84,32 +63,79 @@ class FileListResource extends JsonResource
         ];
     }
 
-    private function buildTitle(?Receipt $receipt, ?Document $document): ?string
+    private function buildEntityData($entity, ?string $entityType): array
     {
-        if ($receipt) {
-            $merchantName = $receipt->merchant?->name;
+        $data = [
+            'id' => $entity->id,
+            'type' => $entityType,
+        ];
+
+        if ($entity instanceof Receipt) {
+            $data['merchant'] = $entity->relationLoaded('merchant') && $entity->merchant ? [
+                'id' => $entity->merchant->id,
+                'name' => $entity->merchant->name,
+            ] : null;
+            $data['category'] = $entity->relationLoaded('category') && $entity->category ? [
+                'id' => $entity->category->id,
+                'name' => $entity->category->name,
+                'color' => $entity->category->color,
+            ] : null;
+        } elseif ($entity instanceof Document) {
+            $data['title'] = $entity->title;
+            $data['category'] = $entity->relationLoaded('category') && $entity->category ? [
+                'id' => $entity->category->id,
+                'name' => $entity->category->name,
+                'color' => $entity->category->color,
+            ] : null;
+        } elseif ($entity instanceof Contract) {
+            $data['title'] = $entity->contract_title ?? $entity->title;
+        } elseif ($entity instanceof Invoice) {
+            $data['vendor_name'] = $entity->vendor_name ?? $entity->from_name;
+            $data['invoice_number'] = $entity->invoice_number;
+        }
+
+        return $data;
+    }
+
+    private function buildTitle($entity, ?string $entityType): ?string
+    {
+        if ($entity instanceof Receipt) {
+            $merchantName = $entity->merchant?->name;
             if (! empty($merchantName)) {
                 return $merchantName;
             }
         }
 
-        if ($document) {
-            if (! empty($document->title)) {
-                return $document->title;
+        if ($entity instanceof Document) {
+            if (! empty($entity->title)) {
+                return $entity->title;
             }
+        }
+
+        if ($entity instanceof Contract) {
+            return $entity->contract_title ?? $entity->title ?? $this->fileName;
+        }
+
+        if ($entity instanceof Invoice) {
+            return 'Invoice from '.($entity->vendor_name ?? $entity->from_name ?? 'Unknown');
         }
 
         return $this->fileName ?? $this->original_filename;
     }
 
-    private function buildSnippet(?Receipt $receipt, ?Document $document): ?string
+    private function buildSnippet($entity, ?string $entityType): ?string
     {
-        $value = $receipt?->summary
-            ?? $receipt?->receipt_description
-            ?? $receipt?->note
-            ?? $document?->summary
-            ?? $document?->description
-            ?? $document?->note;
+        $value = null;
+
+        if ($entity instanceof Receipt) {
+            $value = $entity->summary ?? $entity->receipt_description ?? $entity->note;
+        } elseif ($entity instanceof Document) {
+            $value = $entity->summary ?? $entity->description ?? $entity->note;
+        } elseif ($entity instanceof Contract) {
+            $value = $entity->summary ?? $entity->notes;
+        } elseif ($entity instanceof Invoice) {
+            $value = $entity->notes;
+        }
 
         if (! is_string($value) || trim($value) === '') {
             return null;
@@ -118,11 +144,24 @@ class FileListResource extends JsonResource
         return Str::limit(trim($value), 160);
     }
 
-    private function buildPrimaryDate(?Receipt $receipt, ?Document $document): mixed
+    private function buildPrimaryDate($entity, ?string $entityType): mixed
     {
-        return $receipt?->receipt_date
-            ?? $document?->document_date
-            ?? $this->uploaded_at
-            ?? $this->created_at;
+        if ($entity instanceof Receipt) {
+            return $entity->receipt_date ?? $this->uploaded_at ?? $this->created_at;
+        }
+
+        if ($entity instanceof Document) {
+            return $entity->document_date ?? $this->uploaded_at ?? $this->created_at;
+        }
+
+        if ($entity instanceof Contract) {
+            return $entity->effective_date ?? $entity->created_at ?? $this->uploaded_at;
+        }
+
+        if ($entity instanceof Invoice) {
+            return $entity->invoice_date ?? $entity->created_at ?? $this->uploaded_at;
+        }
+
+        return $this->uploaded_at ?? $this->created_at;
     }
 }

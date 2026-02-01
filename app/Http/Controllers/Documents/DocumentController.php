@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Documents;
 use App\Http\Controllers\BaseResourceController;
 use App\Http\Resources\Inertia\DocumentInertiaResource;
 use App\Models\Document;
+use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Tag;
 use App\Services\Documents\DocumentUploadHandler;
@@ -288,15 +289,20 @@ class DocumentController extends BaseResourceController
                     }
                 }
 
+                // Delete the associated extractable_entity record
+                ExtractableEntity::where('entity_type', 'document')
+                    ->where('entity_id', $document->id)
+                    ->delete();
+
                 // Disable Scout indexing temporarily to avoid Meilisearch errors
                 Document::withoutSyncingToSearch(function () use ($document) {
                     $document->delete();
                 });
 
-                // Delete the file record if it no longer has any owners.
+                // Delete the file record if it no longer has any entities
                 if ($fileId) {
                     $file = File::find($fileId);
-                    if ($file && ! $file->receipts()->exists() && ! $file->documents()->exists()) {
+                    if ($file && ! $file->extractableEntities()->exists()) {
                         $file->delete();
                     }
                 }

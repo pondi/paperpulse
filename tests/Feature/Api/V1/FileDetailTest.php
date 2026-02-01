@@ -2,6 +2,7 @@
 
 use App\Models\Category;
 use App\Models\Document;
+use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\LineItem;
 use App\Models\Merchant;
@@ -41,6 +42,15 @@ it('returns detailed receipt data for a receipt file', function () {
         'currency' => 'USD',
         'receipt_date' => '2025-01-15',
         'receipt_description' => 'Groceries including milk, bread, eggs',
+    ]);
+
+    ExtractableEntity::create([
+        'file_id' => $file->id,
+        'user_id' => $this->user->id,
+        'entity_type' => 'receipt',
+        'entity_id' => $receipt->id,
+        'is_primary' => true,
+        'extracted_at' => now(),
     ]);
 
     LineItem::create([
@@ -129,6 +139,15 @@ it('returns detailed document data for a document file', function () {
             'people' => ['John Doe', 'Jane Smith'],
             'organizations' => ['Acme Corp'],
         ],
+    ]);
+
+    ExtractableEntity::create([
+        'file_id' => $file->id,
+        'user_id' => $this->user->id,
+        'entity_type' => 'document',
+        'entity_id' => $document->id,
+        'is_primary' => true,
+        'extracted_at' => now(),
     ]);
 
     $response = $this->get(route('api.files.show', $file->id));

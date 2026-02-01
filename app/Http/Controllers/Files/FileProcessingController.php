@@ -35,6 +35,8 @@ class FileProcessingController extends Controller
                 'note' => 'nullable|string|max:1000',
                 'collection_ids' => 'nullable|array',
                 'collection_ids.*' => 'integer|exists:collections,id',
+                'tag_ids' => 'nullable|array',
+                'tag_ids.*' => 'integer|exists:tags,id',
             ]);
         } else {
             $request->validate([
@@ -45,6 +47,8 @@ class FileProcessingController extends Controller
                 'note' => 'nullable|string|max:1000',
                 'collection_ids' => 'nullable|array',
                 'collection_ids.*' => 'integer|exists:collections,id',
+                'tag_ids' => 'nullable|array',
+                'tag_ids.*' => 'integer|exists:tags,id',
             ]);
         }
 
@@ -75,6 +79,7 @@ class FileProcessingController extends Controller
                 [
                     'note' => $request->input('note'),
                     'collection_ids' => $request->input('collection_ids', []),
+                    'tag_ids' => $request->input('tag_ids', []),
                 ]
             );
 

@@ -61,6 +61,14 @@
                 :allow-create="true"
               />
             </div>
+            <div>
+              <label class="block text-sm font-medium text-zinc-300 mb-2">Tags</label>
+              <TagSelector
+                v-model="tagIds"
+                placeholder="Search or create tags..."
+                :allow-create="true"
+              />
+            </div>
           </div>
           <div class="mt-4 flex justify-end gap-3">
             <button @click="showNoteInput = false" class="px-4 py-2 text-zinc-300 hover:text-white">Done</button>
@@ -140,6 +148,7 @@ import { XMarkIcon, PencilSquareIcon, ExclamationTriangleIcon, SparklesIcon } fr
 import Toast from '@/Components/Common/Toast.vue';
 import PerspectiveCropper from './PerspectiveCropper.vue';
 import CollectionSelector from '@/Components/Domain/CollectionSelector.vue';
+import TagSelector from '@/Components/Domain/TagSelector.vue';
 import { jsPDF } from 'jspdf';
 
 // State
@@ -147,6 +156,7 @@ const step = ref('camera'); // 'camera', 'review'
 const mode = ref('receipt'); // 'receipt', 'document'
 const note = ref('');
 const collectionIds = ref([]);
+const tagIds = ref([]);
 const showNoteInput = ref(false);
 const error = ref(null);
 const processing = ref(false);
@@ -525,6 +535,11 @@ const processAndUpload = async () => {
         formData.append(`collection_ids[${index}]`, id);
       });
     }
+    if (tagIds.value.length > 0) {
+      tagIds.value.forEach((id, index) => {
+        formData.append(`tag_ids[${index}]`, id);
+      });
+    }
 
     // 4. Upload
     router.post(route('documents.store'), formData, {
@@ -532,6 +547,7 @@ const processAndUpload = async () => {
       onSuccess: () => {
          note.value = '';
          collectionIds.value = [];
+         tagIds.value = [];
       },
       onError: (errors) => {
         processing.value = false;
@@ -546,10 +562,23 @@ const processAndUpload = async () => {
   }
 };
 
+// Service Worker Registration for PWA
+const registerServiceWorker = async () => {
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw-scanner.js');
+      console.log('Scanner Service Worker registered:', registration.scope);
+    } catch (err) {
+      console.error('Scanner Service Worker registration failed:', err);
+    }
+  }
+};
+
 // Lifecycle
 onMounted(() => {
   loadOpenCV();
   startCamera();
+  registerServiceWorker();
 });
 
 onUnmounted(() => {

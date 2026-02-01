@@ -19,6 +19,8 @@ class StoreFileRequest extends FormRequest
             'note' => 'nullable|string|max:1000',
             'collection_ids' => 'nullable|array',
             'collection_ids.*' => 'integer|exists:collections,id',
+            'tag_ids' => 'nullable|array',
+            'tag_ids.*' => 'integer|exists:tags,id',
         ];
     }
 

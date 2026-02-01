@@ -163,6 +163,15 @@ class FileProcessingService
                 ]);
             }
 
+            // Attach tags if specified
+            if (! empty($metadata['tag_ids'])) {
+                $file->syncTags($metadata['tag_ids']);
+                Log::debug("[FileProcessing] [{$jobName}] Tags attached to file", [
+                    'file_id' => $file->id,
+                    'tag_ids' => $metadata['tag_ids'],
+                ]);
+            }
+
             // Store original file to S3 storage bucket (permanent)
             $s3Path = $this->fileStorage->storeToS3(
                 $fileData['content'],

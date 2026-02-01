@@ -107,6 +107,7 @@ class FileController extends BaseApiController
                 [
                     'note' => $request->input('note'),
                     'collection_ids' => $request->input('collection_ids', []),
+                    'tag_ids' => $request->input('tag_ids', []),
                 ]
             );
 

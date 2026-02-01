@@ -55,6 +55,12 @@ Upload a file and automatically trigger processing to create a Receipt or Docume
   - Preserved during processing (system may enrich but never overwrites)
   - Indexed for full-text search
   - Included in exports
+- `collection_ids` (optional): Array of collection IDs to assign to the file
+  - Example: `collection_ids[]=1&collection_ids[]=2`
+  - Collections must belong to the authenticated user
+- `tag_ids` (optional): Array of tag IDs to assign to the file
+  - Example: `tag_ids[]=1&tag_ids[]=2`
+  - Tags must belong to the authenticated user
 
 #### Success Response (201)
 ```json
@@ -128,13 +134,25 @@ This allows clients to:
 - Display information about when the file was first uploaded
 - Implement client-side deduplication using SHA-256 hashing
 
-#### Example Request
+#### Example Requests
 ```bash
+# Basic upload
 curl -X POST https://paperpulse.app/api/v1/files \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "file=@receipt.pdf" \
   -F "file_type=receipt" \
   -F "note=Lunch with client - Project Alpha discussion"
+
+# Upload with collections and tags
+curl -X POST https://paperpulse.app/api/v1/files \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@invoice.pdf" \
+  -F "file_type=document" \
+  -F "note=Q1 2025 invoice" \
+  -F "collection_ids[]=1" \
+  -F "collection_ids[]=2" \
+  -F "tag_ids[]=5" \
+  -F "tag_ids[]=8"
 ```
 
 #### Processing Flow
@@ -537,6 +555,276 @@ Instant search across receipts + documents (same underlying search implementatio
     "facets": { "total": 1, "receipts": 0, "documents": 1 }
   },
   "timestamp": "2025-01-01T00:00:00Z"
+}
+```
+
+## Tags
+
+Manage user tags for organizing files.
+
+### List Tags
+- `GET /tags`
+- Auth: required
+- Rate limit: 200 requests/minute
+
+#### Query Parameters
+- `search` (optional): Filter tags by name (partial match)
+- `page` (optional): Page number (default: 1)
+- `per_page` (optional): Results per page (default: 50, max: 100)
+
+#### Success Response (200)
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 1,
+      "name": "Business",
+      "slug": "business",
+      "color": "#3B82F6",
+      "usage_count": 15,
+      "owner_id": 1,
+      "created_at": "2025-01-15T10:00:00Z",
+      "updated_at": "2025-01-15T10:00:00Z"
+    }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "last_page": 1,
+    "per_page": 50,
+    "total": 1
+  }
+}
+```
+
+### Create Tag
+- `POST /tags`
+- Auth: required
+
+#### Request Body (JSON)
+```json
+{
+  "name": "Business",
+  "color": "#3B82F6"
+}
+```
+
+- `name` (required): Tag name (max 255 chars)
+- `color` (optional): Hex color code (e.g., `#3B82F6`). Random color assigned if not provided.
+
+#### Success Response (201)
+```json
+{
+  "status": "success",
+  "message": "Tag created successfully",
+  "data": {
+    "id": 1,
+    "name": "Business",
+    "slug": "business",
+    "color": "#3B82F6",
+    "owner_id": 1,
+    "created_at": "2025-01-15T10:00:00Z",
+    "updated_at": "2025-01-15T10:00:00Z"
+  }
+}
+```
+
+#### Error Response (409 Conflict)
+```json
+{
+  "status": "error",
+  "message": "A tag with this name already exists",
+  "errors": {
+    "name": ["A tag with this name already exists."]
+  }
+}
+```
+
+### Update Tag
+- `PATCH /tags/{tag_id}`
+- Auth: required; owner only
+
+#### Request Body (JSON)
+```json
+{
+  "name": "Work",
+  "color": "#EF4444"
+}
+```
+
+#### Success Response (200)
+```json
+{
+  "status": "success",
+  "message": "Tag updated successfully",
+  "data": {
+    "id": 1,
+    "name": "Work",
+    "slug": "work",
+    "color": "#EF4444",
+    "owner_id": 1,
+    "created_at": "2025-01-15T10:00:00Z",
+    "updated_at": "2025-01-15T12:00:00Z"
+  }
+}
+```
+
+### Delete Tag
+- `DELETE /tags/{tag_id}`
+- Auth: required; owner only
+
+#### Success Response (200)
+```json
+{
+  "status": "success",
+  "message": "Tag deleted successfully",
+  "data": null
+}
+```
+
+## Collections
+
+Manage user collections for grouping files.
+
+### List Collections
+- `GET /collections`
+- Auth: required
+- Rate limit: 200 requests/minute
+
+#### Query Parameters
+- `search` (optional): Filter collections by name or description (partial match)
+- `archived` (optional): Filter by archived status (`true` or `false`)
+- `page` (optional): Page number (default: 1)
+- `per_page` (optional): Results per page (default: 50, max: 100)
+
+#### Success Response (200)
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 1,
+      "name": "Tax Documents 2025",
+      "slug": "tax-documents-2025",
+      "description": "All tax-related documents for 2025",
+      "icon": "folder",
+      "color": "#3B82F6",
+      "is_archived": false,
+      "files_count": 12,
+      "owner_id": 1,
+      "created_at": "2025-01-15T10:00:00Z",
+      "updated_at": "2025-01-15T10:00:00Z"
+    }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "last_page": 1,
+    "per_page": 50,
+    "total": 1
+  }
+}
+```
+
+### Create Collection
+- `POST /collections`
+- Auth: required
+
+#### Request Body (JSON)
+```json
+{
+  "name": "Tax Documents 2025",
+  "description": "All tax-related documents for 2025",
+  "icon": "folder",
+  "color": "#3B82F6"
+}
+```
+
+- `name` (required): Collection name (max 255 chars)
+- `description` (optional): Description (max 1000 chars)
+- `icon` (optional): Icon name from allowed list (default: `folder`)
+  - Allowed icons: `folder`, `folder-open`, `document`, `document-text`, `receipt-refund`, `briefcase`, `shopping-bag`, `home`, `heart`, `star`, `tag`, `archive-box`, `building-office`, `credit-card`, `currency-dollar`, `calendar`, `clipboard`, `cog`, `cube`, `gift`, `key`, `truck`, `wrench`, `camera`, `book-open`
+- `color` (optional): Hex color code. Random color assigned if not provided.
+
+#### Success Response (201)
+```json
+{
+  "status": "success",
+  "message": "Collection created successfully",
+  "data": {
+    "id": 1,
+    "name": "Tax Documents 2025",
+    "slug": "tax-documents-2025",
+    "description": "All tax-related documents for 2025",
+    "icon": "folder",
+    "color": "#3B82F6",
+    "is_archived": false,
+    "owner_id": 1,
+    "created_at": "2025-01-15T10:00:00Z",
+    "updated_at": "2025-01-15T10:00:00Z"
+  }
+}
+```
+
+#### Error Response (409 Conflict)
+```json
+{
+  "status": "error",
+  "message": "A collection with this name already exists",
+  "errors": {
+    "name": ["A collection with this name already exists."]
+  }
+}
+```
+
+### Update Collection
+- `PATCH /collections/{collection_id}`
+- Auth: required; owner only
+
+#### Request Body (JSON)
+```json
+{
+  "name": "Tax Documents 2025 (Final)",
+  "description": "Updated description",
+  "icon": "archive-box",
+  "color": "#10B981",
+  "is_archived": false
+}
+```
+
+All fields are optional. Only provided fields will be updated.
+
+#### Success Response (200)
+```json
+{
+  "status": "success",
+  "message": "Collection updated successfully",
+  "data": {
+    "id": 1,
+    "name": "Tax Documents 2025 (Final)",
+    "slug": "tax-documents-2025-final",
+    "description": "Updated description",
+    "icon": "archive-box",
+    "color": "#10B981",
+    "is_archived": false,
+    "files_count": 12,
+    "owner_id": 1,
+    "created_at": "2025-01-15T10:00:00Z",
+    "updated_at": "2025-01-15T14:00:00Z"
+  }
+}
+```
+
+### Delete Collection
+- `DELETE /collections/{collection_id}`
+- Auth: required; owner only
+- Note: Deleting a collection does not delete the files within it.
+
+#### Success Response (200)
+```json
+{
+  "status": "success",
+  "message": "Collection deleted successfully",
+  "data": null
 }
 ```
 

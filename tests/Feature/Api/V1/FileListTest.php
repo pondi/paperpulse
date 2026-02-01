@@ -2,6 +2,7 @@
 
 use App\Models\Category;
 use App\Models\Document;
+use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Merchant;
 use App\Models\Receipt;
@@ -245,7 +246,7 @@ it('includes receipt metadata for list view', function () {
         'fileExtension' => 'pdf',
     ]);
 
-    Receipt::factory()->create([
+    $receipt = Receipt::factory()->create([
         'user_id' => $this->user->id,
         'file_id' => $file->id,
         'merchant_id' => $merchant->id,
@@ -256,6 +257,15 @@ it('includes receipt metadata for list view', function () {
         'note' => 'Lunch with client',
     ]);
 
+    ExtractableEntity::create([
+        'file_id' => $file->id,
+        'user_id' => $this->user->id,
+        'entity_type' => 'receipt',
+        'entity_id' => $receipt->id,
+        'is_primary' => true,
+        'extracted_at' => now(),
+    ]);
+
     $response = $this->getJson(route('api.files.index', ['file_type' => 'receipt']));
 
     $response->assertStatus(200);
@@ -263,8 +273,8 @@ it('includes receipt metadata for list view', function () {
     $response->assertJsonPath('data.0.title', 'Acme Store');
     $response->assertJsonPath('data.0.total', '123.45');
     $response->assertJsonPath('data.0.currency', 'USD');
-    $response->assertJsonPath('data.0.receipt.merchant.name', 'Acme Store');
-    $response->assertJsonPath('data.0.receipt.category.name', 'Food');
+    $response->assertJsonPath('data.0.entity.merchant.name', 'Acme Store');
+    $response->assertJsonPath('data.0.entity.category.name', 'Food');
     $response->assertJsonPath('data.0.links.content', route('api.files.content', ['file' => $file->id]));
 });
 
@@ -285,7 +295,7 @@ it('includes document metadata for list view', function () {
         'fileExtension' => 'pdf',
     ]);
 
-    Document::factory()->create([
+    $document = Document::factory()->create([
         'user_id' => $this->user->id,
         'file_id' => $file->id,
         'category_id' => $category->id,
@@ -296,6 +306,15 @@ it('includes document metadata for list view', function () {
         'summary' => 'Monthly invoice',
     ]);
 
+    ExtractableEntity::create([
+        'file_id' => $file->id,
+        'user_id' => $this->user->id,
+        'entity_type' => 'document',
+        'entity_id' => $document->id,
+        'is_primary' => true,
+        'extracted_at' => now(),
+    ]);
+
     $response = $this->getJson(route('api.files.index', ['file_type' => 'document']));
 
     $response->assertStatus(200);
@@ -303,6 +322,6 @@ it('includes document metadata for list view', function () {
     $response->assertJsonPath('data.0.title', 'Invoice May');
     $response->assertJsonPath('data.0.document_type', 'invoice');
     $response->assertJsonPath('data.0.page_count', 2);
-    $response->assertJsonPath('data.0.document.category.name', 'Finance');
+    $response->assertJsonPath('data.0.entity.category.name', 'Finance');
     $response->assertJsonPath('data.0.links.content', route('api.files.content', ['file' => $file->id]));
 });

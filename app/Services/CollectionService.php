@@ -182,7 +182,7 @@ class CollectionService
     {
         /** @var \Illuminate\Database\Eloquent\Collection<int, File> $files */
         $files = $collection->files()
-            ->with(['primaryReceipt', 'primaryDocument', 'primaryEntity.entity'])
+            ->with(['primaryEntity.entity'])
             ->get();
 
         $totalAmount = 0;
@@ -194,31 +194,31 @@ class CollectionService
         ];
 
         foreach ($files as $file) {
-            /** @var File $file */
-            $primaryReceipt = $file->primaryReceipt;
-            $primaryDocument = $file->primaryDocument;
             $primaryEntity = $file->primaryEntity;
-
-            if ($primaryReceipt) {
-                $byType['receipts']['count']++;
-                $amount = $primaryReceipt->total ?? 0;
-                $byType['receipts']['total'] += $amount;
-                $totalAmount += $amount;
-            } elseif ($primaryDocument) {
-                $byType['documents']['count']++;
+            if (! $primaryEntity?->entity) {
+                continue;
             }
 
-            if ($primaryEntity) {
-                $entityType = $primaryEntity->entity_type;
-                if ($entityType === 'App\\Models\\Invoice') {
+            $entityType = $primaryEntity->entity_type;
+            $entity = $primaryEntity->entity;
+
+            match ($entityType) {
+                'receipt' => (function () use (&$byType, &$totalAmount, $entity) {
+                    $byType['receipts']['count']++;
+                    $amount = $entity->total_amount ?? 0;
+                    $byType['receipts']['total'] += $amount;
+                    $totalAmount += $amount;
+                })(),
+                'document' => $byType['documents']['count']++,
+                'invoice' => (function () use (&$byType, &$totalAmount, $entity) {
                     $byType['invoices']['count']++;
-                    $amount = $primaryEntity->entity->total ?? 0;
+                    $amount = $entity->total_amount ?? 0;
                     $byType['invoices']['total'] += $amount;
                     $totalAmount += $amount;
-                } elseif ($entityType === 'App\\Models\\Contract') {
-                    $byType['contracts']['count']++;
-                }
-            }
+                })(),
+                'contract' => $byType['contracts']['count']++,
+                default => null,
+            };
         }
 
         return [

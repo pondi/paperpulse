@@ -41,10 +41,10 @@ class ExtractableEntitiesTest extends TestCase
         $file = $voucher->file;
         $this->assertNotNull($file);
         $this->assertTrue(
-            $file->extractedEntities()->where('entity_id', $voucher->id)->exists()
+            $file->extractableEntities()->where('entity_id', $voucher->id)->exists()
         );
-        $this->assertSame($voucher->id, $file->getEntitiesOfType('voucher')->first()->id);
-        $this->assertSame($voucher->id, $file->getPrimaryEntity()->id);
+        $this->assertSame($voucher->id, $file->extractableEntities()->where('entity_type', 'voucher')->first()->entity_id);
+        $this->assertSame($voucher->id, $file->primaryEntity->entity_id);
     }
 
     public function test_contract_morph_map_resolves_entity(): void

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Merchant;
 use App\Models\Receipt;
@@ -27,6 +28,15 @@ it('always includes tags and line_items fields in receipt response', function ()
         'currency' => 'USD',
         'receipt_date' => now(),
         'summary' => 'Test receipt',
+    ]);
+
+    ExtractableEntity::create([
+        'file_id' => $file->id,
+        'user_id' => $user->id,
+        'entity_type' => 'receipt',
+        'entity_id' => $receipt->id,
+        'is_primary' => true,
+        'extracted_at' => now(),
     ]);
 
     // Don't attach any tags or line items - they should still appear in response
@@ -73,6 +83,15 @@ it('merchant field is always present even when null', function () {
         'currency' => 'USD',
         'receipt_date' => now(),
         'summary' => 'Test receipt without merchant',
+    ]);
+
+    ExtractableEntity::create([
+        'file_id' => $file->id,
+        'user_id' => $user->id,
+        'entity_type' => 'receipt',
+        'entity_id' => $receipt->id,
+        'is_primary' => true,
+        'extracted_at' => now(),
     ]);
 
     $response = $this->get(route('api.files.show', $file->id));

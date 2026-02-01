@@ -109,7 +109,7 @@ class CollectionController extends Controller
 
         $collection->loadCount('files');
         $collection->load(['files' => function ($query) {
-            $query->with(['primaryReceipt', 'primaryDocument', 'primaryEntity']);
+            $query->with(['primaryEntity.entity']);
         }]);
         $stats = $this->collectionService->getCollectionStats($collection);
         $shares = $this->sharingService->getShares($collection);

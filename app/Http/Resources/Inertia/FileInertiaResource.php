@@ -65,11 +65,8 @@ class FileInertiaResource extends JsonResource
         ];
 
         if ($this->includeDetailsUrl) {
-            // Route to appropriate show page based on file type
-            // Files themselves don't have a show page - their associated entities do
-            $data['detailsUrl'] = $this->file_type === 'receipt'
-                ? route('receipts.show', $this->primaryReceipt?->id ?? $this->id)
-                : route('documents.show', $this->primaryDocument?->id ?? $this->id);
+            // Route to appropriate show page based on entity type
+            $data['detailsUrl'] = $this->getEntityDetailsUrl();
         }
 
         if ($this->detailed) {
@@ -101,5 +98,31 @@ class FileInertiaResource extends JsonResource
         }
 
         return $data;
+    }
+
+    /**
+     * Get the details URL for the file's primary entity.
+     */
+    protected function getEntityDetailsUrl(): ?string
+    {
+        $primaryEntity = $this->primaryEntity;
+
+        if (! $primaryEntity?->entity) {
+            return null;
+        }
+
+        $entityType = $primaryEntity->entity_type;
+        $entityId = $primaryEntity->entity_id;
+
+        return match ($entityType) {
+            'receipt' => route('receipts.show', $entityId),
+            'document' => route('documents.show', $entityId),
+            'contract' => route('contracts.show', $entityId),
+            'invoice' => route('invoices.show', $entityId),
+            'voucher' => route('vouchers.show', $entityId),
+            'warranty' => route('warranties.show', $entityId),
+            'bank_statement' => route('bank-statements.show', $entityId),
+            default => null,
+        };
     }
 }

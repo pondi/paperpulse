@@ -88,7 +88,7 @@ class File extends Model
     public function primaryEntity()
     {
         return $this->hasOne(ExtractableEntity::class)
-            ->where('is_primary', true)
+            ->whereRaw('is_primary = true')
             ->with('entity');
     }
 

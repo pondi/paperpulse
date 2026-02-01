@@ -37,3 +37,8 @@ Schedule::job(new CleanupRetainedFiles)->dailyAt('03:00')
 Schedule::job(new SendWeeklySummary)->dailyAt('09:00')
     ->name('send-weekly-summaries')
     ->withoutOverlapping();
+
+// Schedule permanent deletion of soft-deleted records after 30 days, daily at 4am
+Schedule::command('cleanup:soft-deleted --days=30')->dailyAt('04:00')
+    ->name('cleanup-soft-deleted-records')
+    ->withoutOverlapping();

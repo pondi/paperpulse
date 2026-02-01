@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * App\\Models\\File
@@ -30,6 +32,7 @@ class File extends Model
 {
     use BelongsToUser;
     use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -45,6 +48,7 @@ class File extends Model
         'file_size',
         'mime_type',
         'status',
+        'note',
         'meta',
         'fileName',
         'fileExtension',
@@ -68,6 +72,7 @@ class File extends Model
         'uploaded_at' => 'datetime',
         'file_created_at' => 'datetime',
         'file_modified_at' => 'datetime',
+        'deleted_reason' => DeletedReason::class,
     ];
 
     public function user()
@@ -101,6 +106,66 @@ class File extends Model
     {
         return $this->belongsToMany(Collection::class)
             ->withTimestamps();
+    }
+
+    /**
+     * Get the tags for this file.
+     */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'file_tags')
+            ->withTimestamps();
+    }
+
+    /**
+     * Add a tag to this file.
+     */
+    public function addTag(Tag $tag): void
+    {
+        $this->tags()->syncWithoutDetaching([$tag->id]);
+    }
+
+    /**
+     * Add a tag by name to this file.
+     */
+    public function addTagByName(string $name): Tag
+    {
+        $tag = Tag::findOrCreateByName($name, $this->user_id);
+        $this->addTag($tag);
+
+        return $tag;
+    }
+
+    /**
+     * Remove a tag from this file.
+     */
+    public function removeTag(Tag $tag): void
+    {
+        $this->tags()->detach($tag->id);
+    }
+
+    /**
+     * Sync tags for this file.
+     */
+    public function syncTags(array $tagIds): void
+    {
+        $this->tags()->sync($tagIds);
+    }
+
+    /**
+     * Check if this file has a specific tag.
+     */
+    public function hasTag(Tag $tag): bool
+    {
+        return $this->tags()->where('tags.id', $tag->id)->exists();
+    }
+
+    /**
+     * Get tag names as an array.
+     */
+    public function getTagNames(): array
+    {
+        return $this->tags()->pluck('name')->toArray();
     }
 
     /**

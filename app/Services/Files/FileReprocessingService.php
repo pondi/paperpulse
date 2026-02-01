@@ -2,6 +2,7 @@
 
 namespace App\Services\Files;
 
+use App\Enums\DeletedReason;
 use App\Models\File;
 use App\Models\FileShare;
 use App\Services\Jobs\JobHistoryCreator;
@@ -330,9 +331,15 @@ class FileReprocessingService
         // Clear any derived outputs (they will be regenerated)
         $this->resetFileProcessingState($file);
 
-        // Remove any extracted entities for this file
+        // Soft delete any extracted entities for this file (with reprocess reason)
         foreach ($file->extractableEntities as $extractableEntity) {
-            $extractableEntity->entity?->delete();
+            if ($extractableEntity->entity) {
+                $extractableEntity->entity->deleted_reason = DeletedReason::Reprocess;
+                $extractableEntity->entity->save();
+                $extractableEntity->entity->delete();
+            }
+            $extractableEntity->deleted_reason = DeletedReason::Reprocess;
+            $extractableEntity->save();
             $extractableEntity->delete();
         }
 

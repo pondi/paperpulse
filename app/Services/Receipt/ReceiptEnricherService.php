@@ -12,23 +12,37 @@ use Illuminate\Support\Facades\Log;
 class ReceiptEnricherService implements ReceiptEnricherContract
 {
     /**
-     * Find or create merchant based on extracted data
+     * Find or create merchant based on extracted data.
+     * Merchants are user-scoped for privacy.
+     *
+     * @param  array  $merchantData  Merchant data from AI extraction
+     * @param  int|null  $userId  User ID to scope the merchant (required for creation)
      */
-    public function findOrCreateMerchant(array $merchantData): ?Merchant
+    public function findOrCreateMerchant(array $merchantData, ?int $userId = null): ?Merchant
     {
         if (empty($merchantData['name'])) {
             return null;
         }
 
+        if ($userId === null) {
+            Log::warning('[ReceiptEnricher] No user_id provided for merchant lookup/creation', [
+                'merchant_name' => $merchantData['name'],
+            ]);
+
+            return null;
+        }
+
         Log::debug('[ReceiptEnricher] Looking for merchant', [
+            'user_id' => $userId,
             'merchant_name' => $merchantData['name'],
             'vat_number' => $merchantData['vat_number'] ?? null,
         ]);
 
-        $query = Merchant::query();
+        // Search within user's merchants only
+        $query = Merchant::where('user_id', $userId);
 
         if (! empty($merchantData['vat_number'])) {
-            $existingMerchant = $query->where('vat_number', $merchantData['vat_number'])->first();
+            $existingMerchant = (clone $query)->where('vat_number', $merchantData['vat_number'])->first();
             if ($existingMerchant) {
                 Log::debug('[ReceiptEnricher] Found merchant by vat number', [
                     'merchant_id' => $existingMerchant->id,
@@ -39,7 +53,7 @@ class ReceiptEnricherService implements ReceiptEnricherContract
             }
         }
 
-        $existingMerchant = Merchant::where('name', 'LIKE', '%'.$merchantData['name'].'%')->first();
+        $existingMerchant = (clone $query)->where('name', 'LIKE', '%'.$merchantData['name'].'%')->first();
         if ($existingMerchant) {
             Log::debug('[ReceiptEnricher] Found merchant by name similarity', [
                 'merchant_id' => $existingMerchant->id,
@@ -51,6 +65,7 @@ class ReceiptEnricherService implements ReceiptEnricherContract
         }
 
         $merchant = new Merchant;
+        $merchant->user_id = $userId;
         $merchant->name = $merchantData['name'];
 
         // Handle address - could be string or array from AI response
@@ -65,6 +80,7 @@ class ReceiptEnricherService implements ReceiptEnricherContract
         $merchant->save();
 
         Log::info('[ReceiptEnricher] Created new merchant', [
+            'user_id' => $userId,
             'merchant_id' => $merchant->id,
             'merchant_name' => $merchant->name,
             'vat_number' => $merchant->vat_number,

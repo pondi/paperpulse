@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 /**
@@ -21,14 +24,14 @@ use Illuminate\Support\Str;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read User $user
- * @property-read Collection|Document[] $documents
- * @property-read Collection|Receipt[] $receipts
+ * @property-read Collection|File[] $files
  * @property-read int $usage_count
  */
 class Tag extends Model
 {
     use BelongsToUser;
     use HasFactory;
+    use SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -42,6 +45,10 @@ class Tag extends Model
         'color',
     ];
 
+    protected $casts = [
+        'deleted_reason' => DeletedReason::class,
+    ];
+
     /**
      * Get the user that owns the tag.
      */
@@ -51,24 +58,11 @@ class Tag extends Model
     }
 
     /**
-     * Get the documents that have this tag.
+     * Get the files that have this tag.
      */
-    public function documents()
+    public function files(): BelongsToMany
     {
-        return $this->belongsToMany(Document::class, 'file_tags', 'tag_id', 'file_id')
-            ->withPivot('file_type')
-            ->wherePivot('file_type', 'document')
-            ->withTimestamps();
-    }
-
-    /**
-     * Get the receipts that have this tag.
-     */
-    public function receipts()
-    {
-        return $this->belongsToMany(Receipt::class, 'file_tags', 'tag_id', 'file_id')
-            ->withPivot('file_type')
-            ->wherePivot('file_type', 'receipt')
+        return $this->belongsToMany(File::class, 'file_tags')
             ->withTimestamps();
     }
 
@@ -79,7 +73,7 @@ class Tag extends Model
      */
     public function getUsageCountAttribute()
     {
-        return $this->documents()->count() + $this->receipts()->count();
+        return $this->files()->count();
     }
 
     /**
@@ -103,10 +97,8 @@ class Tag extends Model
      */
     public function scopeOrderByUsage($query, $direction = 'desc')
     {
-        $documentsSubquery = '(select count(*) from "documents" inner join "file_tags" on "documents"."id" = "file_tags"."file_id" where "tags"."id" = "file_tags"."tag_id" and "file_tags"."file_type" = \'document\' and "documents"."user_id" = '.auth()->id().')';
-        $receiptsSubquery = '(select count(*) from "receipts" inner join "file_tags" on "receipts"."id" = "file_tags"."file_id" where "tags"."id" = "file_tags"."tag_id" and "file_tags"."file_type" = \'receipt\' and "receipts"."user_id" = '.auth()->id().')';
-
-        return $query->orderByRaw('('.$documentsSubquery.' + '.$receiptsSubquery.') '.$direction);
+        return $query->withCount('files')
+            ->orderBy('files_count', $direction);
     }
 
     /**

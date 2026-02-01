@@ -16,6 +16,8 @@ class MatchMerchant extends BaseJob
 
     protected $receiptId;
 
+    protected $userId;
+
     protected $merchantName;
 
     protected $merchantAddress;
@@ -76,6 +78,22 @@ class MatchMerchant extends BaseJob
                         'jobID' => $this->jobID,
                     ]);
                 }
+            }
+
+            // Get userId from the receipt
+            if ($this->receiptId) {
+                $receipt = Receipt::find($this->receiptId);
+                if ($receipt) {
+                    $this->userId = $receipt->user_id;
+                }
+            }
+
+            if (! $this->userId) {
+                Log::error('(MatchMerchant) Could not determine user_id for merchant matching', [
+                    'jobID' => $this->jobID,
+                    'receiptId' => $this->receiptId,
+                ]);
+                throw new RuntimeException("Could not determine user_id for job {$this->jobID}");
             }
 
             $this->updateProgress(25);
@@ -187,7 +205,7 @@ class MatchMerchant extends BaseJob
 
     private function fetchAllMerchants()
     {
-        return Merchant::all()->map(function ($merchant) {
+        return Merchant::where('user_id', $this->userId)->get()->map(function ($merchant) {
             return ['id' => $merchant->id, 'name' => $merchant->name];
         })->toArray();
     }
@@ -297,6 +315,7 @@ class MatchMerchant extends BaseJob
         // Only create merchant if we have a name
         if (! empty($this->merchantName) && trim($this->merchantName) !== '') {
             $newMerchant = Merchant::create([
+                'user_id' => $this->userId,
                 'name' => $this->merchantName,
                 'address' => $this->merchantAddress,
                 'vat_number' => $this->merchantVatNumber,

@@ -415,7 +415,14 @@ test('deleting collection removes shares', function () {
 
     expect(CollectionShare::where('collection_id', $collection->id)->count())->toBe(1);
 
+    // Soft delete the collection - shares remain but become inaccessible
     $collection->delete();
+
+    // Shares still exist in the database (will be cleaned up during permanent deletion)
+    expect(CollectionShare::where('collection_id', $collection->id)->count())->toBe(1);
+
+    // Permanent deletion removes shares via cascade
+    $collection->forceDelete();
 
     expect(CollectionShare::where('collection_id', $collection->id)->count())->toBe(0);
 });

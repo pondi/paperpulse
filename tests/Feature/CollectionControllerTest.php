@@ -116,7 +116,7 @@ describe('Collection Web Controller', function () {
         $response->assertRedirect('/collections');
         $response->assertSessionHas('success');
 
-        $this->assertDatabaseMissing('collections', ['id' => $collection->id]);
+        $this->assertSoftDeleted('collections', ['id' => $collection->id]);
     });
 
     test('cannot delete another users collection', function () {

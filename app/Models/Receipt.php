@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Contracts\Taggable;
+use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * App\Models\Receipt
  *
@@ -48,6 +50,7 @@ class Receipt extends Model implements Taggable
     use HasFactory;
     use Searchable;
     use ShareableModel;
+    use SoftDeletes;
     use TaggableModel;
 
     protected $fillable = [
@@ -61,7 +64,6 @@ class Receipt extends Model implements Taggable
         'currency',
         'receipt_category',
         'receipt_description',
-        'note',
         'receipt_data',
     ];
 
@@ -70,8 +72,28 @@ class Receipt extends Model implements Taggable
         'receipt_date' => 'date',
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
-        'note' => 'string',
+        'deleted_reason' => DeletedReason::class,
     ];
+
+    /**
+     * Get the note from the associated file.
+     * Notes are stored on File to survive entity deletion/recreation during reprocessing.
+     */
+    public function getNoteAttribute(): ?string
+    {
+        return $this->file?->note;
+    }
+
+    /**
+     * Set the note on the associated file.
+     */
+    public function setNoteAttribute(?string $value): void
+    {
+        if ($this->file) {
+            $this->file->note = $value;
+            $this->file->save();
+        }
+    }
 
     public function file()
     {

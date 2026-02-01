@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Documents;
 
+use App\Enums\DeletedReason;
 use App\Jobs\BaseJob;
 use App\Models\Document;
 use App\Models\ExtractableEntity;
@@ -275,20 +276,28 @@ class ProcessDocument extends BaseJob
             if ($isReprocessing) {
                 $existingDocument = Document::where('file_id', $file->id)->first();
                 if ($existingDocument) {
-                    Log::info('[ProcessDocument] Deleting existing document during reprocessing', [
+                    Log::info('[ProcessDocument] Soft deleting existing document during reprocessing', [
                         'file_id' => $file->id,
                         'document_id' => $existingDocument->id,
                     ]);
 
-                    // Also delete the extractable_entity record
-                    ExtractableEntity::where('file_id', $file->id)
+                    // Soft delete the extractable_entity record with reprocess reason
+                    $extractableEntities = ExtractableEntity::where('file_id', $file->id)
                         ->where('entity_type', 'document')
                         ->where('entity_id', $existingDocument->id)
-                        ->delete();
+                        ->get();
+                    foreach ($extractableEntities as $entity) {
+                        $entity->deleted_reason = DeletedReason::Reprocess;
+                        $entity->save();
+                        $entity->delete();
+                    }
 
+                    // Soft delete the document with reprocess reason
+                    $existingDocument->deleted_reason = DeletedReason::Reprocess;
+                    $existingDocument->save();
                     $existingDocument->delete();
 
-                    Log::info('[ProcessDocument] Existing document deleted successfully', [
+                    Log::info('[ProcessDocument] Existing document soft deleted successfully', [
                         'file_id' => $file->id,
                     ]);
                 }

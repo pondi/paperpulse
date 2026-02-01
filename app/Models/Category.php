@@ -2,14 +2,18 @@
 
 namespace App\Models;
 
+use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 class Category extends Model
 {
-    use BelongsToUser, HasFactory;
+    use BelongsToUser;
+    use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -25,6 +29,7 @@ class Category extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'sort_order' => 'integer',
+        'deleted_reason' => DeletedReason::class,
     ];
 
     /**

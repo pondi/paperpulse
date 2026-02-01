@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\DeletedReason;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Scout\Searchable;
 
 /**
@@ -24,8 +26,13 @@ class LineItem extends Model
 {
     use HasFactory;
     use Searchable;
+    use SoftDeletes;
 
     protected $fillable = ['receipt_id', 'vendor_id', 'text', 'sku', 'qty', 'price', 'total'];
+
+    protected $casts = [
+        'deleted_reason' => DeletedReason::class,
+    ];
 
     /**
      * Get the receipt that owns the line item.

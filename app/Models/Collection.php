@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 /**
@@ -35,6 +37,7 @@ class Collection extends Model
 {
     use BelongsToUser;
     use HasFactory;
+    use SoftDeletes;
 
     public const ICONS = [
         'folder',
@@ -91,6 +94,7 @@ class Collection extends Model
     {
         return [
             'is_archived' => 'boolean',
+            'deleted_reason' => DeletedReason::class,
         ];
     }
 

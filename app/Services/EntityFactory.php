@@ -618,7 +618,7 @@ class EntityFactory
             'name' => $merchant['name'],
             'vat_number' => $merchant['vat_number'] ?? null,
             'address' => $merchant['address'] ?? null,
-        ]);
+        ], $file->user_id);
 
         return $merchantModel?->id;
     }

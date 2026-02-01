@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\DeletedReason;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class InvoiceLineItem extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'invoice_id',
@@ -34,6 +37,7 @@ class InvoiceLineItem extends Model
         'tax_rate' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'deleted_reason' => DeletedReason::class,
     ];
 
     public function invoice()

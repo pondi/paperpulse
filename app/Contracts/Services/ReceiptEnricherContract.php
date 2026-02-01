@@ -9,9 +9,13 @@ use App\Models\User;
 interface ReceiptEnricherContract
 {
     /**
-     * Find or create merchant based on extracted data
+     * Find or create merchant based on extracted data.
+     * Merchants are user-scoped for privacy.
+     *
+     * @param  array  $merchantData  Merchant data from AI extraction
+     * @param  int|null  $userId  User ID to scope the merchant (required for creation)
      */
-    public function findOrCreateMerchant(array $merchantData): ?Merchant;
+    public function findOrCreateMerchant(array $merchantData, ?int $userId = null): ?Merchant;
 
     /**
      * Categorize merchant based on name

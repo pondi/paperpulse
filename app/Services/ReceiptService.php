@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\DeletedReason;
 use App\Models\File;
 use App\Models\Receipt;
 use Exception;
@@ -55,23 +56,29 @@ class ReceiptService
             // Get the file model to get user ID
             $file = File::findOrFail($fileId);
 
-            // Check if we're reprocessing - delete existing receipt if so
+            // Check if we're reprocessing - soft delete existing receipt if so
             if ($isReprocessing) {
                 $existingReceipt = Receipt::where('file_id', $fileId)->first();
                 if ($existingReceipt) {
-                    Log::info('[ReceiptService] Deleting existing receipt during reprocessing', [
+                    Log::info('[ReceiptService] Soft deleting existing receipt during reprocessing', [
                         'file_id' => $fileId,
                         'receipt_id' => $existingReceipt->id,
                         'line_items_count' => $existingReceipt->lineItems()->count(),
                     ]);
 
-                    // Delete line items first
-                    $existingReceipt->lineItems()->delete();
+                    // Soft delete line items first with reprocess reason
+                    foreach ($existingReceipt->lineItems as $lineItem) {
+                        $lineItem->deleted_reason = DeletedReason::Reprocess;
+                        $lineItem->save();
+                        $lineItem->delete();
+                    }
 
-                    // Delete the receipt
+                    // Soft delete the receipt with reprocess reason
+                    $existingReceipt->deleted_reason = DeletedReason::Reprocess;
+                    $existingReceipt->save();
                     $existingReceipt->delete();
 
-                    Log::info('[ReceiptService] Existing receipt deleted successfully', [
+                    Log::info('[ReceiptService] Existing receipt soft deleted successfully', [
                         'file_id' => $fileId,
                     ]);
                 }
@@ -149,6 +156,7 @@ class ReceiptService
 
     /**
      * Delete a receipt and all associated resources.
+     * Uses soft delete with UserDelete reason - permanent deletion handled by cleanup job.
      *
      * @return bool True if deletion succeeded
      */
@@ -161,33 +169,27 @@ class ReceiptService
             $fileGuid = $receipt->file?->guid;
             $fileId = $receipt->file?->id;
 
-            // Delete line items first (they reference the receipt)
-            $receipt->lineItems()->delete();
+            // Soft delete line items first with user delete reason
+            foreach ($receipt->lineItems as $lineItem) {
+                $lineItem->deleted_reason = DeletedReason::UserDelete;
+                $lineItem->save();
+                $lineItem->delete();
+            }
 
-            // Delete the receipt itself, bypassing Scout to avoid Meilisearch errors
+            // Soft delete the receipt itself with user delete reason
+            $receipt->deleted_reason = DeletedReason::UserDelete;
+            $receipt->save();
             Receipt::withoutSyncingToSearch(function () use ($receipt) {
                 $receipt->delete();
             });
 
-            // Delete files from permanent storage
-            if ($fileGuid) {
-                try {
-                    $this->documentService->deleteDocument($fileGuid, 'ReceiptService', 'receipts', 'pdf');
-                    $this->documentService->deleteDocument($fileGuid, 'ReceiptService', 'receipts', 'jpg');
-                } catch (Exception $e) {
-                    Log::warning('[ReceiptService] Failed to delete S3 files during receipt deletion', [
-                        'receipt_id' => $receipt->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                    // Continue with deletion even if S3 delete fails
-                }
-            }
-
-            // Delete the file record after the receipt is deleted
-            // This is safe now because the receipt no longer references it
+            // Soft delete the file record with user delete reason
+            // S3 cleanup will be handled by the permanent deletion job after 30 days
             if ($fileId) {
                 $file = File::find($fileId);
                 if ($file) {
+                    $file->deleted_reason = DeletedReason::UserDelete;
+                    $file->save();
                     $file->delete();
                 }
             }

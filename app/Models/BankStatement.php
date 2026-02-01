@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Contracts\Taggable;
+use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use App\Traits\ExtractableEntity as ExtractableEntityTrait;
 use App\Traits\ShareableModel;
@@ -10,6 +11,7 @@ use App\Traits\TaggableModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Scout\Searchable;
 
 class BankStatement extends Model implements Taggable
@@ -19,6 +21,7 @@ class BankStatement extends Model implements Taggable
     use HasFactory;
     use Searchable;
     use ShareableModel;
+    use SoftDeletes;
     use TaggableModel;
 
     protected $fillable = [
@@ -50,6 +53,7 @@ class BankStatement extends Model implements Taggable
         'closing_balance' => 'decimal:2',
         'total_credits' => 'decimal:2',
         'total_debits' => 'decimal:2',
+        'deleted_reason' => DeletedReason::class,
     ];
 
     public function transactions(): HasMany

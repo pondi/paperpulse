@@ -2,6 +2,7 @@
 
 namespace App\Services\Receipts\Cleanup;
 
+use App\Enums\DeletedReason;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -36,7 +37,15 @@ class DuplicateReceiptCleaner
         $deletedCount = 0;
         DB::transaction(function () use ($receiptsToDelete, &$deletedCount) {
             foreach ($receiptsToDelete as $receipt) {
-                $receipt->lineItems()->delete();
+                // Soft delete line items with reprocess reason
+                foreach ($receipt->lineItems as $lineItem) {
+                    $lineItem->deleted_reason = DeletedReason::Reprocess;
+                    $lineItem->save();
+                    $lineItem->delete();
+                }
+                // Soft delete receipt with reprocess reason
+                $receipt->deleted_reason = DeletedReason::Reprocess;
+                $receipt->save();
                 $receipt->delete();
                 $deletedCount++;
             }

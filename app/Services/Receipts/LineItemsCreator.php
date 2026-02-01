@@ -10,12 +10,13 @@ class LineItemsCreator
 {
     public static function create(Receipt $receipt, array $items, array $vendors = []): void
     {
+        $userId = $receipt->user_id;
         $vendorIdCache = [];
         $vendorSet = self::normalizeVendorNames($vendors);
 
         foreach ($items as $item) {
             $itemName = $item['name'] ?? $item['description'] ?? '';
-            $vendorId = self::resolveVendorForItem($item, $itemName, $vendorSet, $vendorIdCache);
+            $vendorId = self::resolveVendorForItem($item, $itemName, $vendorSet, $vendorIdCache, $userId);
 
             LineItem::create([
                 'receipt_id' => $receipt->id,
@@ -41,12 +42,13 @@ class LineItemsCreator
         array $item,
         string $itemName,
         array $vendorSet,
-        array &$vendorIdCache
+        array &$vendorIdCache,
+        int $userId
     ): ?int {
         $explicitVendor = $item['vendor'] ?? $item['brand'] ?? null;
 
         if (! empty($explicitVendor)) {
-            return self::resolveVendorId($explicitVendor, $vendorIdCache);
+            return self::resolveVendorId($explicitVendor, $vendorIdCache, $userId);
         }
 
         if ($itemName === '' || empty($vendorSet)) {
@@ -61,10 +63,10 @@ class LineItemsCreator
             }
         }
 
-        return $match ? self::resolveVendorId($match, $vendorIdCache) : null;
+        return $match ? self::resolveVendorId($match, $vendorIdCache, $userId) : null;
     }
 
-    private static function resolveVendorId(?string $name, array &$vendorIdCache): ?int
+    private static function resolveVendorId(?string $name, array &$vendorIdCache, int $userId): ?int
     {
         if (! $name) {
             return null;
@@ -75,7 +77,10 @@ class LineItemsCreator
             return $vendorIdCache[$key];
         }
 
-        $vendor = Vendor::firstOrCreate(['name' => trim($name)]);
+        $vendor = Vendor::firstOrCreate(
+            ['user_id' => $userId, 'name' => trim($name)],
+            ['user_id' => $userId]
+        );
         $vendorIdCache[$key] = $vendor->id;
 
         return $vendor->id;

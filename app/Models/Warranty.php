@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Contracts\Taggable;
+use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use App\Traits\ExtractableEntity as ExtractableEntityTrait;
 use App\Traits\ShareableModel;
@@ -10,6 +11,7 @@ use App\Traits\TaggableModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Laravel\Scout\Searchable;
 
@@ -28,6 +30,7 @@ class Warranty extends Model implements Taggable
     use HasFactory;
     use Searchable;
     use ShareableModel;
+    use SoftDeletes;
     use TaggableModel;
 
     protected $fillable = [
@@ -61,6 +64,7 @@ class Warranty extends Model implements Taggable
         'purchase_date' => 'date',
         'warranty_start_date' => 'date',
         'warranty_end_date' => 'date',
+        'deleted_reason' => DeletedReason::class,
     ];
 
     public function receipt(): BelongsTo

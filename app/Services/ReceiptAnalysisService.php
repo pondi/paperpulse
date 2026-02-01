@@ -5,9 +5,12 @@ namespace App\Services;
 use App\Contracts\Services\ReceiptEnricherContract;
 use App\Contracts\Services\ReceiptParserContract;
 use App\Contracts\Services\ReceiptValidatorContract;
+use App\Enums\DeletedReason;
 use App\Models\Receipt;
 use App\Services\Receipts\Analysis\ReceiptAnalysisOrchestrator;
 use Exception;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ReceiptAnalysisService
 {
@@ -78,10 +81,16 @@ class ReceiptAnalysisService
         DB::beginTransaction();
 
         try {
-            // Delete existing line items
-            $receipt->lineItems()->delete();
+            // Soft delete existing line items with reprocess reason
+            foreach ($receipt->lineItems as $lineItem) {
+                $lineItem->deleted_reason = DeletedReason::Reprocess;
+                $lineItem->save();
+                $lineItem->delete();
+            }
 
-            // Delete the receipt
+            // Soft delete the receipt with reprocess reason
+            $receipt->deleted_reason = DeletedReason::Reprocess;
+            $receipt->save();
             $receipt->delete();
 
             // Reanalyze and create new receipt

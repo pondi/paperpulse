@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Contracts\Taggable;
+use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * Document Model
  *
@@ -46,6 +48,7 @@ class Document extends Model implements Taggable
     use HasFactory;
     use Searchable;
     use ShareableModel;
+    use SoftDeletes;
     use TaggableModel;
 
     /**
@@ -59,7 +62,6 @@ class Document extends Model implements Taggable
         'category_id',
         'title',
         'description',
-        'note',
         'summary',
         'content',
         'document_type',
@@ -83,9 +85,29 @@ class Document extends Model implements Taggable
         'ai_entities' => 'array',
         'metadata' => 'array',
         'document_date' => 'datetime',
-        'note' => 'string',
         'summary' => 'string',
+        'deleted_reason' => DeletedReason::class,
     ];
+
+    /**
+     * Get the note from the associated file.
+     * Notes are stored on File to survive entity deletion/recreation during reprocessing.
+     */
+    public function getNoteAttribute(): ?string
+    {
+        return $this->file?->note;
+    }
+
+    /**
+     * Set the note on the associated file.
+     */
+    public function setNoteAttribute(?string $value): void
+    {
+        if ($this->file) {
+            $this->file->note = $value;
+            $this->file->save();
+        }
+    }
 
     /**
      * Get the file that owns the document.

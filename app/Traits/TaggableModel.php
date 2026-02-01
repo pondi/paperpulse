@@ -2,84 +2,42 @@
 
 namespace App\Traits;
 
+use App\Models\File;
 use App\Models\Tag;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
+/**
+ * Trait for models that can be tagged through their associated File.
+ *
+ * Tags are stored on the File model to survive entity deletion/recreation
+ * during reprocessing. Entity models delegate tag operations to their file.
+ */
 trait TaggableModel
 {
     /**
-     * Get the tags for this model.
+     * Get the tags for this model (through the file relationship).
+     * Returns an empty collection if no file is associated.
      */
     public function tags(): BelongsToMany
     {
+        // If this model has a file, proxy to its tags
+        if ($this->file_id && $this->relationLoaded('file') && $this->file) {
+            return $this->file->tags();
+        }
+
+        // If file exists but not loaded, load it first
+        if ($this->file_id) {
+            $file = File::find($this->file_id);
+            if ($file) {
+                return $file->tags();
+            }
+        }
+
+        // Return an empty relationship if no file
+        // This creates a query that will return empty results
         return $this->belongsToMany(Tag::class, 'file_tags', 'file_id', 'tag_id')
-            ->withPivot('file_type')
-            ->wherePivot('file_type', $this->getTaggableType())
-            ->withTimestamps();
-    }
-
-    /**
-     * Add a tag to this model.
-     */
-    public function addTag(Tag $tag): void
-    {
-        $this->tags()->syncWithoutDetaching([
-            $tag->id => ['file_type' => $this->getTaggableType()],
-        ]);
-    }
-
-    /**
-     * Add a tag by name to this model.
-     */
-    public function addTagByName(string $name): Tag
-    {
-        $tag = Tag::findOrCreateByName($name, $this->user_id);
-        $this->addTag($tag);
-
-        return $tag;
-    }
-
-    /**
-     * Remove a tag from this model.
-     */
-    public function removeTag(Tag $tag): void
-    {
-        $this->tags()->detach($tag->id);
-    }
-
-    /**
-     * Sync tags for this model.
-     */
-    public function syncTags(array $tagIds): void
-    {
-        if (empty($tagIds)) {
-            // Detach all tags properly
-            $this->tags()->detach();
-
-            return;
-        }
-
-        $pivotData = [];
-        foreach ($tagIds as $tagId) {
-            $pivotData[$tagId] = ['file_type' => $this->getTaggableType()];
-        }
-        $this->tags()->sync($pivotData);
-    }
-
-    /**
-     * Check if this model has a specific tag.
-     */
-    public function hasTag(Tag $tag): bool
-    {
-        return $this->tags()->where('tags.id', $tag->id)->exists();
-    }
-
-    /**
-     * Check if this model has a tag by name.
-     */
-    public function hasTagByName(string $name): bool
-    {
-        return $this->tags()->where('tags.name', strtolower(trim($name)))->exists();
+            ->whereRaw('1 = 0'); // Always returns empty
     }
 
     /**
@@ -87,12 +45,90 @@ trait TaggableModel
      */
     public function getTagNames(): array
     {
-        return $this->tags()->pluck('name')->toArray();
+        if (! $this->file_id) {
+            return [];
+        }
+
+        $file = $this->relationLoaded('file') ? $this->file : File::find($this->file_id);
+
+        return $file?->getTagNames() ?? [];
+    }
+
+    /**
+     * Add a tag to this model.
+     */
+    public function addTag(Tag $tag): void
+    {
+        $file = $this->getFileForTagging();
+        $file?->addTag($tag);
+    }
+
+    /**
+     * Add a tag by name to this model.
+     */
+    public function addTagByName(string $name): ?Tag
+    {
+        $file = $this->getFileForTagging();
+
+        return $file?->addTagByName($name);
+    }
+
+    /**
+     * Remove a tag from this model.
+     */
+    public function removeTag(Tag $tag): void
+    {
+        $file = $this->getFileForTagging();
+        $file?->removeTag($tag);
+    }
+
+    /**
+     * Sync tags for this model.
+     */
+    public function syncTags(array $tagIds): void
+    {
+        $file = $this->getFileForTagging();
+        $file?->syncTags($tagIds);
+    }
+
+    /**
+     * Check if this model has a specific tag.
+     */
+    public function hasTag(Tag $tag): bool
+    {
+        $file = $this->getFileForTagging();
+
+        return $file?->hasTag($tag) ?? false;
+    }
+
+    /**
+     * Check if this model has a tag by name.
+     */
+    public function hasTagByName(string $name): bool
+    {
+        $file = $this->getFileForTagging();
+        if (! $file) {
+            return false;
+        }
+
+        return $file->tags()->where('tags.name', strtolower(trim($name)))->exists();
+    }
+
+    /**
+     * Get the file for tagging operations.
+     */
+    protected function getFileForTagging(): ?File
+    {
+        if (! $this->file_id) {
+            return null;
+        }
+
+        return $this->relationLoaded('file') ? $this->file : File::find($this->file_id);
     }
 
     /**
      * Get the taggable type for the pivot table.
-     * Should be implemented by the using model.
+     * No longer needed since tags are on File, but kept for backwards compatibility.
      */
     abstract protected function getTaggableType(): string;
 }

@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Maintenance;
 
+use App\Enums\DeletedReason;
 use App\Jobs\BaseJob;
 use App\Models\Receipt;
 use App\Models\User;
@@ -50,16 +51,19 @@ class CleanupRetainedFiles extends BaseJob
             foreach ($receiptsToCleanup as $receipt) {
                 if ($receipt->file) {
                     try {
-                        // Delete the S3 file
+                        // Soft delete the file with user delete reason
+                        // (User configured this retention cleanup)
+                        $receipt->file->deleted_reason = DeletedReason::UserDelete;
+                        $receipt->file->save();
                         $receipt->file->delete();
 
-                        Log::info('Deleted retained file', [
+                        Log::info('Soft deleted retained file', [
                             'receipt_id' => $receipt->id,
                             'file_id' => $receipt->file->id,
                             'user_id' => $user->id,
                         ]);
                     } catch (Exception $e) {
-                        Log::error('Failed to delete retained file', [
+                        Log::error('Failed to soft delete retained file', [
                             'receipt_id' => $receipt->id,
                             'file_id' => $receipt->file->id,
                             'error' => $e->getMessage(),

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Contracts\Taggable;
+use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use App\Traits\ExtractableEntity as ExtractableEntityTrait;
 use App\Traits\ShareableModel;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Scout\Searchable;
 
 class Invoice extends Model implements Taggable
@@ -20,6 +22,7 @@ class Invoice extends Model implements Taggable
     use HasFactory;
     use Searchable;
     use ShareableModel;
+    use SoftDeletes;
     use TaggableModel;
 
     protected $fillable = [
@@ -71,6 +74,7 @@ class Invoice extends Model implements Taggable
         'total_amount' => 'decimal:2',
         'amount_paid' => 'decimal:2',
         'amount_due' => 'decimal:2',
+        'deleted_reason' => DeletedReason::class,
     ];
 
     public function merchant(): BelongsTo

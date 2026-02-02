@@ -108,12 +108,7 @@ class GeminiProvider
                 ->asJson()
                 ->post($endpoint, $payload);
         } catch (Exception $e) {
-            throw new GeminiApiException(
-                'Gemini request failed: '.$e->getMessage(),
-                GeminiApiException::CODE_API_ERROR,
-                true,
-                ['error' => $e->getMessage()]
-            );
+            $this->handleRequestException($e);
         }
 
         if (! $response->successful()) {
@@ -246,12 +241,7 @@ class GeminiProvider
                 ->asJson()
                 ->post($endpoint, $payload);
         } catch (Exception $e) {
-            throw new GeminiApiException(
-                'Gemini request failed: '.$e->getMessage(),
-                GeminiApiException::CODE_API_ERROR,
-                true,
-                ['error' => $e->getMessage()]
-            );
+            $this->handleRequestException($e);
         }
 
         if (! $response->successful()) {
@@ -944,5 +934,51 @@ class GeminiProvider
         }
 
         return $structured;
+    }
+
+    /**
+     * Handle request exceptions with proper error categorization.
+     *
+     * @throws GeminiApiException
+     */
+    protected function handleRequestException(Exception $e): never
+    {
+        $message = $e->getMessage();
+
+        // Detect timeout errors (cURL error 28, connection timeouts, etc.)
+        $isTimeout = str_contains($message, 'cURL error 28')
+            || str_contains($message, 'timed out')
+            || str_contains($message, 'Operation timed out')
+            || str_contains($message, 'Connection timed out');
+
+        // Detect connection errors
+        $isConnectionError = str_contains($message, 'cURL error 7')
+            || str_contains($message, 'Could not resolve host')
+            || str_contains($message, 'Connection refused');
+
+        $errorCode = match (true) {
+            $isTimeout => GeminiApiException::CODE_TIMEOUT,
+            $isConnectionError => GeminiApiException::CODE_API_ERROR,
+            default => GeminiApiException::CODE_API_ERROR,
+        };
+
+        Log::warning('[GeminiProvider] Request failed', [
+            'error' => $message,
+            'error_code' => $errorCode,
+            'is_timeout' => $isTimeout,
+            'is_connection_error' => $isConnectionError,
+            'will_retry' => true,
+        ]);
+
+        throw new GeminiApiException(
+            'Gemini request failed: '.$message,
+            $errorCode,
+            true, // Always retryable for network errors
+            [
+                'error' => $message,
+                'is_timeout' => $isTimeout,
+                'is_connection_error' => $isConnectionError,
+            ]
+        );
     }
 }

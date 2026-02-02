@@ -23,6 +23,8 @@ class GeminiApiException extends Exception
 
     public const CODE_RESPONSE_INVALID = 'response_invalid';
 
+    public const CODE_PARSE_ERROR = 'parse_error';
+
     protected ?string $errorCode;
 
     protected bool $retryable;

@@ -44,16 +44,17 @@ class RegenerateImagePreviews extends Command
 
         // Filter by type if specified
         if ($type) {
-            if (!in_array($type, ['receipt', 'document'])) {
+            if (! in_array($type, ['receipt', 'document'])) {
                 $this->error('Invalid type. Must be "receipt" or "document".');
+
                 return Command::FAILURE;
             }
             $query->where('file_type', $type);
         }
 
-        if (!$force) {
+        if (! $force) {
             $query->where(function ($q) {
-                $q->where('has_image_preview', false)
+                $q->whereRaw('has_image_preview = false')
                     ->orWhereNull('has_image_preview');
             });
         }
@@ -67,6 +68,7 @@ class RegenerateImagePreviews extends Command
 
         if ($total === 0) {
             $this->info('No PDF files found that need preview generation.');
+
             return Command::SUCCESS;
         }
 
@@ -80,10 +82,10 @@ class RegenerateImagePreviews extends Command
         foreach ($files as $file) {
             try {
                 // Get the local file path
-                $localPath = storage_path('app/uploads/' . $file->guid . '.pdf');
+                $localPath = storage_path('app/uploads/'.$file->guid.'.pdf');
 
                 // Download from S3 if not local
-                if (!file_exists($localPath)) {
+                if (! file_exists($localPath)) {
                     $this->downloadFromS3($file, $localPath);
                 }
 
@@ -130,7 +132,7 @@ class RegenerateImagePreviews extends Command
         $bar->finish();
         $this->newLine();
 
-        $this->info("Preview regeneration complete!");
+        $this->info('Preview regeneration complete!');
         $this->info("Successful: {$successful}");
         $this->warn("Failed: {$failed}");
 
@@ -144,7 +146,7 @@ class RegenerateImagePreviews extends Command
     {
         $s3Path = $file->s3_original_path ?? $file->s3_processed_path;
 
-        if (!$s3Path) {
+        if (! $s3Path) {
             // Try to build the path
             $s3Path = "receipts/{$file->user_id}/{$file->guid}/original.pdf";
         }
@@ -156,7 +158,7 @@ class RegenerateImagePreviews extends Command
 
             // Ensure directory exists
             $dir = dirname($localPath);
-            if (!is_dir($dir)) {
+            if (! is_dir($dir)) {
                 mkdir($dir, 0755, true);
             }
 

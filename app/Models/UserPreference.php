@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\PostgresBoolean;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -40,22 +41,22 @@ class UserPreference extends Model
     ];
 
     protected $casts = [
-        'auto_categorize' => 'boolean',
-        'extract_line_items' => 'boolean',
-        'notify_processing_complete' => 'boolean',
-        'notify_processing_failed' => 'boolean',
-        'notify_bulk_complete' => 'boolean',
-        'notify_scanner_import' => 'boolean',
-        'notify_weekly_summary_ready' => 'boolean',
-        'email_notify_processing_complete' => 'boolean',
-        'email_notify_processing_failed' => 'boolean',
-        'email_notify_bulk_complete' => 'boolean',
-        'email_notify_scanner_import' => 'boolean',
-        'email_notify_weekly_summary' => 'boolean',
-        'email_weekly_summary' => 'boolean',
-        'auto_process_scanner_uploads' => 'boolean',
-        'delete_after_processing' => 'boolean',
-        'pulsedav_realtime_sync' => 'boolean',
+        'auto_categorize' => PostgresBoolean::class,
+        'extract_line_items' => PostgresBoolean::class,
+        'notify_processing_complete' => PostgresBoolean::class,
+        'notify_processing_failed' => PostgresBoolean::class,
+        'notify_bulk_complete' => PostgresBoolean::class,
+        'notify_scanner_import' => PostgresBoolean::class,
+        'notify_weekly_summary_ready' => PostgresBoolean::class,
+        'email_notify_processing_complete' => PostgresBoolean::class,
+        'email_notify_processing_failed' => PostgresBoolean::class,
+        'email_notify_bulk_complete' => PostgresBoolean::class,
+        'email_notify_scanner_import' => PostgresBoolean::class,
+        'email_notify_weekly_summary' => PostgresBoolean::class,
+        'email_weekly_summary' => PostgresBoolean::class,
+        'auto_process_scanner_uploads' => PostgresBoolean::class,
+        'delete_after_processing' => PostgresBoolean::class,
+        'pulsedav_realtime_sync' => PostgresBoolean::class,
         'receipts_per_page' => 'integer',
         'file_retention_days' => 'integer',
     ];

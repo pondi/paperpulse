@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\PostgresBoolean;
 use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use Carbon\Carbon;
@@ -68,7 +69,7 @@ class File extends Model
 
     protected $casts = [
         'meta' => 'array',
-        'has_image_preview' => 'boolean',
+        'has_image_preview' => PostgresBoolean::class,
         'uploaded_at' => 'datetime',
         'file_created_at' => 'datetime',
         'file_modified_at' => 'datetime',

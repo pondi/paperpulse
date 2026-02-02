@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\PostgresBoolean;
 use App\Enums\DeletedReason;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -30,7 +31,7 @@ class ExtractableEntity extends Model
     protected $casts = [
         'extraction_metadata' => 'array',
         'extracted_at' => 'datetime',
-        'is_primary' => 'boolean',
+        'is_primary' => PostgresBoolean::class,
         'deleted_reason' => DeletedReason::class,
     ];
 

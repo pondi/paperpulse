@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\PostgresBoolean;
 use App\Contracts\Taggable;
 use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
@@ -68,7 +69,7 @@ class Voucher extends Model implements Taggable
         'first_payment_date' => 'date',
         'final_payment_date' => 'date',
         'redeemed_at' => 'datetime',
-        'is_redeemed' => 'boolean',
+        'is_redeemed' => PostgresBoolean::class,
         'original_value' => 'decimal:2',
         'current_value' => 'decimal:2',
         'monthly_payment' => 'decimal:2',

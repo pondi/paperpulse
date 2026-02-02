@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\PostgresBoolean;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -22,7 +23,7 @@ class EmailTemplate extends Model
 
     protected $casts = [
         'variables' => 'array',
-        'is_active' => 'boolean',
+        'is_active' => PostgresBoolean::class,
     ];
 
     /**
@@ -31,7 +32,7 @@ class EmailTemplate extends Model
     public static function getByKey(string $key): ?self
     {
         return Cache::remember("email_template_{$key}", 3600, function () use ($key) {
-            return self::where('key', $key)->where('is_active', true)->first();
+            return self::where('key', $key)->whereRaw('is_active = true')->first();
         });
     }
 

@@ -153,7 +153,7 @@ class PulseDavFolderService implements PulseDavFolderContract
     {
         $folder = PulseDavFile::where('user_id', $user->id)
             ->where('folder_path', $folderPath)
-            ->where('is_folder', true)
+            ->whereRaw('is_folder = true')
             ->first();
 
         if (! $folder) {
@@ -224,7 +224,7 @@ class PulseDavFolderService implements PulseDavFolderContract
     public function getUserFolders(User $user): array
     {
         $folders = PulseDavFile::where('user_id', $user->id)
-            ->where('is_folder', true)
+            ->whereRaw('is_folder = true')
             ->orderBy('folder_path')
             ->get()
             ->map(function ($folder) {
@@ -262,7 +262,7 @@ class PulseDavFolderService implements PulseDavFolderContract
         // Check if folder already exists
         $existingFolder = PulseDavFile::where('user_id', $user->id)
             ->where('folder_path', $folderPath)
-            ->where('is_folder', true)
+            ->whereRaw('is_folder = true')
             ->first();
 
         if ($existingFolder) {

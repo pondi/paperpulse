@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\PostgresBoolean;
 use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use Carbon\Carbon;
@@ -93,7 +94,7 @@ class Collection extends Model
     protected function casts(): array
     {
         return [
-            'is_archived' => 'boolean',
+            'is_archived' => PostgresBoolean::class,
             'deleted_reason' => DeletedReason::class,
         ];
     }
@@ -129,12 +130,12 @@ class Collection extends Model
 
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('is_archived', false);
+        return $query->whereRaw('is_archived = false');
     }
 
     public function scopeArchived(Builder $query): Builder
     {
-        return $query->where('is_archived', true);
+        return $query->whereRaw('is_archived = true');
     }
 
     public function scopeSearch(Builder $query, string $search): Builder

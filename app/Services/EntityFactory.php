@@ -686,25 +686,31 @@ class EntityFactory
             return null;
         }
 
+        // Use a savepoint (nested transaction) to isolate the INSERT attempt.
+        // This is critical for PostgreSQL: if the INSERT fails due to a race condition,
+        // only the savepoint is rolled back, not the entire parent transaction.
         try {
-            $category = Category::create([
-                'user_id' => $userId,
-                'name' => $matchingDefault['name'],
-                'slug' => Category::generateUniqueSlug($matchingDefault['name'], $userId),
-                'color' => $matchingDefault['color'],
-                'icon' => $matchingDefault['icon'],
-                'is_active' => true,
-            ]);
+            $this->db->transaction(function () use ($matchingDefault, $userId, &$category) {
+                $category = Category::create([
+                    'user_id' => $userId,
+                    'name' => $matchingDefault['name'],
+                    'slug' => Category::generateUniqueSlug($matchingDefault['name'], $userId),
+                    'color' => $matchingDefault['color'],
+                    'icon' => $matchingDefault['icon'],
+                    'is_active' => true,
+                ]);
 
-            Log::info('[EntityFactory] Created new category for user', [
-                'category_id' => $category->id,
-                'category_name' => $category->name,
-                'user_id' => $userId,
-            ]);
+                Log::info('[EntityFactory] Created new category for user', [
+                    'category_id' => $category->id,
+                    'category_name' => $category->name,
+                    'user_id' => $userId,
+                ]);
+            });
 
             return $category->id;
         } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
-            // Race condition: another process created the category, fetch it
+            // Savepoint rolled back, parent transaction still valid.
+            // Race condition: another process created the category, fetch it.
             $category = Category::where('user_id', $userId)
                 ->where('name', $categoryName)
                 ->first();

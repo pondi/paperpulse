@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Casts\PostgresBoolean;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -39,7 +38,7 @@ class FileProcessingAnalytic extends Model
             'extraction_confidence' => 'decimal:4',
             'detected_entities' => 'array',
             'validation_warnings' => 'array',
-            'is_retryable' => PostgresBoolean::class,
+            'is_retryable' => 'boolean',
             'processing_duration_ms' => 'integer',
         ];
     }

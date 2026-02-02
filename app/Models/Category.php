@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Casts\PostgresBoolean;
 use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -28,7 +27,7 @@ class Category extends Model
     ];
 
     protected $casts = [
-        'is_active' => PostgresBoolean::class,
+        'is_active' => 'boolean',
         'sort_order' => 'integer',
         'deleted_reason' => DeletedReason::class,
     ];
@@ -62,7 +61,7 @@ class Category extends Model
      */
     public function scopeActive($query)
     {
-        return $query->whereRaw('is_active = true');
+        return $query->where('is_active', true);
     }
 
     /**

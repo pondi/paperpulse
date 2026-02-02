@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Casts\PostgresBoolean;
 use App\Contracts\Taggable;
 use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
@@ -47,9 +46,9 @@ class ReturnPolicy extends Model implements Taggable
         'policy_data' => 'array',
         'return_deadline' => 'date',
         'exchange_deadline' => 'date',
-        'is_final_sale' => PostgresBoolean::class,
-        'requires_receipt' => PostgresBoolean::class,
-        'requires_original_packaging' => PostgresBoolean::class,
+        'is_final_sale' => 'boolean',
+        'requires_receipt' => 'boolean',
+        'requires_original_packaging' => 'boolean',
         'restocking_fee' => 'decimal:2',
         'restocking_fee_percentage' => 'decimal:2',
         'deleted_reason' => DeletedReason::class,

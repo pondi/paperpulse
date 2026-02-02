@@ -369,7 +369,7 @@ class PulseDavService
     {
         $folder = PulseDavFile::where('user_id', $user->id)
             ->where('folder_path', $folderPath)
-            ->whereRaw('is_folder = true')
+            ->where('is_folder', true)
             ->first();
 
         if (! $folder) {

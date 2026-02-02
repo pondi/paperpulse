@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Casts\PostgresBoolean;
 use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use Carbon\Carbon;
@@ -69,7 +68,7 @@ class File extends Model
 
     protected $casts = [
         'meta' => 'array',
-        'has_image_preview' => PostgresBoolean::class,
+        'has_image_preview' => 'boolean',
         'uploaded_at' => 'datetime',
         'file_created_at' => 'datetime',
         'file_modified_at' => 'datetime',
@@ -89,7 +88,7 @@ class File extends Model
     public function primaryEntity()
     {
         return $this->hasOne(ExtractableEntity::class)
-            ->whereRaw('is_primary = true')
+            ->where('is_primary', true)
             ->with('entity');
     }
 

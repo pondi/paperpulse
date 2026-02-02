@@ -31,7 +31,7 @@ class SendWeeklySummary extends BaseJob
 
         // Find users who want weekly summaries on this day
         $usersForSummary = User::whereHas('preferences', function ($query) use ($dayOfWeek) {
-            $query->whereRaw('email_weekly_summary = true')
+            $query->where('email_weekly_summary', true)
                 ->where('weekly_summary_day', $dayOfWeek);
         })->with('preferences')->get();
 

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Casts\PostgresBoolean;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -37,7 +36,7 @@ class PulseDavFile extends Model
         'uploaded_at' => 'datetime',
         'processed_at' => 'datetime',
         'deleted_at' => 'datetime',
-        'is_folder' => PostgresBoolean::class,
+        'is_folder' => 'boolean',
         'folder_tag_ids' => 'array',
         'depth' => 'integer',
     ];
@@ -175,7 +174,7 @@ class PulseDavFile extends Model
             if ($parentPath !== '.') {
                 $parent = self::where('user_id', $this->user_id)
                     ->where('folder_path', $parentPath)
-                    ->whereRaw('is_folder = true')
+                    ->where('is_folder', true)
                     ->first();
 
                 if ($parent) {
@@ -205,7 +204,7 @@ class PulseDavFile extends Model
      */
     public function scopeFoldersOnly($query)
     {
-        return $query->whereRaw('is_folder = true');
+        return $query->where('is_folder', true);
     }
 
     /**
@@ -213,7 +212,7 @@ class PulseDavFile extends Model
      */
     public function scopeFilesOnly($query)
     {
-        return $query->whereRaw('is_folder = false');
+        return $query->where('is_folder', false);
     }
 
     /**

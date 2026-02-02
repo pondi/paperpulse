@@ -24,7 +24,7 @@ class SyncPulseDavFilesRealtime implements ShouldQueue
     {
         // Only sync for users who have enabled real-time sync
         $users = User::whereHas('preferences', function ($query) {
-            $query->whereRaw('pulsedav_realtime_sync = true');
+            $query->where('pulsedav_realtime_sync', true);
         })->get();
 
         if ($users->isEmpty()) {

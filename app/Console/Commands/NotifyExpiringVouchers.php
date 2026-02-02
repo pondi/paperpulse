@@ -35,7 +35,7 @@ class NotifyExpiringVouchers extends Command
             ->whereNotNull('expiry_date')
             ->whereDate('expiry_date', '>=', $today)
             ->whereDate('expiry_date', '<=', $endDate)
-            ->whereRaw('is_redeemed = false')
+            ->where('is_redeemed', false)
             ->orderBy('expiry_date')
             ->chunkById(100, function ($vouchers) use ($baseDate, &$notified, &$skipped) {
                 /** @var Voucher $voucher */

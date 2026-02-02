@@ -27,7 +27,7 @@ class CleanupRetainedFiles extends BaseJob
         Log::info('Starting cleanup of retained files');
 
         $usersWithRetention = User::whereHas('preferences', function ($query) {
-            $query->whereRaw('delete_after_processing = true')
+            $query->where('delete_after_processing', true)
                 ->where('file_retention_days', '>', 0);
         })->with('preferences')->get();
 

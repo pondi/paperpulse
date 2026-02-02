@@ -2,7 +2,6 @@
 
 namespace App\Services\Files;
 
-use App\Enums\DeletedReason;
 use App\Models\File;
 use App\Models\FileShare;
 use App\Services\Jobs\JobHistoryCreator;
@@ -25,12 +24,16 @@ class FileReprocessingService
 
     protected FileJobChainDispatcher $jobChainDispatcher;
 
+    protected FileEntityCleanupService $entityCleanupService;
+
     public function __construct(
         StorageService $storageService,
-        FileJobChainDispatcher $jobChainDispatcher
+        FileJobChainDispatcher $jobChainDispatcher,
+        FileEntityCleanupService $entityCleanupService
     ) {
         $this->storageService = $storageService;
         $this->jobChainDispatcher = $jobChainDispatcher;
+        $this->entityCleanupService = $entityCleanupService;
     }
 
     /**
@@ -65,8 +68,14 @@ class FileReprocessingService
             $jobId = (string) Str::uuid();
             $jobName = 'Reprocess '.ucfirst($file->file_type);
 
+            // Soft-delete existing entities and remove from search index
+            $deletedEntities = $this->entityCleanupService->softDeleteAndUnindexEntities($file);
+
             // Prepare metadata for job chain
             $metadata = $this->prepareReprocessingMetadata($file, $jobId, $jobName);
+
+            // Store deleted entity info in metadata for hard-deletion after success
+            $metadata['metadata']['previousEntities'] = $deletedEntities;
 
             // Store metadata for job chain
             JobMetadataPersistence::store($jobId, $metadata);
@@ -331,17 +340,8 @@ class FileReprocessingService
         // Clear any derived outputs (they will be regenerated)
         $this->resetFileProcessingState($file);
 
-        // Soft delete any extracted entities for this file (with reprocess reason)
-        foreach ($file->extractableEntities as $extractableEntity) {
-            if ($extractableEntity->entity) {
-                $extractableEntity->entity->deleted_reason = DeletedReason::Reprocess;
-                $extractableEntity->entity->save();
-                $extractableEntity->entity->delete();
-            }
-            $extractableEntity->deleted_reason = DeletedReason::Reprocess;
-            $extractableEntity->save();
-            $extractableEntity->delete();
-        }
+        // Entity cleanup happens in reprocessFile() which is called after this method
+        // No need to delete entities here - reprocessFile() handles it
 
         FileShare::where('file_id', $file->id)->update(['file_type' => $newFileType]);
 

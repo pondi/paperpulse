@@ -13,6 +13,7 @@ use App\Services\AI\FileManager\GeminiFileManager;
 use App\Services\AI\TypeClassification\GeminiTypeClassifier;
 use App\Services\DuplicateDetectionService;
 use App\Services\EntityFactory;
+use App\Services\Files\FileEntityCleanupService;
 use App\Services\Files\FilePreviewManager;
 use App\Services\Workers\WorkerFileManager;
 use Exception;
@@ -257,6 +258,24 @@ class ProcessFileGemini extends BaseJob
 
         $file->status = 'completed';
         $file->save();
+
+        // Hard-delete old entities after successful reprocess
+        $previousEntities = $metadata['metadata']['previousEntities'] ?? null;
+        if (! empty($previousEntities)) {
+            try {
+                app(FileEntityCleanupService::class)->hardDeleteEntities($previousEntities);
+                Log::info('[ProcessFileGemini] Hard-deleted old entities after reprocess', [
+                    'file_id' => $file->id,
+                    'entity_count' => $previousEntities['count'] ?? 0,
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('[ProcessFileGemini] Failed to hard-delete old entities', [
+                    'file_id' => $file->id,
+                    'error' => $e->getMessage(),
+                ]);
+                // Don't fail job - entities are soft-deleted, cleanup command will catch them
+            }
+        }
 
         // Create analytics record for production learning
         $this->createAnalyticsRecord($file, 'completed', $classification ?? null, $extractedEntity ?? null);

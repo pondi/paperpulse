@@ -96,6 +96,7 @@ RUN echo "GMT" > /etc/timezone \
         php84-mbstring \
         php84-tokenizer \
         php84-fileinfo \
+        php84-phar \
         php84-xml \
         php84-dom \
         php84-simplexml \

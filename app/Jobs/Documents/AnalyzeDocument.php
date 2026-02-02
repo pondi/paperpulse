@@ -74,38 +74,39 @@ class AnalyzeDocument extends BaseJob
                 throw new Exception('Document analysis failed - no response from AI service');
             }
 
-            DB::transaction(function () use ($document, $analysis) {
+            // Pre-resolve category and tags OUTSIDE the transaction to avoid PostgreSQL transaction abort issues.
+            $categoryId = null;
+            if (! empty($analysis['suggested_category'])) {
+                $category = $this->findOrCreateCategory($analysis['suggested_category'], $document->user_id);
+                $categoryId = $category?->id;
+            }
+
+            $tagIds = [];
+            if (! empty($analysis['tags']) && is_array($analysis['tags'])) {
+                foreach ($analysis['tags'] as $tagName) {
+                    $tag = $this->findOrCreateTag($tagName, $document->user_id);
+                    if ($tag) {
+                        $tagIds[] = $tag->id;
+                    }
+                }
+            }
+
+            DB::transaction(function () use ($document, $analysis, $categoryId, $tagIds) {
                 // Update document with AI-generated metadata
                 $document->update([
                     'title' => $analysis['title'] ?? $document->title,
                     'summary' => $analysis['summary'] ?? null,
                     'language' => $analysis['language'] ?? 'en',
                     'document_type' => $analysis['document_type'] ?? 'general',
+                    'category_id' => $categoryId ?? $document->category_id,
                     'metadata' => array_merge($document->metadata ?? [], [
                         'ai_analysis' => $analysis,
                         'analyzed_at' => now()->toIso8601String(),
                     ]),
                 ]);
 
-                // Handle category suggestion
-                if (! empty($analysis['suggested_category'])) {
-                    $category = $this->findOrCreateCategory($analysis['suggested_category'], $document->user_id);
-                    if ($category) {
-                        $document->update(['category_id' => $category->id]);
-                    }
-                }
-
-                // Handle tags
-                if (! empty($analysis['tags']) && is_array($analysis['tags'])) {
-                    $tagIds = [];
-                    foreach ($analysis['tags'] as $tagName) {
-                        $tag = $this->findOrCreateTag($tagName, $document->user_id);
-                        if ($tag) {
-                            $tagIds[] = $tag->id;
-                        }
-                    }
-
-                    // Sync tags with the document using proper file_type
+                // Sync tags with the document using proper file_type
+                if (! empty($tagIds)) {
                     TagAttachmentService::syncTags($document, $tagIds, 'document');
                 }
 

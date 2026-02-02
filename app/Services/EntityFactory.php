@@ -42,7 +42,11 @@ class EntityFactory
         $entities = $parsedData['entities'] ?? [];
         $created = [];
 
-        $this->db->transaction(function () use ($entities, $file, &$created) {
+        // Pre-resolve category IDs BEFORE the transaction to avoid PostgreSQL transaction abort issues.
+        // Category creation may race with other workers, so we handle it outside the main transaction.
+        $resolvedCategories = $this->preResolveCategoryIds($entities, $file);
+
+        $this->db->transaction(function () use ($entities, $file, &$created, $resolvedCategories) {
             $context = [];
 
             foreach ($entities as $entity) {
@@ -97,6 +101,10 @@ class EntityFactory
 
                 switch ($type) {
                     case 'receipt':
+                        $categoryName = $data['receipt_category'] ?? null;
+                        if ($categoryName && isset($resolvedCategories[$categoryName])) {
+                            $data['category_id'] = $resolvedCategories[$categoryName];
+                        }
                         $model = $this->createReceipt($data, $file);
                         $context['receipt'] = $model;
                         break;
@@ -624,57 +632,109 @@ class EntityFactory
     }
 
     /**
-     * Resolve category ID from category name.
+     * Pre-resolve category IDs for all entities before the main transaction.
+     * This handles race conditions cleanly outside the transaction.
+     *
+     * @return array<string, int> Map of category name to ID
      */
-    protected function resolveCategoryId(array $data, File $file): ?int
+    protected function preResolveCategoryIds(array $entities, File $file): array
     {
-        $categoryName = $data['receipt_category'] ?? null;
+        $resolved = [];
 
-        if (empty($categoryName)) {
-            return null;
-        }
+        foreach ($entities as $entity) {
+            if (! is_array($entity)) {
+                continue;
+            }
 
-        // Try to find existing category for this user
-        $category = Category::where('user_id', $file->user_id)
-            ->where('name', $categoryName)
-            ->first();
+            $type = strtolower($entity['type'] ?? '');
+            $data = $entity['data'] ?? $entity;
 
-        // If not found, create a new category from the default categories
-        if (! $category) {
-            $defaultCategories = Category::getDefaultCategories();
-            $matchingDefault = collect($defaultCategories)->firstWhere('name', $categoryName);
-
-            if ($matchingDefault) {
-                try {
-                    $category = Category::create([
-                        'user_id' => $file->user_id,
-                        'name' => $matchingDefault['name'],
-                        'slug' => Category::generateUniqueSlug($matchingDefault['name'], $file->user_id),
-                        'color' => $matchingDefault['color'],
-                        'icon' => $matchingDefault['icon'],
-                        'is_active' => true,
-                    ]);
-
-                    Log::info('[EntityFactory] Created new category for user', [
-                        'category_id' => $category->id,
-                        'category_name' => $category->name,
-                        'user_id' => $file->user_id,
-                    ]);
-                } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
-                    // Race condition: another process created the category, fetch it
-                    $category = Category::where('user_id', $file->user_id)
-                        ->where('name', $categoryName)
-                        ->first();
-
-                    Log::debug('[EntityFactory] Category was created by concurrent process', [
-                        'category_name' => $categoryName,
-                        'user_id' => $file->user_id,
-                    ]);
+            // Only receipts have receipt_category
+            if ($type === 'receipt') {
+                $categoryName = $data['receipt_category'] ?? null;
+                if ($categoryName && ! isset($resolved[$categoryName])) {
+                    $categoryId = $this->resolveOrCreateCategory($categoryName, $file->user_id);
+                    if ($categoryId) {
+                        $resolved[$categoryName] = $categoryId;
+                    }
                 }
             }
         }
 
-        return $category?->id;
+        return $resolved;
+    }
+
+    /**
+     * Resolve or create a category by name. Called OUTSIDE the main transaction.
+     */
+    protected function resolveOrCreateCategory(string $categoryName, int $userId): ?int
+    {
+        // Try to find existing category for this user
+        $category = Category::where('user_id', $userId)
+            ->where('name', $categoryName)
+            ->first();
+
+        if ($category) {
+            return $category->id;
+        }
+
+        // Not found - try to create from default categories
+        $defaultCategories = Category::getDefaultCategories();
+        $matchingDefault = collect($defaultCategories)->firstWhere('name', $categoryName);
+
+        if (! $matchingDefault) {
+            return null;
+        }
+
+        try {
+            $category = Category::create([
+                'user_id' => $userId,
+                'name' => $matchingDefault['name'],
+                'slug' => Category::generateUniqueSlug($matchingDefault['name'], $userId),
+                'color' => $matchingDefault['color'],
+                'icon' => $matchingDefault['icon'],
+                'is_active' => true,
+            ]);
+
+            Log::info('[EntityFactory] Created new category for user', [
+                'category_id' => $category->id,
+                'category_name' => $category->name,
+                'user_id' => $userId,
+            ]);
+
+            return $category->id;
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            // Race condition: another process created the category, fetch it
+            $category = Category::where('user_id', $userId)
+                ->where('name', $categoryName)
+                ->first();
+
+            Log::debug('[EntityFactory] Category was created by concurrent process', [
+                'category_name' => $categoryName,
+                'user_id' => $userId,
+            ]);
+
+            return $category?->id;
+        }
+    }
+
+    /**
+     * Resolve category ID from data (uses pre-resolved ID if available).
+     */
+    protected function resolveCategoryId(array $data, File $file): ?int
+    {
+        // If category_id is already set (pre-resolved), use it
+        if (! empty($data['category_id'])) {
+            return $data['category_id'];
+        }
+
+        // Fallback: resolve inline (for backwards compatibility)
+        $categoryName = $data['receipt_category'] ?? null;
+        if (empty($categoryName)) {
+            return null;
+        }
+
+        return $this->resolveOrCreateCategory($categoryName, $file->user_id);
     }
 
     /**

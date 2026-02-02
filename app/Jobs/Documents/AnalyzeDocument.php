@@ -161,19 +161,31 @@ class AnalyzeDocument extends BaseJob
                 // Generate a unique slug for this category
                 $slug = Category::generateUniqueSlug($categoryName, $userId);
 
-                $category = Category::create([
-                    'user_id' => $userId,
-                    'name' => $categoryName,
-                    'slug' => $slug,
-                    'color' => $color,
-                ]);
+                try {
+                    $category = Category::create([
+                        'user_id' => $userId,
+                        'name' => $categoryName,
+                        'slug' => $slug,
+                        'color' => $color,
+                    ]);
 
-                Log::info('Created new category from AI suggestion', [
-                    'category_id' => $category->id,
-                    'name' => $categoryName,
-                    'slug' => $slug,
-                    'user_id' => $userId,
-                ]);
+                    Log::info('Created new category from AI suggestion', [
+                        'category_id' => $category->id,
+                        'name' => $categoryName,
+                        'slug' => $slug,
+                        'user_id' => $userId,
+                    ]);
+                } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+                    // Race condition: another process created the category, fetch it
+                    $category = Category::where('user_id', $userId)
+                        ->where('name', 'like', $categoryName)
+                        ->first();
+
+                    Log::debug('Category was created by concurrent process', [
+                        'category_name' => $categoryName,
+                        'user_id' => $userId,
+                    ]);
+                }
             }
 
             return $category;

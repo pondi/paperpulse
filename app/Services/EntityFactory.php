@@ -645,20 +645,32 @@ class EntityFactory
             $matchingDefault = collect($defaultCategories)->firstWhere('name', $categoryName);
 
             if ($matchingDefault) {
-                $category = Category::create([
-                    'user_id' => $file->user_id,
-                    'name' => $matchingDefault['name'],
-                    'slug' => Category::generateUniqueSlug($matchingDefault['name'], $file->user_id),
-                    'color' => $matchingDefault['color'],
-                    'icon' => $matchingDefault['icon'],
-                    'is_active' => true,
-                ]);
+                try {
+                    $category = Category::create([
+                        'user_id' => $file->user_id,
+                        'name' => $matchingDefault['name'],
+                        'slug' => Category::generateUniqueSlug($matchingDefault['name'], $file->user_id),
+                        'color' => $matchingDefault['color'],
+                        'icon' => $matchingDefault['icon'],
+                        'is_active' => true,
+                    ]);
 
-                Log::info('[EntityFactory] Created new category for user', [
-                    'category_id' => $category->id,
-                    'category_name' => $category->name,
-                    'user_id' => $file->user_id,
-                ]);
+                    Log::info('[EntityFactory] Created new category for user', [
+                        'category_id' => $category->id,
+                        'category_name' => $category->name,
+                        'user_id' => $file->user_id,
+                    ]);
+                } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+                    // Race condition: another process created the category, fetch it
+                    $category = Category::where('user_id', $file->user_id)
+                        ->where('name', $categoryName)
+                        ->first();
+
+                    Log::debug('[EntityFactory] Category was created by concurrent process', [
+                        'category_name' => $categoryName,
+                        'user_id' => $file->user_id,
+                    ]);
+                }
             }
         }
 

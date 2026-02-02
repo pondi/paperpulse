@@ -49,6 +49,11 @@ abstract class BaseJob implements ShouldQueue
     public string $jobName;
 
     /**
+     * Flag to prevent double-handling of failures.
+     */
+    protected bool $failureHandled = false;
+
+    /**
      * Create a new job instance.
      *
      * @param  string  $jobID  Non-empty parent job chain ID
@@ -111,7 +116,9 @@ abstract class BaseJob implements ShouldQueue
             $this->handleJob();
             $this->markAsCompleted();
         } catch (Throwable $e) {
-            $this->failed($e);
+            // Don't call failed() here - Laravel's queue system will call it
+            // automatically when we re-throw. Calling it twice causes duplicate
+            // entries in failed_jobs table and double logging.
             throw $e;
         }
     }
@@ -339,6 +346,12 @@ abstract class BaseJob implements ShouldQueue
      */
     public function failed(Throwable $exception): void
     {
+        // Prevent double-handling of failures
+        if ($this->failureHandled) {
+            return;
+        }
+        $this->failureHandled = true;
+
         if (! $this->uuid) {
             $this->uuid = (string) Str::uuid();
         }

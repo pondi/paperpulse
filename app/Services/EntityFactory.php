@@ -379,42 +379,60 @@ class EntityFactory
 
     protected function createInvoice(array $data, File $file): Invoice
     {
-        return Invoice::create([
+        // The InvoiceDataNormalizer produces nested keys (vendor.name, invoice_info.invoice_number,
+        // totals.subtotal, payment.method, etc.) but the Invoice model expects flat column names
+        // (from_name, invoice_number, subtotal, payment_method). Flatten the nested structure,
+        // falling back to flat keys for backwards compatibility.
+        $vendor = $data['vendor'] ?? [];
+        $customer = $data['customer'] ?? [];
+        $invoiceInfo = $data['invoice_info'] ?? [];
+        $totals = $data['totals'] ?? [];
+        $payment = $data['payment'] ?? [];
+        $lineItems = $data['line_items'] ?? [];
+
+        $invoice = Invoice::create([
             'file_id' => $file->id,
             'user_id' => $file->user_id,
             'merchant_id' => $data['merchant_id'] ?? $this->resolveMerchantId($data, $file),
             'category_id' => $data['category_id'] ?? null,
-            'invoice_number' => $data['invoice_number'] ?? null,
-            'invoice_type' => $data['invoice_type'] ?? 'invoice',
-            'from_name' => $data['from_name'] ?? null,
-            'from_address' => $data['from_address'] ?? null,
-            'from_vat_number' => $data['from_vat_number'] ?? null,
-            'from_email' => $data['from_email'] ?? null,
-            'from_phone' => $data['from_phone'] ?? null,
-            'to_name' => $data['to_name'] ?? null,
-            'to_address' => $data['to_address'] ?? null,
-            'to_vat_number' => $data['to_vat_number'] ?? null,
-            'to_email' => $data['to_email'] ?? null,
-            'to_phone' => $data['to_phone'] ?? null,
-            'invoice_date' => $data['invoice_date'] ?? null,
-            'due_date' => $data['due_date'] ?? null,
-            'delivery_date' => $data['delivery_date'] ?? null,
-            'subtotal' => $data['subtotal'] ?? 0,
-            'tax_amount' => $data['tax_amount'] ?? 0,
-            'discount_amount' => $data['discount_amount'] ?? 0,
-            'shipping_amount' => $data['shipping_amount'] ?? 0,
-            'total_amount' => $data['total_amount'] ?? 0,
-            'amount_paid' => $data['amount_paid'] ?? 0,
-            'amount_due' => $data['amount_due'] ?? 0,
-            'currency' => $data['currency'] ?? 'NOK',
-            'payment_method' => $data['payment_method'] ?? null,
-            'payment_status' => $data['payment_status'] ?? null,
-            'payment_terms' => $data['payment_terms'] ?? null,
-            'purchase_order_number' => $data['purchase_order_number'] ?? null,
-            'reference_number' => $data['reference_number'] ?? null,
+            'invoice_number' => $invoiceInfo['invoice_number'] ?? $data['invoice_number'] ?? null,
+            'invoice_type' => $invoiceInfo['invoice_type'] ?? $data['invoice_type'] ?? 'invoice',
+            'from_name' => $vendor['name'] ?? $data['from_name'] ?? null,
+            'from_address' => $vendor['address'] ?? $data['from_address'] ?? null,
+            'from_vat_number' => $vendor['vat_number'] ?? $data['from_vat_number'] ?? null,
+            'from_email' => $vendor['email'] ?? $data['from_email'] ?? null,
+            'from_phone' => $vendor['phone'] ?? $data['from_phone'] ?? null,
+            'to_name' => $customer['name'] ?? $data['to_name'] ?? null,
+            'to_address' => $customer['address'] ?? $data['to_address'] ?? null,
+            'to_vat_number' => $customer['vat_number'] ?? $data['to_vat_number'] ?? null,
+            'to_email' => $customer['email'] ?? $data['to_email'] ?? null,
+            'to_phone' => $customer['phone'] ?? $data['to_phone'] ?? null,
+            'invoice_date' => $invoiceInfo['invoice_date'] ?? $data['invoice_date'] ?? null,
+            'due_date' => $invoiceInfo['due_date'] ?? $data['due_date'] ?? null,
+            'delivery_date' => $invoiceInfo['delivery_date'] ?? $data['delivery_date'] ?? null,
+            'subtotal' => $totals['subtotal'] ?? $data['subtotal'] ?? 0,
+            'tax_amount' => $totals['tax_amount'] ?? $data['tax_amount'] ?? 0,
+            'discount_amount' => $totals['discount_amount'] ?? $data['discount_amount'] ?? 0,
+            'shipping_amount' => $totals['shipping_amount'] ?? $data['shipping_amount'] ?? 0,
+            'total_amount' => $totals['total_amount'] ?? $data['total_amount'] ?? 0,
+            'amount_paid' => $totals['amount_paid'] ?? $data['amount_paid'] ?? 0,
+            'amount_due' => $totals['amount_due'] ?? $data['amount_due'] ?? 0,
+            'currency' => $payment['currency'] ?? $data['currency'] ?? 'NOK',
+            'payment_method' => $payment['method'] ?? $data['payment_method'] ?? null,
+            'payment_status' => $payment['status'] ?? $data['payment_status'] ?? null,
+            'payment_terms' => $payment['terms'] ?? $data['payment_terms'] ?? null,
+            'purchase_order_number' => $invoiceInfo['purchase_order_number'] ?? $data['purchase_order_number'] ?? null,
+            'reference_number' => $invoiceInfo['reference_number'] ?? $data['reference_number'] ?? null,
             'notes' => $data['notes'] ?? null,
             'invoice_data' => $data['invoice_data'] ?? $data,
         ]);
+
+        // Create line items if present in the normalized data
+        if (! empty($lineItems)) {
+            $this->createInvoiceLineItems($lineItems, $invoice);
+        }
+
+        return $invoice;
     }
 
     protected function createInvoiceLineItems(array $items, Invoice $invoice): array
@@ -608,6 +626,11 @@ class EntityFactory
     protected function resolveMerchantId(array $data, File $file): ?int
     {
         $merchant = $data['merchant'] ?? [];
+
+        // Fallback to vendor key (used by InvoiceDataNormalizer)
+        if (empty($merchant) && ! empty($data['vendor'])) {
+            $merchant = $data['vendor'];
+        }
 
         // Fallback to loose fields if provided
         if (empty($merchant) && isset($data['merchant_name'])) {

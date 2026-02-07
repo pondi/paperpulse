@@ -33,6 +33,21 @@ interface Document {
     created_at: string;
     updated_at: string;
     entity_type?: string;
+    entity_details?: {
+        date?: string;
+        total?: number;
+        currency?: string;
+        status?: string;
+        from?: string;
+        effective_date?: string;
+        expiration_date?: string;
+        type?: string;
+        expiry_date?: string;
+        discount?: number;
+        code?: string;
+        product?: string;
+        closing_balance?: number;
+    };
     category?: {
         id: number;
         name: string;
@@ -185,6 +200,32 @@ const getShowRoute = (document: Document) => {
             return route('documents.show', document.id);
     }
 };
+
+const getEntityTypeBadge = (entityType?: string) => {
+    switch (entityType) {
+        case 'invoice':
+            return { label: 'Invoice', bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-700 dark:text-blue-300' };
+        case 'contract':
+            return { label: 'Contract', bg: 'bg-purple-100 dark:bg-purple-900/50', text: 'text-purple-700 dark:text-purple-300' };
+        case 'voucher':
+            return { label: 'Voucher', bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-700 dark:text-green-300' };
+        case 'warranty':
+            return { label: 'Warranty', bg: 'bg-orange-100 dark:bg-orange-900/50', text: 'text-orange-700 dark:text-orange-300' };
+        case 'bankstatement':
+            return { label: 'Statement', bg: 'bg-teal-100 dark:bg-teal-900/50', text: 'text-teal-700 dark:text-teal-300' };
+        case 'document':
+        default:
+            return { label: 'Document', bg: 'bg-zinc-100 dark:bg-zinc-700', text: 'text-zinc-700 dark:text-zinc-300' };
+    }
+};
+
+const formatCurrency = (amount?: number, currency?: string) => {
+    if (amount == null) return null;
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency || 'USD',
+    }).format(amount);
+};
 </script>
 
 <template>
@@ -312,19 +353,39 @@ const getShowRoute = (document: Document) => {
                         <div
                             v-for="document in documents.data"
                             :key="document.id"
-                            class="relative group bg-white dark:bg-zinc-900 border border-amber-200 dark:border-zinc-700 rounded-lg p-4 shadow-lg hover:shadow-xl transition-all duration-200"
+                            class="relative group bg-white dark:bg-zinc-900 border border-amber-200 dark:border-zinc-700 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex flex-col"
                         >
-                            <div class="absolute top-4 right-4">
+                            <!-- Checkbox -->
+                            <div class="absolute top-3 right-3 z-10">
                                 <Checkbox
                                     :checked="selectedDocuments.includes(document.id)"
                                     @change="toggleDocument(document.id)"
                                 />
                             </div>
 
-                            <div @click="viewDocument(document)" class="cursor-pointer">
+                            <!-- Clickable area -->
+                            <div @click="viewDocument(document)" class="cursor-pointer p-4 flex-1">
+                                <!-- Entity Type Badge -->
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span
+                                        :class="[
+                                            'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold',
+                                            getEntityTypeBadge(document.entity_type).bg,
+                                            getEntityTypeBadge(document.entity_type).text,
+                                        ]"
+                                    >
+                                        {{ getEntityTypeBadge(document.entity_type).label }}
+                                    </span>
+                                    <span v-if="document.category"
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                                        :style="{ backgroundColor: document.category.color + '20', color: document.category.color }"
+                                    >
+                                        {{ document.category.name }}
+                                    </span>
+                                </div>
+
                                 <!-- Thumbnail Preview -->
-                                <div class="aspect-[8.5/11] bg-amber-100 dark:bg-zinc-700 rounded-lg overflow-hidden relative mb-3">
-                                    <!-- Show preview if available and no error -->
+                                <div class="aspect-[4/3] bg-amber-50 dark:bg-zinc-800 rounded-lg overflow-hidden relative mb-3">
                                     <template v-if="document.file?.has_preview && !thumbnailErrors.has(document.id)">
                                         <img
                                             :src="document.file.previewUrl || document.file.url"
@@ -333,84 +394,134 @@ const getShowRoute = (document: Document) => {
                                             @error="handleThumbnailError(document.id)"
                                         />
                                     </template>
-
-                                    <!-- Fallback to icon -->
                                     <template v-else>
                                         <div class="flex items-center justify-center h-full">
-                                            <DocumentIcon class="h-16 w-16 text-zinc-400" />
+                                            <DocumentIcon class="h-12 w-12 text-zinc-300 dark:text-zinc-600" />
                                         </div>
                                     </template>
-
-                                    <!-- Category badge overlay -->
-                                    <div v-if="document.category" class="absolute top-2 right-2">
-                                        <span
-                                            class="inline-flex items-center px-2 py-1 rounded text-xs font-medium"
-                                            :style="{ backgroundColor: document.category.color + '20', color: document.category.color }"
-                                        >
-                                            {{ document.category.name }}
-                                        </span>
-                                    </div>
                                 </div>
-                                <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-1 truncate">
+
+                                <!-- Title -->
+                                <h3 class="text-base font-black text-zinc-900 dark:text-zinc-100 mb-1 truncate">
                                     {{ document.title }}
                                 </h3>
-                                <p class="text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-2">
-                                    {{ formatFileSize(document.size) }} • {{ formatDate(document.created_at) }}
+
+                                <!-- Entity-specific details -->
+                                <div v-if="document.entity_details" class="text-sm text-zinc-600 dark:text-zinc-400 space-y-0.5 mb-2">
+                                    <!-- Invoice details -->
+                                    <template v-if="document.entity_type === 'invoice'">
+                                        <p v-if="document.entity_details.from" class="truncate">
+                                            From: {{ document.entity_details.from }}
+                                        </p>
+                                        <div class="flex items-center justify-between">
+                                            <span v-if="document.entity_details.date">{{ formatDate(document.entity_details.date) }}</span>
+                                            <span v-if="document.entity_details.total" class="font-bold text-zinc-900 dark:text-zinc-100">
+                                                {{ formatCurrency(document.entity_details.total, document.entity_details.currency) }}
+                                            </span>
+                                        </div>
+                                        <span v-if="document.entity_details.status"
+                                            :class="[
+                                                'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                                                document.entity_details.status === 'paid' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'
+                                            ]"
+                                        >
+                                            {{ document.entity_details.status }}
+                                        </span>
+                                    </template>
+                                    <!-- Contract details -->
+                                    <template v-else-if="document.entity_type === 'contract'">
+                                        <p v-if="document.entity_details.type" class="truncate">{{ document.entity_details.type }}</p>
+                                        <p v-if="document.entity_details.effective_date">
+                                            {{ formatDate(document.entity_details.effective_date) }}
+                                            <span v-if="document.entity_details.expiration_date"> - {{ formatDate(document.entity_details.expiration_date) }}</span>
+                                        </p>
+                                        <span v-if="document.entity_details.status"
+                                            :class="[
+                                                'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                                                document.entity_details.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300'
+                                            ]"
+                                        >
+                                            {{ document.entity_details.status }}
+                                        </span>
+                                    </template>
+                                    <!-- Voucher details -->
+                                    <template v-else-if="document.entity_type === 'voucher'">
+                                        <p v-if="document.entity_details.code" class="font-mono truncate">{{ document.entity_details.code }}</p>
+                                        <p v-if="document.entity_details.expiry_date">Expires: {{ formatDate(document.entity_details.expiry_date) }}</p>
+                                    </template>
+                                    <!-- Warranty details -->
+                                    <template v-else-if="document.entity_type === 'warranty'">
+                                        <p v-if="document.entity_details.product" class="truncate">{{ document.entity_details.product }}</p>
+                                        <p v-if="document.entity_details.expiry_date">Expires: {{ formatDate(document.entity_details.expiry_date) }}</p>
+                                    </template>
+                                    <!-- BankStatement details -->
+                                    <template v-else-if="document.entity_type === 'bankstatement'">
+                                        <p v-if="document.entity_details.date">{{ formatDate(document.entity_details.date) }}</p>
+                                        <p v-if="document.entity_details.closing_balance != null" class="font-bold">
+                                            Balance: {{ formatCurrency(document.entity_details.closing_balance) }}
+                                        </p>
+                                    </template>
+                                </div>
+
+                                <!-- File info -->
+                                <p class="text-xs text-zinc-500 dark:text-zinc-500 mb-2">
+                                    {{ formatFileSize(document.size) }} &middot; {{ formatDate(document.created_at) }}
                                 </p>
-                                <p
-                                    v-if="document.note"
-                                    class="text-sm text-zinc-600 dark:text-zinc-300 mb-2 line-clamp-2"
-                                >
+
+                                <!-- Note -->
+                                <p v-if="document.note" class="text-sm text-zinc-600 dark:text-zinc-300 mb-2 line-clamp-2">
                                     {{ document.note }}
                                 </p>
 
-                                <div v-if="document.tags && document.tags.length > 0" class="flex flex-wrap gap-1 mb-2">
-                                    <span 
-                                        v-for="tag in document.tags.slice(0, 3)" 
+                                <!-- Tags -->
+                                <div v-if="document.tags && document.tags.length > 0" class="flex flex-wrap gap-1">
+                                    <span
+                                        v-for="tag in document.tags.slice(0, 3)"
                                         :key="tag.id"
                                         class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200"
                                     >
                                         {{ tag.name }}
                                     </span>
-                                    <span 
+                                    <span
                                         v-if="document.tags && document.tags.length > 3"
                                         class="text-xs text-zinc-500 dark:text-zinc-400"
                                     >
-                                        +{{ document.tags ? document.tags.length - 3 : 0 }} more
+                                        +{{ document.tags.length - 3 }} more
                                     </span>
                                 </div>
                             </div>
-                            
-                            <div class="mt-3 flex items-center justify-between">
-                                <div class="flex items-center space-x-2">
-                                    <div v-if="document.shared_with_count > 0" class="relative text-green-600 dark:text-green-400">
-                                        <ShareIcon class="h-5 w-5" />
-                                        <span class="absolute -top-2 -right-2 inline-flex items-center justify-center rounded-full bg-green-600 text-white text-[10px] h-4 min-w-4 px-1">
+
+                            <!-- Action buttons -->
+                            <div class="px-4 py-3 border-t border-amber-100 dark:border-zinc-800 flex items-center justify-between">
+                                <div class="flex items-center gap-1">
+                                    <div v-if="document.shared_with_count > 0" class="relative text-green-600 dark:text-green-400 mr-1">
+                                        <ShareIcon class="h-4 w-4" />
+                                        <span class="absolute -top-2 -right-2 inline-flex items-center justify-center rounded-full bg-green-600 text-white text-[10px] h-3.5 min-w-3.5 px-0.5">
                                             {{ document.shared_with_count }}
                                         </span>
                                     </div>
                                 </div>
-                                <div class="flex items-center space-x-2">
+                                <div class="flex items-center gap-2">
                                     <Link
                                         :href="getShowRoute(document)"
-                                        class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
-                                        title="View"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-zinc-800 transition-colors"
                                     >
-                                        <EyeIcon class="h-5 w-5" />
+                                        <EyeIcon class="h-4 w-4" />
+                                        View
                                     </Link>
                                     <a
                                         :href="route('documents.download', document.id)"
-                                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                                        title="Download"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-bold text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-800 transition-colors"
                                     >
-                                        <ArrowDownTrayIcon class="h-5 w-5" />
+                                        <ArrowDownTrayIcon class="h-4 w-4" />
+                                        Download
                                     </a>
                                     <button
                                         @click="router.delete(route('documents.destroy', document.id))"
-                                        class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                                        title="Delete"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-bold text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-zinc-800 transition-colors"
                                     >
-                                        <TrashIcon class="h-5 w-5" />
+                                        <TrashIcon class="h-4 w-4" />
+                                        Delete
                                     </button>
                                 </div>
                             </div>
@@ -428,6 +539,9 @@ const getShowRoute = (document: Document) => {
                                             :indeterminate="someSelected"
                                             @change="toggleAll"
                                         />
+                                    </th>
+                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider w-24">
+                                        Type
                                     </th>
                                     <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
                                         Document
@@ -459,6 +573,17 @@ const getShowRoute = (document: Document) => {
                                             :checked="selectedDocuments.includes(document.id)"
                                             @change="toggleDocument(document.id)"
                                         />
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span
+                                            :class="[
+                                                'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold',
+                                                getEntityTypeBadge(document.entity_type).bg,
+                                                getEntityTypeBadge(document.entity_type).text,
+                                            ]"
+                                        >
+                                            {{ getEntityTypeBadge(document.entity_type).label }}
+                                        </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">

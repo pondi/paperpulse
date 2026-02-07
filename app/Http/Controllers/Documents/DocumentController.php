@@ -109,7 +109,9 @@ class DocumentController extends BaseResourceController
         $data['title'] = match ($entityType) {
             'Document' => $entity->title,
             'Contract' => $entity->contract_title ?? $entity->title ?? $file->fileName,
-            'Invoice' => 'Invoice from '.($entity->from_name ?? $entity->vendor_name ?? 'Unknown'),
+            'Invoice' => $entity->invoice_number
+                ? 'Invoice #'.$entity->invoice_number
+                : 'Invoice - '.($entity->from_name ?? $file->fileName ?? 'Unknown'),
             'Voucher' => $entity->voucher_name ?? $entity->code ?? 'Voucher',
             'Warranty' => 'Warranty: '.($entity->product_name ?? 'Product'),
             'ReturnPolicy' => 'Return Policy: '.($entity->store_name ?? 'Store'),
@@ -139,6 +141,37 @@ class DocumentController extends BaseResourceController
 
         // Add shared users count
         $data['shared_with_count'] = 0;
+
+        // Add entity-specific details for richer index cards
+        $data['entity_details'] = match ($entityType) {
+            'Invoice' => [
+                'date' => $entity->invoice_date?->format('Y-m-d'),
+                'total' => $entity->total_amount,
+                'currency' => $entity->currency,
+                'status' => $entity->payment_status,
+                'from' => $entity->from_name,
+            ],
+            'Contract' => [
+                'effective_date' => $entity->effective_date?->format('Y-m-d'),
+                'expiration_date' => $entity->expiry_date?->format('Y-m-d'),
+                'type' => $entity->contract_type,
+                'status' => $entity->status,
+            ],
+            'Voucher' => [
+                'expiry_date' => $entity->expiry_date?->format('Y-m-d'),
+                'discount' => $entity->discount_value,
+                'code' => $entity->code,
+            ],
+            'Warranty' => [
+                'expiry_date' => $entity->expiry_date?->format('Y-m-d'),
+                'product' => $entity->product_name,
+            ],
+            'BankStatement' => [
+                'date' => $entity->statement_date?->format('Y-m-d'),
+                'closing_balance' => $entity->closing_balance,
+            ],
+            default => [],
+        };
 
         // Add file preview information
         if ($file->has_image_preview && $file->s3_image_path) {

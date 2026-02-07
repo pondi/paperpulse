@@ -76,6 +76,7 @@ it('renders vouchers index with structured data', function () {
     $user = User::factory()->create();
     $merchant = Merchant::create([
         'name' => 'PaperPulse Shop',
+        'user_id' => $user->id,
     ]);
     $file = File::factory()->create([
         'user_id' => $user->id,
@@ -158,6 +159,7 @@ it('renders voucher show with merchant data', function () {
     $user = User::factory()->create();
     $merchant = Merchant::create([
         'name' => 'PaperPulse Store',
+        'user_id' => $user->id,
     ]);
     $file = File::factory()->create([
         'user_id' => $user->id,
@@ -181,4 +183,306 @@ it('renders voucher show with merchant data', function () {
             ->where('voucher.merchant.name', 'PaperPulse Store')
             ->where('voucher.file.id', $file->id)
         );
+});
+
+// ==========================================
+// Invoice CRUD Operations
+// ==========================================
+
+it('can update an invoice', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create([
+        'user_id' => $user->id,
+        'file_type' => 'invoice',
+    ]);
+    $invoice = Invoice::factory()->create([
+        'user_id' => $user->id,
+        'file_id' => $file->id,
+        'invoice_number' => 'INV-001',
+    ]);
+
+    $this->actingAs($user)
+        ->patch(route('invoices.update', $invoice), [
+            'invoice_number' => 'INV-002',
+            'payment_status' => 'paid',
+        ])
+        ->assertRedirect();
+
+    expect($invoice->fresh())
+        ->invoice_number->toBe('INV-002')
+        ->payment_status->toBe('paid');
+});
+
+it('cannot update another users invoice', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+    $file = File::factory()->create([
+        'user_id' => $otherUser->id,
+        'file_type' => 'invoice',
+    ]);
+    $invoice = Invoice::factory()->create([
+        'user_id' => $otherUser->id,
+        'file_id' => $file->id,
+    ]);
+
+    $this->actingAs($user)
+        ->patch(route('invoices.update', $invoice), [
+            'invoice_number' => 'HACKED',
+        ])
+        ->assertNotFound();
+});
+
+it('can delete an invoice', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create([
+        'user_id' => $user->id,
+        'file_type' => 'invoice',
+        'guid' => 'test-guid-invoice',
+    ]);
+    $invoice = Invoice::factory()->create([
+        'user_id' => $user->id,
+        'file_id' => $file->id,
+    ]);
+
+    \App\Models\ExtractableEntity::create([
+        'file_id' => $file->id,
+        'user_id' => $user->id,
+        'entity_type' => 'invoice',
+        'entity_id' => $invoice->id,
+        'is_primary' => true,
+        'extraction_provider' => 'test',
+        'extracted_at' => now(),
+    ]);
+
+    $storageService = $this->mock(\App\Services\StorageService::class);
+    $storageService->shouldReceive('deleteFile')->once()->andReturn(true);
+
+    $this->actingAs($user)
+        ->delete(route('invoices.destroy', $invoice))
+        ->assertRedirect(route('invoices.index'));
+
+    expect(Invoice::withTrashed()->find($invoice->id)->trashed())->toBeTrue();
+});
+
+it('can download an invoice file', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create([
+        'user_id' => $user->id,
+        'file_type' => 'invoice',
+        'guid' => 'test-guid-download',
+        'fileExtension' => 'pdf',
+    ]);
+    $invoice = Invoice::factory()->create([
+        'user_id' => $user->id,
+        'file_id' => $file->id,
+    ]);
+
+    $storageService = $this->mock(\App\Services\StorageService::class);
+    $storageService->shouldReceive('getFileByUserAndGuid')
+        ->once()
+        ->andReturn('fake-pdf-content');
+
+    $this->actingAs($user)
+        ->get(route('invoices.download', $invoice))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'application/octet-stream')
+        ->assertHeader('Content-Disposition');
+});
+
+it('can attach a tag to an invoice', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create([
+        'user_id' => $user->id,
+        'file_type' => 'invoice',
+    ]);
+    $invoice = Invoice::factory()->create([
+        'user_id' => $user->id,
+        'file_id' => $file->id,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('invoices.tags.store', $invoice), [
+            'name' => 'important',
+        ])
+        ->assertRedirect();
+
+    expect($file->fresh()->tags)->toHaveCount(1);
+    expect($file->fresh()->tags->first()->name)->toBe('important');
+});
+
+it('can detach a tag from an invoice', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create([
+        'user_id' => $user->id,
+        'file_type' => 'invoice',
+    ]);
+    $invoice = Invoice::factory()->create([
+        'user_id' => $user->id,
+        'file_id' => $file->id,
+    ]);
+
+    $tag = \App\Models\Tag::create([
+        'name' => 'removeme',
+        'user_id' => $user->id,
+        'slug' => 'removeme',
+        'color' => '#ff0000',
+    ]);
+    $file->tags()->attach($tag);
+
+    $this->actingAs($user)
+        ->delete(route('invoices.tags.destroy', [$invoice, $tag]))
+        ->assertRedirect();
+
+    expect($file->fresh()->tags)->toHaveCount(0);
+});
+
+// ==========================================
+// Contract CRUD Operations
+// ==========================================
+
+it('can update a contract', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create([
+        'user_id' => $user->id,
+        'file_type' => 'contract',
+    ]);
+    $contract = Contract::factory()->create([
+        'user_id' => $user->id,
+        'file_id' => $file->id,
+        'contract_title' => 'Old Title',
+    ]);
+
+    $this->actingAs($user)
+        ->patch(route('contracts.update', $contract), [
+            'contract_title' => 'New Title',
+            'status' => 'active',
+        ])
+        ->assertRedirect();
+
+    expect($contract->fresh())
+        ->contract_title->toBe('New Title')
+        ->status->toBe('active');
+});
+
+it('cannot update another users contract', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+    $file = File::factory()->create([
+        'user_id' => $otherUser->id,
+        'file_type' => 'contract',
+    ]);
+    $contract = Contract::factory()->create([
+        'user_id' => $otherUser->id,
+        'file_id' => $file->id,
+    ]);
+
+    $this->actingAs($user)
+        ->patch(route('contracts.update', $contract), [
+            'contract_title' => 'HACKED',
+        ])
+        ->assertNotFound();
+});
+
+it('can delete a contract', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create([
+        'user_id' => $user->id,
+        'file_type' => 'contract',
+        'guid' => 'test-guid-contract',
+    ]);
+    $contract = Contract::factory()->create([
+        'user_id' => $user->id,
+        'file_id' => $file->id,
+    ]);
+
+    \App\Models\ExtractableEntity::create([
+        'file_id' => $file->id,
+        'user_id' => $user->id,
+        'entity_type' => 'contract',
+        'entity_id' => $contract->id,
+        'is_primary' => true,
+        'extraction_provider' => 'test',
+        'extracted_at' => now(),
+    ]);
+
+    $storageService = $this->mock(\App\Services\StorageService::class);
+    $storageService->shouldReceive('deleteFile')->once()->andReturn(true);
+
+    $this->actingAs($user)
+        ->delete(route('contracts.destroy', $contract))
+        ->assertRedirect(route('contracts.index'));
+
+    expect(Contract::withTrashed()->find($contract->id)->trashed())->toBeTrue();
+});
+
+it('can download a contract file', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create([
+        'user_id' => $user->id,
+        'file_type' => 'contract',
+        'guid' => 'test-guid-contract-dl',
+        'fileExtension' => 'pdf',
+    ]);
+    $contract = Contract::factory()->create([
+        'user_id' => $user->id,
+        'file_id' => $file->id,
+    ]);
+
+    $storageService = $this->mock(\App\Services\StorageService::class);
+    $storageService->shouldReceive('getFileByUserAndGuid')
+        ->once()
+        ->andReturn('fake-pdf-content');
+
+    $this->actingAs($user)
+        ->get(route('contracts.download', $contract))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'application/octet-stream')
+        ->assertHeader('Content-Disposition');
+});
+
+it('can attach a tag to a contract', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create([
+        'user_id' => $user->id,
+        'file_type' => 'contract',
+    ]);
+    $contract = Contract::factory()->create([
+        'user_id' => $user->id,
+        'file_id' => $file->id,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('contracts.tags.store', $contract), [
+            'name' => 'legal',
+        ])
+        ->assertRedirect();
+
+    expect($file->fresh()->tags)->toHaveCount(1);
+    expect($file->fresh()->tags->first()->name)->toBe('legal');
+});
+
+it('can detach a tag from a contract', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create([
+        'user_id' => $user->id,
+        'file_type' => 'contract',
+    ]);
+    $contract = Contract::factory()->create([
+        'user_id' => $user->id,
+        'file_id' => $file->id,
+    ]);
+
+    $tag = \App\Models\Tag::create([
+        'name' => 'removeme',
+        'user_id' => $user->id,
+        'slug' => 'removeme-contract',
+        'color' => '#ff0000',
+    ]);
+    $file->tags()->attach($tag);
+
+    $this->actingAs($user)
+        ->delete(route('contracts.tags.destroy', [$contract, $tag]))
+        ->assertRedirect();
+
+    expect($file->fresh()->tags)->toHaveCount(0);
 });

@@ -53,7 +53,11 @@ class SearchController extends BaseApiController
             'query' => $query,
             'filters' => $filters,
             'results' => $results,
-            'facets' => $searchResults['facets'] ?? ['total' => 0, 'receipts' => 0, 'documents' => 0],
+            'facets' => $searchResults['facets'] ?? [
+                'total' => 0, 'receipts' => 0, 'documents' => 0,
+                'invoices' => 0, 'contracts' => 0, 'vouchers' => 0,
+                'warranties' => 0, 'return_policies' => 0, 'bank_statements' => 0,
+            ],
         ], 'Search results retrieved successfully');
     }
 }

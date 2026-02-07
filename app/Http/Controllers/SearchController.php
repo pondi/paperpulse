@@ -35,7 +35,11 @@ class SearchController extends Controller
         return Inertia::render('Search', [
             'query' => $query,
             'initialResults' => $searchResults['results'] ?? [],
-            'initialFacets' => $searchResults['facets'] ?? ['total' => 0, 'receipts' => 0, 'documents' => 0],
+            'initialFacets' => $searchResults['facets'] ?? [
+                'total' => 0, 'receipts' => 0, 'documents' => 0,
+                'invoices' => 0, 'contracts' => 0, 'vouchers' => 0,
+                'warranties' => 0, 'return_policies' => 0, 'bank_statements' => 0,
+            ],
         ]);
     }
 }

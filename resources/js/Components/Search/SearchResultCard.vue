@@ -6,7 +6,7 @@
     <!-- Type indicator stripe -->
     <div
       class="absolute top-0 left-0 w-1 h-full"
-      :class="result.type === 'receipt' ? 'bg-amber-500' : 'bg-purple-500'"
+      :class="typeStripeColor"
     />
 
     <div class="flex gap-4 p-4 pl-5">
@@ -36,6 +36,12 @@
         class="flex-shrink-0 w-16 h-20 bg-amber-100 dark:bg-zinc-700 rounded flex items-center justify-center border border-amber-200 dark:border-zinc-600"
       >
         <ReceiptRefundIcon v-if="result.type === 'receipt'" class="size-8 text-zinc-400" />
+        <BanknotesIcon v-else-if="result.type === 'invoice'" class="size-8 text-zinc-400" />
+        <DocumentDuplicateIcon v-else-if="result.type === 'contract'" class="size-8 text-zinc-400" />
+        <TicketIcon v-else-if="result.type === 'voucher'" class="size-8 text-zinc-400" />
+        <ShieldCheckIcon v-else-if="result.type === 'warranty'" class="size-8 text-zinc-400" />
+        <ArrowUturnLeftIcon v-else-if="result.type === 'return_policy'" class="size-8 text-zinc-400" />
+        <BuildingLibraryIcon v-else-if="result.type === 'bank_statement'" class="size-8 text-zinc-400" />
         <DocumentIcon v-else class="size-8 text-zinc-400" />
       </div>
 
@@ -47,13 +53,10 @@
             <div class="flex items-center gap-2 mb-1">
               <span
                 class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                :class="result.type === 'receipt'
-                  ? 'bg-amber-100 text-amber-700 dark:bg-zinc-900/30 dark:text-amber-300'
-                  : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'"
+                :class="typeBadgeClass"
               >
-                <ReceiptRefundIcon v-if="result.type === 'receipt'" class="size-3 mr-1" />
-                <DocumentIcon v-else class="size-3 mr-1" />
-                {{ result.type }}
+                <component :is="typeIcon" class="size-3 mr-1" />
+                {{ typeLabel }}
               </span>
               <span v-if="result.date" class="text-xs text-zinc-500 dark:text-zinc-400">
                 {{ formatDate(result.date) }}
@@ -65,11 +68,14 @@
             />
           </div>
 
-          <!-- Total amount for receipts -->
-          <div v-if="result.type === 'receipt' && result.total" class="flex-shrink-0">
+          <!-- Total amount -->
+          <div v-if="result.total" class="flex-shrink-0">
             <div class="text-right">
               <div class="text-lg font-bold text-zinc-900 dark:text-white">
                 {{ result.total }}
+              </div>
+              <div v-if="result.payment_status" class="text-xs text-zinc-500 dark:text-zinc-400">
+                {{ result.payment_status }}
               </div>
             </div>
           </div>
@@ -111,6 +117,30 @@
             <DocumentTextIcon class="size-3" />
             <span>{{ result.document_type }}</span>
           </div>
+          <div v-if="result.invoice_number" class="flex items-center gap-1">
+            <DocumentTextIcon class="size-3" />
+            <span>#{{ result.invoice_number }}</span>
+          </div>
+          <div v-if="result.contract_type" class="flex items-center gap-1">
+            <DocumentTextIcon class="size-3" />
+            <span>{{ result.contract_type }}</span>
+          </div>
+          <div v-if="result.status" class="flex items-center gap-1">
+            <SparklesIcon class="size-3" />
+            <span>{{ result.status }}</span>
+          </div>
+          <div v-if="result.voucher_type" class="flex items-center gap-1">
+            <TicketIcon class="size-3" />
+            <span>{{ result.voucher_type }}</span>
+          </div>
+          <div v-if="result.manufacturer" class="flex items-center gap-1">
+            <BuildingLibraryIcon class="size-3" />
+            <span>{{ result.manufacturer }}</span>
+          </div>
+          <div v-if="result.transaction_count" class="flex items-center gap-1">
+            <DocumentTextIcon class="size-3" />
+            <span>{{ result.transaction_count }} transactions</span>
+          </div>
           <div v-if="result.tags && result.tags.length > 0" class="flex items-center gap-1">
             <TagIcon class="size-3" />
             <span>{{ result.tags.slice(0, 2).join(', ') }}</span>
@@ -147,7 +177,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed } from 'vue';
 import {
   DocumentIcon,
   ReceiptRefundIcon,
@@ -156,7 +186,13 @@ import {
   EyeIcon,
   ArrowTopRightOnSquareIcon,
   DocumentTextIcon,
-  SparklesIcon
+  SparklesIcon,
+  BanknotesIcon,
+  DocumentDuplicateIcon,
+  TicketIcon,
+  ShieldCheckIcon,
+  ArrowUturnLeftIcon,
+  BuildingLibraryIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
@@ -175,6 +211,23 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['preview', 'click', 'toggle-select']);
+
+const typeConfig = {
+  receipt:        { label: 'Receipt',        badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',     stripe: 'bg-amber-500',  icon: ReceiptRefundIcon },
+  document:       { label: 'Document',       badge: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',  stripe: 'bg-purple-500', icon: DocumentIcon },
+  invoice:        { label: 'Invoice',        badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',          stripe: 'bg-blue-500',   icon: BanknotesIcon },
+  contract:       { label: 'Contract',       badge: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',  stripe: 'bg-violet-500', icon: DocumentDuplicateIcon },
+  voucher:        { label: 'Voucher',        badge: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',      stripe: 'bg-green-500',  icon: TicketIcon },
+  warranty:       { label: 'Warranty',       badge: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',  stripe: 'bg-orange-500', icon: ShieldCheckIcon },
+  return_policy:  { label: 'Return Policy',  badge: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300',          stripe: 'bg-pink-500',   icon: ArrowUturnLeftIcon },
+  bank_statement: { label: 'Bank Statement', badge: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',          stripe: 'bg-teal-500',   icon: BuildingLibraryIcon },
+};
+
+const currentTypeConfig = computed(() => typeConfig[props.result.type] || typeConfig.document);
+const typeStripeColor = computed(() => currentTypeConfig.value.stripe);
+const typeBadgeClass = computed(() => currentTypeConfig.value.badge);
+const typeLabel = computed(() => currentTypeConfig.value.label);
+const typeIcon = computed(() => currentTypeConfig.value.icon);
 
 const handleImageError = (e) => {
   e.target.style.display = 'none';

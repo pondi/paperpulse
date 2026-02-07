@@ -2,8 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\LineItem;
+use App\Models\BankStatement;
+use App\Models\BankTransaction;
+use App\Models\Contract;
+use App\Models\Document;
+use App\Models\Invoice;
 use App\Models\Receipt;
+use App\Models\Voucher;
+use App\Models\Warranty;
 use App\Services\Analytics\ProcessingAnalyticsService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -15,136 +21,27 @@ class AnalyticsController extends Controller
     public function index(Request $request)
     {
         $userId = auth()->id();
-        $period = $request->get('period', 'month'); // month, quarter, year
-
+        $period = $request->get('period', 'all');
+        $tab = $request->get('tab', 'overview');
         $startDate = $this->getStartDate($period);
         $endDate = Carbon::now();
 
-        // Overall statistics
-        $totalReceipts = Receipt::where('user_id', $userId)->count();
-        $totalAmount = Receipt::where('user_id', $userId)->sum('total_amount');
-        $totalTax = Receipt::where('user_id', $userId)->sum('tax_amount');
-        $totalMerchants = Receipt::where('user_id', $userId)
-            ->distinct('merchant_id')
-            ->count('merchant_id');
+        $overviewCounts = $this->getOverviewCounts($userId);
 
-        // Period statistics
-        $periodReceipts = Receipt::where('user_id', $userId)
-            ->whereBetween('receipt_date', [$startDate, $endDate])
-            ->count();
-
-        $periodAmount = Receipt::where('user_id', $userId)
-            ->whereBetween('receipt_date', [$startDate, $endDate])
-            ->sum('total_amount');
-
-        // Spending by category
-        $spendingByCategory = Receipt::where('user_id', $userId)
-            ->whereBetween('receipt_date', [$startDate, $endDate])
-            ->select('receipt_category', DB::raw('SUM(total_amount) as total'))
-            ->groupBy('receipt_category')
-            ->orderByDesc('total')
-            ->get()
-            ->map(function ($item) {
-                /** @var object $item */
-                return [
-                    'category' => $item->receipt_category ?: 'Uncategorized',
-                    'total' => (float) $item->total,
-                ];
-            });
-
-        // Top merchants
-        $topMerchants = Receipt::where('user_id', $userId)
-            ->whereBetween('receipt_date', [$startDate, $endDate])
-            ->select('merchant_id', DB::raw('COUNT(*) as receipt_count'), DB::raw('SUM(total_amount) as total'))
-            ->with('merchant')
-            ->groupBy('merchant_id')
-            ->orderByDesc('total')
-            ->limit(10)
-            ->get()
-            ->map(function ($item) {
-                /** @var Receipt $item */
-                return [
-                    'merchant' => $item->merchant?->name ?: 'Unknown',
-                    'receipt_count' => $item->receipt_count,
-                    'total' => (float) $item->total,
-                ];
-            });
-
-        // Monthly spending trend
-        $monthlyTrend = Receipt::where('user_id', $userId)
-            ->whereBetween('receipt_date', [$startDate, $endDate])
-            ->select(
-                DB::raw("TO_CHAR(receipt_date, 'YYYY-MM') as month"),
-                DB::raw('COUNT(*) as receipt_count'),
-                DB::raw('SUM(total_amount) as total')
-            )
-            ->groupBy('month')
-            ->orderBy('month')
-            ->get()
-            ->map(function ($item) {
-                /** @var object $item */
-                return [
-                    'month' => Carbon::parse($item->month.'-01')->format('M Y'),
-                    'receipt_count' => $item->receipt_count,
-                    'total' => (float) $item->total,
-                ];
-            });
-
-        // Recent receipts
-        $recentReceipts = Receipt::where('user_id', $userId)
-            ->with('merchant')
-            ->orderBy('receipt_date', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function ($receipt) {
-                return [
-                    'id' => $receipt->id,
-                    'merchant' => $receipt->merchant?->name ?: 'Unknown',
-                    'date' => $receipt->receipt_date ? Carbon::parse($receipt->receipt_date)->format('Y-m-d') : null,
-                    'total' => $receipt->total_amount,
-                    'category' => $receipt->receipt_category ?: 'Uncategorized',
-                ];
-            });
-
-        // Average receipt value
-        $avgReceiptValue = $periodReceipts > 0 ? $periodAmount / $periodReceipts : 0;
-
-        // Most purchased items
-        $topItems = LineItem::whereHas('receipt', function ($query) use ($userId, $startDate, $endDate) {
-            $query->where('user_id', $userId)
-                ->whereBetween('receipt_date', [$startDate, $endDate]);
-        })
-            ->select('text', DB::raw('SUM(qty) as total_qty'), DB::raw('COUNT(*) as purchase_count'))
-            ->groupBy('text')
-            ->orderByDesc('purchase_count')
-            ->limit(10)
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'name' => $item->text,
-                    'quantity' => $item->total_qty,
-                    'purchases' => $item->purchase_count,
-                ];
-            });
+        $tabData = match ($tab) {
+            'receipts' => $this->getReceiptData($userId, $startDate, $endDate),
+            'invoices' => $this->getInvoiceData($userId, $startDate, $endDate),
+            'banking' => $this->getBankingData($userId, $startDate, $endDate),
+            'contracts' => $this->getContractData($userId, $startDate, $endDate),
+            'documents' => $this->getDocumentData($userId, $startDate, $endDate),
+            default => $this->getOverviewData($userId, $startDate, $endDate),
+        };
 
         return Inertia::render('Analytics/Dashboard', [
-            'stats' => [
-                'total_receipts' => $totalReceipts,
-                'total_amount' => round($totalAmount, 2),
-                'total_tax' => round($totalTax, 2),
-                'total_merchants' => $totalMerchants,
-                'period_receipts' => $periodReceipts,
-                'period_amount' => round($periodAmount, 2),
-                'avg_receipt_value' => round($avgReceiptValue, 2),
-            ],
-            'charts' => [
-                'spending_by_category' => $spendingByCategory,
-                'top_merchants' => $topMerchants,
-                'monthly_trend' => $monthlyTrend,
-                'top_items' => $topItems,
-            ],
-            'recent_receipts' => $recentReceipts,
+            'overview_counts' => $overviewCounts,
+            'tab_data' => $tabData,
             'current_period' => $period,
+            'current_tab' => $tab,
         ]);
     }
 
@@ -255,17 +152,483 @@ class AnalyticsController extends Controller
         ]);
     }
 
-    private function getStartDate($period)
+    private function getOverviewCounts(int $userId): array
     {
-        switch ($period) {
-            case 'month':
-                return Carbon::now()->subMonth();
-            case 'quarter':
-                return Carbon::now()->subQuarter();
-            case 'year':
-                return Carbon::now()->subYear();
-            default:
-                return Carbon::now()->subMonth();
-        }
+        return [
+            'receipts' => Receipt::where('user_id', $userId)->count(),
+            'invoices' => Invoice::where('user_id', $userId)->count(),
+            'contracts' => Contract::where('user_id', $userId)->count(),
+            'bank_statements' => BankStatement::where('user_id', $userId)->count(),
+            'documents' => Document::where('user_id', $userId)->count(),
+            'vouchers' => Voucher::where('user_id', $userId)->count(),
+            'warranties' => Warranty::where('user_id', $userId)->count(),
+        ];
+    }
+
+    private function getOverviewData(int $userId, ?Carbon $startDate, Carbon $endDate): array
+    {
+        $receiptTotal = Receipt::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('receipt_date', [$startDate, $endDate]))
+            ->sum('total_amount');
+
+        $invoiceTotal = Invoice::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('invoice_date', [$startDate, $endDate]))
+            ->sum('total_amount');
+
+        $contractTotal = Contract::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('effective_date', [$startDate, $endDate]))
+            ->sum('contract_value');
+
+        // Expiring within next 30 days
+        $expiringVouchers = Voucher::where('user_id', $userId)
+            ->where('is_redeemed', false)
+            ->whereNotNull('expiry_date')
+            ->whereBetween('expiry_date', [now(), now()->addDays(30)])
+            ->count();
+
+        $expiringWarranties = Warranty::where('user_id', $userId)
+            ->whereNotNull('warranty_end_date')
+            ->whereBetween('warranty_end_date', [now(), now()->addDays(30)])
+            ->count();
+
+        $expiringContracts = Contract::where('user_id', $userId)
+            ->whereNotNull('expiry_date')
+            ->whereBetween('expiry_date', [now(), now()->addDays(30)])
+            ->count();
+
+        // Combined monthly spending trend (receipts + invoices)
+        $receiptMonthExpr = $this->getMonthExpression('receipt_date');
+        $receiptTrend = Receipt::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('receipt_date', [$startDate, $endDate]))
+            ->whereNotNull('receipt_date')
+            ->select(DB::raw("{$receiptMonthExpr} as month"), DB::raw('SUM(total_amount) as total'))
+            ->groupBy('month')
+            ->pluck('total', 'month');
+
+        $invoiceMonthExpr = $this->getMonthExpression('invoice_date');
+        $invoiceTrend = Invoice::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('invoice_date', [$startDate, $endDate]))
+            ->whereNotNull('invoice_date')
+            ->select(DB::raw("{$invoiceMonthExpr} as month"), DB::raw('SUM(total_amount) as total'))
+            ->groupBy('month')
+            ->pluck('total', 'month');
+
+        $allMonths = $receiptTrend->keys()->merge($invoiceTrend->keys())->unique()->sort();
+        $combinedTrend = $allMonths->map(fn ($month) => [
+            'month' => Carbon::parse($month.'-01')->format('M Y'),
+            'receipts' => round((float) ($receiptTrend[$month] ?? 0), 2),
+            'invoices' => round((float) ($invoiceTrend[$month] ?? 0), 2),
+            'total' => round((float) ($receiptTrend[$month] ?? 0) + (float) ($invoiceTrend[$month] ?? 0), 2),
+        ])->values();
+
+        return [
+            'financial_totals' => [
+                'receipts' => round((float) $receiptTotal, 2),
+                'invoices' => round((float) $invoiceTotal, 2),
+                'contracts' => round((float) $contractTotal, 2),
+            ],
+            'expiring_soon' => [
+                'vouchers' => $expiringVouchers,
+                'warranties' => $expiringWarranties,
+                'contracts' => $expiringContracts,
+            ],
+            'monthly_trend' => $combinedTrend,
+        ];
+    }
+
+    private function getReceiptData(int $userId, ?Carbon $startDate, Carbon $endDate): array
+    {
+        $count = Receipt::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('receipt_date', [$startDate, $endDate]))
+            ->count();
+
+        $total = Receipt::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('receipt_date', [$startDate, $endDate]))
+            ->sum('total_amount');
+
+        $tax = Receipt::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('receipt_date', [$startDate, $endDate]))
+            ->sum('tax_amount');
+
+        $merchantCount = Receipt::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('receipt_date', [$startDate, $endDate]))
+            ->distinct('merchant_id')
+            ->count('merchant_id');
+
+        $spendingByCategory = Receipt::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('receipt_date', [$startDate, $endDate]))
+            ->select('receipt_category', DB::raw('SUM(total_amount) as total'))
+            ->groupBy('receipt_category')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn ($item) => [
+                'category' => $item->receipt_category ?: 'Uncategorized',
+                'total' => (float) $item->total,
+            ]);
+
+        $topMerchants = Receipt::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('receipt_date', [$startDate, $endDate]))
+            ->select('merchant_id', DB::raw('COUNT(*) as receipt_count'), DB::raw('SUM(total_amount) as total'))
+            ->with('merchant')
+            ->groupBy('merchant_id')
+            ->orderByDesc('total')
+            ->limit(10)
+            ->get()
+            ->map(fn ($item) => [
+                'merchant' => $item->merchant?->name ?: 'Unknown',
+                'receipt_count' => $item->receipt_count,
+                'total' => (float) $item->total,
+            ]);
+
+        $monthExpr = $this->getMonthExpression('receipt_date');
+        $monthlyTrend = Receipt::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('receipt_date', [$startDate, $endDate]))
+            ->whereNotNull('receipt_date')
+            ->select(
+                DB::raw("{$monthExpr} as month"),
+                DB::raw('COUNT(*) as receipt_count'),
+                DB::raw('SUM(total_amount) as total')
+            )
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->map(fn ($item) => [
+                'month' => Carbon::parse($item->month.'-01')->format('M Y'),
+                'receipt_count' => $item->receipt_count,
+                'total' => (float) $item->total,
+            ]);
+
+        $dowExpr = $this->getDayOfWeekExpression('receipt_date');
+        $dayOfWeek = Receipt::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('receipt_date', [$startDate, $endDate]))
+            ->whereNotNull('receipt_date')
+            ->select(DB::raw("{$dowExpr} as dow"), DB::raw('SUM(total_amount) as total'))
+            ->groupBy('dow')
+            ->get()
+            ->mapWithKeys(fn ($item) => [(int) $item->dow => round((float) $item->total, 2)]);
+
+        $dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        $dayOfWeekData = collect($dayNames)->map(fn ($name, $index) => [
+            'day' => $name,
+            'total' => $dayOfWeek[$index] ?? 0,
+        ])->values();
+
+        $recentReceipts = Receipt::where('user_id', $userId)
+            ->with('merchant')
+            ->orderBy('receipt_date', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(fn ($receipt) => [
+                'id' => $receipt->id,
+                'merchant' => $receipt->merchant?->name ?: 'Unknown',
+                'date' => $receipt->receipt_date ? Carbon::parse($receipt->receipt_date)->format('Y-m-d') : null,
+                'total' => $receipt->total_amount,
+                'category' => $receipt->receipt_category ?: 'Uncategorized',
+            ]);
+
+        return [
+            'stats' => [
+                'count' => $count,
+                'total' => round((float) $total, 2),
+                'avg' => $count > 0 ? round((float) $total / $count, 2) : 0,
+                'tax' => round((float) $tax, 2),
+                'merchants' => $merchantCount,
+            ],
+            'spending_by_category' => $spendingByCategory,
+            'top_merchants' => $topMerchants,
+            'monthly_trend' => $monthlyTrend,
+            'day_of_week' => $dayOfWeekData,
+            'recent_receipts' => $recentReceipts,
+        ];
+    }
+
+    private function getInvoiceData(int $userId, ?Carbon $startDate, Carbon $endDate): array
+    {
+        $baseQuery = Invoice::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('invoice_date', [$startDate, $endDate]));
+
+        $count = (clone $baseQuery)->count();
+        $total = (clone $baseQuery)->sum('total_amount');
+        $avg = $count > 0 ? round((float) $total / $count, 2) : 0;
+
+        $recipientCount = (clone $baseQuery)
+            ->whereNotNull('to_name')
+            ->distinct('to_name')
+            ->count('to_name');
+
+        $topRecipients = Invoice::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('invoice_date', [$startDate, $endDate]))
+            ->whereNotNull('to_name')
+            ->select('to_name', DB::raw('COUNT(*) as invoice_count'), DB::raw('SUM(total_amount) as total'))
+            ->groupBy('to_name')
+            ->orderByDesc('total')
+            ->limit(10)
+            ->get()
+            ->map(fn ($item) => [
+                'recipient' => $item->to_name,
+                'invoice_count' => $item->invoice_count,
+                'total' => round((float) $item->total, 2),
+            ]);
+
+        $topVendors = Invoice::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('invoice_date', [$startDate, $endDate]))
+            ->select('merchant_id', DB::raw('COUNT(*) as invoice_count'), DB::raw('SUM(total_amount) as total'))
+            ->with('merchant')
+            ->whereNotNull('merchant_id')
+            ->groupBy('merchant_id')
+            ->orderByDesc('total')
+            ->limit(10)
+            ->get()
+            ->map(fn ($item) => [
+                'vendor' => $item->merchant?->name ?: 'Unknown',
+                'invoice_count' => $item->invoice_count,
+                'total' => (float) $item->total,
+            ]);
+
+        $monthExpr = $this->getMonthExpression('invoice_date');
+        $monthlyTrend = Invoice::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('invoice_date', [$startDate, $endDate]))
+            ->whereNotNull('invoice_date')
+            ->select(
+                DB::raw("{$monthExpr} as month"),
+                DB::raw('COUNT(*) as invoice_count'),
+                DB::raw('SUM(total_amount) as total')
+            )
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->map(fn ($item) => [
+                'month' => Carbon::parse($item->month.'-01')->format('M Y'),
+                'invoice_count' => $item->invoice_count,
+                'total' => (float) $item->total,
+            ]);
+
+        return [
+            'stats' => [
+                'count' => $count,
+                'total' => round((float) $total, 2),
+                'avg' => $avg,
+                'recipient_count' => $recipientCount,
+            ],
+            'top_recipients' => $topRecipients,
+            'top_vendors' => $topVendors,
+            'monthly_trend' => $monthlyTrend,
+        ];
+    }
+
+    private function getBankingData(int $userId, ?Carbon $startDate, Carbon $endDate): array
+    {
+        $statementCount = BankStatement::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('statement_date', [$startDate, $endDate]))
+            ->count();
+
+        $statementIds = BankStatement::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('statement_date', [$startDate, $endDate]))
+            ->pluck('id');
+
+        $transactionCount = BankTransaction::whereIn('bank_statement_id', $statementIds)->count();
+
+        $totalCredits = BankStatement::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('statement_date', [$startDate, $endDate]))
+            ->sum('total_credits');
+
+        $totalDebits = BankStatement::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('statement_date', [$startDate, $endDate]))
+            ->sum('total_debits');
+
+        $balanceTrend = BankStatement::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('statement_date', [$startDate, $endDate]))
+            ->whereNotNull('statement_date')
+            ->select('statement_date', 'opening_balance', 'closing_balance', 'bank_name')
+            ->orderBy('statement_date')
+            ->get()
+            ->map(fn ($item) => [
+                'date' => Carbon::parse($item->statement_date)->format('M Y'),
+                'opening' => (float) $item->opening_balance,
+                'closing' => (float) $item->closing_balance,
+                'bank' => $item->bank_name,
+            ]);
+
+        $spendingByCategory = BankTransaction::whereIn('bank_statement_id', $statementIds)
+            ->where('transaction_type', 'debit')
+            ->whereNotNull('category')
+            ->select('category', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as count'))
+            ->groupBy('category')
+            ->orderByDesc('total')
+            ->limit(10)
+            ->get()
+            ->map(fn ($item) => [
+                'category' => $item->category,
+                'total' => (float) $item->total,
+                'count' => $item->count,
+            ]);
+
+        $topCounterparties = BankTransaction::whereIn('bank_statement_id', $statementIds)
+            ->whereNotNull('counterparty_name')
+            ->select('counterparty_name', DB::raw('COUNT(*) as transaction_count'), DB::raw('SUM(amount) as total'))
+            ->groupBy('counterparty_name')
+            ->orderByDesc('transaction_count')
+            ->limit(10)
+            ->get()
+            ->map(fn ($item) => [
+                'name' => $item->counterparty_name,
+                'transaction_count' => $item->transaction_count,
+                'total' => (float) $item->total,
+            ]);
+
+        return [
+            'stats' => [
+                'statement_count' => $statementCount,
+                'transaction_count' => $transactionCount,
+                'total_credits' => round((float) $totalCredits, 2),
+                'total_debits' => round((float) $totalDebits, 2),
+                'net_flow' => round((float) $totalCredits - (float) $totalDebits, 2),
+            ],
+            'balance_trend' => $balanceTrend,
+            'spending_by_category' => $spendingByCategory,
+            'top_counterparties' => $topCounterparties,
+        ];
+    }
+
+    private function getContractData(int $userId, ?Carbon $startDate, Carbon $endDate): array
+    {
+        $total = Contract::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('effective_date', [$startDate, $endDate]))
+            ->count();
+
+        $active = Contract::where('user_id', $userId)
+            ->where('status', 'active')
+            ->count();
+
+        $expired = Contract::where('user_id', $userId)
+            ->where(function ($q) {
+                $q->where('status', 'expired')
+                    ->orWhere(fn ($q2) => $q2->whereNotNull('expiry_date')->where('expiry_date', '<', now()));
+            })
+            ->count();
+
+        $totalValue = Contract::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('effective_date', [$startDate, $endDate]))
+            ->sum('contract_value');
+
+        $statusBreakdown = Contract::where('user_id', $userId)
+            ->select('status', DB::raw('COUNT(*) as count'))
+            ->groupBy('status')
+            ->get()
+            ->map(fn ($item) => [
+                'status' => $item->status ?: 'Unknown',
+                'count' => $item->count,
+            ]);
+
+        $typeDistribution = Contract::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('effective_date', [$startDate, $endDate]))
+            ->select('contract_type', DB::raw('COUNT(*) as count'), DB::raw('SUM(contract_value) as value'))
+            ->groupBy('contract_type')
+            ->orderByDesc('count')
+            ->get()
+            ->map(fn ($item) => [
+                'type' => $item->contract_type ?: 'Other',
+                'count' => $item->count,
+                'value' => round((float) $item->value, 2),
+            ]);
+
+        $expiringSoon = Contract::where('user_id', $userId)
+            ->whereNotNull('expiry_date')
+            ->where('expiry_date', '>=', now())
+            ->where('expiry_date', '<=', now()->addDays(90))
+            ->orderBy('expiry_date')
+            ->limit(10)
+            ->get()
+            ->map(fn ($item) => [
+                'id' => $item->id,
+                'title' => $item->contract_title ?: 'Untitled',
+                'type' => $item->contract_type ?: 'Other',
+                'expiry_date' => Carbon::parse($item->expiry_date)->format('Y-m-d'),
+                'value' => (float) $item->contract_value,
+                'days_until_expiry' => (int) now()->diffInDays($item->expiry_date),
+            ]);
+
+        return [
+            'stats' => [
+                'total' => $total,
+                'active' => $active,
+                'expired' => $expired,
+                'total_value' => round((float) $totalValue, 2),
+            ],
+            'status_breakdown' => $statusBreakdown,
+            'type_distribution' => $typeDistribution,
+            'expiring_soon' => $expiringSoon,
+        ];
+    }
+
+    private function getDocumentData(int $userId, ?Carbon $startDate, Carbon $endDate): array
+    {
+        $total = Document::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('created_at', [$startDate, $endDate]))
+            ->count();
+
+        $totalPages = Document::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('created_at', [$startDate, $endDate]))
+            ->sum('page_count');
+
+        $typeDistribution = Document::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('created_at', [$startDate, $endDate]))
+            ->select('document_type', DB::raw('COUNT(*) as count'))
+            ->groupBy('document_type')
+            ->orderByDesc('count')
+            ->get()
+            ->map(fn ($item) => [
+                'type' => $item->document_type ?: 'Other',
+                'count' => $item->count,
+            ]);
+
+        $monthExpr = $this->getMonthExpression('created_at');
+        $monthlyTrend = Document::where('user_id', $userId)
+            ->when($startDate, fn ($q) => $q->whereBetween('created_at', [$startDate, $endDate]))
+            ->select(
+                DB::raw("{$monthExpr} as month"),
+                DB::raw('COUNT(*) as count')
+            )
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->map(fn ($item) => [
+                'month' => Carbon::parse($item->month.'-01')->format('M Y'),
+                'count' => $item->count,
+            ]);
+
+        return [
+            'stats' => [
+                'total' => $total,
+                'total_pages' => (int) $totalPages,
+            ],
+            'type_distribution' => $typeDistribution,
+            'monthly_trend' => $monthlyTrend,
+        ];
+    }
+
+    private function getStartDate(string $period): ?Carbon
+    {
+        return match ($period) {
+            'month' => Carbon::now()->subMonth(),
+            'quarter' => Carbon::now()->subQuarter(),
+            'year' => Carbon::now()->subYear(),
+            'all' => null,
+            default => null,
+        };
+    }
+
+    private function getMonthExpression(string $column): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "strftime('%Y-%m', {$column})"
+            : "TO_CHAR({$column}, 'YYYY-MM')";
+    }
+
+    private function getDayOfWeekExpression(string $column): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "CAST(strftime('%w', {$column}) AS INTEGER)"
+            : "EXTRACT(DOW FROM {$column})";
     }
 }

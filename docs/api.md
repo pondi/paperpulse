@@ -514,7 +514,7 @@ Instant search across receipts + documents (same underlying search implementatio
 - Rate limit: 200 requests/minute
 - Query:
   - `q` (or `query`): search string
-  - `type`: `all` (default), `receipt`, `document`
+  - `type`: `all` (default), `receipt`, `document`, `invoice`, `contract`, `voucher`, `warranty`, `return_policy`, `bank_statement`
   - `limit`: integer (default 20, max 50)
   - `date_from`, `date_to`: date filters
   - `amount_min`, `amount_max`: numeric filters (receipts)
@@ -552,7 +552,7 @@ Instant search across receipts + documents (same underlying search implementatio
         }
       }
     ],
-    "facets": { "total": 1, "receipts": 0, "documents": 1 }
+    "facets": { "total": 1, "receipts": 0, "documents": 1, "invoices": 0, "contracts": 0, "vouchers": 0, "warranties": 0, "return_policies": 0, "bank_statements": 0 }
   },
   "timestamp": "2025-01-01T00:00:00Z"
 }

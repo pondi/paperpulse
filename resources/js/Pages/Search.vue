@@ -22,7 +22,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Search receipts and documents..."
+              placeholder="Search receipts, documents, invoices, and more..."
               class="block w-full pl-10 pr-3 py-3 border border-zinc-300 dark:border-zinc-600 rounded-lg leading-5 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
               @keyup.enter="performSearch"
             />
@@ -93,6 +93,78 @@
                         <span v-if="facets.documents > 0" class="text-zinc-500">({{ facets.documents }})</span>
                       </span>
                     </label>
+                    <label class="flex items-center">
+                      <input
+                        v-model="filters.type"
+                        type="radio"
+                        value="invoice"
+                        class="h-4 w-4 text-amber-600 focus:ring-amber-500 border-zinc-300 dark:border-zinc-600"
+                      />
+                      <span class="ml-2 text-sm text-zinc-700 dark:text-zinc-300">
+                        Invoices
+                        <span v-if="facets.invoices > 0" class="text-zinc-500">({{ facets.invoices }})</span>
+                      </span>
+                    </label>
+                    <label class="flex items-center">
+                      <input
+                        v-model="filters.type"
+                        type="radio"
+                        value="contract"
+                        class="h-4 w-4 text-amber-600 focus:ring-amber-500 border-zinc-300 dark:border-zinc-600"
+                      />
+                      <span class="ml-2 text-sm text-zinc-700 dark:text-zinc-300">
+                        Contracts
+                        <span v-if="facets.contracts > 0" class="text-zinc-500">({{ facets.contracts }})</span>
+                      </span>
+                    </label>
+                    <label class="flex items-center">
+                      <input
+                        v-model="filters.type"
+                        type="radio"
+                        value="voucher"
+                        class="h-4 w-4 text-amber-600 focus:ring-amber-500 border-zinc-300 dark:border-zinc-600"
+                      />
+                      <span class="ml-2 text-sm text-zinc-700 dark:text-zinc-300">
+                        Vouchers
+                        <span v-if="facets.vouchers > 0" class="text-zinc-500">({{ facets.vouchers }})</span>
+                      </span>
+                    </label>
+                    <label class="flex items-center">
+                      <input
+                        v-model="filters.type"
+                        type="radio"
+                        value="warranty"
+                        class="h-4 w-4 text-amber-600 focus:ring-amber-500 border-zinc-300 dark:border-zinc-600"
+                      />
+                      <span class="ml-2 text-sm text-zinc-700 dark:text-zinc-300">
+                        Warranties
+                        <span v-if="facets.warranties > 0" class="text-zinc-500">({{ facets.warranties }})</span>
+                      </span>
+                    </label>
+                    <label class="flex items-center">
+                      <input
+                        v-model="filters.type"
+                        type="radio"
+                        value="return_policy"
+                        class="h-4 w-4 text-amber-600 focus:ring-amber-500 border-zinc-300 dark:border-zinc-600"
+                      />
+                      <span class="ml-2 text-sm text-zinc-700 dark:text-zinc-300">
+                        Return Policies
+                        <span v-if="facets.return_policies > 0" class="text-zinc-500">({{ facets.return_policies }})</span>
+                      </span>
+                    </label>
+                    <label class="flex items-center">
+                      <input
+                        v-model="filters.type"
+                        type="radio"
+                        value="bank_statement"
+                        class="h-4 w-4 text-amber-600 focus:ring-amber-500 border-zinc-300 dark:border-zinc-600"
+                      />
+                      <span class="ml-2 text-sm text-zinc-700 dark:text-zinc-300">
+                        Bank Statements
+                        <span v-if="facets.bank_statements > 0" class="text-zinc-500">({{ facets.bank_statements }})</span>
+                      </span>
+                    </label>
                   </div>
                 </div>
 
@@ -118,7 +190,7 @@
                 </div>
 
                 <!-- Amount Filter (for receipts) -->
-                <div v-if="filters.type === 'all' || filters.type === 'receipt'" class="border-t border-amber-200 dark:border-zinc-700 pt-4">
+                <div v-if="['all', 'receipt', 'invoice', 'voucher', 'contract', 'bank_statement'].includes(filters.type)" class="border-t border-amber-200 dark:border-zinc-700 pt-4">
                   <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                     Amount Range
                   </label>
@@ -298,7 +370,7 @@
               <MagnifyingGlassIcon class="mx-auto h-12 w-12 text-zinc-400" />
               <h3 class="mt-2 text-sm font-semibold text-zinc-900 dark:text-white">Start searching</h3>
               <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                Search through your receipts and documents using the search bar above.
+                Search through your receipts, documents, invoices, contracts, and more using the search bar above.
               </p>
             </div>
 
@@ -411,7 +483,7 @@ const props = defineProps({
 const searchQuery = ref(props.query || '');
 const searching = ref(false);
 const results = ref(props.initialResults || []);
-const facets = ref(props.initialFacets || { total: 0, receipts: 0, documents: 0 });
+const facets = ref(props.initialFacets || { total: 0, receipts: 0, documents: 0, invoices: 0, contracts: 0, vouchers: 0, warranties: 0, return_policies: 0, bank_statements: 0 });
 const collections = ref([]);
 
 // Filter state
@@ -489,7 +561,7 @@ const someSelected = computed(() => {
 const performSearch = async () => {
   if (!searchQuery.value.trim() && !hasActiveFilters.value) {
     results.value = [];
-    facets.value = { total: 0, receipts: 0, documents: 0 };
+    facets.value = { total: 0, receipts: 0, documents: 0, invoices: 0, contracts: 0, vouchers: 0, warranties: 0, return_policies: 0, bank_statements: 0 };
     return;
   }
 
@@ -511,11 +583,11 @@ const performSearch = async () => {
     const response = await axios.get('/search', { params });
 
     results.value = response.data.results || [];
-    facets.value = response.data.facets || { total: 0, receipts: 0, documents: 0 };
+    facets.value = response.data.facets || { total: 0, receipts: 0, documents: 0, invoices: 0, contracts: 0, vouchers: 0, warranties: 0, return_policies: 0, bank_statements: 0 };
   } catch (error) {
     console.error('Search error:', error);
     results.value = [];
-    facets.value = { total: 0, receipts: 0, documents: 0 };
+    facets.value = { total: 0, receipts: 0, documents: 0, invoices: 0, contracts: 0, vouchers: 0, warranties: 0, return_policies: 0, bank_statements: 0 };
   } finally {
     searching.value = false;
   }

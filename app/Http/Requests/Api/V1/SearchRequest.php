@@ -16,7 +16,7 @@ class SearchRequest extends FormRequest
         return [
             'q' => 'nullable|string|max:200',
             'query' => 'nullable|string|max:200',
-            'type' => 'nullable|string|in:all,receipt,document',
+            'type' => 'nullable|string|in:all,receipt,document,invoice,contract,voucher,warranty,return_policy,bank_statement',
             'limit' => 'nullable|integer|min:1|max:50',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',

@@ -11,6 +11,12 @@ use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    if (! env('RUN_GEMINI_INTEGRATION_TESTS')) {
+        $this->markTestSkipped('Set RUN_GEMINI_INTEGRATION_TESTS=1 to run Gemini integration tests');
+    }
+});
+
 it('processes a receipt image with gemini and stores metadata', function () {
     $user = User::factory()->create();
     $guid = 'receipt-fixture-'.uniqid();
@@ -95,7 +101,16 @@ it('marks the file as failed on gemini validation errors', function () {
 
     $job = new ProcessFileGemini($jobId);
 
-    expect(fn () => $job->handle())->toThrow(GeminiApiException::class);
+    $caughtException = null;
+    try {
+        $job->handle();
+    } catch (GeminiApiException $e) {
+        $caughtException = $e;
+        // Simulate queue worker calling failed() after max retries
+        $job->failed($e);
+    }
+
+    expect($caughtException)->toBeInstanceOf(GeminiApiException::class);
 
     $file->refresh();
 

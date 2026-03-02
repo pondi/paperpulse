@@ -7,6 +7,7 @@ use App\Http\Resources\Inertia\DocumentInertiaResource;
 use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
+use App\Models\Invoice;
 use App\Models\Tag;
 use App\Services\Documents\DocumentUploadHandler;
 use App\Services\FileProcessingService;
@@ -34,7 +35,7 @@ class DocumentController extends BaseResourceController
 
     protected array $searchableFields = ['title', 'content', 'summary', 'note'];
 
-    protected array $filterableFields = ['category_id', 'tag'];
+    protected array $filterableFields = ['category', 'tag'];
 
     protected array $validationRules = [
         'title' => 'sometimes|string|max:255',
@@ -53,24 +54,32 @@ class DocumentController extends BaseResourceController
      */
     public function index(Request $request): Response
     {
-        // Query files that were uploaded as "document" type and have been processed
-        // Only include files that have an associated entity (data integrity requirement)
         $query = File::query()
             ->where('user_id', auth()->id())
             ->where('file_type', 'document')
             ->where('status', 'completed')
             ->whereHas('primaryEntity')
-            ->with('primaryEntity.entity');
+            ->with(['primaryEntity.entity', 'tags']);
 
-        // Apply search on file name
         if ($search = $request->input('search')) {
             $query->where('fileName', 'like', "%{$search}%");
         }
 
-        // TODO: Category and tag filtering need to be updated to work with polymorphic entities
-        // For now, we'll skip these filters as they rely on Document model structure
+        if ($categoryId = $request->input('category')) {
+            $query->whereHas('primaryEntity', function ($q) use ($categoryId) {
+                $q->whereIn('entity_type', ['document', 'invoice'])
+                    ->whereHasMorph('entity', [Document::class, Invoice::class], function ($eq) use ($categoryId) {
+                        $eq->where('category_id', $categoryId);
+                    });
+            });
+        }
 
-        // Apply sorting
+        if ($tag = $request->input('tag')) {
+            $query->whereHas('tags', function ($q) use ($tag) {
+                $q->where('name', $tag);
+            });
+        }
+
         $sortField = $request->input('sort', 'uploaded_at');
         $sortDirection = $request->input('sort_direction', 'desc');
         $query->orderBy($sortField, $sortDirection);
@@ -127,17 +136,11 @@ class DocumentController extends BaseResourceController
         // Add note if available on the entity
         $data['note'] = $entity->note ?? null;
 
-        // Add category if available (Document entities)
-        if ($entityType === 'Document' && $entity->category) {
+        if (in_array($entityType, ['Document', 'Invoice']) && $entity->category) {
             $data['category'] = $entity->category;
         }
 
-        // Add tags if available (Document entities)
-        if ($entityType === 'Document' && $entity->tags) {
-            $data['tags'] = $entity->tags;
-        } else {
-            $data['tags'] = [];
-        }
+        $data['tags'] = $file->tags ?? [];
 
         // Add shared users count
         $data['shared_with_count'] = 0;

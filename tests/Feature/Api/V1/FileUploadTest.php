@@ -15,6 +15,7 @@ beforeEach(function () {
     Storage::fake('paperpulse');
     Storage::fake('pulsedav');
     Bus::fake();
+    config(['ai.file_processing_provider' => 'textract+openai']);
 });
 
 it('uploads a receipt image and dispatches the receipt job chain', function () {

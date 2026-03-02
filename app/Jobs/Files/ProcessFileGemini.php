@@ -4,6 +4,7 @@ namespace App\Jobs\Files;
 
 use App\Exceptions\GeminiApiException;
 use App\Jobs\BaseJob;
+use App\Models\BankStatement;
 use App\Models\File;
 use App\Models\FileProcessingAnalytic;
 use App\Models\Invoice;
@@ -11,6 +12,7 @@ use App\Models\Receipt;
 use App\Services\AI\Extractors\EntityExtractorFactory;
 use App\Services\AI\FileManager\GeminiFileManager;
 use App\Services\AI\TypeClassification\GeminiTypeClassifier;
+use App\Services\BankStatements\TransactionCategorizationService;
 use App\Services\DuplicateDetectionService;
 use App\Services\EntityFactory;
 use App\Services\Files\FileEntityCleanupService;
@@ -42,7 +44,6 @@ class ProcessFileGemini extends BaseJob
 
     protected function handleJob(): void
     {
-        // Track processing start time for analytics
         $this->processingStartTime = microtime(true);
 
         $metadata = $this->getMetadata();
@@ -253,6 +254,22 @@ class ProcessFileGemini extends BaseJob
             $model = $entityInfo['model'];
             if (method_exists($model, 'searchable')) {
                 $model->searchable();
+            }
+        }
+
+        // Categorize bank transactions if any bank statements were created
+        foreach ($createdEntities as $entityInfo) {
+            if ($entityInfo['type'] === 'bank_statement' && $entityInfo['model'] instanceof BankStatement) {
+                try {
+                    $categorizationService = app(TransactionCategorizationService::class);
+                    $entityInfo['model']->load('transactions');
+                    $categorizationService->categorize($entityInfo['model']->transactions);
+                } catch (Exception $e) {
+                    Log::warning('[ProcessFileGemini] Transaction categorization failed', [
+                        'statement_id' => $entityInfo['model']->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
         }
 

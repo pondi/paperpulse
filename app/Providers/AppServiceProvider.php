@@ -6,6 +6,7 @@ use App\Contracts\Services\FileDuplicationContract;
 use App\Contracts\Services\ReceiptEnricherContract;
 use App\Contracts\Services\ReceiptParserContract;
 use App\Contracts\Services\ReceiptValidatorContract;
+use App\Contracts\Services\TextAnalysisContract;
 use App\Listeners\CreateUserPreferences;
 use App\Models\BankStatement;
 use App\Models\Category;
@@ -21,6 +22,7 @@ use App\Models\ReturnPolicy;
 use App\Models\Tag;
 use App\Models\Voucher;
 use App\Models\Warranty;
+use App\Policies\BankStatementPolicy;
 use App\Policies\CategoryPolicy;
 use App\Policies\CollectionPolicy;
 use App\Policies\ContractPolicy;
@@ -34,6 +36,7 @@ use App\Policies\VoucherPolicy;
 use App\Services\AI\AIService;
 use App\Services\AI\AIServiceFactory;
 use App\Services\AI\PromptTemplateService;
+use App\Services\AI\TextAnalysisService;
 use App\Services\CollectionService;
 use App\Services\CollectionSharingService;
 use App\Services\DocumentAnalysisService;
@@ -117,6 +120,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(AIService::class, function ($app) {
             return AIServiceFactory::create();
         });
+
+        $this->app->bind(TextAnalysisContract::class, TextAnalysisService::class);
 
         // Register Receipt service contracts
         $this->app->bind(ReceiptParserContract::class, ReceiptParserService::class);
@@ -322,5 +327,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Invoice::class, InvoicePolicy::class);
         Gate::policy(Contract::class, ContractPolicy::class);
         Gate::policy(Voucher::class, VoucherPolicy::class);
+        Gate::policy(BankStatement::class, BankStatementPolicy::class);
     }
 }

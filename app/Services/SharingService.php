@@ -2,21 +2,19 @@
 
 namespace App\Services;
 
+use App\Models\BankStatement;
 use App\Models\Document;
 use App\Models\FileShare;
 use App\Models\Receipt;
 use App\Models\User;
 use App\Notifications\DocumentSharedNotification;
 use App\Notifications\ReceiptSharedNotification;
-use Cache;
 use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use InvalidArgumentException;
-use Str;
 
 class SharingService
 {
@@ -153,7 +151,7 @@ class SharingService
     /**
      * Check if a user has access to a file
      */
-    public function userHasAccess(Receipt|Document $file, User $user, string $permission = 'view'): bool
+    public function userHasAccess(Receipt|Document|BankStatement $file, User $user, string $permission = 'view'): bool
     {
         // Owner always has access
         if ($file->user_id === $user->id) {
@@ -161,7 +159,11 @@ class SharingService
         }
 
         // Check for share
-        $fileType = $file instanceof Document ? 'document' : 'receipt';
+        $fileType = match (true) {
+            $file instanceof Document => 'document',
+            $file instanceof BankStatement => 'bank_statement',
+            default => 'receipt',
+        };
         $share = FileShare::where([
             'file_type' => $fileType,
             'file_id' => $file->file_id,

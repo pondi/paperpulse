@@ -132,8 +132,14 @@ class EntityFactory
                         $model = $this->createContract($data, $file);
                         break;
                     case 'bank_statement':
+                        $data = $this->flattenBankStatementData($data);
                         $model = $this->createBankStatement($data, $file);
                         $context['bank_statement'] = $model;
+
+                        // Create transactions if they were included in the bank_statement entity
+                        if ($model && ! empty($data['transactions'])) {
+                            $this->createBankTransactions($data['transactions'], $model);
+                        }
                         break;
                     case 'bank_transactions':
                         $model = null;
@@ -231,7 +237,6 @@ class EntityFactory
             return null;
         }
 
-        // Data now follows OpenAI schema structure (unified via responseSchema)
         $totals = $data['totals'] ?? [];
         $receiptInfo = $data['receipt_info'] ?? [];
         $items = $data['items'] ?? [];
@@ -488,6 +493,67 @@ class EntityFactory
         ]);
     }
 
+    /**
+     * Flatten nested bank statement data from the normalizer into the flat format
+     * expected by createBankStatement().
+     *
+     * Handles both nested format (from BankStatementDataNormalizer):
+     *   ['bank' => ['name' => ...], 'balances' => ['opening_balance' => ...]]
+     * and already-flat format:
+     *   ['bank_name' => ..., 'opening_balance' => ...]
+     */
+    protected function flattenBankStatementData(array $data): array
+    {
+        // Already flat — has top-level bank_name or account_number AND no nested keys
+        $hasFlat = isset($data['bank_name']) || isset($data['account_number']);
+        $hasNested = isset($data['bank']) || isset($data['balances']);
+        if ($hasFlat && ! $hasNested) {
+            return $data;
+        }
+
+        $flat = [];
+
+        // Flatten bank info
+        if (isset($data['bank']) && is_array($data['bank'])) {
+            $flat['bank_name'] = $data['bank']['name'] ?? null;
+            $flat['account_holder_name'] = $data['bank']['account_holder'] ?? null;
+            $flat['account_number'] = $data['bank']['account_number'] ?? null;
+            $flat['iban'] = $data['bank']['iban'] ?? null;
+            $flat['swift_code'] = $data['bank']['swift_code'] ?? null;
+        }
+
+        // Flatten statement period
+        if (isset($data['statement_period']) && is_array($data['statement_period'])) {
+            $flat['statement_period_start'] = $data['statement_period']['start_date'] ?? null;
+            $flat['statement_period_end'] = $data['statement_period']['end_date'] ?? null;
+        }
+
+        // Flatten balances
+        if (isset($data['balances']) && is_array($data['balances'])) {
+            $flat['opening_balance'] = $data['balances']['opening_balance'] ?? null;
+            $flat['closing_balance'] = $data['balances']['closing_balance'] ?? null;
+            $flat['currency'] = $data['balances']['currency'] ?? null;
+        }
+
+        // Carry over transactions array as-is
+        if (isset($data['transactions'])) {
+            $flat['transactions'] = $data['transactions'];
+            $flat['transaction_count'] = is_array($data['transactions']) ? count($data['transactions']) : null;
+        }
+
+        // Carry over any already-flat fields that may exist
+        foreach (['statement_date', 'total_credits', 'total_debits', 'statement_data'] as $key) {
+            if (isset($data[$key])) {
+                $flat[$key] = $data[$key];
+            }
+        }
+
+        // Store original data as statement_data for reference
+        $flat['statement_data'] = $data;
+
+        return $flat;
+    }
+
     protected function createBankStatement(array $data, File $file): ?BankStatement
     {
         if (! $this->hasAny($data, ['account_number', 'iban', 'bank_name', 'statement_date'])) {
@@ -507,7 +573,7 @@ class EntityFactory
             'statement_period_end' => $data['statement_period_end'] ?? null,
             'opening_balance' => $data['opening_balance'] ?? null,
             'closing_balance' => $data['closing_balance'] ?? null,
-            'currency' => $data['currency'] ?? 'NOK',
+            'currency' => $data['currency'] ?? null,
             'total_credits' => $data['total_credits'] ?? null,
             'total_debits' => $data['total_debits'] ?? null,
             'transaction_count' => $data['transaction_count'] ?? null,
@@ -518,21 +584,46 @@ class EntityFactory
     protected function createBankTransactions(array $transactions, BankStatement $statement): array
     {
         $created = [];
+        $totalCredits = 0;
+        $totalDebits = 0;
+
         foreach ($transactions as $txn) {
             $created[] = BankTransaction::create([
                 'bank_statement_id' => $statement->id,
-                'transaction_date' => $txn['transaction_date'] ?? null,
+                'transaction_date' => $txn['transaction_date'] ?? $txn['date'] ?? null,
                 'posting_date' => $txn['posting_date'] ?? null,
                 'description' => $txn['description'] ?? null,
                 'reference' => $txn['reference'] ?? null,
                 'transaction_type' => $txn['transaction_type'] ?? null,
                 'category' => $txn['category'] ?? null,
                 'amount' => $txn['amount'] ?? null,
-                'balance_after' => $txn['balance_after'] ?? null,
-                'currency' => $txn['currency'] ?? $statement->currency ?? 'NOK',
+                'balance_after' => $txn['balance_after'] ?? $txn['balance'] ?? null,
+                'currency' => $txn['currency'] ?? $statement->currency,
                 'counterparty_name' => $txn['counterparty_name'] ?? null,
                 'counterparty_account' => $txn['counterparty_account'] ?? null,
             ]);
+
+            $amount = (float) ($txn['amount'] ?? 0);
+            if ($amount > 0) {
+                $totalCredits += $amount;
+            } else {
+                $totalDebits += abs($amount);
+            }
+        }
+
+        // Calculate totals from transactions if not already set on the statement
+        $updates = [];
+        if ($statement->total_credits === null) {
+            $updates['total_credits'] = round($totalCredits, 2);
+        }
+        if ($statement->total_debits === null) {
+            $updates['total_debits'] = round($totalDebits, 2);
+        }
+        if ($statement->transaction_count === null) {
+            $updates['transaction_count'] = count($created);
+        }
+        if (! empty($updates)) {
+            $statement->update($updates);
         }
 
         return $created;

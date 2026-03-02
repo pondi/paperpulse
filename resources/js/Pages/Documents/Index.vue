@@ -195,6 +195,9 @@ const getShowRoute = (document: Document) => {
             return route('invoices.show', document.id);
         case 'voucher':
             return route('vouchers.show', document.id);
+        case 'bank_statement':
+        case 'bankstatement':
+            return route('bank-statements.show', document.id);
         case 'document':
         default:
             return route('documents.show', document.id);
@@ -211,6 +214,7 @@ const getEntityTypeBadge = (entityType?: string) => {
             return { label: 'Voucher', bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-700 dark:text-green-300' };
         case 'warranty':
             return { label: 'Warranty', bg: 'bg-orange-100 dark:bg-orange-900/50', text: 'text-orange-700 dark:text-orange-300' };
+        case 'bank_statement':
         case 'bankstatement':
             return { label: 'Statement', bg: 'bg-teal-100 dark:bg-teal-900/50', text: 'text-teal-700 dark:text-teal-300' };
         case 'document':
@@ -455,7 +459,7 @@ const formatCurrency = (amount?: number, currency?: string) => {
                                         <p v-if="document.entity_details.expiry_date">Expires: {{ formatDate(document.entity_details.expiry_date) }}</p>
                                     </template>
                                     <!-- BankStatement details -->
-                                    <template v-else-if="document.entity_type === 'bankstatement'">
+                                    <template v-else-if="document.entity_type === 'bankstatement' || document.entity_type === 'bank_statement'">
                                         <p v-if="document.entity_details.date">{{ formatDate(document.entity_details.date) }}</p>
                                         <p v-if="document.entity_details.closing_balance != null" class="font-bold">
                                             Balance: {{ formatCurrency(document.entity_details.closing_balance) }}

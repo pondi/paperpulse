@@ -302,13 +302,15 @@ const navigationItems = [
     icon: FolderIcon,
     current: (route().current('documents.*') && !route().current('documents.upload'))
       || route().current('invoices.*')
-      || route().current('contracts.*'),
+      || route().current('contracts.*')
+      || route().current('bank-statements.*'),
     children: [
       { name: 'all_documents', href: route('documents.index'), current: route().current('documents.index') },
       { name: 'shared_with_me', href: route('documents.shared'), current: route().current('documents.shared') },
       { name: 'categories', href: route('documents.categories'), current: route().current('documents.categories') },
       { name: 'invoices', href: route('invoices.index'), current: route().current('invoices.*') },
       { name: 'contracts', href: route('contracts.index'), current: route().current('contracts.*') },
+      { name: 'bank_statements', href: route('bank-statements.index'), current: route().current('bank-statements.*') },
     ]
   },
 

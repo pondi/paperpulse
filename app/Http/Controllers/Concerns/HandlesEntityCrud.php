@@ -48,10 +48,13 @@ trait HandlesEntityCrud
                 abort(404, 'File not found');
             }
 
-            $filename = $entity->file->original_filename
+            $rawFilename = $entity->file->original_filename
                 ?? ($this->getEntityTitle($entity)
                     ? preg_replace('/[^a-zA-Z0-9\-_\.]/', '_', $this->getEntityTitle($entity)).'.'.$extension
                     : $this->getModelName().'.'.$extension);
+
+            // Sanitize filename to prevent header injection (remove quotes, newlines, control chars)
+            $filename = preg_replace('/["\r\n\x00-\x1f\x7f]/', '_', $rawFilename);
 
             return response($content)
                 ->header('Content-Type', $entity->file->mime_type ?? 'application/octet-stream')
@@ -165,6 +168,7 @@ trait HandlesEntityCrud
             ?? $entity->invoice_number
             ?? $entity->voucher_name
             ?? $entity->code
+            ?? $entity->bank_name
             ?? null;
     }
 }

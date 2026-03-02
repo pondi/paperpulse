@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\BankStatement;
+use App\Models\BankTransaction;
 use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Merchant;
@@ -198,4 +200,114 @@ it('maps nested invoice normalizer data to flat columns', function () {
     expect((float) $lineItems[0]->quantity)->toBe(10.00);
     expect($lineItems[1]->description)->toBe('Widget B');
     expect((float) $lineItems[1]->quantity)->toBe(5.00);
+});
+
+// ==========================================
+// Bank Statement Entity Creation
+// ==========================================
+
+it('creates bank statement from nested normalizer data', function () {
+    $file = File::factory()->create();
+    $factory = app(EntityFactory::class);
+
+    // This is the format BankStatementDataNormalizer produces
+    $created = $factory->createEntitiesFromParsedData([
+        'entities' => [
+            [
+                'type' => 'bank_statement',
+                'confidence_score' => 0.99,
+                'data' => [
+                    'bank' => [
+                        'name' => 'BN Bank',
+                        'account_holder' => 'Datalytic AS',
+                        'account_number' => '9230 34 28978',
+                    ],
+                    'statement_period' => [
+                        'start_date' => '2025-11-01',
+                        'end_date' => '2025-12-03',
+                    ],
+                    'balances' => [
+                        'opening_balance' => 30868.86,
+                        'closing_balance' => 22703.25,
+                        'currency' => 'NOK',
+                    ],
+                    'transactions' => [
+                        [
+                            'date' => '2025-12-02',
+                            'description' => 'AWS EMEA',
+                            'amount' => -12.44,
+                            'balance' => 22703.25,
+                            'transaction_type' => 'debit',
+                        ],
+                        [
+                            'date' => '2025-12-01',
+                            'description' => 'DIGITALOCEAN.COM',
+                            'amount' => -3440.41,
+                            'balance' => 22715.69,
+                            'transaction_type' => 'debit',
+                        ],
+                        [
+                            'date' => '2025-11-03',
+                            'description' => 'Gebyr Nettbank',
+                            'amount' => -29,
+                            'balance' => 30827.60,
+                            'transaction_type' => 'fee',
+                        ],
+                    ],
+                    'metadata' => [
+                        'confidence_score' => 0.99,
+                    ],
+                ],
+            ],
+        ],
+    ], $file, 'document');
+
+    expect($created)->toHaveCount(1);
+
+    $statement = BankStatement::where('file_id', $file->id)->first();
+    expect($statement)->not->toBeNull();
+    expect($statement->bank_name)->toBe('BN Bank');
+    expect($statement->account_holder_name)->toBe('Datalytic AS');
+    expect($statement->account_number)->toBe('9230 34 28978');
+    expect($statement->statement_period_start->format('Y-m-d'))->toBe('2025-11-01');
+    expect($statement->statement_period_end->format('Y-m-d'))->toBe('2025-12-03');
+    expect((float) $statement->opening_balance)->toBe(30868.86);
+    expect((float) $statement->closing_balance)->toBe(22703.25);
+    expect($statement->currency)->toBe('NOK');
+
+    // Verify transactions were also created from the embedded transactions array
+    $transactions = BankTransaction::where('bank_statement_id', $statement->id)->get();
+    expect($transactions)->toHaveCount(3);
+    expect($transactions->where('description', 'AWS EMEA')->first()->transaction_date->format('Y-m-d'))->toBe('2025-12-02');
+    expect((float) $transactions->where('description', 'AWS EMEA')->first()->amount)->toBe(-12.44);
+    expect((float) $transactions->where('description', 'AWS EMEA')->first()->balance_after)->toBe(22703.25);
+});
+
+it('creates bank statement from already-flat data', function () {
+    $file = File::factory()->create();
+    $factory = app(EntityFactory::class);
+
+    $created = $factory->createEntitiesFromParsedData([
+        'entities' => [
+            [
+                'type' => 'bank_statement',
+                'confidence_score' => 0.95,
+                'data' => [
+                    'bank_name' => 'DNB',
+                    'account_number' => '1234 56 78901',
+                    'statement_period_start' => '2025-01-01',
+                    'statement_period_end' => '2025-01-31',
+                    'opening_balance' => 10000,
+                    'closing_balance' => 8500,
+                    'currency' => 'NOK',
+                ],
+            ],
+        ],
+    ], $file, 'document');
+
+    expect($created)->toHaveCount(1);
+
+    $statement = BankStatement::where('file_id', $file->id)->first();
+    expect($statement->bank_name)->toBe('DNB');
+    expect($statement->account_number)->toBe('1234 56 78901');
 });

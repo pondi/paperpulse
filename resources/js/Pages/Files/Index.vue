@@ -164,7 +164,7 @@ const toggleExpanded = (fileId: number) => {
                                 </svg>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">Total Files</p>
+                                <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Total Files</p>
                                 <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.total }}</p>
                             </div>
                         </div>
@@ -178,7 +178,7 @@ const toggleExpanded = (fileId: number) => {
                                 </svg>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">Completed</p>
+                                <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Completed</p>
                                 <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.completed }}</p>
                             </div>
                         </div>
@@ -192,7 +192,7 @@ const toggleExpanded = (fileId: number) => {
                                 </svg>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">In Progress</p>
+                                <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400">In Progress</p>
                                 <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.processing + props.stats.pending }}</p>
                             </div>
                         </div>
@@ -206,7 +206,7 @@ const toggleExpanded = (fileId: number) => {
                                 </svg>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">Failed</p>
+                                <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Failed</p>
                                 <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.failed }}</p>
                             </div>
                         </div>
@@ -273,8 +273,13 @@ const toggleExpanded = (fileId: number) => {
                                         <!-- File Icon -->
                                         <div class="flex-shrink-0">
                                             <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-100 dark:bg-zinc-700">
-                                                <svg class="h-6 w-6 text-zinc-600 dark:text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                <!-- Receipt icon -->
+                                                <svg v-if="file.file_type === 'receipt'" class="h-6 w-6 text-zinc-600 dark:text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                                                </svg>
+                                                <!-- Document/folder icon -->
+                                                <svg v-else class="h-6 w-6 text-zinc-600 dark:text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                                                 </svg>
                                             </div>
                                         </div>

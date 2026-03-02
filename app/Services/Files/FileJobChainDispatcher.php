@@ -2,6 +2,7 @@
 
 namespace App\Services\Files;
 
+use App\Jobs\BankStatements\ProcessCsvImport;
 use App\Jobs\Documents\AnalyzeDocument;
 use App\Jobs\Documents\ProcessDocument;
 use App\Jobs\Files\ProcessFile;
@@ -50,27 +51,38 @@ class FileJobChainDispatcher
         $queue = $fileType === 'receipt' ? 'receipts' : 'documents';
         $jobs = [];
 
-        $provider = config('ai.file_processing_provider', 'textract+openai');
+        $fileExtension = strtolower($metadata['fileExtension'] ?? '');
+        $fileId = $metadata['fileId'] ?? null;
 
-        if ($provider === 'gemini') {
-            Log::info('Routing to Gemini pipeline', ['jobId' => $jobId]);
+        // CSV files get routed to the bank statement CSV import pipeline
+        if ($fileExtension === 'csv' && $fileId) {
+            Log::info('Routing to CSV bank statement pipeline', ['jobId' => $jobId, 'fileId' => $fileId]);
             $jobs = [
-                (new ProcessFile($jobId))->onQueue($queue),
-                (new ProcessFileGemini($jobId))->onQueue($queue),
+                (new ProcessCsvImport($jobId, $fileId))->onQueue($queue),
             ];
         } else {
-            if ($fileType === 'receipt') {
+            $provider = config('ai.file_processing_provider', 'textract+openai');
+
+            if ($provider === 'gemini') {
+                Log::info('Routing to Gemini pipeline', ['jobId' => $jobId]);
                 $jobs = [
                     (new ProcessFile($jobId))->onQueue($queue),
-                    (new ProcessReceipt($jobId))->onQueue($queue),
-                    (new MatchMerchant($jobId))->onQueue($queue),
+                    (new ProcessFileGemini($jobId))->onQueue($queue),
                 ];
             } else {
-                $jobs = [
-                    (new ProcessFile($jobId))->onQueue($queue),
-                    (new ProcessDocument($jobId))->onQueue($queue),
-                    (new AnalyzeDocument($jobId))->onQueue($queue),
-                ];
+                if ($fileType === 'receipt') {
+                    $jobs = [
+                        (new ProcessFile($jobId))->onQueue($queue),
+                        (new ProcessReceipt($jobId))->onQueue($queue),
+                        (new MatchMerchant($jobId))->onQueue($queue),
+                    ];
+                } else {
+                    $jobs = [
+                        (new ProcessFile($jobId))->onQueue($queue),
+                        (new ProcessDocument($jobId))->onQueue($queue),
+                        (new AnalyzeDocument($jobId))->onQueue($queue),
+                    ];
+                }
             }
         }
 

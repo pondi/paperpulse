@@ -11,14 +11,15 @@ use Spatie\PdfToImage\Pdf;
 class GeminiProvider
 {
     /**
-     * Analyze a file with Gemini.
+     * Resolve the Gemini model name and API key from config.
+     *
+     * @return array{string, string} [$model, $apiKey]
      */
-    public function analyzeFile(string $filePath, array $schema, ?string $prompt = null): array
+    protected function resolveModelAndKey(): array
     {
-        $this->ensureSupported($filePath);
-
         $model = config('ai.providers.gemini.model', 'gemini-2.0-flash');
         $apiKey = config('ai.providers.gemini.api_key');
+
         if (empty($apiKey)) {
             throw new GeminiApiException(
                 'Missing Gemini API key.',
@@ -27,6 +28,75 @@ class GeminiProvider
                 ['provider' => 'gemini']
             );
         }
+
+        return [$model, $apiKey];
+    }
+
+    /**
+     * Build the generationConfig payload for a Gemini request.
+     */
+    protected function buildGenerationConfig(float $temperature, ?array $responseSchema): array
+    {
+        $config = [
+            'temperature' => $temperature,
+            'responseMimeType' => 'application/json',
+        ];
+
+        if ($responseSchema !== null) {
+            $config['responseJsonSchema'] = $responseSchema;
+        }
+
+        return $config;
+    }
+
+    /**
+     * Send a request to the Gemini API and return the parsed response.
+     *
+     * @return array{body: array, text: string}
+     */
+    protected function sendGeminiRequest(array $payload, string $model, string $apiKey): array
+    {
+        $endpoint = sprintf(
+            'https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s',
+            $model,
+            $apiKey
+        );
+
+        try {
+            $response = Http::timeout((int) config('ai.providers.gemini.timeout', 90))
+                ->asJson()
+                ->post($endpoint, $payload);
+        } catch (Exception $e) {
+            $this->handleRequestException($e);
+        }
+
+        if (! $response->successful()) {
+            $status = $response->status();
+            $errorCode = $status === 429 ? GeminiApiException::CODE_RATE_LIMIT : GeminiApiException::CODE_API_ERROR;
+            $retryable = in_array($status, [408, 429, 500, 502, 503, 504], true);
+
+            throw new GeminiApiException(
+                'Gemini API error: '.$response->body(),
+                $errorCode,
+                $retryable,
+                ['status' => $status, 'body' => $response->body()]
+            );
+        }
+
+        $responseBody = $response->json();
+        $textResponse = $this->extractTextResponse($responseBody);
+
+        return ['body' => $responseBody, 'text' => $textResponse];
+    }
+
+    /**
+     * Analyze a file with Gemini.
+     */
+    public function analyzeFile(string $filePath, array $schema, ?string $prompt = null): array
+    {
+        $this->ensureSupported($filePath);
+
+        [$model, $apiKey] = $this->resolveModelAndKey();
 
         $fileSize = filesize($filePath) ?: 0;
         $mime = mime_content_type($filePath) ?: 'application/octet-stream';
@@ -55,16 +125,7 @@ class GeminiProvider
             );
         }
 
-        // Build generation config with responseSchema
-        $generationConfig = [
-            'temperature' => 0.2,
-            'responseMimeType' => 'application/json',
-        ];
-
-        // Add responseSchema if provided (Gemini's structured output feature)
-        if (isset($schema['responseSchema'])) {
-            $generationConfig['responseJsonSchema'] = $schema['responseSchema'];
-        }
+        $generationConfig = $this->buildGenerationConfig(0.2, $schema['responseSchema'] ?? null);
 
         $payload = [
             'contents' => [
@@ -76,56 +137,9 @@ class GeminiProvider
             'generationConfig' => $generationConfig,
         ];
 
-        // Debug: Log the schema being sent
-        if (isset($generationConfig['responseJsonSchema'])) {
-            Log::debug('[GeminiProvider] Sending responseJsonSchema', [
-                'has_schema' => true,
-                'schema_type' => $generationConfig['responseJsonSchema']['type'] ?? 'unknown',
-                'schema_required' => $generationConfig['responseJsonSchema']['required'] ?? [],
-                'schema_properties' => array_keys($generationConfig['responseJsonSchema']['properties'] ?? []),
-            ]);
-        } else {
-            Log::warning('[GeminiProvider] No responseJsonSchema in generation config!');
-        }
-
-        $endpoint = sprintf(
-            'https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s',
-            $model,
-            $apiKey
-        );
-
-        // Log the full request payload for debugging
-        Log::info('[GeminiProvider] Full request payload', [
-            'model' => $model,
-            'has_responseJsonSchema' => isset($payload['generationConfig']['responseJsonSchema']),
-            'generationConfig_keys' => array_keys($payload['generationConfig']),
-            'schema_type' => $payload['generationConfig']['responseJsonSchema']['type'] ?? 'N/A',
-            'payload_size' => strlen(json_encode($payload)),
-        ]);
-
-        try {
-            $response = Http::timeout((int) config('ai.providers.gemini.timeout', 90))
-                ->asJson()
-                ->post($endpoint, $payload);
-        } catch (Exception $e) {
-            $this->handleRequestException($e);
-        }
-
-        if (! $response->successful()) {
-            $status = $response->status();
-            $errorCode = $status === 429 ? GeminiApiException::CODE_RATE_LIMIT : GeminiApiException::CODE_API_ERROR;
-            $retryable = in_array($status, [408, 429, 500, 502, 503, 504], true);
-
-            throw new GeminiApiException(
-                'Gemini API error: '.$response->body(),
-                $errorCode,
-                $retryable,
-                ['status' => $status, 'body' => $response->body()]
-            );
-        }
-
-        $responseBody = $response->json();
-        $textResponse = $this->extractTextResponse($responseBody);
+        $result = $this->sendGeminiRequest($payload, $model, $apiKey);
+        $responseBody = $result['body'];
+        $textResponse = $result['text'];
         $parsed = $this->parseJsonResponse($textResponse);
         $entities = $parsed['entities'] ?? [];
         if (! is_array($entities)) {
@@ -174,17 +188,7 @@ class GeminiProvider
         string $prompt,
         array $conversationHistory = []
     ): array {
-        $model = config('ai.providers.gemini.model', 'gemini-3-flash-preview');
-        $apiKey = config('ai.providers.gemini.api_key');
-
-        if (empty($apiKey)) {
-            throw new GeminiApiException(
-                'Missing Gemini API key.',
-                GeminiApiException::CODE_API_ERROR,
-                false,
-                ['provider' => 'gemini']
-            );
-        }
+        [$model, $apiKey] = $this->resolveModelAndKey();
 
         Log::info('[GeminiProvider] Analyzing file by URI', [
             'model' => $model,
@@ -193,15 +197,7 @@ class GeminiProvider
             'has_conversation_history' => ! empty($conversationHistory),
         ]);
 
-        // Build generation config
-        $generationConfig = [
-            'temperature' => 0.2,
-            'responseMimeType' => 'application/json',
-        ];
-
-        if (isset($schema['responseSchema'])) {
-            $generationConfig['responseJsonSchema'] = $schema['responseSchema'];
-        }
+        $generationConfig = $this->buildGenerationConfig(0.2, $schema['responseSchema'] ?? null);
 
         // Build contents array (conversation history + current message)
         $contents = $conversationHistory;
@@ -214,7 +210,7 @@ class GeminiProvider
                 [
                     'fileData' => [
                         'fileUri' => $fileUri,
-                        'mimeType' => 'application/pdf', // Most common, can be made dynamic
+                        'mimeType' => 'application/pdf',
                     ],
                 ],
             ],
@@ -225,43 +221,14 @@ class GeminiProvider
             'generationConfig' => $generationConfig,
         ];
 
-        $endpoint = sprintf(
-            'https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s',
-            $model,
-            $apiKey
-        );
-
         Log::debug('[GeminiProvider] Sending request with fileUri', [
             'has_responseJsonSchema' => isset($generationConfig['responseJsonSchema']),
             'conversation_turns' => count($contents),
         ]);
 
-        try {
-            $response = Http::timeout((int) config('ai.providers.gemini.timeout', 90))
-                ->asJson()
-                ->post($endpoint, $payload);
-        } catch (Exception $e) {
-            $this->handleRequestException($e);
-        }
+        $result = $this->sendGeminiRequest($payload, $model, $apiKey);
 
-        if (! $response->successful()) {
-            $status = $response->status();
-            $errorCode = $status === 429 ? GeminiApiException::CODE_RATE_LIMIT : GeminiApiException::CODE_API_ERROR;
-            $retryable = in_array($status, [408, 429, 500, 502, 503, 504], true);
-
-            throw new GeminiApiException(
-                'Gemini API error: '.$response->body(),
-                $errorCode,
-                $retryable,
-                ['status' => $status, 'body' => $response->body()]
-            );
-        }
-
-        $responseBody = $response->json();
-        $textResponse = $this->extractTextResponse($responseBody);
-
-        // Parse the JSON response
-        $parsed = $this->parseJsonResponse($textResponse);
+        $parsed = $this->parseJsonResponse($result['text']);
 
         return [
             'provider' => 'gemini',
@@ -269,9 +236,44 @@ class GeminiProvider
             'prompt_used' => $prompt,
             'schema' => $schema,
             'data' => $parsed,
-            'raw_text' => $textResponse,
-            'raw_json' => $responseBody,
+            'raw_text' => $result['text'],
+            'raw_json' => $result['body'],
         ];
+    }
+
+    /**
+     * Send a text-only prompt to Gemini (no file attachment).
+     *
+     * Useful for tasks like CSV column mapping, transaction categorization,
+     * or any text analysis that doesn't require a file.
+     *
+     * @param  string  $prompt  The text prompt to send
+     * @param  array|null  $responseSchema  Optional JSON schema to enforce structured output
+     * @param  float  $temperature  Sampling temperature (default 0.1 for deterministic output)
+     * @return array Parsed JSON response data
+     */
+    public function generateText(string $prompt, ?array $responseSchema = null, float $temperature = 0.1): array
+    {
+        [$model, $apiKey] = $this->resolveModelAndKey();
+
+        Log::info('[GeminiProvider] Generating text content', [
+            'model' => $model,
+            'prompt_length' => strlen($prompt),
+            'has_schema' => $responseSchema !== null,
+        ]);
+
+        $generationConfig = $this->buildGenerationConfig($temperature, $responseSchema);
+
+        $payload = [
+            'contents' => [
+                ['role' => 'user', 'parts' => [['text' => $prompt]]],
+            ],
+            'generationConfig' => $generationConfig,
+        ];
+
+        $result = $this->sendGeminiRequest($payload, $model, $apiKey);
+
+        return $this->parseJsonResponse($result['text']);
     }
 
     /**
@@ -821,8 +823,6 @@ class GeminiProvider
             return $this->restructureReceiptData($data);
         }
 
-        // For other types, return as-is for now
-        // Can add more specific restructuring as needed
         return $data;
     }
 

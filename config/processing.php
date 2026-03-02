@@ -18,7 +18,7 @@ return [
         'supported_formats' => [
             'receipts' => explode(',', env('SUPPORTED_RECEIPT_FORMATS', 'jpg,jpeg,png,pdf,tiff,tif')),
             'documents' => explode(',', env('SUPPORTED_DOCUMENT_FORMATS',
-                'doc,docx,xls,xlsx,ppt,pptx,odt,ods,odp,pdf,rtf,txt,html')),
+                'doc,docx,xls,xlsx,ppt,pptx,odt,ods,odp,pdf,rtf,txt,html,csv')),
         ],
 
         /*

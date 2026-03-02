@@ -14,6 +14,8 @@ return [
 
     'provider' => env('AI_DEFAULT_PROVIDER', 'openai'),
 
+    'text_analysis_provider' => env('TEXT_ANALYSIS_PROVIDER', env('GEMINI_API_KEY') ? 'gemini' : 'openai'),
+
     /*
     |--------------------------------------------------------------------------
     | AI Service Providers

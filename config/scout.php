@@ -266,6 +266,18 @@ return [
                 ],
                 'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
             ],
+            'bank_transactions' => [
+                'filterableAttributes' => ['id', 'user_id', 'bank_statement_id', 'transaction_type', 'category_group', 'amount', 'transaction_date'],
+                'sortableAttributes' => ['transaction_date', 'amount', 'created_at'],
+                'searchableAttributes' => [
+                    'description',
+                    'counterparty_name',
+                    'reference',
+                    'subcategory',
+                    'category_group',
+                ],
+                'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
+            ],
             'line_items' => [
                 'filterableAttributes' => ['id', 'receipt_id', 'user_id'],
                 'searchableAttributes' => ['description', 'sku'],

@@ -235,26 +235,16 @@ class PulseDavController extends Controller
                 'skipped' => $result['skipped'] ?? 0,
             ]);
         } catch (Exception $e) {
-            $response = [
-                'error' => 'Import failed',
-                'message' => $e->getMessage(),
-            ];
-
-            if (config('app.debug')) {
-                $response['debug'] = [
-                    'exception' => get_class($e),
-                    'trace' => $e->getTraceAsString(),
-                    'request_data' => $request->all(),
-                ];
-            }
-
             Log::error('[PulseDavController] Import exception', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'request' => $request->all(),
             ]);
 
-            return response()->json($response, 500);
+            return response()->json([
+                'error' => 'Import failed',
+                'message' => 'An error occurred during import. Please try again.',
+            ], 500);
         }
     }
 

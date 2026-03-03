@@ -132,7 +132,7 @@ class FileProcessingController extends Controller
                 'file_type' => $fileType,
             ]);
 
-            return back()->with('error', 'Failed to upload file: '.$e->getMessage());
+            return back()->with('error', 'Failed to upload file. Please try again.');
         }
     }
 }

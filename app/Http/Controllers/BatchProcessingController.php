@@ -7,6 +7,7 @@ use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class BatchProcessingController extends Controller
@@ -61,9 +62,11 @@ class BatchProcessingController extends Controller
             ]);
 
         } catch (Exception $e) {
+            Log::error('Failed to create batch job', ['exception' => $e]);
+
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => 'Failed to create batch job. Please try again.',
             ], 500);
         }
     }
@@ -83,9 +86,11 @@ class BatchProcessingController extends Controller
             ]);
 
         } catch (Exception $e) {
+            Log::error('Failed to get batch status', ['batch_job_id' => $batchJobId, 'exception' => $e]);
+
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => 'Batch job not found.',
             ], 404);
         }
     }
@@ -105,9 +110,11 @@ class BatchProcessingController extends Controller
             ]);
 
         } catch (Exception $e) {
+            Log::error('Failed to cancel batch job', ['batch_job_id' => $batchJobId, 'exception' => $e]);
+
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => 'Failed to cancel batch job. Please try again.',
             ], 500);
         }
     }

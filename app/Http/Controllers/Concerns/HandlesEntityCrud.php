@@ -126,7 +126,7 @@ trait HandlesEntityCrud
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->back()->with('error', 'Failed to delete '.$modelName.': '.$e->getMessage());
+            return redirect()->back()->with('error', 'Failed to delete '.ucfirst($modelName).'. Please try again.');
         }
     }
 

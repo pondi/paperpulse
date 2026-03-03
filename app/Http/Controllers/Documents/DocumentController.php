@@ -352,7 +352,7 @@ class DocumentController extends BaseResourceController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->back()->with('error', 'Failed to delete document: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Failed to delete document. Please try again.');
         }
     }
 
@@ -546,7 +546,7 @@ class DocumentController extends BaseResourceController
                 'file_type' => $fileType,
             ]);
 
-            return back()->with('error', 'Failed to upload file: '.$e->getMessage());
+            return back()->with('error', 'Failed to upload file. Please try again.');
         }
     }
 }

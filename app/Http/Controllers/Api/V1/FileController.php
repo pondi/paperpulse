@@ -154,9 +154,7 @@ class FileController extends BaseApiController
                 'file_type' => $fileType,
             ]);
 
-            return $this->error('File upload failed', 422, [
-                'file' => [$e->getMessage()],
-            ]);
+            return $this->error('File upload failed. Please try again.', 422);
         }
     }
 }

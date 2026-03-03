@@ -76,6 +76,9 @@ return Application::configure(basePath: dirname(__DIR__))
                         'token',
                         'access_token',
                         'refresh_token',
+                        'api_key',
+                        'secret',
+                        'client_secret',
                     ];
 
                     foreach ($sensitiveKeys as $key) {
@@ -88,6 +91,27 @@ return Application::configure(basePath: dirname(__DIR__))
                         'validator_data' => $validatorData,
                         'failed_rules' => $e->validator->failed(),
                     ];
+                }
+
+                // Always redact sensitive fields from validation error messages
+                if (! config('app.debug')) {
+                    $sensitiveKeys = [
+                        'password',
+                        'password_confirmation',
+                        'current_password',
+                        'token',
+                        'access_token',
+                        'refresh_token',
+                        'api_key',
+                        'secret',
+                        'client_secret',
+                    ];
+
+                    $errors = $response['errors'];
+                    foreach ($sensitiveKeys as $key) {
+                        unset($errors[$key]);
+                    }
+                    $response['errors'] = $errors;
                 }
 
                 return response()->json($response, 422);

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DeletedReason;
 use App\Enums\TransactionCategory;
+use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -11,11 +12,13 @@ use Laravel\Scout\Searchable;
 
 class BankTransaction extends Model
 {
+    use BelongsToUser;
     use HasFactory;
     use Searchable;
     use SoftDeletes;
 
     protected $fillable = [
+        'user_id',
         'bank_statement_id',
         'transaction_date',
         'posting_date',
@@ -49,7 +52,7 @@ class BankTransaction extends Model
     public function toSearchableArray(): array
     {
         return [
-            'user_id' => $this->bankStatement?->user_id,
+            'user_id' => $this->user_id,
             'id' => $this->id,
             'bank_statement_id' => $this->bank_statement_id,
             'description' => $this->description,

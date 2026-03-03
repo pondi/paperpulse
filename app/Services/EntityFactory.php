@@ -590,6 +590,7 @@ class EntityFactory
         foreach ($transactions as $txn) {
             $created[] = BankTransaction::create([
                 'bank_statement_id' => $statement->id,
+                'user_id' => $statement->user_id,
                 'transaction_date' => $txn['transaction_date'] ?? $txn['date'] ?? null,
                 'posting_date' => $txn['posting_date'] ?? null,
                 'description' => $txn['description'] ?? null,

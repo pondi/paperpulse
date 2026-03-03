@@ -306,6 +306,7 @@ class CsvImportService
 
             BankTransaction::create(array_merge($txData, [
                 'bank_statement_id' => $statement->id,
+                'user_id' => $userId,
                 'currency' => $txCurrency,
             ]));
         }

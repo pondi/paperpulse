@@ -53,9 +53,8 @@ class DuplicateController extends Controller
             return back()->withErrors(['delete_file_id' => 'File not found']);
         }
 
+        // DB operations inside transaction for atomicity
         DB::transaction(function () use ($duplicateFlag, $file) {
-            $this->deleteFileAssets($file);
-
             $duplicateFlag->status = 'resolved';
             $duplicateFlag->resolved_file_id = $file->id;
             $duplicateFlag->resolved_at = now();
@@ -71,6 +70,10 @@ class DuplicateController extends Controller
 
             $file->delete();
         });
+
+        // S3/external cleanup AFTER transaction commits so DB stays
+        // consistent even if storage deletion fails
+        $this->deleteFileAssets($file);
 
         return back();
     }

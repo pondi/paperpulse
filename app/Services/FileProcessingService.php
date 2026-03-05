@@ -17,6 +17,7 @@ use App\Services\Jobs\JobMetadataPersistence;
 use Exception;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -151,28 +152,8 @@ class FileProcessingService
                 $fileData['extension']
             );
 
-            // Create file record in database with hash
-            $file = $this->fileMetadata->createFileRecordFromData($fileData, $fileGuid, $fileType, $userId, $fileHash);
-
-            // Attach collections if specified
-            if (! empty($metadata['collection_ids'])) {
-                $file->collections()->sync($metadata['collection_ids']);
-                Log::debug("[FileProcessing] [{$jobName}] Collections attached to file", [
-                    'file_id' => $file->id,
-                    'collection_ids' => $metadata['collection_ids'],
-                ]);
-            }
-
-            // Attach tags if specified
-            if (! empty($metadata['tag_ids'])) {
-                $file->syncTags($metadata['tag_ids']);
-                Log::debug("[FileProcessing] [{$jobName}] Tags attached to file", [
-                    'file_id' => $file->id,
-                    'tag_ids' => $metadata['tag_ids'],
-                ]);
-            }
-
-            // Store original file to S3 storage bucket (permanent)
+            // Upload to S3 BEFORE the DB transaction so we don't create
+            // orphaned DB records if S3 fails
             $s3Path = $this->fileStorage->storeToS3(
                 $fileData['content'],
                 $userId,
@@ -182,9 +163,6 @@ class FileProcessingService
                 $fileData['extension']
             );
 
-            // Update file record with S3 path
-            $this->fileMetadata->updateFileWithS3Path($file, $s3Path);
-
             Log::info("[FileProcessing] [{$jobName}] File stored to S3, cleaning up local file", [
                 'file_guid' => $fileGuid,
                 's3_path' => $s3Path,
@@ -192,7 +170,6 @@ class FileProcessingService
             ]);
 
             // Clean up local file after successful S3 upload
-            // Workers will download from S3 as needed
             if ($workingPath && file_exists($workingPath)) {
                 try {
                     $this->fileStorage->deleteWorkingFile($workingPath);
@@ -210,32 +187,62 @@ class FileProcessingService
                 }
             }
 
-            // Prepare metadata for job chain
-            // Note: We no longer pass the local filePath since workers will download from S3
-            $fileMetadata = $this->fileMetadata->prepareFileMetadata(
-                $file,
-                $fileGuid,
-                $fileData,
-                null, // No local path - workers will download from S3
-                $s3Path,
-                $jobName,
-                $metadata
-            );
+            // Wrap all DB operations in a transaction for atomicity.
+            // If any DB write fails, no orphaned records are left behind.
+            [$file, $fileMetadata] = DB::transaction(function () use ($fileData, $fileGuid, $fileType, $userId, $fileHash, $s3Path, $jobId, $jobName, $metadata) {
+                // Create file record in database with hash
+                $file = $this->fileMetadata->createFileRecordFromData($fileData, $fileGuid, $fileType, $userId, $fileHash);
 
-            // Store metadata persistently for job chain
+                // Attach collections if specified
+                if (! empty($metadata['collection_ids'])) {
+                    $file->collections()->sync($metadata['collection_ids']);
+                    Log::debug("[FileProcessing] [{$jobName}] Collections attached to file", [
+                        'file_id' => $file->id,
+                        'collection_ids' => $metadata['collection_ids'],
+                    ]);
+                }
+
+                // Attach tags if specified
+                if (! empty($metadata['tag_ids'])) {
+                    $file->syncTags($metadata['tag_ids']);
+                    Log::debug("[FileProcessing] [{$jobName}] Tags attached to file", [
+                        'file_id' => $file->id,
+                        'tag_ids' => $metadata['tag_ids'],
+                    ]);
+                }
+
+                // Update file record with S3 path
+                $this->fileMetadata->updateFileWithS3Path($file, $s3Path);
+
+                // Prepare metadata for job chain
+                $fileMetadata = $this->fileMetadata->prepareFileMetadata(
+                    $file,
+                    $fileGuid,
+                    $fileData,
+                    null, // No local path - workers will download from S3
+                    $s3Path,
+                    $jobName,
+                    $metadata
+                );
+
+                // Create parent job history record
+                JobHistoryCreator::createParentJob(
+                    $jobId,
+                    $jobName,
+                    $fileType,
+                    $fileMetadata,
+                    $file->id,
+                    $fileData['fileName'] ?? null
+                );
+
+                return [$file, $fileMetadata];
+            });
+
+            // Store metadata in cache AFTER transaction commits (cache is external)
             JobMetadataPersistence::store($jobId, $fileMetadata);
 
-            // Create parent job history record
-            JobHistoryCreator::createParentJob(
-                $jobId,
-                $jobName,
-                $fileType,
-                $fileMetadata,
-                $file->id,
-                $fileData['fileName'] ?? null
-            );
-
-            // Dispatch appropriate job chain based on file type
+            // Dispatch job AFTER transaction commits to avoid processing
+            // a file that might get rolled back
             $this->jobChainDispatcher->dispatch($jobId, $fileType);
 
             Log::info("[FileProcessing] [{$jobName}] File processing initiated", [

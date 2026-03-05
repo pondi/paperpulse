@@ -13,6 +13,7 @@ use App\Models\ReturnPolicy;
 use App\Models\Voucher;
 use App\Models\Warranty;
 use Exception;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Computes facet counts and aggregations for search results.
@@ -38,7 +39,15 @@ class SearchFacetService
         }
 
         $userId = auth()->id();
+        $cacheKey = "search_facets:{$userId}:".md5($query.serialize($filters));
 
+        return Cache::remember($cacheKey, 60, function () use ($query, $filters, $userId) {
+            return $this->computeFacets($query, $filters, $userId);
+        });
+    }
+
+    protected function computeFacets(string $query, array $filters, int $userId): array
+    {
         $queries = [
             'receipts' => Receipt::search($query)->where('user_id', $userId),
             'documents' => Document::search($query)->where('user_id', $userId),

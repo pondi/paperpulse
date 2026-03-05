@@ -53,6 +53,17 @@ class Receipt extends Model implements Taggable
     use SoftDeletes;
     use TaggableModel;
 
+    protected static function booted(): void
+    {
+        $flushDashboard = function (self $receipt): void {
+            \Illuminate\Support\Facades\Cache::forget("dashboard_stats:{$receipt->user_id}");
+        };
+
+        static::created($flushDashboard);
+        static::updated($flushDashboard);
+        static::deleted($flushDashboard);
+    }
+
     protected $fillable = [
         'file_id',
         'merchant_id',

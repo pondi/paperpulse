@@ -25,7 +25,7 @@ class DocumentUploadValidator
             'pdf', 'png', 'jpg', 'jpeg', 'tiff', 'tif',  // Images & PDFs
             'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', // MS Office
             'odt', 'ods', 'odp',                         // OpenDocument
-            'rtf', 'txt', 'html', 'csv'                  // Other text formats
+            'rtf', 'txt', 'html', 'csv',                  // Other text formats
         ];
 
         if (! in_array($extension, $supportedExtensions)) {
@@ -53,15 +53,15 @@ class DocumentUploadValidator
             // MS Office (modern)
             'docx' => [
                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'application/octet-stream' // Some servers don't recognize .docx MIME
+                'application/octet-stream', // Some servers don't recognize .docx MIME
             ],
             'xlsx' => [
                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'application/octet-stream'
+                'application/octet-stream',
             ],
             'pptx' => [
                 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                'application/octet-stream'
+                'application/octet-stream',
             ],
 
             // OpenDocument formats
@@ -79,7 +79,7 @@ class DocumentUploadValidator
         // Only validate MIME type if we have expectations for this extension
         if (isset($expectedMimeTypes[$extension]) && ! in_array($mimeType, $expectedMimeTypes[$extension])) {
             // Log warning but don't fail - MIME type detection is unreliable for office files
-            Log::warning("DocumentUploadValidator: MIME type mismatch", [
+            Log::warning('DocumentUploadValidator: MIME type mismatch', [
                 'filename' => $uploadedFile->getClientOriginalName(),
                 'extension' => $extension,
                 'expected_mime' => $expectedMimeTypes[$extension],

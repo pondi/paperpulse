@@ -12,8 +12,8 @@ class DocumentMetadataExtractor
     /**
      * Extract creation and modification dates from a file
      *
-     * @param string $filePath Path to the file
-     * @param string $extension File extension
+     * @param  string  $filePath  Path to the file
+     * @param  string  $extension  File extension
      * @return array ['created_at' => Carbon|null, 'modified_at' => Carbon|null]
      */
     public static function extractDates(string $filePath, string $extension): array
@@ -45,7 +45,7 @@ class DocumentMetadataExtractor
     private static function extractFromDocx(string $filePath): array
     {
         try {
-            $zip = new ZipArchive();
+            $zip = new ZipArchive;
             if ($zip->open($filePath) !== true) {
                 return ['created_at' => null, 'modified_at' => null];
             }

@@ -49,7 +49,7 @@ trait BelongsToUser
     /**
      * Scope a query to include records for a specific user.
      *
-     * @param Builder $query
+     * @param  Builder  $query
      * @param  int|User  $user
      * @return Builder
      */
@@ -84,7 +84,7 @@ trait BelongsToUser
     /**
      * Scope a query to include all records (bypass user scope).
      *
-     * @param Builder $query
+     * @param  Builder  $query
      * @return Builder
      */
     public function scopeWithoutUserScope($query)

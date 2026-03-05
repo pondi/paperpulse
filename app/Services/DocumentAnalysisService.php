@@ -80,7 +80,7 @@ class DocumentAnalysisService
         // Add a marker so AI knows content was truncated
         $truncationNote = "\n\n[... {$skippedWords} words omitted from middle of document ...]\n\n";
 
-        $preparedContent = $beginning . $truncationNote . $end;
+        $preparedContent = $beginning.$truncationNote.$end;
 
         Log::info('[DocumentAnalysisService] Content truncated for AI analysis', [
             'original_length' => mb_strlen($content),

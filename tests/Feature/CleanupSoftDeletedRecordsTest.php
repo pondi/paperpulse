@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\DeletedReason;
-use App\Models\Document;
 use App\Models\File;
 use App\Models\Receipt;
 use App\Models\User;

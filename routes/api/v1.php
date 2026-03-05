@@ -31,6 +31,8 @@ Route::middleware(['auth:sanctum', 'api.rate_limit:200,1'])->group(function () {
     Route::get('files/{file}', [FileController::class, 'show'])->name('api.files.show');
     Route::get('files/{file}/content', [FileContentController::class, 'show'])->name('api.files.content');
     Route::post('files', [FileController::class, 'store'])->name('api.files.store');
+    Route::patch('files/{file}', [FileController::class, 'update'])->name('api.files.update');
+    Route::delete('files/{file}', [FileController::class, 'destroy'])->name('api.files.destroy');
 
     // Search
     Route::get('search', [SearchController::class, 'index'])->name('api.search');

@@ -5,13 +5,16 @@ namespace App\Http\Controllers\Api\V1;
 use App\Exceptions\DuplicateFileException;
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Requests\Api\V1\StoreFileRequest;
+use App\Http\Requests\Api\V1\UpdateFileRequest;
 use App\Http\Resources\Api\V1\FileDetailResource;
 use App\Http\Resources\Api\V1\FileListResource;
 use App\Models\File;
 use App\Services\FileProcessingService;
 use App\Services\Files\FileDetailService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -156,5 +159,54 @@ class FileController extends BaseApiController
 
             return $this->error('File upload failed. Please try again.', 422);
         }
+    }
+
+    public function update(UpdateFileRequest $request, int $file): JsonResponse
+    {
+        $fileModel = File::find($file);
+
+        if (! $fileModel) {
+            return $this->notFound('File not found');
+        }
+
+        $validated = $request->validated();
+
+        DB::transaction(function () use ($fileModel, $validated) {
+            if (array_key_exists('note', $validated)) {
+                $fileModel->note = $validated['note'];
+                $fileModel->save();
+            }
+
+            if (array_key_exists('tag_ids', $validated)) {
+                $fileModel->syncTags($validated['tag_ids'] ?? []);
+            }
+
+            if (array_key_exists('collection_ids', $validated)) {
+                $fileModel->collections()->sync($validated['collection_ids'] ?? []);
+            }
+        });
+
+        return $this->success(
+            new FileDetailResource($fileModel->fresh()),
+            'File updated successfully'
+        );
+    }
+
+    public function destroy(int $file): JsonResponse
+    {
+        $fileModel = File::find($file);
+
+        if (! $fileModel) {
+            return $this->notFound('File not found');
+        }
+
+        $fileModel->delete();
+
+        Log::info('[API] File deleted', [
+            'user_id' => auth()->id(),
+            'file_id' => $fileModel->id,
+        ]);
+
+        return response()->json(null, 204);
     }
 }

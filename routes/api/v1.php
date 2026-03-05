@@ -1,11 +1,17 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BankStatementController;
 use App\Http\Controllers\Api\V1\CollectionController;
+use App\Http\Controllers\Api\V1\ContractController;
 use App\Http\Controllers\Api\V1\FileContentController;
 use App\Http\Controllers\Api\V1\FileController;
+use App\Http\Controllers\Api\V1\InvoiceController;
+use App\Http\Controllers\Api\V1\ReceiptController;
 use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\TagController;
+use App\Http\Controllers\Api\V1\VoucherController;
+use App\Http\Controllers\Api\V1\WarrantyController;
 use Illuminate\Support\Facades\Route;
 
 // Authentication routes
@@ -40,4 +46,28 @@ Route::middleware(['auth:sanctum', 'api.rate_limit:200,1'])->group(function () {
     Route::post('collections', [CollectionController::class, 'store'])->name('api.collections.store');
     Route::patch('collections/{collection}', [CollectionController::class, 'update'])->name('api.collections.update');
     Route::delete('collections/{collection}', [CollectionController::class, 'destroy'])->name('api.collections.destroy');
+
+    // Receipts
+    Route::get('receipts', [ReceiptController::class, 'index'])->name('api.receipts.index');
+    Route::get('receipts/{receipt}', [ReceiptController::class, 'show'])->name('api.receipts.show');
+
+    // Invoices
+    Route::get('invoices', [InvoiceController::class, 'index'])->name('api.invoices.index');
+    Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('api.invoices.show');
+
+    // Contracts
+    Route::get('contracts', [ContractController::class, 'index'])->name('api.contracts.index');
+    Route::get('contracts/{contract}', [ContractController::class, 'show'])->name('api.contracts.show');
+
+    // Bank Statements
+    Route::get('bank-statements', [BankStatementController::class, 'index'])->name('api.bank-statements.index');
+    Route::get('bank-statements/{bankStatement}', [BankStatementController::class, 'show'])->name('api.bank-statements.show');
+
+    // Vouchers
+    Route::get('vouchers', [VoucherController::class, 'index'])->name('api.vouchers.index');
+    Route::get('vouchers/{voucher}', [VoucherController::class, 'show'])->name('api.vouchers.show');
+
+    // Warranties
+    Route::get('warranties', [WarrantyController::class, 'index'])->name('api.warranties.index');
+    Route::get('warranties/{warranty}', [WarrantyController::class, 'show'])->name('api.warranties.show');
 });

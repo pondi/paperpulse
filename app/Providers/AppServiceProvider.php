@@ -53,6 +53,9 @@ use App\Services\Receipt\ReceiptEnricherService;
 use App\Services\Receipt\ReceiptParserService;
 use App\Services\Receipt\ReceiptValidatorService;
 use App\Services\ReceiptAnalysisService;
+use App\Services\Search\SearchFacetService;
+use App\Services\Search\SearchQueryBuilder;
+use App\Services\Search\SearchResultFormatter;
 use App\Services\SearchService;
 use App\Services\SharingService;
 use App\Services\StorageService;
@@ -156,9 +159,19 @@ class AppServiceProvider extends ServiceProvider
             return new CollectionSharingService;
         });
 
-        // Register SearchService
+        // Register Search services
+        $this->app->singleton(SearchResultFormatter::class);
+        $this->app->singleton(SearchQueryBuilder::class, function ($app) {
+            return new SearchQueryBuilder(
+                $app->make(SearchResultFormatter::class)
+            );
+        });
+        $this->app->singleton(SearchFacetService::class);
         $this->app->singleton(SearchService::class, function ($app) {
-            return new SearchService;
+            return new SearchService(
+                $app->make(SearchQueryBuilder::class),
+                $app->make(SearchFacetService::class)
+            );
         });
 
         // Register DocumentService

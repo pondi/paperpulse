@@ -2,35 +2,33 @@
 
 namespace App\Services;
 
-use App\Models\BankStatement;
-use App\Models\BankTransaction;
 use App\Models\Category;
-use App\Models\Contract;
-use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
-use App\Models\Invoice;
-use App\Models\InvoiceLineItem;
-use App\Models\Receipt;
-use App\Models\ReturnPolicy;
-use App\Models\Voucher;
-use App\Models\Warranty;
-use App\Services\Receipt\ReceiptEnricherService;
-use App\Services\Receipts\LineItemsCreator;
+use App\Services\Factories\BankStatementFactory;
+use App\Services\Factories\ContractFactory;
+use App\Services\Factories\DocumentFactory;
+use App\Services\Factories\InvoiceFactory;
+use App\Services\Factories\ReceiptFactory;
+use App\Services\Factories\ReturnPolicyFactory;
+use App\Services\Factories\VoucherFactory;
+use App\Services\Factories\WarrantyFactory;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Facades\Log;
 
 class EntityFactory
 {
-    protected DatabaseManager $db;
-
-    protected ReceiptEnricherService $merchantEnricher;
-
-    public function __construct(DatabaseManager $db, ReceiptEnricherService $merchantEnricher)
-    {
-        $this->db = $db;
-        $this->merchantEnricher = $merchantEnricher;
-    }
+    public function __construct(
+        protected DatabaseManager $db,
+        protected ReceiptFactory $receiptFactory,
+        protected VoucherFactory $voucherFactory,
+        protected WarrantyFactory $warrantyFactory,
+        protected ReturnPolicyFactory $returnPolicyFactory,
+        protected InvoiceFactory $invoiceFactory,
+        protected ContractFactory $contractFactory,
+        protected BankStatementFactory $bankStatementFactory,
+        protected DocumentFactory $documentFactory,
+    ) {}
 
     /**
      * Create entities from parsed Gemini data.
@@ -43,7 +41,6 @@ class EntityFactory
         $created = [];
 
         // Pre-resolve category IDs BEFORE the transaction to avoid PostgreSQL transaction abort issues.
-        // Category creation may race with other workers, so we handle it outside the main transaction.
         $resolvedCategories = $this->preResolveCategoryIds($entities, $file);
 
         $this->db->transaction(function () use ($entities, $file, &$created, $resolvedCategories) {
@@ -63,13 +60,11 @@ class EntityFactory
                 $data = $entity['data'] ?? [];
 
                 // Fix for Gemini sometimes flattening the data structure
-                // If 'data' is empty but we have typical fields at the top level, use the entity itself as data
-                if (empty($data) && ! empty($entity) && count($entity) > 2) { // >2 because it has type, confidence_score, and potential data fields
+                if (empty($data) && ! empty($entity) && count($entity) > 2) {
                     $possibleData = $entity;
                     unset($possibleData['type']);
                     unset($possibleData['confidence_score']);
 
-                    // Check if this looks like valid data for the type
                     $hasData = match ($type) {
                         'receipt' => isset($possibleData['merchant']) || isset($possibleData['totals']),
                         'voucher' => isset($possibleData['code']) || isset($possibleData['voucher_type']),
@@ -89,83 +84,29 @@ class EntityFactory
 
                 $confidence = $entity['confidence_score'] ?? null;
 
-                // Inject receipt_id into child entities if we have a parent receipt
+                // Inject parent IDs into child entities
                 if (isset($context['receipt']) && in_array($type, ['voucher', 'warranty', 'return_policy'])) {
                     $data['receipt_id'] = $context['receipt']->id;
                 }
-
-                // Inject invoice_id into child entities if we have a parent invoice
                 if (isset($context['invoice']) && in_array($type, ['voucher', 'warranty', 'return_policy', 'invoice_line_items'])) {
                     $data['invoice_id'] = $context['invoice']->id;
                 }
 
-                switch ($type) {
-                    case 'receipt':
-                        $categoryName = $data['receipt_category'] ?? null;
-                        if ($categoryName && isset($resolvedCategories[$categoryName])) {
-                            $data['category_id'] = $resolvedCategories[$categoryName];
-                        }
-                        $model = $this->createReceipt($data, $file);
-                        $context['receipt'] = $model;
-                        break;
-                    case 'voucher':
-                        $model = $this->createVoucher($data, $file);
-                        break;
-                    case 'warranty':
-                        $model = $this->createWarranty($data, $file);
-                        break;
-                    case 'return_policy':
-                        $model = $this->createReturnPolicy($data, $file);
-                        break;
-                    case 'invoice':
-                        $model = $this->createInvoice($data, $file);
-                        $context['invoice'] = $model;
-                        break;
-                    case 'invoice_line_items':
-                        $model = null;
-                        if (! empty($context['invoice'])) {
-                            $items = $data['items'] ?? $data['line_items'] ?? [];
-                            $model = $this->createInvoiceLineItems($items, $context['invoice']);
-                        }
-                        break;
-                    case 'contract':
-                        $model = $this->createContract($data, $file);
-                        break;
-                    case 'bank_statement':
-                        $data = $this->flattenBankStatementData($data);
-                        $model = $this->createBankStatement($data, $file);
-                        $context['bank_statement'] = $model;
+                $model = $this->createEntity($type, $data, $file, $context, $resolvedCategories);
 
-                        // Create transactions if they were included in the bank_statement entity
-                        if ($model && ! empty($data['transactions'])) {
-                            $this->createBankTransactions($data['transactions'], $model);
-                        }
-                        break;
-                    case 'bank_transactions':
-                        $model = null;
-                        if (! empty($context['bank_statement'])) {
-                            $transactions = $data['transactions'] ?? [];
-                            $model = $this->createBankTransactions($transactions, $context['bank_statement']);
-                        }
-                        break;
-                    case 'document':
-                    default:
-                        $model = $this->createDocument($data, $file, $type);
-                        break;
+                // Update context for parent-child relationships
+                if ($model && in_array($type, ['receipt', 'invoice', 'bank_statement']) && ! is_iterable($model)) {
+                    $context[$type] = $model;
                 }
 
                 if ($model) {
                     if (is_iterable($model)) {
                         foreach ($model as $subModel) {
                             $created[] = ['type' => $type, 'model' => $subModel];
-
-                            // Track in junction table
                             $this->createExtractableEntityRecord($file, $type, $subModel, count($created) === 1, $confidence);
                         }
                     } else {
                         $created[] = ['type' => $type, 'model' => $model];
-
-                        // Track in junction table
                         $this->createExtractableEntityRecord($file, $type, $model, count($created) === 1, $confidence);
                     }
 
@@ -209,6 +150,61 @@ class EntityFactory
     }
 
     /**
+     * Dispatch entity creation to the appropriate factory.
+     */
+    protected function createEntity(string $type, array $data, File $file, array $context, array $resolvedCategories): mixed
+    {
+        return match ($type) {
+            'receipt' => $this->createReceipt($data, $file, $resolvedCategories),
+            'voucher' => $this->voucherFactory->create($data, $file),
+            'warranty' => $this->warrantyFactory->create($data, $file),
+            'return_policy' => $this->returnPolicyFactory->create($data, $file),
+            'invoice' => $this->invoiceFactory->create($data, $file),
+            'invoice_line_items' => $this->createInvoiceLineItems($data, $context),
+            'contract' => $this->contractFactory->create($data, $file),
+            'bank_statement' => $this->bankStatementFactory->create($data, $file),
+            'bank_transactions' => $this->createBankTransactions($data, $context),
+            default => $this->documentFactory->create($data, $file, $type),
+        };
+    }
+
+    protected function createReceipt(array $data, File $file, array $resolvedCategories): mixed
+    {
+        $categoryName = $data['receipt_category'] ?? null;
+        if ($categoryName && isset($resolvedCategories[$categoryName])) {
+            $data['category_id'] = $resolvedCategories[$categoryName];
+        }
+
+        if (empty($data['category_id'])) {
+            $data['category_id'] = $this->resolveCategoryId($data, $file);
+        }
+
+        return $this->receiptFactory->create($data, $file);
+    }
+
+    protected function createInvoiceLineItems(array $data, array $context): mixed
+    {
+        if (empty($context['invoice'])) {
+            return null;
+        }
+
+        $items = $data['items'] ?? $data['line_items'] ?? [];
+
+        return $this->invoiceFactory->createLineItems($items, $context['invoice']);
+    }
+
+    protected function createBankTransactions(array $data, array $context): mixed
+    {
+        if (empty($context['bank_statement'])) {
+            return null;
+        }
+
+        $transactions = $data['transactions'] ?? [];
+
+        return $this->bankStatementFactory->createTransactions($transactions, $context['bank_statement']);
+    }
+
+    /**
      * Create an ExtractableEntity record to track the extraction.
      */
     protected function createExtractableEntityRecord(File $file, string $type, $model, bool $isPrimary, ?float $confidence = null): void
@@ -231,524 +227,8 @@ class EntityFactory
         ]);
     }
 
-    protected function createReceipt(array $data, File $file): ?Receipt
-    {
-        if (empty($data)) {
-            return null;
-        }
-
-        $totals = $data['totals'] ?? [];
-        $receiptInfo = $data['receipt_info'] ?? [];
-        $items = $data['items'] ?? [];
-        $vendors = $data['vendors'] ?? [];
-        $payment = $data['payment'] ?? [];
-        $metadata = $data['metadata'] ?? [];
-
-        $merchantId = $data['merchant_id'] ?? $this->resolveMerchantId($data, $file);
-
-        // Map currency from payment or totals, with fallback
-        $currency = $payment['currency'] ?? ($totals['currency'] ?? 'NOK');
-
-        // Resolve category ID from category name
-        $categoryId = $data['category_id'] ?? $this->resolveCategoryId($data, $file);
-
-        $receipt = Receipt::create([
-            'file_id' => $file->id,
-            'user_id' => $file->user_id,
-            'merchant_id' => $merchantId,
-            'category_id' => $categoryId,
-            'receipt_date' => $receiptInfo['date'] ?? null,
-            'total_amount' => $totals['total_amount'] ?? 0,
-            'tax_amount' => $totals['tax_amount'] ?? 0,
-            'currency' => $currency,
-            'receipt_category' => $data['receipt_category'] ?? null,
-            'receipt_description' => $data['receipt_description'] ?? null,
-            'tags' => $data['tags'] ?? null,
-            'ai_entities' => $data['ai_entities'] ?? null,
-            'language' => $metadata['language'] ?? null,
-            'receipt_data' => json_encode($data),
-            'note' => $data['note'] ?? null,
-        ]);
-
-        // Create line items if present
-        if (! empty($items)) {
-            LineItemsCreator::create($receipt, $items, $vendors);
-        }
-
-        return $receipt;
-    }
-
-    protected function createVoucher(array $data, File $file): ?Voucher
-    {
-        // Require at least ONE identifying field
-        $hasIdentifier = $this->hasAny($data, ['code', 'barcode', 'qr_code', 'original_value', 'current_value']);
-
-        if (! $hasIdentifier) {
-            return null;
-        }
-
-        return Voucher::create([
-            'file_id' => $file->id,
-            'user_id' => $file->user_id,
-            'merchant_id' => $data['merchant_id'] ?? $this->resolveMerchantId($data, $file),
-            'voucher_type' => $data['voucher_type'] ?? 'gift_card',
-            'code' => $data['code'] ?? null,
-            'barcode' => $data['barcode'] ?? null,
-            'qr_code' => $data['qr_code'] ?? null,
-            'issue_date' => $data['issue_date'] ?? null,
-            'expiry_date' => $data['expiry_date'] ?? null,
-            'original_value' => $data['original_value'] ?? null,
-            'current_value' => $data['current_value'] ?? null,
-            'currency' => $data['currency'] ?? 'NOK',
-            'installment_count' => $data['installment_count'] ?? null,
-            'monthly_payment' => $data['monthly_payment'] ?? null,
-            'first_payment_date' => $data['first_payment_date'] ?? null,
-            'final_payment_date' => $data['final_payment_date'] ?? null,
-            'is_redeemed' => $data['is_redeemed'] ?? false,
-            'redeemed_at' => $data['redeemed_at'] ?? null,
-            'redemption_location' => $data['redemption_location'] ?? null,
-            'terms_and_conditions' => $data['terms_and_conditions'] ?? null,
-            'restrictions' => $data['restrictions'] ?? null,
-            'voucher_data' => $data['voucher_data'] ?? $data,
-        ]);
-    }
-
-    protected function createWarranty(array $data, File $file): ?Warranty
-    {
-        // Require at least product name OR manufacturer (one of them must exist)
-        $hasProduct = ! empty($data['product_name']) || ! empty($data['manufacturer']);
-        $hasWarrantyInfo = $this->hasAny($data, ['warranty_number', 'warranty_end_date', 'warranty_duration', 'coverage_description']);
-
-        if (! $hasProduct && ! $hasWarrantyInfo) {
-            return null;
-        }
-
-        return Warranty::create([
-            'file_id' => $file->id,
-            'user_id' => $file->user_id,
-            'receipt_id' => $data['receipt_id'] ?? null,
-            'invoice_id' => $data['invoice_id'] ?? null,
-            'product_name' => $data['product_name'] ?? null,
-            'product_category' => $data['product_category'] ?? null,
-            'manufacturer' => $data['manufacturer'] ?? null,
-            'model_number' => $data['model_number'] ?? null,
-            'serial_number' => $data['serial_number'] ?? null,
-            'purchase_date' => $data['purchase_date'] ?? null,
-            'warranty_start_date' => $data['warranty_start_date'] ?? null,
-            'warranty_end_date' => $data['warranty_end_date'] ?? null,
-            'warranty_duration' => $data['warranty_duration'] ?? null,
-            'warranty_type' => $data['warranty_type'] ?? null,
-            'warranty_provider' => $data['warranty_provider'] ?? null,
-            'warranty_number' => $data['warranty_number'] ?? null,
-            'coverage_type' => $data['coverage_type'] ?? null,
-            'coverage_description' => $data['coverage_description'] ?? null,
-            'exclusions' => $data['exclusions'] ?? null,
-            'support_phone' => $data['support_phone'] ?? null,
-            'support_email' => $data['support_email'] ?? null,
-            'support_website' => $data['support_website'] ?? null,
-            'warranty_data' => $data['warranty_data'] ?? $data,
-        ]);
-    }
-
-    protected function createReturnPolicy(array $data, File $file): ?ReturnPolicy
-    {
-        // Accept if ANY meaningful data is present (structured or unstructured)
-        $hasStructuredData = $this->hasAny($data, ['return_deadline', 'exchange_deadline', 'conditions', 'refund_method']);
-        $hasUnstructuredData = ! empty($data['description']) || ! empty($data['policy']);
-
-        if (! $hasStructuredData && ! $hasUnstructuredData) {
-            return null;
-        }
-
-        // Map unstructured text to structured fields where possible
-        $conditions = $data['conditions'] ?? $data['description'] ?? $data['policy'] ?? null;
-
-        return ReturnPolicy::create([
-            'file_id' => $file->id,
-            'user_id' => $file->user_id,
-            'receipt_id' => $data['receipt_id'] ?? null,
-            'invoice_id' => $data['invoice_id'] ?? null,
-            'merchant_id' => $data['merchant_id'] ?? $this->resolveMerchantId($data, $file),
-            'return_deadline' => $data['return_deadline'] ?? null,
-            'exchange_deadline' => $data['exchange_deadline'] ?? null,
-            'conditions' => $conditions,
-            'refund_method' => $data['refund_method'] ?? null,
-            'restocking_fee' => $data['restocking_fee'] ?? null,
-            'restocking_fee_percentage' => $data['restocking_fee_percentage'] ?? null,
-            'is_final_sale' => $data['is_final_sale'] ?? false,
-            'requires_receipt' => $data['requires_receipt'] ?? true,
-            'requires_original_packaging' => $data['requires_original_packaging'] ?? false,
-            'policy_data' => $data['policy_data'] ?? $data,
-        ]);
-    }
-
-    protected function createInvoice(array $data, File $file): Invoice
-    {
-        // The InvoiceDataNormalizer produces nested keys (vendor.name, invoice_info.invoice_number,
-        // totals.subtotal, payment.method, etc.) but the Invoice model expects flat column names
-        // (from_name, invoice_number, subtotal, payment_method). Flatten the nested structure,
-        // falling back to flat keys for backwards compatibility.
-        $vendor = $data['vendor'] ?? [];
-        $customer = $data['customer'] ?? [];
-        $invoiceInfo = $data['invoice_info'] ?? [];
-        $totals = $data['totals'] ?? [];
-        $payment = $data['payment'] ?? [];
-        $lineItems = $data['line_items'] ?? [];
-
-        $invoice = Invoice::create([
-            'file_id' => $file->id,
-            'user_id' => $file->user_id,
-            'merchant_id' => $data['merchant_id'] ?? $this->resolveMerchantId($data, $file),
-            'category_id' => $data['category_id'] ?? null,
-            'invoice_number' => $invoiceInfo['invoice_number'] ?? $data['invoice_number'] ?? null,
-            'invoice_type' => $invoiceInfo['invoice_type'] ?? $data['invoice_type'] ?? 'invoice',
-            'from_name' => $vendor['name'] ?? $data['from_name'] ?? null,
-            'from_address' => $vendor['address'] ?? $data['from_address'] ?? null,
-            'from_vat_number' => $vendor['vat_number'] ?? $data['from_vat_number'] ?? null,
-            'from_email' => $vendor['email'] ?? $data['from_email'] ?? null,
-            'from_phone' => $vendor['phone'] ?? $data['from_phone'] ?? null,
-            'to_name' => $customer['name'] ?? $data['to_name'] ?? null,
-            'to_address' => $customer['address'] ?? $data['to_address'] ?? null,
-            'to_vat_number' => $customer['vat_number'] ?? $data['to_vat_number'] ?? null,
-            'to_email' => $customer['email'] ?? $data['to_email'] ?? null,
-            'to_phone' => $customer['phone'] ?? $data['to_phone'] ?? null,
-            'invoice_date' => $invoiceInfo['invoice_date'] ?? $data['invoice_date'] ?? null,
-            'due_date' => $invoiceInfo['due_date'] ?? $data['due_date'] ?? null,
-            'delivery_date' => $invoiceInfo['delivery_date'] ?? $data['delivery_date'] ?? null,
-            'subtotal' => $totals['subtotal'] ?? $data['subtotal'] ?? 0,
-            'tax_amount' => $totals['tax_amount'] ?? $data['tax_amount'] ?? 0,
-            'discount_amount' => $totals['discount_amount'] ?? $data['discount_amount'] ?? 0,
-            'shipping_amount' => $totals['shipping_amount'] ?? $data['shipping_amount'] ?? 0,
-            'total_amount' => $totals['total_amount'] ?? $data['total_amount'] ?? 0,
-            'amount_paid' => $totals['amount_paid'] ?? $data['amount_paid'] ?? 0,
-            'amount_due' => $totals['amount_due'] ?? $data['amount_due'] ?? 0,
-            'currency' => $payment['currency'] ?? $data['currency'] ?? 'NOK',
-            'payment_method' => $payment['method'] ?? $data['payment_method'] ?? null,
-            'payment_status' => $payment['status'] ?? $data['payment_status'] ?? null,
-            'payment_terms' => $payment['terms'] ?? $data['payment_terms'] ?? null,
-            'purchase_order_number' => $invoiceInfo['purchase_order_number'] ?? $data['purchase_order_number'] ?? null,
-            'reference_number' => $invoiceInfo['reference_number'] ?? $data['reference_number'] ?? null,
-            'notes' => $data['notes'] ?? null,
-            'invoice_data' => $data['invoice_data'] ?? $data,
-        ]);
-
-        // Create line items if present in the normalized data
-        if (! empty($lineItems)) {
-            $this->createInvoiceLineItems($lineItems, $invoice);
-        }
-
-        return $invoice;
-    }
-
-    protected function createInvoiceLineItems(array $items, Invoice $invoice): array
-    {
-        $created = [];
-        foreach ($items as $index => $item) {
-            $created[] = InvoiceLineItem::create([
-                'invoice_id' => $invoice->id,
-                'line_number' => $item['line_number'] ?? ($index + 1),
-                'description' => $item['description'] ?? null,
-                'sku' => $item['sku'] ?? null,
-                'quantity' => $item['quantity'] ?? null,
-                'unit_of_measure' => $item['unit_of_measure'] ?? null,
-                'unit_price' => $item['unit_price'] ?? null,
-                'discount_percent' => $item['discount_percent'] ?? null,
-                'discount_amount' => $item['discount_amount'] ?? null,
-                'tax_rate' => $item['tax_rate'] ?? null,
-                'tax_amount' => $item['tax_amount'] ?? null,
-                'total_amount' => $item['total_amount'] ?? null,
-                'category' => $item['category'] ?? null,
-                'notes' => $item['notes'] ?? null,
-            ]);
-        }
-
-        return $created;
-    }
-
-    protected function createContract(array $data, File $file): Contract
-    {
-        return Contract::create([
-            'file_id' => $file->id,
-            'user_id' => $file->user_id,
-            'contract_number' => $data['contract_number'] ?? null,
-            'contract_title' => $data['contract_title'] ?? null,
-            'contract_type' => $data['contract_type'] ?? null,
-            'parties' => $data['parties'] ?? null,
-            'effective_date' => $data['effective_date'] ?? null,
-            'expiry_date' => $data['expiry_date'] ?? null,
-            'signature_date' => $data['signature_date'] ?? null,
-            'duration' => $data['duration'] ?? null,
-            'renewal_terms' => $data['renewal_terms'] ?? null,
-            'termination_conditions' => $data['termination_conditions'] ?? null,
-            'contract_value' => $data['contract_value'] ?? null,
-            'currency' => $data['currency'] ?? 'NOK',
-            'payment_schedule' => $data['payment_schedule'] ?? null,
-            'governing_law' => $data['governing_law'] ?? null,
-            'jurisdiction' => $data['jurisdiction'] ?? null,
-            'status' => $data['status'] ?? null,
-            'key_terms' => $data['key_terms'] ?? null,
-            'obligations' => $data['obligations'] ?? null,
-            'summary' => $data['summary'] ?? null,
-            'contract_data' => $data['contract_data'] ?? $data,
-        ]);
-    }
-
-    /**
-     * Flatten nested bank statement data from the normalizer into the flat format
-     * expected by createBankStatement().
-     *
-     * Handles both nested format (from BankStatementDataNormalizer):
-     *   ['bank' => ['name' => ...], 'balances' => ['opening_balance' => ...]]
-     * and already-flat format:
-     *   ['bank_name' => ..., 'opening_balance' => ...]
-     */
-    protected function flattenBankStatementData(array $data): array
-    {
-        // Already flat — has top-level bank_name or account_number AND no nested keys
-        $hasFlat = isset($data['bank_name']) || isset($data['account_number']);
-        $hasNested = isset($data['bank']) || isset($data['balances']);
-        if ($hasFlat && ! $hasNested) {
-            return $data;
-        }
-
-        $flat = [];
-
-        // Flatten bank info
-        if (isset($data['bank']) && is_array($data['bank'])) {
-            $flat['bank_name'] = $data['bank']['name'] ?? null;
-            $flat['account_holder_name'] = $data['bank']['account_holder'] ?? null;
-            $flat['account_number'] = $data['bank']['account_number'] ?? null;
-            $flat['iban'] = $data['bank']['iban'] ?? null;
-            $flat['swift_code'] = $data['bank']['swift_code'] ?? null;
-        }
-
-        // Flatten statement period
-        if (isset($data['statement_period']) && is_array($data['statement_period'])) {
-            $flat['statement_period_start'] = $data['statement_period']['start_date'] ?? null;
-            $flat['statement_period_end'] = $data['statement_period']['end_date'] ?? null;
-        }
-
-        // Flatten balances
-        if (isset($data['balances']) && is_array($data['balances'])) {
-            $flat['opening_balance'] = $data['balances']['opening_balance'] ?? null;
-            $flat['closing_balance'] = $data['balances']['closing_balance'] ?? null;
-            $flat['currency'] = $data['balances']['currency'] ?? null;
-        }
-
-        // Carry over transactions array as-is
-        if (isset($data['transactions'])) {
-            $flat['transactions'] = $data['transactions'];
-            $flat['transaction_count'] = is_array($data['transactions']) ? count($data['transactions']) : null;
-        }
-
-        // Carry over any already-flat fields that may exist
-        foreach (['statement_date', 'total_credits', 'total_debits', 'statement_data'] as $key) {
-            if (isset($data[$key])) {
-                $flat[$key] = $data[$key];
-            }
-        }
-
-        // Store original data as statement_data for reference
-        $flat['statement_data'] = $data;
-
-        return $flat;
-    }
-
-    protected function createBankStatement(array $data, File $file): ?BankStatement
-    {
-        if (! $this->hasAny($data, ['account_number', 'iban', 'bank_name', 'statement_date'])) {
-            return null;
-        }
-
-        return BankStatement::create([
-            'file_id' => $file->id,
-            'user_id' => $file->user_id,
-            'bank_name' => $data['bank_name'] ?? null,
-            'account_holder_name' => $data['account_holder_name'] ?? null,
-            'account_number' => $data['account_number'] ?? null,
-            'iban' => $data['iban'] ?? null,
-            'swift_code' => $data['swift_code'] ?? null,
-            'statement_date' => $data['statement_date'] ?? null,
-            'statement_period_start' => $data['statement_period_start'] ?? null,
-            'statement_period_end' => $data['statement_period_end'] ?? null,
-            'opening_balance' => $data['opening_balance'] ?? null,
-            'closing_balance' => $data['closing_balance'] ?? null,
-            'currency' => $data['currency'] ?? null,
-            'total_credits' => $data['total_credits'] ?? null,
-            'total_debits' => $data['total_debits'] ?? null,
-            'transaction_count' => $data['transaction_count'] ?? null,
-            'statement_data' => $data['statement_data'] ?? $data,
-        ]);
-    }
-
-    protected function createBankTransactions(array $transactions, BankStatement $statement): array
-    {
-        $created = [];
-        $totalCredits = 0;
-        $totalDebits = 0;
-
-        foreach ($transactions as $txn) {
-            $created[] = BankTransaction::create([
-                'bank_statement_id' => $statement->id,
-                'user_id' => $statement->user_id,
-                'transaction_date' => $txn['transaction_date'] ?? $txn['date'] ?? null,
-                'posting_date' => $txn['posting_date'] ?? null,
-                'description' => $txn['description'] ?? null,
-                'reference' => $txn['reference'] ?? null,
-                'transaction_type' => $txn['transaction_type'] ?? null,
-                'category' => $txn['category'] ?? null,
-                'amount' => $txn['amount'] ?? null,
-                'balance_after' => $txn['balance_after'] ?? $txn['balance'] ?? null,
-                'currency' => $txn['currency'] ?? $statement->currency,
-                'counterparty_name' => $txn['counterparty_name'] ?? null,
-                'counterparty_account' => $txn['counterparty_account'] ?? null,
-            ]);
-
-            $amount = (float) ($txn['amount'] ?? 0);
-            if ($amount > 0) {
-                $totalCredits += $amount;
-            } else {
-                $totalDebits += abs($amount);
-            }
-        }
-
-        // Calculate totals from transactions if not already set on the statement
-        $updates = [];
-        if ($statement->total_credits === null) {
-            $updates['total_credits'] = round($totalCredits, 2);
-        }
-        if ($statement->total_debits === null) {
-            $updates['total_debits'] = round($totalDebits, 2);
-        }
-        if ($statement->transaction_count === null) {
-            $updates['transaction_count'] = count($created);
-        }
-        if (! empty($updates)) {
-            $statement->update($updates);
-        }
-
-        return $created;
-    }
-
-    protected function createDocument(array $data, File $file, string $type): ?Document
-    {
-        // Only create a document record when explicit data is provided.
-        if (empty($data)) {
-            return null;
-        }
-
-        $metadata = is_array($data['metadata'] ?? null) ? $data['metadata'] : [];
-        $metadataTitle = is_string($metadata['title'] ?? null) ? $metadata['title'] : null;
-        $metadataType = is_string($metadata['type'] ?? null) ? $metadata['type'] : null;
-        $metadataLanguage = is_string($metadata['language'] ?? null) ? $metadata['language'] : null;
-        $creationInfo = is_array($data['creation_info'] ?? null) ? $data['creation_info'] : [];
-
-        $content = $data['content'] ?? null;
-        $contentSummary = null;
-        $keyPoints = [];
-        if (is_array($content)) {
-            $contentSummary = is_string($content['summary'] ?? null) ? $content['summary'] : null;
-            $keyPoints = is_array($content['key_points'] ?? null)
-                ? array_values(array_filter($content['key_points'], 'is_string'))
-                : [];
-        }
-
-        $summary = $data['summary'] ?? $contentSummary;
-        if (! is_string($summary)) {
-            $summary = null;
-        }
-
-        $contentChunks = [];
-        if (is_string($content)) {
-            $contentChunks[] = $content;
-        } elseif (is_string($summary)) {
-            $contentChunks[] = $summary;
-        }
-        if (! empty($keyPoints)) {
-            $contentChunks[] = implode("\n", $keyPoints);
-        }
-        $contentText = $contentChunks === [] ? null : trim(implode("\n\n", $contentChunks));
-
-        $metadata = array_merge($metadata, array_filter([
-            'creation_info' => $creationInfo !== [] ? $creationInfo : null,
-            'content' => is_array($content) && $content !== [] ? $content : null,
-            'tags' => is_array($data['tags'] ?? null) ? array_values(array_filter($data['tags'], 'is_string')) : null,
-            'entities_mentioned' => is_array($data['entities_mentioned'] ?? null) ? $data['entities_mentioned'] : null,
-        ], static fn ($value) => $value !== null));
-
-        if ($metadata === []) {
-            $metadata = null;
-        }
-
-        $categoryId = $data['category_id'] ?? null;
-        if (is_string($categoryId) && ctype_digit($categoryId)) {
-            $categoryId = (int) $categoryId;
-        } elseif (! is_int($categoryId)) {
-            $categoryId = null;
-        }
-
-        $description = $data['description'] ?? null;
-        if (! is_string($description)) {
-            $description = null;
-        }
-
-        return Document::create([
-            'file_id' => $file->id,
-            'user_id' => $file->user_id,
-            'category_id' => $categoryId,
-            'title' => $data['title'] ?? $metadataTitle ?? 'Detected Document',
-            'description' => $description,
-            'summary' => $summary,
-            'content' => $contentText,
-            'document_type' => $data['document_type'] ?? $metadataType ?? $type,
-            'document_subtype' => $data['document_subtype'] ?? null,
-            'document_date' => $data['document_date'] ?? ($creationInfo['creation_date'] ?? null),
-            'metadata' => $metadata,
-            'extracted_text' => $data['extracted_text'] ?? null,
-            'ai_entities' => $data['ai_entities'] ?? $data['entities_mentioned'] ?? null,
-            'extracted_entities' => $data['extracted_entities'] ?? null,
-            'language' => $data['language'] ?? $metadataLanguage,
-            'page_count' => $data['page_count'] ?? 1,
-        ]);
-    }
-
-    /**
-     * Build a merchant payload and resolve/create the merchant, returning the ID.
-     */
-    protected function resolveMerchantId(array $data, File $file): ?int
-    {
-        $merchant = $data['merchant'] ?? [];
-
-        // Fallback to vendor key (used by InvoiceDataNormalizer)
-        if (empty($merchant) && ! empty($data['vendor'])) {
-            $merchant = $data['vendor'];
-        }
-
-        // Fallback to loose fields if provided
-        if (empty($merchant) && isset($data['merchant_name'])) {
-            $merchant = [
-                'name' => $data['merchant_name'],
-                'vat_number' => $data['merchant_vat'] ?? null,
-                'address' => $data['merchant_address'] ?? null,
-            ];
-        }
-
-        if (empty($merchant['name'])) {
-            return null;
-        }
-
-        $merchantModel = $this->merchantEnricher->findOrCreateMerchant([
-            'name' => $merchant['name'],
-            'vat_number' => $merchant['vat_number'] ?? null,
-            'address' => $merchant['address'] ?? null,
-        ], $file->user_id);
-
-        return $merchantModel?->id;
-    }
-
     /**
      * Pre-resolve category IDs for all entities before the main transaction.
-     * This handles race conditions cleanly outside the transaction.
      *
      * @return array<string, int> Map of category name to ID
      */
@@ -764,7 +244,6 @@ class EntityFactory
             $type = strtolower($entity['type'] ?? '');
             $data = $entity['data'] ?? $entity;
 
-            // Only receipts have receipt_category
             if ($type === 'receipt') {
                 $categoryName = $data['receipt_category'] ?? null;
                 if ($categoryName && ! isset($resolved[$categoryName])) {
@@ -784,7 +263,6 @@ class EntityFactory
      */
     protected function resolveOrCreateCategory(string $categoryName, int $userId): ?int
     {
-        // Try to find existing category for this user
         $category = Category::where('user_id', $userId)
             ->where('name', $categoryName)
             ->first();
@@ -793,7 +271,6 @@ class EntityFactory
             return $category->id;
         }
 
-        // Not found - try to create from default categories
         $defaultCategories = Category::getDefaultCategories();
         $matchingDefault = collect($defaultCategories)->firstWhere('name', $categoryName);
 
@@ -801,9 +278,6 @@ class EntityFactory
             return null;
         }
 
-        // Use a savepoint (nested transaction) to isolate the INSERT attempt.
-        // This is critical for PostgreSQL: if the INSERT fails due to a race condition,
-        // only the savepoint is rolled back, not the entire parent transaction.
         try {
             $this->db->transaction(function () use ($matchingDefault, $userId, &$category) {
                 $category = Category::create([
@@ -824,8 +298,6 @@ class EntityFactory
 
             return $category->id;
         } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
-            // Savepoint rolled back, parent transaction still valid.
-            // Race condition: another process created the category, fetch it.
             $category = Category::where('user_id', $userId)
                 ->where('name', $categoryName)
                 ->first();
@@ -840,35 +312,19 @@ class EntityFactory
     }
 
     /**
-     * Resolve category ID from data (uses pre-resolved ID if available).
+     * Resolve category ID from data.
      */
     protected function resolveCategoryId(array $data, File $file): ?int
     {
-        // If category_id is already set (pre-resolved), use it
         if (! empty($data['category_id'])) {
             return $data['category_id'];
         }
 
-        // Fallback: resolve inline (for backwards compatibility)
         $categoryName = $data['receipt_category'] ?? null;
         if (empty($categoryName)) {
             return null;
         }
 
         return $this->resolveOrCreateCategory($categoryName, $file->user_id);
-    }
-
-    /**
-     * Determine if payload has any meaningful values for the given keys.
-     */
-    protected function hasAny(array $data, array $keys): bool
-    {
-        foreach ($keys as $key) {
-            if (array_key_exists($key, $data) && ! empty($data[$key])) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

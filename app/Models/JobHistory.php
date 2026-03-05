@@ -31,6 +31,7 @@ class JobHistory extends Model
         'file_name',
         'file_type',
         'file_id',
+        'request_id',
         'started_at',
         'finished_at',
     ];

@@ -3,6 +3,7 @@
 use App\Http\Middleware\Api\ApiRateLimit;
 use App\Http\Middleware\Api\ApiRequestLogger;
 use App\Http\Middleware\Api\ApiVersion;
+use App\Http\Middleware\Api\RequestId;
 use App\Http\Middleware\ApiSecurityHeaders;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -45,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->api(append: [
+            RequestId::class,
             ApiSecurityHeaders::class,
             ApiRequestLogger::class,
         ]);

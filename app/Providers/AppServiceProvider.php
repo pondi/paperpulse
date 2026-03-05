@@ -62,6 +62,7 @@ use App\Services\StorageService;
 use App\Services\TextExtractionService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -214,6 +215,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureRateLimiting();
         $this->registerPolicies();
+
+        // Prevent lazy loading in non-production to catch N+1 queries early
+        Model::preventLazyLoading(! app()->isProduction());
 
         // Register event listeners
         Event::listen(Registered::class, CreateUserPreferences::class);

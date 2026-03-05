@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\BankStatements;
 
 use App\Jobs\BaseJob;
+use App\Models\BankStatement;
 use App\Models\File;
 use App\Services\BankStatements\CsvImportService;
 use App\Services\BankStatements\TransactionCategorizationService;
@@ -15,9 +16,11 @@ use Throwable;
 
 class ProcessCsvImport extends BaseJob
 {
+    public int $timeout = 300;
+
     public int $tries = 2;
 
-    public array $backoff = [60, 120];
+    public $backoff = [60, 120];
 
     protected int $fileId;
 
@@ -31,6 +34,16 @@ class ProcessCsvImport extends BaseJob
     protected function handleJob(): void
     {
         $file = File::findOrFail($this->fileId);
+
+        // Idempotency: skip if bank statement already exists for this file
+        if ($file->status === 'completed' && BankStatement::where('file_id', $this->fileId)->exists()) {
+            Log::info('[ProcessCsvImport] Bank statement already exists for file, skipping', [
+                'file_id' => $this->fileId,
+                'job_id' => $this->jobID,
+            ]);
+
+            return;
+        }
 
         Log::info('[ProcessCsvImport] Starting CSV import', [
             'file_id' => $this->fileId,

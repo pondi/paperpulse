@@ -24,9 +24,8 @@ use Throwable;
 
 class ProcessFileGemini extends BaseJob
 {
-    /**
-     * Retry Gemini processing if transient errors occur.
-     */
+    public int $timeout = 600;
+
     public int $tries = 3;
 
     public $backoff = [60, 120, 240];
@@ -68,6 +67,17 @@ class ProcessFileGemini extends BaseJob
                 'metadata' => $metadata,
             ]);
             throw new Exception("File record not found: {$fileId}");
+        }
+
+        // Idempotency: skip if file already has entities (prevents duplicates on retry)
+        $isReprocessing = $metadata['metadata']['reprocessing'] ?? false;
+        if (! $isReprocessing && $file->status === 'completed' && $file->extractableEntities()->exists()) {
+            Log::info('[ProcessFileGemini] File already processed, skipping', [
+                'file_id' => $file->id,
+                'job_id' => $this->jobID,
+            ]);
+
+            return;
         }
 
         Log::info('[ProcessFileGemini] Starting Gemini processing', [

@@ -34,6 +34,23 @@ abstract class BaseJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
+     * Default timeout for all jobs (5 minutes). Override in subclasses as needed.
+     */
+    public int $timeout = 300;
+
+    /**
+     * Default retry attempts. Override in subclasses as needed.
+     */
+    public int $tries = 3;
+
+    /**
+     * Default backoff in seconds between retries. Override in subclasses.
+     *
+     * @var int|array
+     */
+    public $backoff = [30, 60, 120];
+
+    /**
      * The unique identifier for this job chain.
      */
     public string $jobID;

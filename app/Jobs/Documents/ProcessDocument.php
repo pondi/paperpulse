@@ -27,6 +27,12 @@ use Illuminate\Support\Str;
  */
 class ProcessDocument extends BaseJob
 {
+    public int $timeout = 600;
+
+    public int $tries = 3;
+
+    public $backoff = [30, 60, 120];
+
     /**
      * Create a new job instance.
      */
@@ -51,6 +57,20 @@ class ProcessDocument extends BaseJob
 
             $note = $metadata['metadata']['note'] ?? null;
             $jobName = $metadata['jobName'] ?? 'unknown';
+
+            // Idempotency: skip if document already exists for this file (non-reprocessing)
+            $isReprocessing = $metadata['metadata']['reprocessing'] ?? false;
+            if (! $isReprocessing && isset($metadata['fileId'])) {
+                $existingDoc = Document::where('file_id', $metadata['fileId'])->exists();
+                if ($existingDoc) {
+                    Log::info('[ProcessDocument] Document already exists for file, skipping', [
+                        'file_id' => $metadata['fileId'],
+                        'job_id' => $this->jobID,
+                    ]);
+
+                    return;
+                }
+            }
 
             Log::info("[ProcessDocument] [{$jobName}] Processing document", [
                 'job_id' => $this->jobID,

@@ -26,9 +26,9 @@ class MatchMerchant extends BaseJob
 
     protected $useDirectData = false;
 
-    public $timeout = 3600;
+    public int $timeout = 3600;
 
-    public $tries = 5;
+    public int $tries = 5;
 
     public $backoff = 10;
 

@@ -11,9 +11,9 @@ class RestartJobChain extends BaseJob
 {
     protected $originalJobId;
 
-    public $timeout = 300;
+    public int $timeout = 300;
 
-    public $tries = 3;
+    public int $tries = 3;
 
     public $backoff = 30;
 

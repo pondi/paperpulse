@@ -26,6 +26,8 @@
       </div>
     </template>
 
+    <Breadcrumbs v-if="breadcrumbs.length" :crumbs="breadcrumbs" class="px-6 pt-4" />
+
     <div class="flex h-[calc(100vh-9rem)] overflow-hidden">
       <!-- Left Panel - Receipt Details -->
       <div class="w-1/2 p-6 overflow-y-auto border-r border-amber-200 dark:border-zinc-700">
@@ -232,6 +234,7 @@
 import { ref, computed, watch } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import Modal from '@/Components/Common/Modal.vue';
 import SharingControls from '@/Components/Domain/SharingControls.vue';
 import TagManager from '@/Components/Domain/TagManager.vue';
@@ -253,6 +256,10 @@ const props = defineProps({
   receipt: {
     type: Object,
     required: true
+  },
+  breadcrumbs: {
+    type: Array,
+    default: () => []
   }
 });
 

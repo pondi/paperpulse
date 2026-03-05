@@ -236,6 +236,11 @@ class DocumentController extends BaseResourceController
             // Flatten meta for Vue expectations
             'categories' => $meta['categories'] ?? [],
             'available_tags' => $meta['available_tags'] ?? [],
+            'breadcrumbs' => [
+                ['label' => 'Dashboard', 'href' => route('dashboard')],
+                ['label' => 'Documents', 'href' => route('documents.index')],
+                ['label' => $document->title ?? 'Document #'.$document->id],
+            ],
         ]);
     }
 

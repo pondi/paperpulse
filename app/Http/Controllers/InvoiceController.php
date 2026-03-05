@@ -67,6 +67,11 @@ class InvoiceController extends BaseResourceController
         return Inertia::render('Invoices/Show', [
             'invoice' => InvoiceInertiaResource::forShow($invoice)->toArray(request()),
             'available_tags' => auth()->user()->tags()->orderBy('name')->get(),
+            'breadcrumbs' => [
+                ['label' => 'Dashboard', 'href' => route('dashboard')],
+                ['label' => 'Invoices', 'href' => route('invoices.index')],
+                ['label' => 'Invoice #'.$invoice->invoice_number],
+            ],
         ]);
     }
 

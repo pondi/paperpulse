@@ -8,6 +8,7 @@ import SharingControls from '@/Components/Domain/SharingControls.vue';
 import DocumentImage from '@/Components/Domain/DocumentImage.vue';
 import CollectionSelector from '@/Components/Domain/CollectionSelector.vue';
 import CollectionBadge from '@/Components/Domain/CollectionBadge.vue';
+import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import {
     DocumentIcon,
     FolderIcon,
@@ -77,10 +78,16 @@ interface Document {
     file: FileInfo | null;
 }
 
+interface Crumb {
+    label: string;
+    href?: string;
+}
+
 interface Props {
     document: Document;
     categories: Category[];
     available_tags: Tag[];
+    breadcrumbs: Crumb[];
 }
 
 const props = defineProps<Props>();
@@ -257,6 +264,8 @@ const getDocumentTypeClass = () => {
                 </div>
             </div>
         </template>
+
+        <Breadcrumbs v-if="breadcrumbs?.length" :crumbs="breadcrumbs" class="px-6 pt-4" />
 
         <div class="flex h-[calc(100vh-9rem)] overflow-hidden">
             <!-- Left Panel - Document Details -->

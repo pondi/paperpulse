@@ -71,6 +71,11 @@ class BankStatementController extends BaseResourceController
                 'value' => $c->value,
                 'label' => $c->label(),
             ])->values()->all(),
+            'breadcrumbs' => [
+                ['label' => 'Dashboard', 'href' => route('dashboard')],
+                ['label' => 'Bank Statements', 'href' => route('bank-statements.index')],
+                ['label' => $statement->bank_name ?? 'Statement #'.$statement->id],
+            ],
         ]);
     }
 

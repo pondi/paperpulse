@@ -67,6 +67,11 @@ class ReceiptController extends BaseResourceController
         return Inertia::render("{$this->resource}/Show", [
             'receipt' => ReceiptInertiaResource::forShow($receipt)->toArray(request()),
             'meta' => $this->getShowMeta(),
+            'breadcrumbs' => [
+                ['label' => 'Dashboard', 'href' => route('dashboard')],
+                ['label' => 'Receipts', 'href' => route('receipts.index')],
+                ['label' => $receipt->merchant?->name ?? 'Receipt #'.$receipt->id],
+            ],
         ]);
     }
 

@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import Modal from '@/Components/Common/Modal.vue';
 import TagManager from '@/Components/Domain/TagManager.vue';
 import DocumentImage from '@/Components/Domain/DocumentImage.vue';
@@ -86,10 +87,16 @@ interface Statement {
     updated_at: string | null;
 }
 
+interface Crumb {
+    label: string;
+    href?: string;
+}
+
 interface Props {
     statement: Statement;
     available_tags: Tag[];
     category_groups: CategoryGroup[];
+    breadcrumbs?: Crumb[];
 }
 
 const props = defineProps<Props>();
@@ -256,6 +263,8 @@ const handleTagRemoved = (tag: Tag) => {
                 </div>
             </div>
         </template>
+
+        <Breadcrumbs v-if="breadcrumbs?.length" :crumbs="breadcrumbs" class="px-6 pt-4" />
 
         <div class="flex h-[calc(100vh-9rem)] overflow-hidden">
             <!-- Left Panel - Statement Details + Transactions -->

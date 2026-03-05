@@ -1,6 +1,7 @@
 <template>
   <AppLayout :title="`Voucher ${voucher.code || voucher.id}`">
     <div class="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <Breadcrumbs v-if="breadcrumbs.length" :crumbs="breadcrumbs" />
       <!-- Header -->
       <div class="mb-6">
         <Link :href="route('vouchers.index')" class="text-blue-600 dark:text-blue-400 hover:underline mb-2 inline-block">
@@ -157,11 +158,16 @@
 import { computed } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue'
 
 const props = defineProps({
   voucher: {
     type: Object,
     required: true
+  },
+  breadcrumbs: {
+    type: Array,
+    default: () => []
   }
 })
 

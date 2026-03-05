@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import Modal from '@/Components/Common/Modal.vue';
 import TagManager from '@/Components/Domain/TagManager.vue';
 import SharingControls from '@/Components/Domain/SharingControls.vue';
@@ -103,9 +104,15 @@ interface Invoice {
     file: FileInfo | null;
 }
 
+interface Crumb {
+    label: string;
+    href?: string;
+}
+
 interface Props {
     invoice: Invoice;
     available_tags: Tag[];
+    breadcrumbs?: Crumb[];
 }
 
 const props = defineProps<Props>();
@@ -293,6 +300,8 @@ const getInvoiceTypeClass = () => {
                 </div>
             </div>
         </template>
+
+        <Breadcrumbs v-if="breadcrumbs?.length" :crumbs="breadcrumbs" class="px-6 pt-4" />
 
         <div class="flex h-[calc(100vh-9rem)] overflow-hidden">
             <!-- Left Panel - Invoice Details -->

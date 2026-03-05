@@ -57,6 +57,11 @@ class VoucherController extends BaseResourceController
         return Inertia::render('Vouchers/Show', [
             'voucher' => VoucherInertiaResource::forShow($voucher)->toArray(request()),
             'available_tags' => auth()->user()->tags()->orderBy('name')->get(),
+            'breadcrumbs' => [
+                ['label' => 'Dashboard', 'href' => route('dashboard')],
+                ['label' => 'Vouchers', 'href' => route('vouchers.index')],
+                ['label' => $voucher->code ?? 'Voucher #'.$voucher->id],
+            ],
         ]);
     }
 

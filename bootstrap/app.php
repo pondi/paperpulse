@@ -62,8 +62,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (ValidationException $e, $request) {
             if ($request->expectsJson()) {
                 $response = [
+                    'status' => 'error',
+                    'code' => 'VALIDATION_ERROR',
                     'message' => $e->getMessage(),
                     'errors' => $e->errors(),
+                    'timestamp' => now()->toISOString(),
                 ];
 
                 if (config('app.debug')) {
@@ -147,7 +150,9 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->expectsJson()) {
                 return response()->json([
                     'status' => 'error',
+                    'code' => 'BAD_REQUEST',
                     'message' => 'The uploaded payload exceeds the allowed size.',
+                    'errors' => null,
                     'timestamp' => now()->toISOString(),
                 ], 413);
             }

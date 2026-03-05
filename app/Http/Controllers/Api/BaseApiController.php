@@ -23,10 +23,11 @@ abstract class BaseApiController extends Controller
     /**
      * Error response
      */
-    protected function error(string $message = 'Error', int $status = 400, $errors = null): JsonResponse
+    protected function error(string $message = 'Error', int $status = 400, $errors = null, ?string $code = null): JsonResponse
     {
         return response()->json([
             'status' => 'error',
+            'code' => $code ?? self::defaultCodeForStatus($status),
             'message' => $message,
             'errors' => $errors,
             'timestamp' => now()->toISOString(),
@@ -38,7 +39,7 @@ abstract class BaseApiController extends Controller
      */
     protected function validationError($errors, string $message = 'Validation failed'): JsonResponse
     {
-        return $this->error($message, 422, $errors);
+        return $this->error($message, 422, $errors, 'VALIDATION_ERROR');
     }
 
     /**
@@ -46,7 +47,7 @@ abstract class BaseApiController extends Controller
      */
     protected function notFound(string $message = 'Resource not found'): JsonResponse
     {
-        return $this->error($message, 404);
+        return $this->error($message, 404, code: 'NOT_FOUND');
     }
 
     /**
@@ -54,7 +55,7 @@ abstract class BaseApiController extends Controller
      */
     protected function unauthorized(string $message = 'Unauthorized'): JsonResponse
     {
-        return $this->error($message, 401);
+        return $this->error($message, 401, code: 'UNAUTHORIZED');
     }
 
     /**
@@ -62,7 +63,21 @@ abstract class BaseApiController extends Controller
      */
     protected function forbidden(string $message = 'Forbidden'): JsonResponse
     {
-        return $this->error($message, 403);
+        return $this->error($message, 403, code: 'FORBIDDEN');
+    }
+
+    private static function defaultCodeForStatus(int $status): string
+    {
+        return match ($status) {
+            400 => 'BAD_REQUEST',
+            401 => 'UNAUTHORIZED',
+            403 => 'FORBIDDEN',
+            404 => 'NOT_FOUND',
+            409 => 'DUPLICATE_FILE',
+            422 => 'VALIDATION_ERROR',
+            429 => 'RATE_LIMITED',
+            default => 'INTERNAL_ERROR',
+        };
     }
 
     /**

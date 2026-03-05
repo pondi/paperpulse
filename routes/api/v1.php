@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\ContractController;
 use App\Http\Controllers\Api\V1\FileContentController;
 use App\Http\Controllers\Api\V1\FileController;
 use App\Http\Controllers\Api\V1\InvoiceController;
+use App\Http\Controllers\Api\V1\JobController;
 use App\Http\Controllers\Api\V1\ReceiptController;
 use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\TagController;
@@ -48,6 +49,9 @@ Route::middleware(['auth:sanctum', 'api.rate_limit:200,1'])->group(function () {
     Route::post('collections', [CollectionController::class, 'store'])->name('api.collections.store');
     Route::patch('collections/{collection}', [CollectionController::class, 'update'])->name('api.collections.update');
     Route::delete('collections/{collection}', [CollectionController::class, 'destroy'])->name('api.collections.destroy');
+
+    // Jobs
+    Route::get('jobs/{jobId}', [JobController::class, 'show'])->name('api.jobs.show');
 
     // Receipts
     Route::get('receipts', [ReceiptController::class, 'index'])->name('api.receipts.index');

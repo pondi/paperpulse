@@ -275,7 +275,7 @@ const getDocumentTypeClass = () => {
                     <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-x-3">
-                                <div :class="[getDocumentTypeClass(), 'flex-none rounded-full p-1']">
+                                <div :class="[getDocumentTypeClass(), 'flex-none rounded-full p-1']" aria-hidden="true">
                                     <div class="size-2 rounded-full bg-current" />
                                 </div>
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200">Document Details</h3>

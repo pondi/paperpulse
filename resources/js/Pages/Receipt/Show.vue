@@ -36,10 +36,10 @@
           <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-x-3">
-                <div :class="[getStatusClass(receipt), 'flex-none rounded-full p-1']">
+                <div :class="[getStatusClass(receipt), 'flex-none rounded-full p-1']" aria-hidden="true">
                   <div class="size-2 rounded-full bg-current" />
                 </div>
-                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200">{{ __('receipt_status') }}</h3>
+                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200">{{ __('receipt_status') }}: {{ getStatusLabel(receipt) }}</h3>
               </div>
               <button
                 @click="isEditing = !isEditing"
@@ -426,6 +426,12 @@ const getStatusClass = (receipt) => {
   if (!receipt?.merchant_id) return 'text-zinc-500 bg-amber-100/10'
   if (receipt?.total_amount === null) return 'text-rose-400 bg-rose-400/10'
   return 'text-green-400 bg-green-400/10'
+}
+
+const getStatusLabel = (receipt) => {
+  if (!receipt?.merchant_id) return 'Pending'
+  if (receipt?.total_amount === null) return 'Incomplete'
+  return 'Complete'
 }
 
 const editLineItem = (item) => {

@@ -7,6 +7,7 @@
                 @input="handleSearch"
                 @keydown.enter="goToFullSearch"
                 placeholder="Search receipts and documents..."
+                aria-label="Search receipts and documents"
                 class="col-start-1 row-start-1 block size-full bg-transparent pl-8 text-base text-zinc-900 dark:text-white outline-none border-0 focus:outline-none focus:ring-0 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 sm:text-sm/6"
             />
             <MagnifyingGlassIcon
@@ -19,8 +20,8 @@
 
             <!-- Search Results Dropdown -->
             <div v-if="showResults && results.length > 0" class="absolute left-0 right-0 top-full mt-2 w-[700px] max-w-[90vw] bg-white/95 dark:bg-zinc-800/95 backdrop-blur-sm rounded-lg shadow-xl max-h-96 overflow-y-auto ring-1 ring-zinc-200 dark:ring-white/20 z-50">
-                <ul class="py-2">
-                    <li v-for="result in results.slice(0, 5)" :key="`${result.type}-${result.id}`" class="group">
+                <ul class="py-2" role="listbox" aria-label="Search results">
+                    <li v-for="result in results.slice(0, 5)" :key="`${result.type}-${result.id}`" role="option" class="group">
                         <div class="block px-4 py-3 hover:bg-amber-100 dark:hover:bg-zinc-700/90 transition-colors cursor-pointer" @click="handleResultClick(result)">
                             <div class="flex items-start gap-x-3">
                                 <!-- Type indicator -->

@@ -40,3 +40,6 @@ AGENTS.md
 
 # Local build/push helper (intentionally untracked)
 build-push.local.sh
+
+# Project issues tracking
+.issues/

@@ -64,7 +64,13 @@ class FileEntityCleanupService
 
         // Delete each entity type directly by file_id (catches ALL entities including duplicates)
         foreach ($this->entityTypesWithFileId as $entityClass) {
-            $entities = $entityClass::where('file_id', $file->id)->get();
+            $childRelations = match ($entityClass) {
+                Receipt::class => ['lineItems'],
+                Invoice::class => ['lineItems'],
+                BankStatement::class => ['transactions'],
+                default => [],
+            };
+            $entities = $entityClass::with($childRelations)->where('file_id', $file->id)->get();
 
             foreach ($entities as $entity) {
                 // Delete child entities first

@@ -1,5 +1,8 @@
 # PaperPulse
 
+> [!WARNING]
+> This project is under heavy development. It started as a personal need and has since evolved into an experimentation platform for AI-assisted coding and its capabilities. There are known issues, areas with improper code structure, features that will be deprecated, and minor security concerns that are being addressed. If you use the project, we will always ensure that your original data is never deleted, though you may need to reprocess it from time to time. The APIs are also under active development and do not yet follow versioning standards.
+
 Say goodbye to paper chaos forever. PaperPulse transforms your receipts and documents into organized, searchable intelligence.
 
 ## Why PaperPulse?

@@ -51,7 +51,7 @@ class DuplicateFileDetected extends TemplatedNotification
      */
     public function via($notifiable): array
     {
-        $channels = ['database'];
+        $channels = ['database', 'broadcast'];
 
         // Add email notification if user has preference enabled
         if ($notifiable->preference('email_notify_duplicate_detected')) {

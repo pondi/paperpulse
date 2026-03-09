@@ -6,9 +6,12 @@ namespace App\Services\Factories;
 
 use App\Models\File;
 use App\Models\Warranty;
+use App\Services\Factories\Concerns\ChecksDataPresence;
 
 class WarrantyFactory
 {
+    use ChecksDataPresence;
+
     public function create(array $data, File $file): ?Warranty
     {
         $hasProduct = ! empty($data['product_name']) || ! empty($data['manufacturer']);
@@ -43,16 +46,5 @@ class WarrantyFactory
             'support_website' => $data['support_website'] ?? null,
             'warranty_data' => $data['warranty_data'] ?? $data,
         ]);
-    }
-
-    protected function hasAny(array $data, array $keys): bool
-    {
-        foreach ($keys as $key) {
-            if (array_key_exists($key, $data) && ! empty($data[$key])) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

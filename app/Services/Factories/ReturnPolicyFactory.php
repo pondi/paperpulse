@@ -6,10 +6,13 @@ namespace App\Services\Factories;
 
 use App\Models\File;
 use App\Models\ReturnPolicy;
+use App\Services\Factories\Concerns\ChecksDataPresence;
 use App\Services\Receipt\ReceiptEnricherService;
 
 class ReturnPolicyFactory
 {
+    use ChecksDataPresence;
+
     public function __construct(
         protected ReceiptEnricherService $merchantEnricher,
     ) {}
@@ -71,16 +74,5 @@ class ReturnPolicyFactory
         ], $file->user_id);
 
         return $merchantModel?->id;
-    }
-
-    protected function hasAny(array $data, array $keys): bool
-    {
-        foreach ($keys as $key) {
-            if (array_key_exists($key, $data) && ! empty($data[$key])) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

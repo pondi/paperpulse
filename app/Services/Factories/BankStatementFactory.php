@@ -7,9 +7,12 @@ namespace App\Services\Factories;
 use App\Models\BankStatement;
 use App\Models\BankTransaction;
 use App\Models\File;
+use App\Services\Factories\Concerns\ChecksDataPresence;
 
 class BankStatementFactory
 {
+    use ChecksDataPresence;
+
     public function create(array $data, File $file): ?BankStatement
     {
         $data = $this->flattenData($data);
@@ -139,16 +142,5 @@ class BankStatementFactory
         $flat['statement_data'] = $data;
 
         return $flat;
-    }
-
-    protected function hasAny(array $data, array $keys): bool
-    {
-        foreach ($keys as $key) {
-            if (array_key_exists($key, $data) && ! empty($data[$key])) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

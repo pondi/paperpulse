@@ -14,7 +14,7 @@ defineProps<{
 <template>
     <nav aria-label="Breadcrumb" class="mb-4">
         <ol class="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-            <li v-for="(crumb, i) in crumbs" :key="crumb.label" class="flex items-center gap-2">
+            <li v-for="(crumb, i) in crumbs" :key="`${i}-${crumb.label}`" class="flex items-center gap-2">
                 <Link
                     v-if="crumb.href"
                     :href="crumb.href"

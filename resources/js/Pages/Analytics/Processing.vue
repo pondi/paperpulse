@@ -66,7 +66,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                                    <tr v-for="type in documentTypes" :key="type.type">
+                                    <tr v-for="(type, i) in documentTypes" :key="`${i}-${type.type}`">
                                         <td class="px-3 py-4 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                                             {{ type.type }}
                                         </td>
@@ -176,7 +176,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                                    <tr v-for="item in failureDistribution" :key="item.category">
+                                    <tr v-for="(item, i) in failureDistribution" :key="`${i}-${item.category}`">
                                         <td class="px-3 py-4 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                                             {{ item.category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) }}
                                         </td>

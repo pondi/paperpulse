@@ -41,7 +41,7 @@ class SearchFacetService
         $userId = auth()->id();
         $cacheKey = "search_facets:{$userId}:".md5($query.serialize($filters));
 
-        return Cache::remember($cacheKey, 60, function () use ($query, $filters, $userId) {
+        return Cache::tags(["search_facets:{$userId}"])->remember($cacheKey, 60, function () use ($query, $filters, $userId) {
             return $this->computeFacets($query, $filters, $userId);
         });
     }

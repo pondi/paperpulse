@@ -120,7 +120,7 @@ class DuplicateController extends Controller
             }
         }
 
-        DB::table('file_tags')->where('file_id', $file->id)->delete();
-        DB::table('file_shares')->where('file_id', $file->id)->delete();
+        $file->tags()->detach();
+        $file->shares()->delete();
     }
 }

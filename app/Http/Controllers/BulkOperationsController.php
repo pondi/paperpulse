@@ -6,6 +6,7 @@ use App\Http\Requests\BulkReceiptIdsRequest;
 use App\Models\Category;
 use App\Models\Receipt;
 use App\Notifications\BulkOperationCompleted;
+use App\Rules\ExistsForUser;
 use App\Services\ReceiptService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -59,8 +60,8 @@ class BulkOperationsController extends Controller
     {
         $validated = $request->validate([
             'receipt_ids' => 'required|array',
-            'receipt_ids.*' => 'integer|exists:receipts,id',
-            'category_id' => 'nullable|integer|exists:categories,id',
+            'receipt_ids.*' => ['integer', new ExistsForUser('receipts')],
+            'category_id' => ['nullable', 'integer', new ExistsForUser('categories')],
             'category' => 'nullable|string|max:255',
         ]);
 

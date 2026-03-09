@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Rules\ExistsForUser;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateFileRequest extends FormRequest
@@ -17,11 +18,11 @@ class UpdateFileRequest extends FormRequest
     {
         return [
             'note' => 'nullable|string|max:1000',
-            'category_id' => 'nullable|integer|exists:categories,id',
+            'category_id' => ['nullable', 'integer', new ExistsForUser('categories')],
             'tag_ids' => 'nullable|array',
-            'tag_ids.*' => 'integer|exists:tags,id',
+            'tag_ids.*' => ['integer', new ExistsForUser('tags')],
             'collection_ids' => 'nullable|array',
-            'collection_ids.*' => 'integer|exists:collections,id',
+            'collection_ids.*' => ['integer', new ExistsForUser('collections')],
         ];
     }
 

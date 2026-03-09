@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Rules\ExistsForUser;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreFileRequest extends FormRequest
@@ -18,9 +19,9 @@ class StoreFileRequest extends FormRequest
             'file_type' => 'required|in:receipt,document',
             'note' => 'nullable|string|max:1000',
             'collection_ids' => 'nullable|array',
-            'collection_ids.*' => 'integer|exists:collections,id',
+            'collection_ids.*' => ['integer', new ExistsForUser('collections')],
             'tag_ids' => 'nullable|array',
-            'tag_ids.*' => 'integer|exists:tags,id',
+            'tag_ids.*' => ['integer', new ExistsForUser('tags')],
         ];
     }
 

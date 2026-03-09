@@ -6,6 +6,7 @@ use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
 use App\Models\User;
+use App\Rules\ExistsForUser;
 use App\Services\SharingService;
 use Exception;
 use Illuminate\Http\Request;
@@ -121,7 +122,7 @@ class CategoryController extends Controller
     {
         $request->validate([
             'categories' => 'required|array',
-            'categories.*.id' => 'required|integer|exists:categories,id',
+            'categories.*.id' => ['required', 'integer', new ExistsForUser('categories')],
             'categories.*.sort_order' => 'required|integer|min:0',
         ]);
 

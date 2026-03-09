@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Files;
 
 use App\Http\Controllers\Controller;
+use App\Rules\ExistsForUser;
 use App\Services\ConversionService;
 use App\Services\Documents\DocumentUploadHandler;
 use App\Services\FileProcessingService;
@@ -34,9 +35,9 @@ class FileProcessingController extends Controller
                 'file_type' => 'required|in:receipt,document',
                 'note' => 'nullable|string|max:1000',
                 'collection_ids' => 'nullable|array',
-                'collection_ids.*' => 'integer|exists:collections,id',
+                'collection_ids.*' => ['integer', new ExistsForUser('collections')],
                 'tag_ids' => 'nullable|array',
-                'tag_ids.*' => 'integer|exists:tags,id',
+                'tag_ids.*' => ['integer', new ExistsForUser('tags')],
             ]);
         } else {
             $request->validate([
@@ -46,9 +47,9 @@ class FileProcessingController extends Controller
                 'file_type' => 'required|in:receipt,document',
                 'note' => 'nullable|string|max:1000',
                 'collection_ids' => 'nullable|array',
-                'collection_ids.*' => 'integer|exists:collections,id',
+                'collection_ids.*' => ['integer', new ExistsForUser('collections')],
                 'tag_ids' => 'nullable|array',
-                'tag_ids.*' => 'integer|exists:tags,id',
+                'tag_ids.*' => ['integer', new ExistsForUser('tags')],
             ]);
         }
 

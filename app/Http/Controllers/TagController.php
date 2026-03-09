@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreTagRequest;
 use App\Http\Requests\UpdateTagRequest;
 use App\Models\Tag;
+use App\Rules\ExistsForUser;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -116,7 +117,7 @@ class TagController extends Controller
         $this->authorize('update', $tag);
 
         $validated = $request->validate([
-            'target_tag_id' => 'required|exists:tags,id',
+            'target_tag_id' => ['required', new ExistsForUser('tags')],
         ]);
 
         $targetTag = Tag::findOrFail($validated['target_tag_id']);

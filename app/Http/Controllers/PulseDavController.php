@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PulseDavFile;
+use App\Rules\ExistsForUser;
 use App\Services\PulseDavService;
 use Exception;
 use Illuminate\Http\Request;
@@ -63,7 +64,7 @@ class PulseDavController extends Controller
     {
         $request->validate([
             'file_ids' => 'required|array',
-            'file_ids.*' => 'exists:pulsedav_files,id',
+            'file_ids.*' => [new ExistsForUser('pulsedav_files')],
             'file_type' => 'nullable|in:receipt,document',
         ]);
 
@@ -256,7 +257,7 @@ class PulseDavController extends Controller
         $request->validate([
             'folder_path' => 'required|string',
             'tag_ids' => 'nullable|array',
-            'tag_ids.*' => 'exists:tags,id',
+            'tag_ids.*' => [new ExistsForUser('tags')],
         ]);
 
         // Verify tags belong to user

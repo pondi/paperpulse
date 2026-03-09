@@ -47,7 +47,7 @@ describe('PATCH /files/{id}', function () {
         expect($file->fresh()->collections)->toHaveCount(2);
     });
 
-    it('returns 404 for other users file', function () {
+    it('returns 403 for other users file', function () {
         $other = User::factory()->create();
         $file = File::factory()->create(['user_id' => $other->id]);
 
@@ -55,15 +55,15 @@ describe('PATCH /files/{id}', function () {
             'note' => 'Hacked',
         ]);
 
-        $response->assertNotFound();
+        $response->assertForbidden();
     });
 
-    it('returns 404 for non-existent file', function () {
+    it('returns 403 for non-existent file', function () {
         $response = $this->patchJson(route('api.files.update', 99999), [
             'note' => 'Missing',
         ]);
 
-        $response->assertNotFound();
+        $response->assertForbidden();
     });
 
     it('validates input', function () {

@@ -4,29 +4,48 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Resources\Api\V1\BankStatementResource;
 use App\Models\BankStatement;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 
-class BankStatementController extends BaseApiController
+class BankStatementController extends BaseEntityApiController
 {
-    public function index(Request $request): JsonResponse
+    protected function modelClass(): string
     {
-        $validated = $request->validate([
-            'page' => 'nullable|integer|min:1',
-            'per_page' => 'nullable|integer|min:1|max:100',
-            'sort' => 'nullable|string|in:statement_date,opening_balance,closing_balance,created_at',
-            'direction' => 'nullable|string|in:asc,desc',
+        return BankStatement::class;
+    }
+
+    protected function resourceClass(): string
+    {
+        return BankStatementResource::class;
+    }
+
+    protected function allowedSortFields(): array
+    {
+        return ['statement_date', 'opening_balance', 'closing_balance', 'created_at'];
+    }
+
+    protected function filterRules(): array
+    {
+        return [
             'bank_name' => 'nullable|string|max:255',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
-        ]);
+        ];
+    }
 
-        $query = BankStatement::query()
-            ->with(['tags']);
+    protected function showWith(): array
+    {
+        return ['transactions', 'tags'];
+    }
 
+    protected function entityLabel(): string
+    {
+        return 'Bank statement';
+    }
+
+    protected function applyFilters(Builder $query, array $validated): Builder
+    {
         if (! empty($validated['bank_name'])) {
             $query->where('bank_name', 'like', '%'.$validated['bank_name'].'%');
         }
@@ -39,25 +58,6 @@ class BankStatementController extends BaseApiController
             $query->where('statement_date', '<=', $validated['date_to']);
         }
 
-        $sortField = $validated['sort'] ?? 'created_at';
-        $sortDirection = $validated['direction'] ?? 'desc';
-        $query->orderBy($sortField, $sortDirection);
-
-        $statements = $query->paginate($validated['per_page'] ?? 25);
-
-        return $this->paginated(BankStatementResource::collection($statements), 'Bank statements retrieved');
-    }
-
-    public function show(int $id): JsonResponse
-    {
-        $statement = BankStatement::query()
-            ->with(['transactions', 'tags'])
-            ->find($id);
-
-        if (! $statement) {
-            return $this->notFound('Bank statement not found');
-        }
-
-        return $this->success(new BankStatementResource($statement), 'Bank statement retrieved');
+        return $query;
     }
 }

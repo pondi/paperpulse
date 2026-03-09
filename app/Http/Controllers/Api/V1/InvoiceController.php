@@ -4,29 +4,43 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Resources\Api\V1\InvoiceResource;
 use App\Models\Invoice;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 
-class InvoiceController extends BaseApiController
+class InvoiceController extends BaseEntityApiController
 {
-    public function index(Request $request): JsonResponse
+    protected function modelClass(): string
     {
-        $validated = $request->validate([
-            'page' => 'nullable|integer|min:1',
-            'per_page' => 'nullable|integer|min:1|max:100',
-            'sort' => 'nullable|string|in:invoice_date,due_date,total_amount,created_at',
-            'direction' => 'nullable|string|in:asc,desc',
+        return Invoice::class;
+    }
+
+    protected function resourceClass(): string
+    {
+        return InvoiceResource::class;
+    }
+
+    protected function allowedSortFields(): array
+    {
+        return ['invoice_date', 'due_date', 'total_amount', 'created_at'];
+    }
+
+    protected function filterRules(): array
+    {
+        return [
             'payment_status' => 'nullable|string',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
-        ]);
+        ];
+    }
 
-        $query = Invoice::query()
-            ->with(['merchant', 'category', 'lineItems', 'tags']);
+    protected function indexWith(): array
+    {
+        return ['merchant', 'category', 'lineItems', 'tags'];
+    }
 
+    protected function applyFilters(Builder $query, array $validated): Builder
+    {
         if (! empty($validated['payment_status'])) {
             $query->where('payment_status', $validated['payment_status']);
         }
@@ -39,25 +53,6 @@ class InvoiceController extends BaseApiController
             $query->where('invoice_date', '<=', $validated['date_to']);
         }
 
-        $sortField = $validated['sort'] ?? 'created_at';
-        $sortDirection = $validated['direction'] ?? 'desc';
-        $query->orderBy($sortField, $sortDirection);
-
-        $invoices = $query->paginate($validated['per_page'] ?? 25);
-
-        return $this->paginated(InvoiceResource::collection($invoices), 'Invoices retrieved');
-    }
-
-    public function show(int $id): JsonResponse
-    {
-        $invoice = Invoice::query()
-            ->with(['merchant', 'category', 'lineItems', 'tags'])
-            ->find($id);
-
-        if (! $invoice) {
-            return $this->notFound('Invoice not found');
-        }
-
-        return $this->success(new InvoiceResource($invoice), 'Invoice retrieved');
+        return $query;
     }
 }

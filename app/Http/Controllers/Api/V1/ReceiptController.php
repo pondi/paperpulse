@@ -4,30 +4,44 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Resources\Api\V1\ReceiptResource;
 use App\Models\Receipt;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 
-class ReceiptController extends BaseApiController
+class ReceiptController extends BaseEntityApiController
 {
-    public function index(Request $request): JsonResponse
+    protected function modelClass(): string
     {
-        $validated = $request->validate([
-            'page' => 'nullable|integer|min:1',
-            'per_page' => 'nullable|integer|min:1|max:100',
-            'sort' => 'nullable|string|in:receipt_date,total_amount,created_at',
-            'direction' => 'nullable|string|in:asc,desc',
+        return Receipt::class;
+    }
+
+    protected function resourceClass(): string
+    {
+        return ReceiptResource::class;
+    }
+
+    protected function allowedSortFields(): array
+    {
+        return ['receipt_date', 'total_amount', 'created_at'];
+    }
+
+    protected function filterRules(): array
+    {
+        return [
             'merchant' => 'nullable|string|max:255',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
             'currency' => 'nullable|string|max:3',
-        ]);
+        ];
+    }
 
-        $query = Receipt::query()
-            ->with(['file', 'merchant', 'category', 'lineItems', 'tags']);
+    protected function indexWith(): array
+    {
+        return ['file', 'merchant', 'category', 'lineItems', 'tags'];
+    }
 
+    protected function applyFilters(Builder $query, array $validated): Builder
+    {
         if (! empty($validated['merchant'])) {
             $query->whereHas('merchant', function ($q) use ($validated) {
                 $q->where('name', 'like', '%'.$validated['merchant'].'%');
@@ -46,25 +60,6 @@ class ReceiptController extends BaseApiController
             $query->where('currency', $validated['currency']);
         }
 
-        $sortField = $validated['sort'] ?? 'created_at';
-        $sortDirection = $validated['direction'] ?? 'desc';
-        $query->orderBy($sortField, $sortDirection);
-
-        $receipts = $query->paginate($validated['per_page'] ?? 25);
-
-        return $this->paginated(ReceiptResource::collection($receipts), 'Receipts retrieved');
-    }
-
-    public function show(int $id): JsonResponse
-    {
-        $receipt = Receipt::query()
-            ->with(['file', 'merchant', 'category', 'lineItems', 'tags'])
-            ->find($id);
-
-        if (! $receipt) {
-            return $this->notFound('Receipt not found');
-        }
-
-        return $this->success(new ReceiptResource($receipt), 'Receipt retrieved');
+        return $query;
     }
 }

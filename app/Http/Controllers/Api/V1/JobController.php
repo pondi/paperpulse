@@ -22,12 +22,15 @@ class JobController extends BaseApiController
             return $this->notFound('Job not found');
         }
 
-        // Scope to authenticated user via file_id
-        if ($job->file_id) {
-            $file = File::find($job->file_id);
-            if (! $file) {
-                return $this->notFound('Job not found');
-            }
+        // Scope to authenticated user via file_id.
+        // file_id is required — jobs without a file cannot be authorized.
+        if (! $job->file_id) {
+            return $this->notFound('Job not found');
+        }
+
+        $file = File::find($job->file_id);
+        if (! $file) {
+            return $this->notFound('Job not found');
         }
 
         $job->load('tasks');

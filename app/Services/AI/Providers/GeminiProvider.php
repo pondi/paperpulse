@@ -63,6 +63,13 @@ class GeminiProvider
     }
 
     /**
+     * Maximum provider-level retries for transient HTTP errors.
+     * These are quick retries with jitter to handle brief blips
+     * without consuming queue-level retry attempts.
+     */
+    protected int $maxProviderRetries = 3;
+
+    /**
      * Send a request to the Gemini API and return the parsed response.
      *
      * @return array{body: array, text: string}
@@ -75,31 +82,81 @@ class GeminiProvider
             $apiKey
         );
 
-        try {
-            $response = Http::timeout((int) config('ai.providers.gemini.timeout', 90))
-                ->asJson()
-                ->post($endpoint, $payload);
-        } catch (Exception $e) {
-            $this->handleRequestException($e);
-        }
+        $lastException = null;
 
-        if (! $response->successful()) {
+        for ($attempt = 1; $attempt <= $this->maxProviderRetries; $attempt++) {
+            try {
+                $response = Http::timeout((int) config('ai.providers.gemini.timeout', 90))
+                    ->asJson()
+                    ->post($endpoint, $payload);
+            } catch (Exception $e) {
+                // Connection/timeout errors are always retryable at provider level
+                if ($attempt < $this->maxProviderRetries) {
+                    Log::warning('[GeminiProvider] Request exception, retrying', [
+                        'attempt' => $attempt,
+                        'max_attempts' => $this->maxProviderRetries,
+                        'error' => $e->getMessage(),
+                    ]);
+                    usleep($this->retryDelayMicroseconds($attempt));
+
+                    continue;
+                }
+
+                $this->handleRequestException($e);
+            }
+
+            if ($response->successful()) {
+                $responseBody = $response->json();
+                $textResponse = $this->responseParser->extractTextResponse($responseBody);
+
+                return ['body' => $responseBody, 'text' => $textResponse];
+            }
+
             $status = $response->status();
-            $errorCode = $status === 429 ? GeminiApiException::CODE_RATE_LIMIT : GeminiApiException::CODE_API_ERROR;
             $retryable = in_array($status, [408, 429, 500, 502, 503, 504], true);
+
+            // Retry transient errors at the provider level before escalating
+            if ($retryable && $attempt < $this->maxProviderRetries) {
+                Log::warning('[GeminiProvider] Transient API error, retrying', [
+                    'status' => $status,
+                    'attempt' => $attempt,
+                    'max_attempts' => $this->maxProviderRetries,
+                ]);
+                usleep($this->retryDelayMicroseconds($attempt));
+
+                continue;
+            }
+
+            // Final attempt or non-retryable — throw
+            $errorCode = $status === 429 ? GeminiApiException::CODE_RATE_LIMIT : GeminiApiException::CODE_API_ERROR;
 
             throw new GeminiApiException(
                 'Gemini API error: '.$response->body(),
                 $errorCode,
                 $retryable,
-                ['status' => $status, 'body' => $response->body()]
+                ['status' => $status, 'body' => $response->body(), 'provider_attempts' => $attempt]
             );
         }
 
-        $responseBody = $response->json();
-        $textResponse = $this->responseParser->extractTextResponse($responseBody);
+        // Unreachable — loop always returns or throws
+        throw new GeminiApiException(
+            'Gemini API request failed after all provider retries.',
+            GeminiApiException::CODE_API_ERROR,
+            true,
+            ['provider_attempts' => $this->maxProviderRetries]
+        );
+    }
 
-        return ['body' => $responseBody, 'text' => $textResponse];
+    /**
+     * Calculate retry delay in microseconds with exponential backoff and jitter.
+     */
+    protected function retryDelayMicroseconds(int $attempt): int
+    {
+        // Base: 500ms, 1s, 2s with ±50% jitter
+        $baseMs = min(500 * (2 ** ($attempt - 1)), 4000);
+        $jitterMs = random_int((int) ($baseMs * 0.5), (int) ($baseMs * 1.5));
+
+        return $jitterMs * 1000;
     }
 
     /**

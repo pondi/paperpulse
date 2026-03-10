@@ -3,6 +3,7 @@ FROM alpine:3.22 AS php_build
 WORKDIR /var/www/html
 
 # Base PHP runtime with build tooling for Composer
+# Includes ImageMagick for Composer platform requirements (spatie/pdf-to-image dependency)
 RUN echo "GMT" > /etc/timezone \
     && apk add --no-cache \
         bash \
@@ -32,7 +33,9 @@ RUN echo "GMT" > /etc/timezone \
         php84-pecl-redis \
         php84-intl \
         php84-pcntl \
-        php84-posix
+        php84-posix \
+        php84-pecl-imagick \
+        imagemagick
 
 # Install Composer for dependency resolution
 RUN ln -sf /usr/bin/php84 /usr/bin/php \

@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
 class SecurityHeaders
@@ -16,9 +17,6 @@ class SecurityHeaders
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Generate a CSP nonce for Vite script tags
-        $nonce = Vite::useCspNonce();
-
         $response = $next($request);
 
         // Prevent clickjacking attacks
@@ -35,31 +33,6 @@ class SecurityHeaders
 
         // Permissions Policy (formerly Feature Policy)
         $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
-
-        // Content Security Policy
-        $viteServer = '';
-        if (app()->environment('local') && file_exists(public_path('hot'))) {
-            // In development with Vite running, allow the dev server
-            $viteUrl = trim(file_get_contents(public_path('hot')));
-            $viteServer = ' '.$viteUrl;
-        }
-
-        $appOrigin = 'https://paperpulse.app';
-
-        $csp = "default-src 'self'{$viteServer}; ".
-               "script-src 'self' 'nonce-{$nonce}' {$appOrigin}{$viteServer}; ".
-               "style-src 'self' 'unsafe-inline' https://fonts.bunny.net {$appOrigin}; ".
-               "img-src 'self' data: blob:; ".
-               "font-src 'self' data: https://fonts.bunny.net; ".
-               "connect-src 'self' data:{$viteServer} ws://localhost:* wss://localhost:* ws://paperpulse.test:* wss://paperpulse.test:*; ".
-               "media-src 'self'; ".
-               "object-src 'none'; ".
-               "base-uri 'self'; ".
-               "form-action 'self'; ".
-               "frame-ancestors 'self'; ".
-               'upgrade-insecure-requests;';
-
-        $response->headers->set('Content-Security-Policy', $csp);
 
         // Strict Transport Security (only for HTTPS)
         if ($request->secure()) {

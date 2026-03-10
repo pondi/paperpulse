@@ -8,46 +8,70 @@ use App\Models\BankStatement;
 use App\Models\BankTransaction;
 use App\Models\File;
 use App\Services\Factories\Concerns\ChecksDataPresence;
+use Illuminate\Database\Eloquent\Model;
 
-class BankStatementFactory
+class BankStatementFactory extends BaseEntityFactory
 {
     use ChecksDataPresence;
 
-    public function create(array $data, File $file): ?BankStatement
+    protected function modelClass(): string
     {
-        $data = $this->flattenData($data);
-
-        if (! $this->hasAny($data, ['account_number', 'iban', 'bank_name', 'statement_date'])) {
-            return null;
-        }
-
-        $statement = BankStatement::create([
-            'file_id' => $file->id,
-            'user_id' => $file->user_id,
-            'bank_name' => $data['bank_name'] ?? null,
-            'account_holder_name' => $data['account_holder_name'] ?? null,
-            'account_number' => $data['account_number'] ?? null,
-            'iban' => $data['iban'] ?? null,
-            'swift_code' => $data['swift_code'] ?? null,
-            'statement_date' => $data['statement_date'] ?? null,
-            'statement_period_start' => $data['statement_period_start'] ?? null,
-            'statement_period_end' => $data['statement_period_end'] ?? null,
-            'opening_balance' => $data['opening_balance'] ?? null,
-            'closing_balance' => $data['closing_balance'] ?? null,
-            'currency' => $data['currency'] ?? null,
-            'total_credits' => $data['total_credits'] ?? null,
-            'total_debits' => $data['total_debits'] ?? null,
-            'transaction_count' => $data['transaction_count'] ?? null,
-            'statement_data' => $data['statement_data'] ?? $data,
-        ]);
-
-        if (! empty($data['transactions'])) {
-            $this->createTransactions($data['transactions'], $statement);
-        }
-
-        return $statement;
+        return BankStatement::class;
     }
 
+    protected function fields(): array
+    {
+        return [
+            'bank_name',
+            'account_holder_name',
+            'account_number',
+            'iban',
+            'swift_code',
+            'statement_date',
+            'statement_period_start',
+            'statement_period_end',
+            'opening_balance',
+            'closing_balance',
+            'currency',
+            'total_credits',
+            'total_debits',
+            'transaction_count',
+        ];
+    }
+
+    protected function dateFields(): array
+    {
+        return ['statement_date', 'statement_period_start', 'statement_period_end'];
+    }
+
+    protected function rawDataField(): ?string
+    {
+        return 'statement_data';
+    }
+
+    protected function shouldCreate(array $data): bool
+    {
+        return $this->hasAny($data, ['account_number', 'iban', 'bank_name', 'statement_date']);
+    }
+
+    protected function prepareData(array $data, File $file): array
+    {
+        return $this->flattenData($data);
+    }
+
+    protected function afterCreate(Model $model, array $data, File $file): void
+    {
+        if (! empty($data['transactions'])) {
+            $this->createTransactions($data['transactions'], $model);
+        }
+    }
+
+    /**
+     * Create transactions for a bank statement.
+     *
+     * @param  array<int, array<string, mixed>>  $transactions
+     * @return array<int, BankTransaction>
+     */
     public function createTransactions(array $transactions, BankStatement $statement): array
     {
         $created = [];
@@ -55,11 +79,14 @@ class BankStatementFactory
         $totalDebits = 0;
 
         foreach ($transactions as $txn) {
+            $txnDate = $this->nullIfEmpty($txn['transaction_date'] ?? $txn['date'] ?? null);
+            $postingDate = $this->nullIfEmpty($txn['posting_date'] ?? null);
+
             $created[] = BankTransaction::create([
                 'bank_statement_id' => $statement->id,
                 'user_id' => $statement->user_id,
-                'transaction_date' => $txn['transaction_date'] ?? $txn['date'] ?? null,
-                'posting_date' => $txn['posting_date'] ?? null,
+                'transaction_date' => $txnDate,
+                'posting_date' => $postingDate,
                 'description' => $txn['description'] ?? null,
                 'reference' => $txn['reference'] ?? null,
                 'transaction_type' => $txn['transaction_type'] ?? null,
@@ -98,6 +125,9 @@ class BankStatementFactory
 
     /**
      * Flatten nested bank statement data from the normalizer.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
      */
     protected function flattenData(array $data): array
     {

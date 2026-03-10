@@ -164,7 +164,10 @@ class EntityFactory
             'contract' => $this->contractFactory->create($data, $file),
             'bank_statement' => $this->bankStatementFactory->create($data, $file),
             'bank_transactions' => $this->createBankTransactions($data, $context),
-            default => $this->documentFactory->create($data, $file, $type),
+            default => $this->documentFactory->create(
+                array_merge(['_fallback_type' => $type], $data),
+                $file,
+            ),
         };
     }
 

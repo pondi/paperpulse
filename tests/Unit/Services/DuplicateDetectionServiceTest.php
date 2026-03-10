@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\DuplicateFlag;
 use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Merchant;
@@ -35,7 +36,7 @@ it('flags files with matching hash', function () {
     $flags = $this->service->flagFileHashDuplicates($fileA);
 
     expect($flags)->toHaveCount(1);
-    expect($flags->first()->reason)->toBe('hash_match');
+    expect($flags->first()->reasons)->toBe(['hash_match']);
 });
 
 it('does not flag files with different hashes', function () {
@@ -173,4 +174,44 @@ it('does not create duplicate flags for same file pair', function () {
     expect($flags1)->toHaveCount(1);
     expect($flags2)->toHaveCount(1);
     expect($flags1->first()->id)->toBe($flags2->first()->id);
+});
+
+it('merges multiple reasons into json array without overflow', function () {
+    $merchant = Merchant::create(['name' => 'Store', 'user_id' => $this->user->id]);
+    $hash = hash('sha256', 'shared-content');
+
+    $receiptA = Receipt::factory()->create([
+        'user_id' => $this->user->id,
+        'receipt_date' => '2025-06-15',
+        'total_amount' => 42.50,
+        'merchant_id' => $merchant->id,
+        'file_id' => File::factory()->create([
+            'user_id' => $this->user->id,
+            'file_hash' => $hash,
+        ])->id,
+    ]);
+
+    Receipt::factory()->create([
+        'user_id' => $this->user->id,
+        'receipt_date' => '2025-06-15',
+        'total_amount' => 42.50,
+        'merchant_id' => $merchant->id,
+        'file_id' => File::factory()->create([
+            'user_id' => $this->user->id,
+            'file_hash' => $hash,
+        ])->id,
+    ]);
+
+    $fileA = File::find($receiptA->file_id);
+
+    // First: hash match
+    $this->service->flagFileHashDuplicates($fileA);
+    // Second: receipt match on same file pair
+    $this->service->flagReceiptDuplicates($receiptA);
+
+    $flag = DuplicateFlag::where('user_id', $this->user->id)->first();
+
+    expect($flag->reasons)->toBeArray();
+    expect($flag->reasons)->toContain('hash_match');
+    expect($flag->reasons)->toHaveCount(2);
 });

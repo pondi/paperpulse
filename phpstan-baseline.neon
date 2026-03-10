@@ -2251,7 +2251,7 @@ parameters:
 			path: app/Http/Resources/Inertia/DuplicateFlagInertiaResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\Inertia\\DuplicateFlagInertiaResource\:\:\$reason\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\Inertia\\DuplicateFlagInertiaResource\:\:\$reasons\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Resources/Inertia/DuplicateFlagInertiaResource.php

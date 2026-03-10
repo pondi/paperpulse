@@ -17,7 +17,7 @@ class DuplicateFlagInertiaResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'reason' => $this->reason,
+            'reasons' => $this->reasons ?? [],
             'status' => $this->status,
             'created_at' => $this->created_at,
             'resolved_at' => $this->resolved_at,

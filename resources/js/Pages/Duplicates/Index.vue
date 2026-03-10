@@ -29,7 +29,7 @@
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                                 <p class="text-xs uppercase tracking-wide text-zinc-500">{{ __('duplicate_reason') }}</p>
-                                <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ formatReason(flag.reason) }}</p>
+                                <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ formatReasons(flag.reasons) }}</p>
                                 <p class="text-xs text-zinc-500">{{ __('duplicate_detected_at') }} - {{ formatDate(flag.created_at) }}</p>
                             </div>
                             <button
@@ -98,13 +98,12 @@ const setBusy = (flagId, busy) => {
     }
 };
 
-const formatReason = (reason) => {
-    if (!reason) {
+const formatReasons = (reasons) => {
+    if (!reasons || reasons.length === 0) {
         return __('possible_duplicate');
     }
 
-    return reason
-        .split('|')
+    return reasons
         .map((part) => part.replace(/_/g, ' '))
         .join(', ');
 };

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.2](https://github.com/pondi/paperpulse/compare/v1.2.1...v1.2.2) (2026-03-10)
+
+
+### Bug Fixes
+
+* add retry resilience for transient Gemini API errors ([34fd685](https://github.com/pondi/paperpulse/commit/34fd68583ed69a5a85616be6be00b9c237478f93))
+* replace varchar reason with jsonb reasons on duplicate_flags ([4207d38](https://github.com/pondi/paperpulse/commit/4207d38baa9bae2f434da78b281b6e70051fe5ab))
+
+
+### Code Refactoring
+
+* introduce BaseEntityFactory with declarative lifecycle ([9c0ead7](https://github.com/pondi/paperpulse/commit/9c0ead795976b537738e1ea6b51e537d2721f145))
+
 ## [1.2.1](https://github.com/pondi/paperpulse/compare/v1.2.0...v1.2.1) (2026-03-10)
 
 

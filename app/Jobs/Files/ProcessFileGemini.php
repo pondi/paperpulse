@@ -26,9 +26,9 @@ class ProcessFileGemini extends BaseJob
 {
     public int $timeout = 600;
 
-    public int $tries = 3;
+    public int $tries = 5;
 
-    public $backoff = [60, 120, 240];
+    public $backoff = [60, 120, 300, 600, 900];
 
     /**
      * Track processing start time for analytics.
@@ -407,8 +407,11 @@ class ProcessFileGemini extends BaseJob
         return in_array($extension, ['txt', 'md', 'csv', 'log'], true);
     }
 
-    public function failed($exception): void
+    public function failed(Throwable $exception): void
     {
+        // Let BaseJob handle JobHistory updates and file status
+        parent::failed($exception);
+
         $metadata = $this->getMetadata();
         $file = null;
 

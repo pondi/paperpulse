@@ -29,7 +29,7 @@ it('lists open duplicate flags for authenticated user', function () {
         'user_id' => $user->id,
         'file_id' => $fileA->id,
         'duplicate_file_id' => $fileB->id,
-        'reason' => 'matching hash',
+        'reasons' => ['matching hash'],
         'status' => 'open',
     ]);
 
@@ -51,7 +51,7 @@ it('does not show resolved duplicate flags', function () {
         'user_id' => $user->id,
         'file_id' => $fileA->id,
         'duplicate_file_id' => $fileB->id,
-        'reason' => 'matching hash',
+        'reasons' => ['matching hash'],
         'status' => 'resolved',
         'resolved_file_id' => $fileB->id,
         'resolved_at' => now(),
@@ -83,7 +83,7 @@ it('resolves a duplicate by deleting the chosen file', function () {
         'user_id' => $user->id,
         'file_id' => $fileA->id,
         'duplicate_file_id' => $fileB->id,
-        'reason' => 'matching hash',
+        'reasons' => ['matching hash'],
         'status' => 'open',
     ]);
 
@@ -116,7 +116,7 @@ it('rejects resolve with invalid file id', function () {
         'user_id' => $user->id,
         'file_id' => $fileA->id,
         'duplicate_file_id' => $fileB->id,
-        'reason' => 'matching hash',
+        'reasons' => ['matching hash'],
         'status' => 'open',
     ]);
 
@@ -138,7 +138,7 @@ it('prevents resolving another users duplicate flag', function () {
         'user_id' => $owner->id,
         'file_id' => $fileA->id,
         'duplicate_file_id' => $fileB->id,
-        'reason' => 'matching hash',
+        'reasons' => ['matching hash'],
         'status' => 'open',
     ]);
 
@@ -160,7 +160,7 @@ it('ignores a duplicate flag by deleting it', function () {
         'user_id' => $user->id,
         'file_id' => $fileA->id,
         'duplicate_file_id' => $fileB->id,
-        'reason' => 'matching hash',
+        'reasons' => ['matching hash'],
         'status' => 'open',
     ]);
 
@@ -182,7 +182,7 @@ it('prevents ignoring another users duplicate flag', function () {
         'user_id' => $owner->id,
         'file_id' => $fileA->id,
         'duplicate_file_id' => $fileB->id,
-        'reason' => 'matching hash',
+        'reasons' => ['matching hash'],
         'status' => 'open',
     ]);
 

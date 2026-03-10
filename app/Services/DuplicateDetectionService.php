@@ -235,10 +235,10 @@ class DuplicateDetectionService
             ->first();
 
         if ($flag) {
-            $updatedReason = $this->mergeReason($flag->reason, $reason);
+            $existing = $flag->reasons ?? [];
 
-            if ($updatedReason !== $flag->reason) {
-                $flag->reason = $updatedReason;
+            if (! in_array($reason, $existing, true)) {
+                $flag->reasons = [...$existing, $reason];
                 $flag->save();
             }
 
@@ -249,7 +249,7 @@ class DuplicateDetectionService
             'user_id' => $userId,
             'file_id' => $primaryId,
             'duplicate_file_id' => $secondaryId,
-            'reason' => $reason,
+            'reasons' => [$reason],
             'status' => 'open',
         ]);
 
@@ -257,23 +257,10 @@ class DuplicateDetectionService
             'user_id' => $userId,
             'file_id' => $primaryId,
             'duplicate_file_id' => $secondaryId,
-            'reason' => $reason,
+            'reasons' => [$reason],
         ]);
 
         return $flag;
-    }
-
-    protected function mergeReason(?string $existing, string $incoming): string
-    {
-        if (! $existing) {
-            return $incoming;
-        }
-
-        $existingParts = array_filter(explode('|', $existing));
-        $incomingParts = array_filter(explode('|', $incoming));
-        $merged = array_unique(array_merge($existingParts, $incomingParts));
-
-        return implode('|', $merged);
     }
 
     protected function countNonEmpty(array $values): int

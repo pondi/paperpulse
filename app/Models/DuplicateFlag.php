@@ -11,15 +11,19 @@ class DuplicateFlag extends Model
         'user_id',
         'file_id',
         'duplicate_file_id',
-        'reason',
+        'reasons',
         'status',
         'resolved_file_id',
         'resolved_at',
     ];
 
-    protected $casts = [
-        'resolved_at' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'reasons' => 'array',
+            'resolved_at' => 'datetime',
+        ];
+    }
 
     public function user()
     {

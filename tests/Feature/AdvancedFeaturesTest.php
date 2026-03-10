@@ -95,7 +95,7 @@ describe('Duplicate Detection', function () {
             ->first();
 
         expect($flag)->not()->toBeNull();
-        expect($flag->reason)->toBe('hash_match');
+        expect($flag->reasons)->toBe(['hash_match']);
         expect($flag->status)->toBe('open');
     });
 });

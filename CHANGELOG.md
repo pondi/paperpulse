@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.3](https://github.com/pondi/paperpulse/compare/v1.2.2...v1.2.3) (2026-03-10)
+
+
+### Bug Fixes
+
+* resolve Reverb config at runtime instead of build time ([6a7535e](https://github.com/pondi/paperpulse/commit/6a7535ec528d2cd2f75bc275eec9ea080e5b99f2))
+* resolve Reverb config at runtime instead of build time ([5bf7491](https://github.com/pondi/paperpulse/commit/5bf7491131be9522adedb2213fbdd1643c8852a8))
+
 ## [1.2.2](https://github.com/pondi/paperpulse/compare/v1.2.1...v1.2.2) (2026-03-10)
 
 

@@ -181,8 +181,7 @@ class JobController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Could not fetch job status',
-                'error' => $e->getMessage(),
+                'message' => 'Could not fetch job status.',
                 'success' => false,
             ], 500);
         }
@@ -266,11 +265,11 @@ class JobController extends Controller
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to restart job chain: '.$e->getMessage(),
+                    'message' => 'Failed to restart job chain. Please try again.',
                 ], 500);
             }
 
-            return back()->with('error', 'Failed to restart job chain: '.$e->getMessage());
+            return back()->with('error', 'Failed to restart job chain. Please try again.');
         }
     }
 
@@ -332,9 +331,10 @@ class JobController extends Controller
                     $successCount++;
 
                 } catch (Exception $e) {
+                    Log::error('Failed to restart individual job chain', ['job_id' => $jobId, 'exception' => $e]);
                     $results[$jobId] = [
                         'success' => false,
-                        'message' => $e->getMessage(),
+                        'message' => 'Failed to restart job chain.',
                     ];
                     $failureCount++;
                 }
@@ -367,7 +367,7 @@ class JobController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to restart job chains: '.$e->getMessage(),
+                'message' => 'Failed to restart job chains. Please try again.',
             ], 500);
         }
     }
@@ -404,7 +404,7 @@ class JobController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get job chain status: '.$e->getMessage(),
+                'message' => 'Failed to get job chain status. Please try again.',
             ], 500);
         }
     }

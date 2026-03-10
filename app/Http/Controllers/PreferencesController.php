@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserPreference;
+use App\Rules\ExistsForUser;
 use DateTimeZone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -42,7 +43,7 @@ class PreferencesController extends Controller
             // Receipt processing preferences
             'auto_categorize' => 'boolean',
             'extract_line_items' => 'boolean',
-            'default_category_id' => 'nullable|exists:categories,id',
+            'default_category_id' => ['nullable', new ExistsForUser('categories')],
 
             // Notification preferences
             'notify_processing_complete' => 'boolean',

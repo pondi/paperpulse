@@ -46,6 +46,8 @@
             </div>
         </template>
 
+        <Breadcrumbs v-if="breadcrumbs.length" :crumbs="breadcrumbs" class="px-6 pt-4 max-w-7xl mx-auto" />
+
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <!-- Collection Details Card -->
@@ -156,6 +158,7 @@
 import { ref, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import IconPicker from '@/Components/Forms/IconPicker.vue';
 import ColorPicker from '@/Components/Forms/ColorPicker.vue';
 
@@ -171,6 +174,10 @@ const props = defineProps({
     isOwner: {
         type: Boolean,
         default: false
+    },
+    breadcrumbs: {
+        type: Array,
+        default: () => []
     }
 });
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\ExistsForUser;
 use Illuminate\Foundation\Http\FormRequest;
 
 class BulkReceiptIdsRequest extends FormRequest
@@ -15,7 +16,7 @@ class BulkReceiptIdsRequest extends FormRequest
     {
         return [
             'receipt_ids' => 'required|array',
-            'receipt_ids.*' => 'integer|exists:receipts,id',
+            'receipt_ids.*' => ['integer', new ExistsForUser('receipts')],
         ];
     }
 

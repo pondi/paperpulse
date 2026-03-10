@@ -9,6 +9,7 @@ use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Tag;
+use App\Rules\ExistsForUser;
 use App\Services\Documents\DocumentUploadHandler;
 use App\Services\FileProcessingService;
 use App\Services\StorageService;
@@ -41,10 +42,16 @@ class DocumentController extends BaseResourceController
         'title' => 'sometimes|string|max:255',
         'summary' => 'nullable|string|max:1000',
         'note' => 'nullable|string|max:1000',
-        'category_id' => 'nullable|exists:categories,id',
         'tags' => 'sometimes|array',
-        'tags.*' => 'integer|exists:tags,id',
     ];
+
+    protected function getValidationRules(string $operation): array
+    {
+        return array_merge($this->validationRules, [
+            'category_id' => ['nullable', new ExistsForUser('categories')],
+            'tags.*' => ['integer', new ExistsForUser('tags')],
+        ]);
+    }
 
     /**
      * Display a listing of the resource.
@@ -236,6 +243,11 @@ class DocumentController extends BaseResourceController
             // Flatten meta for Vue expectations
             'categories' => $meta['categories'] ?? [],
             'available_tags' => $meta['available_tags'] ?? [],
+            'breadcrumbs' => [
+                ['label' => 'Dashboard', 'href' => route('dashboard')],
+                ['label' => 'Documents', 'href' => route('documents.index')],
+                ['label' => $document->title ?? 'Document #'.$document->id],
+            ],
         ]);
     }
 
@@ -352,7 +364,7 @@ class DocumentController extends BaseResourceController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->back()->with('error', 'Failed to delete document: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Failed to delete document. Please try again.');
         }
     }
 
@@ -546,7 +558,7 @@ class DocumentController extends BaseResourceController
                 'file_type' => $fileType,
             ]);
 
-            return back()->with('error', 'Failed to upload file: '.$e->getMessage());
+            return back()->with('error', 'Failed to upload file. Please try again.');
         }
     }
 }

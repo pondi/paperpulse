@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
 class SecurityHeaders
@@ -15,6 +16,9 @@ class SecurityHeaders
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Generate a CSP nonce for Vite script tags
+        $nonce = Vite::useCspNonce();
+
         $response = $next($request);
 
         // Prevent clickjacking attacks
@@ -43,7 +47,7 @@ class SecurityHeaders
         $appOrigin = 'https://paperpulse.app';
 
         $csp = "default-src 'self'{$viteServer}; ".
-               "script-src 'self' 'unsafe-inline' 'unsafe-eval' {$appOrigin}{$viteServer}; ".
+               "script-src 'self' 'nonce-{$nonce}' {$appOrigin}{$viteServer}; ".
                "style-src 'self' 'unsafe-inline' https://fonts.bunny.net {$appOrigin}; ".
                "img-src 'self' data: blob:; ".
                "font-src 'self' data: https://fonts.bunny.net; ".

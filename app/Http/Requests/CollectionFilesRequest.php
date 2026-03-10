@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\ExistsForUser;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CollectionFilesRequest extends FormRequest
@@ -15,7 +16,7 @@ class CollectionFilesRequest extends FormRequest
     {
         return [
             'file_ids' => 'required|array|min:1',
-            'file_ids.*' => 'integer|exists:files,id',
+            'file_ids.*' => ['integer', new ExistsForUser('files')],
         ];
     }
 

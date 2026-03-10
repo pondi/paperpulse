@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PulseDavFile;
+use App\Rules\ExistsForUser;
 use App\Services\PulseDavService;
 use Exception;
 use Illuminate\Http\Request;
@@ -63,7 +64,7 @@ class PulseDavController extends Controller
     {
         $request->validate([
             'file_ids' => 'required|array',
-            'file_ids.*' => 'exists:pulsedav_files,id',
+            'file_ids.*' => [new ExistsForUser('pulsedav_files')],
             'file_type' => 'nullable|in:receipt,document',
         ]);
 
@@ -235,26 +236,16 @@ class PulseDavController extends Controller
                 'skipped' => $result['skipped'] ?? 0,
             ]);
         } catch (Exception $e) {
-            $response = [
-                'error' => 'Import failed',
-                'message' => $e->getMessage(),
-            ];
-
-            if (config('app.debug')) {
-                $response['debug'] = [
-                    'exception' => get_class($e),
-                    'trace' => $e->getTraceAsString(),
-                    'request_data' => $request->all(),
-                ];
-            }
-
             Log::error('[PulseDavController] Import exception', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'request' => $request->all(),
             ]);
 
-            return response()->json($response, 500);
+            return response()->json([
+                'error' => 'Import failed',
+                'message' => 'An error occurred during import. Please try again.',
+            ], 500);
         }
     }
 
@@ -266,7 +257,7 @@ class PulseDavController extends Controller
         $request->validate([
             'folder_path' => 'required|string',
             'tag_ids' => 'nullable|array',
-            'tag_ids.*' => 'exists:tags,id',
+            'tag_ids.*' => [new ExistsForUser('tags')],
         ]);
 
         // Verify tags belong to user

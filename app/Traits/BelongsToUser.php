@@ -6,6 +6,17 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Provides automatic user scoping for multi-tenant Eloquent models.
+ *
+ * WARNING: The global scope only applies when auth()->check() is true
+ * (i.e. during HTTP requests with an authenticated user). In queue workers,
+ * console commands, and any other non-HTTP context, the scope is silently
+ * disabled and all records are returned regardless of user_id.
+ *
+ * Always pass user_id explicitly when querying from jobs or services
+ * that may run outside of an HTTP request lifecycle.
+ */
 trait BelongsToUser
 {
     /**
@@ -49,7 +60,7 @@ trait BelongsToUser
     /**
      * Scope a query to include records for a specific user.
      *
-     * @param Builder $query
+     * @param  Builder  $query
      * @param  int|User  $user
      * @return Builder
      */
@@ -84,7 +95,7 @@ trait BelongsToUser
     /**
      * Scope a query to include all records (bypass user scope).
      *
-     * @param Builder $query
+     * @param  Builder  $query
      * @return Builder
      */
     public function scopeWithoutUserScope($query)

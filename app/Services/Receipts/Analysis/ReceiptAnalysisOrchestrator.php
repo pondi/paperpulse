@@ -5,7 +5,7 @@ namespace App\Services\Receipts\Analysis;
 use App\Contracts\Services\ReceiptEnricherContract;
 use App\Contracts\Services\ReceiptParserContract;
 use App\Contracts\Services\ReceiptValidatorContract;
-use App\Models\Receipt;/**
+use App\Models\Receipt; /**
  * Thin orchestrator for running receipt analysis using the runner.
  *
  * Delegates the full pipeline to ReceiptAnalysisRunner while exposing

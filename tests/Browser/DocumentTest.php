@@ -1,0 +1,246 @@
+<?php
+
+use App\Models\Contract;
+use App\Models\Document;
+use App\Models\ExtractableEntity;
+use App\Models\File;
+use App\Models\Invoice;
+use Laravel\Dusk\Browser;
+
+test('upload page loads', function () {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user) {
+        $this->loginAs($browser, $user);
+
+        $browser->visit('/documents/upload')
+            ->waitForText('Upload Your Documents')
+            ->assertSee('Upload Your Documents')
+            ->assertSee('Upload files')
+            ->assertSee('or drag and drop')
+            ->assertPresent('input[type="file"]');
+    });
+});
+
+test('file type toggle works', function () {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user) {
+        $this->loginAs($browser, $user);
+
+        $browser->visit('/documents/upload')
+            ->waitForText('Upload Your Documents');
+
+        // Receipt is active by default — verify hint text for receipts
+        $browser->assertSee('PDF, PNG, JPG up to 10MB');
+
+        // Click Document toggle button (not a link — it's a <button>)
+        $browser->click('button[class*="rounded-r-lg"]')
+            ->pause(300);
+
+        // Document hint text should appear with expanded file types
+        $browser->assertSee('PDF, PNG, JPG, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV up to 50MB');
+
+        // Click Receipt toggle back
+        $browser->click('button[class*="rounded-l-lg"]')
+            ->pause(300);
+
+        // Receipt hint text should return
+        $browser->assertSee('PDF, PNG, JPG up to 10MB');
+    });
+});
+
+test('can attach file for upload', function () {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user) {
+        $this->loginAs($browser, $user);
+
+        $browser->visit('/documents/upload')
+            ->waitForText('Upload Your Documents')
+            ->attach('input[type="file"]', realpath(__DIR__.'/fixtures/test-receipt.pdf'))
+            ->pause(1000)
+            ->assertSee('test-receipt.pdf')
+            ->assertSee('Upload 1 file');
+    });
+});
+
+test('can attach image file for upload', function () {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user) {
+        $this->loginAs($browser, $user);
+
+        $browser->visit('/documents/upload')
+            ->waitForText('Upload Your Documents')
+            ->attach('input[type="file"]', realpath(__DIR__.'/fixtures/test-image.jpg'))
+            ->pause(1000)
+            ->assertSee('test-image.jpg')
+            ->assertSee('Upload 1 file');
+    });
+});
+
+test('upload submit button is disabled with no files', function () {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user) {
+        $this->loginAs($browser, $user);
+
+        $browser->visit('/documents/upload')
+            ->waitForText('Upload Your Documents')
+            ->assertSee('Upload 0 files')
+            ->assertPresent('button[disabled]');
+    });
+});
+
+test('documents index loads', function () {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user) {
+        $this->loginAs($browser, $user);
+
+        $browser->visit('/documents')
+            ->waitForText('Documents')
+            ->assertSee('Documents')
+            ->assertSee('Upload Document');
+    });
+});
+
+test('documents index shows empty state when no documents', function () {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user) {
+        $this->loginAs($browser, $user);
+
+        $browser->visit('/documents')
+            ->waitForText('Documents')
+            ->pause(500)
+            ->assertSee('No documents found')
+            ->assertSee('Upload your first document to get started.');
+    });
+});
+
+test('documents index shows documents when they exist', function () {
+    $user = $this->createUser();
+
+    // Create a completed file with a primary Document entity
+    $file = File::factory()->create([
+        'user_id' => $user->id,
+        'file_type' => 'document',
+        'processing_type' => 'document',
+        'status' => 'completed',
+    ]);
+
+    $document = Document::factory()->create([
+        'file_id' => $file->id,
+        'user_id' => $user->id,
+        'title' => 'Test Document Alpha',
+    ]);
+
+    ExtractableEntity::create([
+        'file_id' => $file->id,
+        'user_id' => $user->id,
+        'entity_type' => 'document',
+        'entity_id' => $document->id,
+        'is_primary' => true,
+        'extracted_at' => now(),
+    ]);
+
+    $this->browse(function (Browser $browser) use ($user) {
+        $this->loginAs($browser, $user);
+
+        $browser->visit('/documents')
+            ->waitForText('Documents')
+            ->pause(500)
+            ->assertSee('Test Document Alpha')
+            ->assertDontSee('No documents found');
+    });
+});
+
+test('documents index shows entity type badges', function () {
+    $user = $this->createUser();
+
+    // Create a Document entity
+    $docFile = File::factory()->create([
+        'user_id' => $user->id,
+        'file_type' => 'document',
+        'processing_type' => 'document',
+        'status' => 'completed',
+    ]);
+
+    $document = Document::factory()->create([
+        'file_id' => $docFile->id,
+        'user_id' => $user->id,
+        'title' => 'Badge Test Doc',
+    ]);
+
+    ExtractableEntity::create([
+        'file_id' => $docFile->id,
+        'user_id' => $user->id,
+        'entity_type' => 'document',
+        'entity_id' => $document->id,
+        'is_primary' => true,
+        'extracted_at' => now(),
+    ]);
+
+    // Create an Invoice entity
+    $invoiceFile = File::factory()->create([
+        'user_id' => $user->id,
+        'file_type' => 'document',
+        'processing_type' => 'invoice',
+        'status' => 'completed',
+    ]);
+
+    $invoice = Invoice::factory()->create([
+        'file_id' => $invoiceFile->id,
+        'user_id' => $user->id,
+        'from_name' => 'Acme Corp',
+    ]);
+
+    ExtractableEntity::create([
+        'file_id' => $invoiceFile->id,
+        'user_id' => $user->id,
+        'entity_type' => 'invoice',
+        'entity_id' => $invoice->id,
+        'is_primary' => true,
+        'extracted_at' => now(),
+    ]);
+
+    $this->browse(function (Browser $browser) use ($user) {
+        $this->loginAs($browser, $user);
+
+        $browser->visit('/documents')
+            ->waitForText('Documents')
+            ->pause(500)
+            ->assertSee('Document')
+            ->assertSee('Invoice')
+            ->assertDontSee('No documents found');
+    });
+});
+
+test('search input is visible on documents index', function () {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user) {
+        $this->loginAs($browser, $user);
+
+        $browser->visit('/documents')
+            ->waitForText('Documents')
+            ->assertPresent('input[type="search"]');
+    });
+});
+
+test('view mode toggle exists on documents index', function () {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user) {
+        $this->loginAs($browser, $user);
+
+        $browser->visit('/documents')
+            ->waitForText('Documents')
+            ->assertSee('Filters');
+
+        // Both grid and list toggle buttons should be present (SVG icon buttons)
+        $browser->assertPresent('button svg');
+    });
+});

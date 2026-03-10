@@ -86,7 +86,7 @@ class SendInvitation extends Command
             // Approve the pending request
             $existingInvitation->markAsSent();
             $invitation = $existingInvitation->fresh();
-            $this->info("Pending invitation request approved!");
+            $this->info('Pending invitation request approved!');
         } else {
             // Create new invitation directly
             $invitation = Invitation::create([

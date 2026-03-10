@@ -11,4 +11,3 @@ interface Taggable
      */
     public function tags(): BelongsToMany;
 }
-

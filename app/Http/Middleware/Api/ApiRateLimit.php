@@ -17,11 +17,19 @@ class ApiRateLimit
         $key = $this->resolveRequestSignature($request);
 
         if ($this->limiter->tooManyAttempts($key, $maxAttempts)) {
+            $retryAfter = $this->limiter->availableIn($key);
+
             return response()->json([
                 'status' => 'error',
+                'code' => 'RATE_LIMITED',
                 'message' => 'Too many requests',
-                'retry_after' => $this->limiter->availableIn($key),
-            ], 429);
+                'errors' => null,
+                'retry_after' => $retryAfter,
+                'timestamp' => now()->toISOString(),
+            ], 429)->withHeaders([
+                'Retry-After' => $retryAfter,
+                'X-RateLimit-Reset' => now()->addSeconds($retryAfter)->getTimestamp(),
+            ]);
         }
 
         $this->limiter->hit($key, $decayMinutes * 60);

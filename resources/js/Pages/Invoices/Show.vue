@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import Modal from '@/Components/Common/Modal.vue';
 import TagManager from '@/Components/Domain/TagManager.vue';
 import SharingControls from '@/Components/Domain/SharingControls.vue';
@@ -103,9 +104,15 @@ interface Invoice {
     file: FileInfo | null;
 }
 
+interface Crumb {
+    label: string;
+    href?: string;
+}
+
 interface Props {
     invoice: Invoice;
     available_tags: Tag[];
+    breadcrumbs?: Crumb[];
 }
 
 const props = defineProps<Props>();
@@ -294,6 +301,8 @@ const getInvoiceTypeClass = () => {
             </div>
         </template>
 
+        <Breadcrumbs v-if="breadcrumbs?.length" :crumbs="breadcrumbs" class="px-6 pt-4" />
+
         <div class="flex h-[calc(100vh-9rem)] overflow-hidden">
             <!-- Left Panel - Invoice Details -->
             <div class="w-1/2 p-6 overflow-y-auto border-r border-amber-200 dark:border-zinc-700">
@@ -302,7 +311,7 @@ const getInvoiceTypeClass = () => {
                     <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-x-3">
-                                <div :class="[getInvoiceTypeClass(), 'flex-none rounded-full p-1']">
+                                <div :class="[getInvoiceTypeClass(), 'flex-none rounded-full p-1']" aria-hidden="true">
                                     <div class="size-2 rounded-full bg-current" />
                                 </div>
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200">Invoice Details</h3>

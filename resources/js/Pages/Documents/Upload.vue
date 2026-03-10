@@ -60,7 +60,7 @@
                                             : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-600 hover:bg-amber-50 dark:hover:bg-zinc-700'
                                     ]"
                                 >
-                                    <ReceiptRefundIcon class="h-5 w-5 inline-block mr-2" />
+                                    <ReceiptRefundIcon class="h-5 w-5 inline-block mr-2" aria-hidden="true" />
                                     Receipt
                                 </button>
                                 <button
@@ -73,7 +73,7 @@
                                             : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-600 hover:bg-amber-50 dark:hover:bg-zinc-700'
                                     ]"
                                 >
-                                    <DocumentIcon class="h-5 w-5 inline-block mr-2" />
+                                    <DocumentIcon class="h-5 w-5 inline-block mr-2" aria-hidden="true" />
                                     Document
                                 </button>
                             </div>
@@ -130,8 +130,9 @@
                                                     class="h-16 w-16 object-cover rounded-lg"
                                                     alt="File preview"
                                                 />
-                                                <DocumentIcon v-else 
+                                                <DocumentIcon v-else
                                                     class="h-16 w-16 text-zinc-400"
+                                                    aria-hidden="true"
                                                 />
                                             </div>
                                             <div class="ml-4 flex-1 min-w-0">
@@ -148,7 +149,7 @@
                                                 type="button"
                                             >
                                                 <span class="sr-only">Remove file</span>
-                                                <XMarkIcon class="h-5 w-5" />
+                                                <XMarkIcon class="h-5 w-5" aria-hidden="true" />
                                             </button>
                                         </div>
                                     </div>

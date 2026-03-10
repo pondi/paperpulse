@@ -40,3 +40,15 @@ AGENTS.md
 
 # Local build/push helper (intentionally untracked)
 build-push.local.sh
+
+# Project issues tracking
+.issues/
+
+# Dusk
+.env.dusk.local
+tests/Browser/screenshots/*
+tests/Browser/source/*
+tests/Browser/console/*
+!tests/Browser/screenshots/.gitkeep
+!tests/Browser/source/.gitkeep
+!tests/Browser/console/.gitkeep

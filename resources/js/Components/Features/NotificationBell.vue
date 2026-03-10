@@ -46,7 +46,7 @@
         </div>
         
         <div v-else-if="notifications.length === 0" class="px-4 py-8 text-center">
-          <BellSlashIcon class="mx-auto h-12 w-12 text-zinc-400" />
+          <BellSlashIcon class="mx-auto h-12 w-12 text-zinc-400" aria-hidden="true" />
           <p class="mt-2 text-sm text-zinc-500">{{ __('no_notifications') }}</p>
         </div>
         
@@ -77,9 +77,10 @@
                 </div>
                 <button
                   @click.stop="deleteNotification(notification.id)"
+                  aria-label="Delete notification"
                   class="ml-2 text-zinc-400 hover:text-zinc-600"
                 >
-                  <XMarkIcon class="h-4 w-4" />
+                  <XMarkIcon class="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             </div>

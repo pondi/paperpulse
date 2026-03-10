@@ -119,6 +119,11 @@ class CollectionController extends Controller
             'stats' => $stats,
             'shares' => $shares,
             'isOwner' => $collection->user_id === auth()->id(),
+            'breadcrumbs' => [
+                ['label' => 'Dashboard', 'href' => route('dashboard')],
+                ['label' => 'Collections', 'href' => route('collections.index')],
+                ['label' => $collection->name],
+            ],
         ]);
     }
 

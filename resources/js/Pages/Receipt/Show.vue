@@ -26,6 +26,8 @@
       </div>
     </template>
 
+    <Breadcrumbs v-if="breadcrumbs.length" :crumbs="breadcrumbs" class="px-6 pt-4" />
+
     <div class="flex h-[calc(100vh-9rem)] overflow-hidden">
       <!-- Left Panel - Receipt Details -->
       <div class="w-1/2 p-6 overflow-y-auto border-r border-amber-200 dark:border-zinc-700">
@@ -34,10 +36,10 @@
           <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-x-3">
-                <div :class="[getStatusClass(receipt), 'flex-none rounded-full p-1']">
+                <div :class="[getStatusClass(receipt), 'flex-none rounded-full p-1']" aria-hidden="true">
                   <div class="size-2 rounded-full bg-current" />
                 </div>
-                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200">{{ __('receipt_status') }}</h3>
+                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200">{{ __('receipt_status') }}: {{ getStatusLabel(receipt) }}</h3>
               </div>
               <button
                 @click="isEditing = !isEditing"
@@ -232,6 +234,7 @@
 import { ref, computed, watch } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import Modal from '@/Components/Common/Modal.vue';
 import SharingControls from '@/Components/Domain/SharingControls.vue';
 import TagManager from '@/Components/Domain/TagManager.vue';
@@ -253,6 +256,10 @@ const props = defineProps({
   receipt: {
     type: Object,
     required: true
+  },
+  breadcrumbs: {
+    type: Array,
+    default: () => []
   }
 });
 
@@ -419,6 +426,12 @@ const getStatusClass = (receipt) => {
   if (!receipt?.merchant_id) return 'text-zinc-500 bg-amber-100/10'
   if (receipt?.total_amount === null) return 'text-rose-400 bg-rose-400/10'
   return 'text-green-400 bg-green-400/10'
+}
+
+const getStatusLabel = (receipt) => {
+  if (!receipt?.merchant_id) return 'Pending'
+  if (receipt?.total_amount === null) return 'Incomplete'
+  return 'Complete'
 }
 
 const editLineItem = (item) => {

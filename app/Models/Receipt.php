@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Contracts\Taggable;
 use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
+use App\Traits\InvalidatesSearchFacets;
 use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
 use Carbon\Carbon;
@@ -48,10 +49,22 @@ class Receipt extends Model implements Taggable
 {
     use BelongsToUser;
     use HasFactory;
+    use InvalidatesSearchFacets;
     use Searchable;
     use ShareableModel;
     use SoftDeletes;
     use TaggableModel;
+
+    protected static function booted(): void
+    {
+        $flushDashboard = function (self $receipt): void {
+            \Illuminate\Support\Facades\Cache::forget("dashboard_stats:{$receipt->user_id}");
+        };
+
+        static::created($flushDashboard);
+        static::updated($flushDashboard);
+        static::deleted($flushDashboard);
+    }
 
     protected $fillable = [
         'file_id',

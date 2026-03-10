@@ -8,6 +8,7 @@ import SharingControls from '@/Components/Domain/SharingControls.vue';
 import DocumentImage from '@/Components/Domain/DocumentImage.vue';
 import CollectionSelector from '@/Components/Domain/CollectionSelector.vue';
 import CollectionBadge from '@/Components/Domain/CollectionBadge.vue';
+import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import {
     DocumentIcon,
     FolderIcon,
@@ -77,10 +78,16 @@ interface Document {
     file: FileInfo | null;
 }
 
+interface Crumb {
+    label: string;
+    href?: string;
+}
+
 interface Props {
     document: Document;
     categories: Category[];
     available_tags: Tag[];
+    breadcrumbs: Crumb[];
 }
 
 const props = defineProps<Props>();
@@ -258,6 +265,8 @@ const getDocumentTypeClass = () => {
             </div>
         </template>
 
+        <Breadcrumbs v-if="breadcrumbs?.length" :crumbs="breadcrumbs" class="px-6 pt-4" />
+
         <div class="flex h-[calc(100vh-9rem)] overflow-hidden">
             <!-- Left Panel - Document Details -->
             <div class="w-1/2 p-6 overflow-y-auto border-r border-amber-200 dark:border-zinc-700">
@@ -266,7 +275,7 @@ const getDocumentTypeClass = () => {
                     <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-x-3">
-                                <div :class="[getDocumentTypeClass(), 'flex-none rounded-full p-1']">
+                                <div :class="[getDocumentTypeClass(), 'flex-none rounded-full p-1']" aria-hidden="true">
                                     <div class="size-2 rounded-full bg-current" />
                                 </div>
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200">Document Details</h3>

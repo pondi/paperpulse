@@ -6,9 +6,11 @@ use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
 use App\Models\User;
+use App\Rules\ExistsForUser;
 use App\Services\SharingService;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class CategoryController extends Controller
@@ -120,7 +122,7 @@ class CategoryController extends Controller
     {
         $request->validate([
             'categories' => 'required|array',
-            'categories.*.id' => 'required|integer|exists:categories,id',
+            'categories.*.id' => ['required', 'integer', new ExistsForUser('categories')],
             'categories.*.sort_order' => 'required|integer|min:0',
         ]);
 
@@ -190,7 +192,9 @@ class CategoryController extends Controller
 
             return back()->with('success', 'Category shared successfully');
         } catch (Exception $e) {
-            return back()->with('error', $e->getMessage());
+            Log::error('Failed to share category', ['category_id' => $category->id, 'exception' => $e]);
+
+            return back()->with('error', 'Failed to share category. Please try again.');
         }
     }
 

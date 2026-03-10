@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 class TextractStorageBridge
 {
     protected StorageService $storageService;
+
     protected FileStorageService $fileStorageService;
 
     public function __construct(
@@ -31,10 +32,11 @@ class TextractStorageBridge
     /**
      * Transfer file from DigitalOcean to AWS Textract bucket.
      *
-     * @param string $digitalOceanPath S3 path in DigitalOcean ('paperpulse' disk)
-     * @param string $fileGuid Unique file identifier
-     * @param string $extension File extension
+     * @param  string  $digitalOceanPath  S3 path in DigitalOcean ('paperpulse' disk)
+     * @param  string  $fileGuid  Unique file identifier
+     * @param  string  $extension  File extension
      * @return array ['textract_path' => string, 'local_path' => string]
+     *
      * @throws Exception
      */
     public function transferToTextractBucket(
@@ -50,7 +52,7 @@ class TextractStorageBridge
         // 1. Download from DigitalOcean Spaces
         $fileContent = $this->storageService->getFile($digitalOceanPath);
 
-        if (!$fileContent) {
+        if (! $fileContent) {
             throw new Exception("Failed to download file from DigitalOcean: {$digitalOceanPath}");
         }
 
@@ -67,7 +69,7 @@ class TextractStorageBridge
         );
 
         // 3. Upload to AWS Textract bucket
-        $textractPath = "temp/{$fileGuid}/" . basename($localPath);
+        $textractPath = "temp/{$fileGuid}/".basename($localPath);
 
         try {
             Storage::disk('textract')->put($textractPath, $fileContent);
@@ -94,8 +96,8 @@ class TextractStorageBridge
     /**
      * Clean up files from Textract bucket and local temp storage.
      *
-     * @param string $textractPath Path in Textract bucket
-     * @param string|null $localPath Optional local temp path
+     * @param  string  $textractPath  Path in Textract bucket
+     * @param  string|null  $localPath  Optional local temp path
      */
     public function cleanupFromTextractBucket(
         string $textractPath,

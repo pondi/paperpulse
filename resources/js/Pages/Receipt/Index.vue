@@ -30,6 +30,7 @@
                       <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left">
                         <input
                           type="checkbox"
+                          aria-label="Select all receipts"
                           class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                           :checked="allSelected"
                           @change="toggleAllSelection"
@@ -63,6 +64,7 @@
                       <td class="px-6 py-4 whitespace-nowrap" @click.stop>
                         <input
                           type="checkbox"
+                          :aria-label="`Select receipt from ${receipt.merchant?.name || 'unknown merchant'}`"
                           class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                           :value="receipt.id"
                           :checked="selectedReceipts.includes(receipt.id)"
@@ -71,8 +73,9 @@
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <div :class="[getStatusClass(receipt), 'flex-none rounded-full p-1 inline-block']">
-                          <div class="size-2 rounded-full bg-current" />
+                          <div class="size-2 rounded-full bg-current" aria-hidden="true" />
                         </div>
+                        <span class="sr-only">{{ getStatusLabel(receipt) }}</span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap" @click="openReceipt(receipt)">
                         <div class="text-sm font-bold text-zinc-900 dark:text-zinc-100">
@@ -210,9 +213,8 @@
                               <h3 class="text-xl font-black text-zinc-900 dark:text-zinc-100 sm:text-2xl">
                                 {{ formatCurrency(selectedReceipt?.total_amount, selectedReceipt?.currency) }}
                               </h3>
-                              <span :class="[getStatusClass(selectedReceipt), 'ml-2.5 inline-block size-2 shrink-0 rounded-full']">
-                                <span class="sr-only">Status</span>
-                              </span>
+                              <span :class="[getStatusClass(selectedReceipt), 'ml-2.5 inline-block size-2 shrink-0 rounded-full']" aria-hidden="true" />
+                              <span class="sr-only">{{ getStatusLabel(selectedReceipt) }}</span>
                             </div>
                             <p class="text-sm text-zinc-500">{{ formatDate(selectedReceipt?.receipt_date) }}</p>
                           </div>
@@ -514,6 +516,12 @@ const getStatusClass = (receipt) => {
   if (!receipt?.merchant_id) return 'text-zinc-500 bg-amber-100/10'
   if (receipt?.total_amount === null) return 'text-rose-400 bg-rose-400/10'
   return 'text-green-400 bg-green-400/10'
+}
+
+const getStatusLabel = (receipt) => {
+  if (!receipt?.merchant_id) return 'Pending'
+  if (receipt?.total_amount === null) return 'Incomplete'
+  return 'Complete'
 }
 
 const getCategoryClass = (category) => {

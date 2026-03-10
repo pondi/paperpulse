@@ -20,9 +20,9 @@ use Illuminate\Support\Facades\Log;
  */
 class AnalyzeDocument extends BaseJob
 {
-    public $timeout = 3600;
+    public int $timeout = 3600;
 
-    public $tries = 3;
+    public int $tries = 3;
 
     public $backoff = 30;
 

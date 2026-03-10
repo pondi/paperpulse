@@ -117,4 +117,3 @@ test('parseStructuredPage extracts key value pairs and tables', function () {
         ->and($parsed['tables'])->toHaveCount(1)
         ->and($parsed['text'])->toBe('');
 });
-

@@ -7,6 +7,7 @@ use App\Http\Resources\Inertia\ReceiptInertiaResource;
 use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Models\Tag;
+use App\Rules\ExistsForUser;
 use App\Services\DocumentService;
 use App\Services\Receipts\Analysis\DateUpdateNotifier;
 use App\Services\Receipts\ReceiptSortApplier;
@@ -43,10 +44,16 @@ class ReceiptController extends BaseResourceController
         'receipt_category' => 'nullable|string|max:255',
         'receipt_description' => 'nullable|string|max:1000',
         'note' => 'nullable|string|max:1000',
-        'merchant_id' => 'nullable|exists:merchants,id',
         'tags' => 'sometimes|array',
-        'tags.*' => 'integer|exists:tags,id',
     ];
+
+    protected function getValidationRules(string $operation): array
+    {
+        return array_merge($this->validationRules, [
+            'merchant_id' => ['nullable', new ExistsForUser('merchants')],
+            'tags.*' => ['integer', new ExistsForUser('tags')],
+        ]);
+    }
 
     protected DocumentService $documentService;
 
@@ -67,6 +74,11 @@ class ReceiptController extends BaseResourceController
         return Inertia::render("{$this->resource}/Show", [
             'receipt' => ReceiptInertiaResource::forShow($receipt)->toArray(request()),
             'meta' => $this->getShowMeta(),
+            'breadcrumbs' => [
+                ['label' => 'Dashboard', 'href' => route('dashboard')],
+                ['label' => 'Receipts', 'href' => route('receipts.index')],
+                ['label' => $receipt->merchant?->name ?? 'Receipt #'.$receipt->id],
+            ],
         ]);
     }
 
@@ -319,7 +331,7 @@ class ReceiptController extends BaseResourceController
         $receipt = $this->findModel($id);
         $this->authorize('update', $receipt);
 
-        $validated = $request->validate($this->validationRules);
+        $validated = $request->validate($this->getValidationRules('update'));
 
         // Sanitize string inputs
         $validated = $this->sanitizeData($validated, ['receipt_category', 'receipt_description', 'note']);

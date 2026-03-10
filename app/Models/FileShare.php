@@ -50,7 +50,6 @@ class FileShare extends Model
         'accessed_at',
     ];
 
-
     /**
      * The attributes that should be cast.
      *

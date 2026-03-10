@@ -45,7 +45,7 @@
                         :key="index"
                         :is="link.url ? 'Link' : 'span'"
                         :href="link.url"
-                        v-html="link.label"
+                        v-html="sanitizeLabel(link.label)"
                         :class="[
                             'relative inline-flex items-center px-4 py-2 text-sm font-bold transition-all duration-200',
                             index === 0 ? 'rounded-l-md' : '',
@@ -70,6 +70,13 @@ defineProps({
     links: Array,
     from: Number,
     to: Number,
-    total: Number
+    total: Number,
 })
+
+const sanitizeLabel = (label) => {
+    if (!label) return '';
+    // Strip all HTML tags, only allow known safe HTML entities for pagination arrows
+    const stripped = label.replace(/<[^>]*>/g, '');
+    return stripped.replace(/&(?!(laquo|raquo|lt|gt|amp|quot|#039);)/gi, '&amp;');
+}
 </script>

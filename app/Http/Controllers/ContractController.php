@@ -64,6 +64,11 @@ class ContractController extends BaseResourceController
         return Inertia::render('Contracts/Show', [
             'contract' => ContractInertiaResource::forShow($contract)->toArray(request()),
             'available_tags' => auth()->user()->tags()->orderBy('name')->get(),
+            'breadcrumbs' => [
+                ['label' => 'Dashboard', 'href' => route('dashboard')],
+                ['label' => 'Contracts', 'href' => route('contracts.index')],
+                ['label' => $contract->contract_title ?? 'Contract #'.$contract->id],
+            ],
         ]);
     }
 

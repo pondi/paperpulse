@@ -251,16 +251,25 @@ const formatDate = (date) => {
   });
 };
 
+const escapeHtml = (str) => {
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+  return str.replace(/[&<>"']/g, (c) => map[c]);
+};
+
 const highlightText = (text) => {
-  if (!text || !props.searchQuery) return text;
+  if (!text || !props.searchQuery) return escapeHtml(text || '');
 
   const query = props.searchQuery.trim();
-  if (!query) return text;
+  if (!query) return escapeHtml(text);
 
-  // Escape special regex characters
+  // Escape HTML entities first to neutralize any malicious markup
+  const safeText = escapeHtml(text);
+
+  // Escape special regex characters in the query, then escape query for HTML matching
   const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${escapedQuery})`, 'gi');
+  const safeQuery = escapeHtml(escapedQuery);
+  const regex = new RegExp(`(${safeQuery})`, 'gi');
 
-  return text.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-900/50 text-zinc-900 dark:text-white px-0.5 rounded">$1</mark>');
+  return safeText.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-900/50 text-zinc-900 dark:text-white px-0.5 rounded">$1</mark>');
 };
 </script>

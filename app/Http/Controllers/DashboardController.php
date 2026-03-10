@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Merchant;
 use App\Models\Receipt;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -13,19 +14,25 @@ class DashboardController extends Controller
     {
         $userId = auth()->id();
 
-        // Get total amount and count of receipts for current user
-        $receiptStats = Receipt::where('user_id', $userId)
-            ->select(
-                DB::raw('COUNT(*) as count'),
-                DB::raw('SUM(total_amount) as total_amount')
-            )->first();
+        $stats = Cache::remember("dashboard_stats:{$userId}", 300, function () use ($userId) {
+            $receiptStats = Receipt::where('user_id', $userId)
+                ->select(
+                    DB::raw('COUNT(*) as count'),
+                    DB::raw('SUM(total_amount) as total_amount')
+                )->first();
 
-        // Get count of unique merchants for current user
-        $merchantCount = Merchant::whereHas('receipts', function ($query) use ($userId) {
-            $query->where('user_id', $userId);
-        })->count();
+            $merchantCount = Merchant::whereHas('receipts', function ($query) use ($userId) {
+                $query->where('user_id', $userId);
+            })->count();
 
-        // Get recent receipts for current user
+            return [
+                'receiptCount' => $receiptStats->count ?? 0,
+                'totalAmount' => (float) ($receiptStats->total_amount ?? 0),
+                'merchantCount' => $merchantCount,
+            ];
+        });
+
+        // Recent receipts are not cached — always fresh for dashboard relevance
         $recentReceipts = Receipt::with('merchant')
             ->where('user_id', $userId)
             ->orderBy('receipt_date', 'desc')
@@ -33,9 +40,7 @@ class DashboardController extends Controller
             ->get();
 
         return Inertia::render('Dashboard', [
-            'receiptCount' => $receiptStats->count ?? 0,
-            'totalAmount' => (float) ($receiptStats->total_amount ?? 0),
-            'merchantCount' => $merchantCount,
+            ...$stats,
             'recentReceipts' => $recentReceipts,
         ]);
     }

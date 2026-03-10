@@ -26,9 +26,9 @@ class MatchMerchant extends BaseJob
 
     protected $useDirectData = false;
 
-    public $timeout = 3600;
+    public int $timeout = 3600;
 
-    public $tries = 5;
+    public int $tries = 5;
 
     public $backoff = 10;
 
@@ -65,6 +65,25 @@ class MatchMerchant extends BaseJob
     protected function handleJob(): void
     {
         try {
+            // Idempotency: skip if receipt already has a merchant assigned
+            $preCheckReceiptId = $this->useDirectData ? $this->receiptId : null;
+            if (! $preCheckReceiptId) {
+                $receiptMetaData = Cache::get("job.{$this->jobID}.receiptMetaData");
+                $preCheckReceiptId = $receiptMetaData['receiptId'] ?? null;
+            }
+            if ($preCheckReceiptId) {
+                $existingReceipt = Receipt::find($preCheckReceiptId);
+                if ($existingReceipt && $existingReceipt->merchant_id) {
+                    Log::info('[MatchMerchant] Receipt already has merchant, skipping', [
+                        'receipt_id' => $preCheckReceiptId,
+                        'merchant_id' => $existingReceipt->merchant_id,
+                        'job_id' => $this->jobID,
+                    ]);
+
+                    return;
+                }
+            }
+
             // Use direct data if available, otherwise fall back to cache
             if (! $this->useDirectData) {
                 $this->fetchDataFromCache();

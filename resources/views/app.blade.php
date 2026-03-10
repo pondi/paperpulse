@@ -22,7 +22,7 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
         <!-- Theme bootstrap: avoid FOUC by setting theme before styles load -->
-        <script>
+        <script nonce="{{ Illuminate\Support\Facades\Vite::cspNonce() }}">
             (function() {
                 try {
                     const saved = localStorage.getItem('theme');
@@ -34,7 +34,7 @@
         </script>
 
         <!-- Scripts -->
-        @routes
+        @routes(nonce: Illuminate\Support\Facades\Vite::cspNonce())
         @vite('resources/js/app.js')
         @inertiaHead
     </head>

@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Services\AI\Providers\GeminiFileAnalyzer;
 use App\Services\AI\Providers\GeminiProvider;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -57,20 +58,15 @@ class GeminiProviderTest extends TestCase
         file_put_contents($path, 'PDF placeholder');
         $fileSize = filesize($path) ?: 0;
 
-        $provider = new class extends GeminiProvider
+        $analyzer = new class extends GeminiFileAnalyzer
         {
-            public function exposedBuildLargeFileContext(string $filePath, string $mime, int $fileSize, ?array $textContext): ?array
-            {
-                return $this->buildLargeFileContext($filePath, $mime, $fileSize, $textContext);
-            }
-
             protected function getPdfPageCount(string $filePath): int
             {
                 return 12;
             }
         };
 
-        $context = $provider->exposedBuildLargeFileContext($path, 'application/pdf', $fileSize, null);
+        $context = $analyzer->buildLargeFileContext($path, 'application/pdf', $fileSize, null);
 
         $this->assertNotNull($context);
         $this->assertSame('sample_pages', $context['strategy']);

@@ -27,7 +27,7 @@ class AuthController extends BaseApiController
             ]);
         }
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        $token = $user->createToken('api-token', ['*'], now()->addDays(30))->plainTextToken;
 
         Log::info('[API] Login success', [
             'user_id' => $user->id,

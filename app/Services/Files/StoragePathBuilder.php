@@ -35,10 +35,7 @@ class StoragePathBuilder
     /**
      * Build storage path for image preview.
      *
-     * @param  int  $userId
-     * @param  string  $guid
      * @param  string  $fileType  'receipt' or 'document'
-     * @return string
      */
     public static function previewPath(int $userId, string $guid, string $fileType): string
     {

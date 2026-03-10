@@ -27,6 +27,12 @@ use ImagickException;
  */
 class ProcessReceipt extends BaseJob
 {
+    public int $timeout = 600;
+
+    public int $tries = 3;
+
+    public $backoff = [30, 60, 120];
+
     /**
      * Create a new job instance.
      */
@@ -59,6 +65,21 @@ class ProcessReceipt extends BaseJob
             if (! $metadata) {
                 throw new Exception('No metadata found for job');
             }
+
+            // Idempotency: skip if receipt already exists for this file
+            $isReprocessing = $metadata['metadata']['reprocessing'] ?? false;
+            if (! $isReprocessing && isset($metadata['fileId'])) {
+                $existingReceipt = Receipt::where('file_id', $metadata['fileId'])->exists();
+                if ($existingReceipt) {
+                    Log::info('[ProcessReceipt] Receipt already exists for file, skipping', [
+                        'file_id' => $metadata['fileId'],
+                        'job_id' => $this->jobID,
+                    ]);
+
+                    return;
+                }
+            }
+
             $note = $metadata['metadata']['note'] ?? null;
 
             if ($debugEnabled) {

@@ -22,7 +22,7 @@
             
             <!-- Calendar Icon -->
             <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <CalendarDaysIcon class="h-5 w-5 text-zinc-400" />
+                <CalendarDaysIcon class="h-5 w-5 text-zinc-400" aria-hidden="true" />
             </div>
 
             <!-- Clear Button (when date is selected) -->
@@ -30,9 +30,10 @@
                 v-if="modelValue && !disabled"
                 @click.stop="clearDate"
                 type="button"
+                aria-label="Clear date"
                 class="absolute inset-y-0 right-8 flex items-center pr-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors duration-200"
             >
-                <XMarkIcon class="h-4 w-4" />
+                <XMarkIcon class="h-4 w-4" aria-hidden="true" />
             </button>
         </div>
 
@@ -57,14 +58,16 @@
                     <button
                         @click="previousMonth"
                         type="button"
+                        aria-label="Previous month"
                         class="p-2 hover:bg-amber-50 dark:hover:bg-zinc-700 rounded-lg transition-colors duration-200"
                     >
-                        <ChevronLeftIcon class="h-5 w-5" />
+                        <ChevronLeftIcon class="h-5 w-5" aria-hidden="true" />
                     </button>
                     
                     <div class="flex items-center space-x-2">
                         <select
                             v-model="currentMonth"
+                            aria-label="Month"
                             class="text-sm font-bold bg-transparent border-none focus:ring-0 text-zinc-900 dark:text-zinc-100"
                         >
                             <option v-for="(month, index) in monthNames" :key="index" :value="index">
@@ -74,6 +77,7 @@
                         
                         <select
                             v-model="currentYear"
+                            aria-label="Year"
                             class="text-sm font-bold bg-transparent border-none focus:ring-0 text-zinc-900 dark:text-zinc-100"
                         >
                             <option v-for="year in yearRange" :key="year" :value="year">
@@ -85,9 +89,10 @@
                     <button
                         @click="nextMonth"
                         type="button"
+                        aria-label="Next month"
                         class="p-2 hover:bg-amber-50 dark:hover:bg-zinc-700 rounded-lg transition-colors duration-200"
                     >
-                        <ChevronRightIcon class="h-5 w-5" />
+                        <ChevronRightIcon class="h-5 w-5" aria-hidden="true" />
                     </button>
                 </div>
 
@@ -105,25 +110,29 @@
                     </div>
 
                     <!-- Calendar Days -->
-                    <div class="grid grid-cols-7 gap-1">
+                    <div class="grid grid-cols-7 gap-1" role="grid" aria-label="Calendar" @keydown="handleCalendarKeydown">
                         <button
-                            v-for="date in calendarDays"
+                            v-for="(date, index) in calendarDays"
                             :key="date.key"
+                            :ref="el => { if (el) dayRefs[index] = el }"
                             @click="selectDate(date)"
                             type="button"
+                            :tabindex="date.isSelected || (index === focusedDayIndex) ? 0 : -1"
+                            :aria-label="`${date.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}${date.isToday ? ', today' : ''}${date.isSelected ? ', selected' : ''}`"
+                            :aria-selected="date.isSelected"
                             class="h-8 flex items-center justify-center text-sm rounded-md"
                             :class="[
-                                date.isCurrentMonth 
+                                date.isCurrentMonth
                                     ? 'text-zinc-900 dark:text-zinc-100 hover:bg-amber-50 dark:hover:bg-zinc-700'
                                     : 'text-zinc-400 dark:text-zinc-500 hover:bg-amber-50 dark:hover:bg-zinc-700/50',
                                 date.isSelected
                                     ? 'bg-amber-600 text-white hover:bg-amber-700 font-bold'
                                     : '',
                                 date.isToday && !date.isSelected
-                                    ? 'bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 font-bold' 
+                                    ? 'bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 font-bold'
                                     : '',
-                                isDateDisabled(date) 
-                                    ? 'cursor-not-allowed opacity-50' 
+                                isDateDisabled(date)
+                                    ? 'cursor-not-allowed opacity-50'
                                     : 'cursor-pointer'
                             ]"
                             :disabled="isDateDisabled(date)"
@@ -214,6 +223,8 @@ const showCalendar = ref(false);
 const currentMonth = ref(new Date().getMonth());
 const currentYear = ref(new Date().getFullYear());
 const calendarPosition = ref({});
+const dayRefs = ref([]);
+const focusedDayIndex = ref(0);
 
 const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -344,6 +355,59 @@ const calculatePosition = () => {
     };
 };
 
+// Keyboard navigation for calendar grid
+const handleCalendarKeydown = (e) => {
+    const cols = 7;
+    const total = calendarDays.value.length;
+    let newIndex = focusedDayIndex.value;
+
+    switch (e.key) {
+        case 'ArrowRight':
+            e.preventDefault();
+            newIndex = Math.min(newIndex + 1, total - 1);
+            break;
+        case 'ArrowLeft':
+            e.preventDefault();
+            newIndex = Math.max(newIndex - 1, 0);
+            break;
+        case 'ArrowDown':
+            e.preventDefault();
+            newIndex = Math.min(newIndex + cols, total - 1);
+            break;
+        case 'ArrowUp':
+            e.preventDefault();
+            newIndex = Math.max(newIndex - cols, 0);
+            break;
+        case 'Home':
+            e.preventDefault();
+            // Go to first day of current row
+            newIndex = newIndex - (newIndex % cols);
+            break;
+        case 'End':
+            e.preventDefault();
+            // Go to last day of current row
+            newIndex = newIndex - (newIndex % cols) + (cols - 1);
+            if (newIndex >= total) newIndex = total - 1;
+            break;
+        case 'Enter':
+        case ' ':
+            e.preventDefault();
+            if (!isDateDisabled(calendarDays.value[focusedDayIndex.value])) {
+                selectDate(calendarDays.value[focusedDayIndex.value]);
+            }
+            return;
+        default:
+            return;
+    }
+
+    focusedDayIndex.value = newIndex;
+    nextTick(() => {
+        if (dayRefs.value[newIndex]) {
+            dayRefs.value[newIndex].focus();
+        }
+    });
+};
+
 // Toggle calendar visibility
 const toggleCalendar = () => {
     if (props.disabled) return;
@@ -354,9 +418,15 @@ const toggleCalendar = () => {
             currentMonth.value = selectedDate.value.getMonth();
             currentYear.value = selectedDate.value.getFullYear();
         }
-        
+        dayRefs.value = [];
+
         nextTick(() => {
             calculatePosition();
+            // Set initial focus to selected date or first current-month day
+            const selectedIdx = calendarDays.value.findIndex(d => d.isSelected);
+            const todayIdx = calendarDays.value.findIndex(d => d.isToday);
+            const firstCurrentIdx = calendarDays.value.findIndex(d => d.isCurrentMonth);
+            focusedDayIndex.value = selectedIdx >= 0 ? selectedIdx : (todayIdx >= 0 ? todayIdx : Math.max(firstCurrentIdx, 0));
             document.addEventListener('click', handleOutsideClick);
             window.addEventListener('scroll', calculatePosition, true);
             window.addEventListener('resize', calculatePosition);

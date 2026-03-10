@@ -34,6 +34,23 @@ abstract class BaseJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
+     * Default timeout for all jobs (5 minutes). Override in subclasses as needed.
+     */
+    public int $timeout = 300;
+
+    /**
+     * Default retry attempts. Override in subclasses as needed.
+     */
+    public int $tries = 3;
+
+    /**
+     * Default backoff in seconds between retries. Override in subclasses.
+     *
+     * @var int|array
+     */
+    public $backoff = [30, 60, 120];
+
+    /**
      * The unique identifier for this job chain.
      */
     public string $jobID;
@@ -47,6 +64,11 @@ abstract class BaseJob implements ShouldQueue
      * The name of this job for display purposes.
      */
     public string $jobName;
+
+    /**
+     * The originating API request ID for end-to-end tracing.
+     */
+    public ?string $requestId = null;
 
     /**
      * Flag to prevent double-handling of failures.
@@ -107,6 +129,11 @@ abstract class BaseJob implements ShouldQueue
         // Ensure we have a UUID
         if (! $this->uuid) {
             $this->uuid = (string) Str::uuid();
+        }
+
+        // Add request ID to log context for end-to-end tracing
+        if ($this->requestId) {
+            Log::withContext(['request_id' => $this->requestId]);
         }
 
         // Create or update job history record
@@ -225,6 +252,7 @@ abstract class BaseJob implements ShouldQueue
                 'started_at' => now(),
                 'attempt' => 1,
                 'order_in_chain' => 0, // Parent job has order 0
+                'request_id' => $this->requestId,
             ];
 
             JobHistory::updateOrCreate(

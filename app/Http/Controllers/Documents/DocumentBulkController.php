@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Documents;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\File;
+use App\Rules\ExistsForUser;
 use App\Services\StorageService;
 use Exception;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ class DocumentBulkController extends Controller
     {
         $validated = $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'integer|exists:documents,id',
+            'ids.*' => ['integer', new ExistsForUser('documents')],
         ]);
 
         $deleted = 0;
@@ -69,7 +70,7 @@ class DocumentBulkController extends Controller
     {
         $validated = $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'integer|exists:documents,id',
+            'ids.*' => ['integer', new ExistsForUser('documents')],
         ]);
 
         // Get user's documents with files

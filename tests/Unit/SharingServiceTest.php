@@ -9,8 +9,8 @@ use App\Models\Receipt;
 use App\Models\User;
 use App\Services\SharingService;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class SharingServiceTest extends TestCase

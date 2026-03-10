@@ -132,6 +132,7 @@ it('renders bank statement show with full details', function () {
 
     BankTransaction::factory()->count(3)->create([
         'bank_statement_id' => $statement->id,
+        'user_id' => $user->id,
     ]);
 
     $this->actingAs($user)
@@ -347,6 +348,7 @@ it('returns paginated transactions as json', function () {
 
     BankTransaction::factory()->count(5)->create([
         'bank_statement_id' => $statement->id,
+        'user_id' => $user->id,
     ]);
 
     $response = $this->actingAs($user)
@@ -373,11 +375,13 @@ it('filters transactions by type', function () {
 
     BankTransaction::factory()->count(3)->create([
         'bank_statement_id' => $statement->id,
+        'user_id' => $user->id,
         'transaction_type' => 'credit',
         'amount' => 100,
     ]);
     BankTransaction::factory()->count(2)->create([
         'bank_statement_id' => $statement->id,
+        'user_id' => $user->id,
         'transaction_type' => 'debit',
         'amount' => -50,
     ]);
@@ -402,10 +406,12 @@ it('filters transactions by category group', function () {
 
     BankTransaction::factory()->count(2)->create([
         'bank_statement_id' => $statement->id,
+        'user_id' => $user->id,
         'category_group' => TransactionCategory::FoodAndDrink,
     ]);
     BankTransaction::factory()->create([
         'bank_statement_id' => $statement->id,
+        'user_id' => $user->id,
         'category_group' => TransactionCategory::Transportation,
     ]);
 
@@ -429,10 +435,12 @@ it('searches transactions by description', function () {
 
     BankTransaction::factory()->create([
         'bank_statement_id' => $statement->id,
+        'user_id' => $user->id,
         'description' => 'Rema 1000 Groenland',
     ]);
     BankTransaction::factory()->create([
         'bank_statement_id' => $statement->id,
+        'user_id' => $user->id,
         'description' => 'Spotify Premium',
     ]);
 
@@ -456,10 +464,12 @@ it('filters transactions by date range', function () {
 
     BankTransaction::factory()->create([
         'bank_statement_id' => $statement->id,
+        'user_id' => $user->id,
         'transaction_date' => '2026-01-15',
     ]);
     BankTransaction::factory()->create([
         'bank_statement_id' => $statement->id,
+        'user_id' => $user->id,
         'transaction_date' => '2026-02-01',
     ]);
 

@@ -6,6 +6,7 @@ use App\Contracts\Taggable;
 use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use App\Traits\ExtractableEntity as ExtractableEntityTrait;
+use App\Traits\InvalidatesSearchFacets;
 use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -31,6 +32,7 @@ class Voucher extends Model implements Taggable
     use BelongsToUser;
     use ExtractableEntityTrait;
     use HasFactory;
+    use InvalidatesSearchFacets;
     use Searchable;
     use ShareableModel;
     use SoftDeletes;

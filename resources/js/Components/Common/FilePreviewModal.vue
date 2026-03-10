@@ -58,9 +58,10 @@
           </div>
           <button
             @click="close"
+            aria-label="Close preview"
             class="ml-4 text-zinc-400 hover:text-zinc-500 dark:hover:text-zinc-300"
           >
-            <XMarkIcon class="size-6" />
+            <XMarkIcon class="size-6" aria-hidden="true" />
           </button>
         </div>
 

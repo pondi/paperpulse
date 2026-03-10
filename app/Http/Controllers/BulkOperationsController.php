@@ -6,6 +6,7 @@ use App\Http\Requests\BulkReceiptIdsRequest;
 use App\Models\Category;
 use App\Models\Receipt;
 use App\Notifications\BulkOperationCompleted;
+use App\Rules\ExistsForUser;
 use App\Services\ReceiptService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -59,8 +60,8 @@ class BulkOperationsController extends Controller
     {
         $validated = $request->validate([
             'receipt_ids' => 'required|array',
-            'receipt_ids.*' => 'integer|exists:receipts,id',
-            'category_id' => 'nullable|integer|exists:categories,id',
+            'receipt_ids.*' => ['integer', new ExistsForUser('receipts')],
+            'category_id' => ['nullable', 'integer', new ExistsForUser('categories')],
             'category' => 'nullable|string|max:255',
         ]);
 
@@ -106,11 +107,8 @@ class BulkOperationsController extends Controller
      */
     public function bulkExportCsv(BulkReceiptIdsRequest $request)
     {
-        $receipts = Receipt::with(['merchant', 'lineItems'])
-            ->whereIn('id', $request->validated()['receipt_ids'])
-            ->where('user_id', auth()->id())
-            ->orderBy('receipt_date', 'desc')
-            ->get();
+        $receiptIds = $request->validated()['receipt_ids'];
+        $userId = auth()->id();
 
         $filename = 'receipts_selection_'.now()->format('Y-m-d_His').'.csv';
 
@@ -119,10 +117,9 @@ class BulkOperationsController extends Controller
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
-        $callback = function () use ($receipts) {
+        $callback = function () use ($receiptIds, $userId) {
             $file = fopen('php://output', 'w');
 
-            // Header row
             fputcsv($file, [
                 'Receipt Date',
                 'Merchant',
@@ -135,23 +132,15 @@ class BulkOperationsController extends Controller
                 'Line Items',
             ]);
 
-            foreach ($receipts as $receipt) {
-                $lineItems = $receipt->lineItems->map(function ($item) {
-                    return $item->text.' (Qty: '.$item->qty.', Price: '.$item->price.')';
-                })->implode('; ');
-
-                fputcsv($file, [
-                    $receipt->receipt_date ? Carbon::parse($receipt->receipt_date)->format('Y-m-d') : '',
-                    $receipt->merchant?->name ?? 'Unknown',
-                    $receipt->receipt_category ?? '',
-                    $receipt->receipt_description ?? '',
-                    $receipt->total_amount ?? 0,
-                    $receipt->tax_amount ?? 0,
-                    $receipt->currency ?? 'NOK',
-                    $receipt->lineItems->count(),
-                    $lineItems,
-                ]);
-            }
+            Receipt::with(['merchant', 'lineItems'])
+                ->whereIn('id', $receiptIds)
+                ->where('user_id', $userId)
+                ->orderBy('receipt_date', 'desc')
+                ->chunk(200, function ($receipts) use ($file) {
+                    foreach ($receipts as $receipt) {
+                        fputcsv($file, $this->formatCsvRow($receipt));
+                    }
+                });
 
             fclose($file);
         };
@@ -164,17 +153,24 @@ class BulkOperationsController extends Controller
      */
     public function bulkExportPdf(BulkReceiptIdsRequest $request)
     {
-        $receipts = Receipt::with(['merchant', 'lineItems'])
-            ->whereIn('id', $request->validated()['receipt_ids'])
-            ->where('user_id', auth()->id())
-            ->orderBy('receipt_date', 'desc')
-            ->get();
+        $receiptIds = $request->validated()['receipt_ids'];
+        $userId = auth()->id();
+
+        $query = Receipt::with(['merchant', 'lineItems'])
+            ->whereIn('id', $receiptIds)
+            ->where('user_id', $userId)
+            ->orderBy('receipt_date', 'desc');
+
+        $aggregates = Receipt::whereIn('id', $receiptIds)
+            ->where('user_id', $userId)
+            ->selectRaw('COUNT(*) as total_count, SUM(total_amount) as total_amount')
+            ->first();
 
         $data = [
-            'receipts' => $receipts,
+            'receipts' => $query->lazy(200),
             'generated_at' => now(),
-            'total_amount' => $receipts->sum('total_amount'),
-            'total_count' => $receipts->count(),
+            'total_amount' => (float) ($aggregates->total_amount ?? 0),
+            'total_count' => $aggregates->total_count ?? 0,
         ];
 
         $pdf = Pdf::loadView('exports.receipts-pdf', $data);
@@ -220,5 +216,27 @@ class BulkOperationsController extends Controller
             ],
             'categories' => $categories,
         ]);
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function formatCsvRow(Receipt $receipt): array
+    {
+        $lineItems = $receipt->lineItems->map(function ($item) {
+            return $item->text.' (Qty: '.$item->qty.', Price: '.$item->price.')';
+        })->implode('; ');
+
+        return [
+            $receipt->receipt_date ? Carbon::parse($receipt->receipt_date)->format('Y-m-d') : '',
+            $receipt->merchant?->name ?? 'Unknown',
+            $receipt->receipt_category ?? '',
+            $receipt->receipt_description ?? '',
+            $receipt->total_amount ?? 0,
+            $receipt->tax_amount ?? 0,
+            $receipt->currency ?? '',
+            $receipt->lineItems->count(),
+            $lineItems,
+        ];
     }
 }

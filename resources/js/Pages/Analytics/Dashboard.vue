@@ -116,7 +116,7 @@
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Spending by Category</h3>
                                 <div v-if="tab_data.spending_by_category?.length > 0" class="space-y-3">
-                                    <div v-for="category in tab_data.spending_by_category" :key="category.category" class="relative">
+                                    <div v-for="(category, i) in tab_data.spending_by_category" :key="`${i}-${category.category}`" class="relative">
                                         <div class="flex justify-between text-sm mb-1">
                                             <span class="text-zinc-600 dark:text-zinc-400">{{ category.category }}</span>
                                             <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ formatCurrency(category.total) }}</span>
@@ -135,7 +135,7 @@
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Top Merchants</h3>
                                 <div v-if="tab_data.top_merchants?.length > 0" class="space-y-3">
-                                    <div v-for="merchant in tab_data.top_merchants.slice(0, 5)" :key="merchant.merchant">
+                                    <div v-for="(merchant, i) in tab_data.top_merchants.slice(0, 5)" :key="`${i}-${merchant.merchant}`">
                                         <div class="flex justify-between items-center">
                                             <div>
                                                 <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ merchant.merchant }}</div>
@@ -186,7 +186,7 @@
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Spending by Day of Week</h3>
                                 <div v-if="tab_data.day_of_week?.length > 0" class="space-y-3">
-                                    <div v-for="day in tab_data.day_of_week" :key="day.day" class="relative">
+                                    <div v-for="(day, i) in tab_data.day_of_week" :key="`${i}-${day.day}`" class="relative">
                                         <div class="flex justify-between text-sm mb-1">
                                             <span class="text-zinc-600 dark:text-zinc-400">{{ day.day }}</span>
                                             <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ formatCurrency(day.total) }}</span>
@@ -217,7 +217,7 @@
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Top Recipients</h3>
                                 <div v-if="tab_data.top_recipients?.length > 0" class="space-y-3">
-                                    <div v-for="recipient in tab_data.top_recipients" :key="recipient.recipient">
+                                    <div v-for="(recipient, i) in tab_data.top_recipients" :key="`${i}-${recipient.recipient}`">
                                         <div class="flex justify-between items-center">
                                             <div>
                                                 <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ recipient.recipient }}</div>
@@ -236,7 +236,7 @@
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Top Vendors</h3>
                                 <div v-if="tab_data.top_vendors?.length > 0" class="space-y-3">
-                                    <div v-for="vendor in tab_data.top_vendors.slice(0, 5)" :key="vendor.vendor">
+                                    <div v-for="(vendor, i) in tab_data.top_vendors.slice(0, 5)" :key="`${i}-${vendor.vendor}`">
                                         <div class="flex justify-between items-center">
                                             <div>
                                                 <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ vendor.vendor }}</div>
@@ -306,7 +306,7 @@
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Spending by Category</h3>
                                 <div v-if="tab_data.spending_by_category?.length > 0" class="space-y-3">
-                                    <div v-for="cat in tab_data.spending_by_category" :key="cat.category" class="relative">
+                                    <div v-for="(cat, i) in tab_data.spending_by_category" :key="`${i}-${cat.category}`" class="relative">
                                         <div class="flex justify-between text-sm mb-1">
                                             <span class="text-zinc-600 dark:text-zinc-400 capitalize">{{ cat.category }}</span>
                                             <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ formatCurrency(cat.total) }}</span>
@@ -336,7 +336,7 @@
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Top Counterparties</h3>
                                 <div v-if="tab_data.top_counterparties?.length > 0" class="space-y-3">
-                                    <div v-for="party in tab_data.top_counterparties" :key="party.name">
+                                    <div v-for="(party, i) in tab_data.top_counterparties" :key="`${i}-${party.name}`">
                                         <div class="flex justify-between items-center">
                                             <div>
                                                 <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ party.name }}</div>
@@ -367,7 +367,7 @@
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Status Breakdown</h3>
                                 <div v-if="tab_data.status_breakdown?.length > 0" class="space-y-3">
-                                    <div v-for="s in tab_data.status_breakdown" :key="s.status" class="flex items-center justify-between">
+                                    <div v-for="(s, i) in tab_data.status_breakdown" :key="`${i}-${s.status}`" class="flex items-center justify-between">
                                         <div class="flex items-center gap-2">
                                             <span class="inline-block w-3 h-3 rounded-full" :class="contractStatusColor(s.status)"></span>
                                             <span class="text-sm text-zinc-700 dark:text-zinc-300 capitalize">{{ s.status }}</span>
@@ -384,7 +384,7 @@
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Contract Types</h3>
                                 <div v-if="tab_data.type_distribution?.length > 0" class="space-y-3">
-                                    <div v-for="t in tab_data.type_distribution" :key="t.type">
+                                    <div v-for="(t, i) in tab_data.type_distribution" :key="`${i}-${t.type}`">
                                         <div class="flex justify-between items-center">
                                             <div>
                                                 <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100 capitalize">{{ t.type }}</div>
@@ -444,7 +444,7 @@
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Document Types</h3>
                                 <div v-if="tab_data.type_distribution?.length > 0" class="space-y-3">
-                                    <div v-for="t in tab_data.type_distribution" :key="t.type" class="relative">
+                                    <div v-for="(t, i) in tab_data.type_distribution" :key="`${i}-${t.type}`" class="relative">
                                         <div class="flex justify-between text-sm mb-1">
                                             <span class="text-zinc-600 dark:text-zinc-400 capitalize">{{ t.type }}</span>
                                             <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ t.count }}</span>

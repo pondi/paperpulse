@@ -3,6 +3,7 @@
 use App\Http\Middleware\Api\ApiRateLimit;
 use App\Http\Middleware\Api\ApiRequestLogger;
 use App\Http\Middleware\Api\ApiVersion;
+use App\Http\Middleware\Api\RequestId;
 use App\Http\Middleware\ApiSecurityHeaders;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -45,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->api(append: [
+            RequestId::class,
             ApiSecurityHeaders::class,
             ApiRequestLogger::class,
         ]);
@@ -62,8 +64,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (ValidationException $e, $request) {
             if ($request->expectsJson()) {
                 $response = [
+                    'status' => 'error',
+                    'code' => 'VALIDATION_ERROR',
                     'message' => $e->getMessage(),
                     'errors' => $e->errors(),
+                    'timestamp' => now()->toISOString(),
                 ];
 
                 if (config('app.debug')) {
@@ -76,6 +81,9 @@ return Application::configure(basePath: dirname(__DIR__))
                         'token',
                         'access_token',
                         'refresh_token',
+                        'api_key',
+                        'secret',
+                        'client_secret',
                     ];
 
                     foreach ($sensitiveKeys as $key) {
@@ -88,6 +96,27 @@ return Application::configure(basePath: dirname(__DIR__))
                         'validator_data' => $validatorData,
                         'failed_rules' => $e->validator->failed(),
                     ];
+                }
+
+                // Always redact sensitive fields from validation error messages
+                if (! config('app.debug')) {
+                    $sensitiveKeys = [
+                        'password',
+                        'password_confirmation',
+                        'current_password',
+                        'token',
+                        'access_token',
+                        'refresh_token',
+                        'api_key',
+                        'secret',
+                        'client_secret',
+                    ];
+
+                    $errors = $response['errors'];
+                    foreach ($sensitiveKeys as $key) {
+                        unset($errors[$key]);
+                    }
+                    $response['errors'] = $errors;
                 }
 
                 return response()->json($response, 422);
@@ -123,7 +152,9 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->expectsJson()) {
                 return response()->json([
                     'status' => 'error',
+                    'code' => 'BAD_REQUEST',
                     'message' => 'The uploaded payload exceeds the allowed size.',
+                    'errors' => null,
                     'timestamp' => now()->toISOString(),
                 ], 413);
             }

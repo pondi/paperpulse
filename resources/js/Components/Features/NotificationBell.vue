@@ -303,27 +303,70 @@ const formatCurrency = (amount, currency) => {
   }
 };
 
+const setupEcho = () => {
+  if (!window.Echo) return false;
+
+  try {
+    const userId = page.props.auth?.user?.id;
+    if (!userId) return false;
+
+    window.Echo.private(`App.Models.User.${userId}`)
+      .notification(() => {
+        loadNotifications();
+      });
+
+    return true;
+  } catch (error) {
+    console.error('Failed to connect to Echo:', error);
+    return false;
+  }
+};
+
+const startPolling = () => {
+  // Fallback polling only when Echo is unavailable
+  pollInterval = setInterval(loadNotifications, 30000);
+
+  // Pause polling when tab is hidden to avoid thundering herd
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+};
+
+const handleVisibilityChange = () => {
+  if (document.hidden) {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+  } else {
+    loadNotifications();
+    pollInterval = setInterval(loadNotifications, 30000);
+  }
+};
+
 onMounted(() => {
   loading.value = true;
   loadNotifications().finally(() => {
     loading.value = false;
   });
-  
-  // Poll for new notifications every 30 seconds
-  pollInterval = setInterval(loadNotifications, 30000);
-  
-  // Listen for Echo events if available
-  if (window.Echo) {
-    window.Echo.private(`App.Models.User.${window.page.props.auth.user.id}`)
-      .notification(() => {
-        loadNotifications();
-      });
+
+  const echoConnected = setupEcho();
+
+  if (!echoConnected) {
+    startPolling();
   }
 });
 
 onUnmounted(() => {
   if (pollInterval) {
     clearInterval(pollInterval);
+  }
+
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+  if (window.Echo) {
+    const userId = page.props.auth?.user?.id;
+    if (userId) {
+      window.Echo.leave(`App.Models.User.${userId}`);
+    }
   }
 });
 </script>

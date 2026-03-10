@@ -31,6 +31,7 @@ class WeeklySummary extends Notification implements ShouldQueue
         // Add in-app notification if user wants it
         if ($notifiable->preference('notify_weekly_summary_ready', true)) {
             $channels[] = 'database';
+            $channels[] = 'broadcast';
         }
 
         // Add email if user wants it

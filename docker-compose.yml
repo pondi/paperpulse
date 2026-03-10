@@ -49,6 +49,38 @@ services:
     networks:
       - paperpulse
 
+  # Reverb - WebSocket server for real-time notifications
+  reverb:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.reverb
+    container_name: paperpulse-reverb
+    ports:
+      - "${REVERB_SERVER_PORT:-8080}:8080"
+    environment:
+      - APP_KEY=${APP_KEY}
+      - APP_ENV=${APP_ENV:-production}
+      - DB_CONNECTION=pgsql
+      - DB_HOST=host.docker.internal
+      - DB_PORT=${DB_PORT}
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=host.docker.internal
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REVERB_APP_ID=${REVERB_APP_ID}
+      - REVERB_APP_KEY=${REVERB_APP_KEY}
+      - REVERB_APP_SECRET=${REVERB_APP_SECRET}
+      - REVERB_HOST=${REVERB_HOST}
+      - REVERB_PORT=${REVERB_PORT:-443}
+      - REVERB_SCHEME=${REVERB_SCHEME:-https}
+      - REVERB_SERVER_HOST=0.0.0.0
+      - REVERB_SERVER_PORT=8080
+    restart: unless-stopped
+    networks:
+      - paperpulse
+
 networks:
   paperpulse:
     driver: bridge

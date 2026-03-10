@@ -33,6 +33,7 @@ class WarrantyEndingNotification extends TemplatedNotification
 
         if ($notifiable->preference('notify_warranty_expiring', true)) {
             $channels[] = 'database';
+            $channels[] = 'broadcast';
         }
 
         if ($notifiable->preference('email_notify_warranty_expiring', false)) {

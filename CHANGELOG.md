@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1](https://github.com/pondi/paperpulse/compare/v1.2.0...v1.2.1) (2026-03-10)
+
+
+### Miscellaneous
+
+* update composer and npm lock files ([d93c7c6](https://github.com/pondi/paperpulse/commit/d93c7c6aa70681a10fe96435021510cd21993d30))
+
 ## [1.2.0](https://github.com/pondi/paperpulse/compare/v1.1.0...v1.2.0) (2026-03-10)
 
 

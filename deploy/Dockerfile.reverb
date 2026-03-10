@@ -1,0 +1,132 @@
+FROM alpine:3.22 AS php_build
+
+WORKDIR /var/www/html
+
+# Base PHP runtime with build tooling for Composer
+RUN echo "GMT" > /etc/timezone \
+    && apk add --no-cache \
+        bash \
+        curl \
+        php84 \
+        php84-cli \
+        php84-common \
+        php84-pdo \
+        php84-pdo_pgsql \
+        php84-opcache \
+        php84-zip \
+        php84-curl \
+        php84-openssl \
+        php84-mbstring \
+        php84-tokenizer \
+        php84-fileinfo \
+        php84-phar \
+        php84-xml \
+        php84-dom \
+        php84-simplexml \
+        php84-xmlreader \
+        php84-xmlwriter \
+        php84-json \
+        php84-ctype \
+        php84-session \
+        php84-iconv \
+        php84-pecl-redis \
+        php84-intl \
+        php84-pcntl \
+        php84-posix
+
+# Install Composer for dependency resolution
+RUN ln -sf /usr/bin/php84 /usr/bin/php \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin/ --filename=composer
+
+# Install PHP dependencies without dev and without running Composer scripts
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-progress --no-scripts \
+    && composer check-platform-reqs --no-dev --no-interaction
+
+# Copy the full application source
+COPY . .
+
+# Regenerate optimized autoload files with actual application classes
+RUN composer dump-autoload --optimize --no-dev
+
+
+FROM alpine:3.22
+
+WORKDIR /var/www/html
+
+# Runtime dependencies for Reverb WebSocket server
+RUN echo "GMT" > /etc/timezone \
+    && apk add --no-cache \
+        supervisor \
+        bash \
+        curl \
+        php84 \
+        php84-cli \
+        php84-common \
+        php84-pdo \
+        php84-pdo_pgsql \
+        php84-opcache \
+        php84-curl \
+        php84-openssl \
+        php84-mbstring \
+        php84-tokenizer \
+        php84-fileinfo \
+        php84-phar \
+        php84-xml \
+        php84-dom \
+        php84-simplexml \
+        php84-xmlreader \
+        php84-xmlwriter \
+        php84-json \
+        php84-ctype \
+        php84-session \
+        php84-iconv \
+        php84-pecl-redis \
+        php84-intl \
+        php84-pcntl \
+        php84-posix
+
+# Setup PHP symlink
+RUN ln -sf /usr/bin/php84 /usr/bin/php
+
+# Copy application code and dependencies
+COPY --from=php_build /var/www/html /var/www/html
+
+# Configure supervisor for Reverb
+RUN mkdir -p /etc/supervisor.d/
+COPY deploy/reverb/supervisord.ini /etc/supervisor.d/supervisord.ini
+
+COPY deploy/reverb/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+# Cleanup and set permissions in a single layer
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    && mkdir -p /var/www/html/storage /var/www/html/bootstrap/cache \
+    && rm -rf \
+        /var/www/html/deploy \
+        /var/www/html/docs \
+        /var/www/html/tests \
+        /var/www/html/public/build \
+        /var/www/html/.git \
+        /var/www/html/.github \
+        /var/www/html/package*.json \
+        /var/www/html/vite.config.js \
+        /var/www/html/tailwind.config.js \
+        /var/www/html/postcss.config.js \
+        /var/www/html/phpunit.xml \
+        /var/www/html/phpstan.neon \
+        /var/www/html/pint.json \
+        /var/www/html/.editorconfig \
+        /var/www/html/.env.example \
+        /var/www/html/README.md \
+        /var/www/html/CLAUDE.md \
+        /var/www/html/bootstrap/cache/*.php \
+        /var/cache/apk/* \
+    && chown -R nobody:nobody /var/www/html
+
+USER nobody
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -fsS http://127.0.0.1:8080/ || exit 1
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -7,72 +7,76 @@ namespace App\Services\Factories;
 use App\Models\File;
 use App\Models\ReturnPolicy;
 use App\Services\Factories\Concerns\ChecksDataPresence;
+use App\Services\Factories\Concerns\ResolvesMerchant;
 use App\Services\Receipt\ReceiptEnricherService;
 
-class ReturnPolicyFactory
+class ReturnPolicyFactory extends BaseEntityFactory
 {
     use ChecksDataPresence;
+    use ResolvesMerchant;
 
     public function __construct(
         protected ReceiptEnricherService $merchantEnricher,
     ) {}
 
-    public function create(array $data, File $file): ?ReturnPolicy
+    protected function modelClass(): string
+    {
+        return ReturnPolicy::class;
+    }
+
+    protected function fields(): array
+    {
+        return [
+            'receipt_id',
+            'invoice_id',
+            'merchant_id',
+            'return_deadline',
+            'exchange_deadline',
+            'conditions',
+            'refund_method',
+            'restocking_fee',
+            'restocking_fee_percentage',
+            'is_final_sale',
+            'requires_receipt',
+            'requires_original_packaging',
+        ];
+    }
+
+    protected function dateFields(): array
+    {
+        return ['return_deadline', 'exchange_deadline'];
+    }
+
+    protected function defaults(): array
+    {
+        return [
+            'is_final_sale' => false,
+            'requires_receipt' => true,
+            'requires_original_packaging' => false,
+        ];
+    }
+
+    protected function rawDataField(): ?string
+    {
+        return 'policy_data';
+    }
+
+    protected function shouldCreate(array $data): bool
     {
         $hasStructuredData = $this->hasAny($data, ['return_deadline', 'exchange_deadline', 'conditions', 'refund_method']);
         $hasUnstructuredData = ! empty($data['description']) || ! empty($data['policy']);
 
-        if (! $hasStructuredData && ! $hasUnstructuredData) {
-            return null;
-        }
-
-        $conditions = $data['conditions'] ?? $data['description'] ?? $data['policy'] ?? null;
-
-        return ReturnPolicy::create([
-            'file_id' => $file->id,
-            'user_id' => $file->user_id,
-            'receipt_id' => $data['receipt_id'] ?? null,
-            'invoice_id' => $data['invoice_id'] ?? null,
-            'merchant_id' => $data['merchant_id'] ?? $this->resolveMerchantId($data, $file),
-            'return_deadline' => $data['return_deadline'] ?? null,
-            'exchange_deadline' => $data['exchange_deadline'] ?? null,
-            'conditions' => $conditions,
-            'refund_method' => $data['refund_method'] ?? null,
-            'restocking_fee' => $data['restocking_fee'] ?? null,
-            'restocking_fee_percentage' => $data['restocking_fee_percentage'] ?? null,
-            'is_final_sale' => $data['is_final_sale'] ?? false,
-            'requires_receipt' => $data['requires_receipt'] ?? true,
-            'requires_original_packaging' => $data['requires_original_packaging'] ?? false,
-            'policy_data' => $data['policy_data'] ?? $data,
-        ]);
+        return $hasStructuredData || $hasUnstructuredData;
     }
 
-    protected function resolveMerchantId(array $data, File $file): ?int
+    protected function prepareData(array $data, File $file): array
     {
-        $merchant = $data['merchant'] ?? [];
+        $data['conditions'] = $data['conditions'] ?? $data['description'] ?? $data['policy'] ?? null;
 
-        if (empty($merchant) && ! empty($data['vendor'])) {
-            $merchant = $data['vendor'];
+        if (empty($data['merchant_id'])) {
+            $data['merchant_id'] = $this->resolveMerchantId($data, $file);
         }
 
-        if (empty($merchant) && isset($data['merchant_name'])) {
-            $merchant = [
-                'name' => $data['merchant_name'],
-                'vat_number' => $data['merchant_vat'] ?? null,
-                'address' => $data['merchant_address'] ?? null,
-            ];
-        }
-
-        if (empty($merchant['name'])) {
-            return null;
-        }
-
-        $merchantModel = $this->merchantEnricher->findOrCreateMerchant([
-            'name' => $merchant['name'],
-            'vat_number' => $merchant['vat_number'] ?? null,
-            'address' => $merchant['address'] ?? null,
-        ], $file->user_id);
-
-        return $merchantModel?->id;
+        return $data;
     }
 }

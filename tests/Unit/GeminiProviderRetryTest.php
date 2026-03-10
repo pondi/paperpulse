@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Exceptions\GeminiApiException;
 use App\Services\AI\Providers\GeminiProvider;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -110,4 +111,44 @@ it('retries 429 rate limit errors at the provider level', function () {
 
     expect($result)->toHaveKey('result', 'ok');
     Http::assertSentCount(2);
+});
+
+it('retries connection timeout errors (cURL error 28) at the provider level', function () {
+    $successResponse = [
+        'candidates' => [[
+            'content' => [
+                'parts' => [['text' => '{"result": "recovered"}']],
+            ],
+        ]],
+    ];
+
+    Http::fake([
+        'generativelanguage.googleapis.com/*' => Http::sequence()
+            ->pushResponse(fn () => throw new ConnectionException('cURL error 28: Operation timed out after 45000 milliseconds with 0 bytes received'))
+            ->push($successResponse, 200),
+    ]);
+
+    $provider = new GeminiProvider;
+    $result = $provider->generateText('Test prompt');
+
+    expect($result)->toHaveKey('result', 'recovered');
+});
+
+it('throws retryable timeout exception after exhausting provider retries', function () {
+    Http::fake(fn () => throw new ConnectionException(
+        'cURL error 28: Operation timed out after 45000 milliseconds with 0 bytes received'
+    ));
+
+    $provider = new GeminiProvider;
+
+    try {
+        $provider->generateText('Test prompt');
+    } catch (GeminiApiException $e) {
+        expect($e->isRetryable())->toBeTrue();
+        expect($e->getErrorCode())->toBe(GeminiApiException::CODE_TIMEOUT);
+
+        return;
+    }
+
+    $this->fail('Expected GeminiApiException was not thrown');
 });

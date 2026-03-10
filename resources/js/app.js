@@ -1,4 +1,5 @@
 import './bootstrap';
+import { initEcho } from './bootstrap';
 import '../css/app.css';
 
 import { createApp, h } from 'vue';
@@ -12,6 +13,8 @@ createInertiaApp({
     title: (title) => `${title} - ${appName}`,
     resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
+        initEcho(props.initialPage.props.reverb);
+
         const app = createApp({ render: () => h(App, props) });
 
         app.config.errorHandler = (error, instance, info) => {

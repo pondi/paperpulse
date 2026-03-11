@@ -16,6 +16,13 @@ class CreateBulkSessionRequest extends FormRequest
 
     public function rules(): array
     {
+        $allFormats = array_unique(array_merge(
+            config('processing.documents.supported_formats.receipts', []),
+            config('processing.documents.supported_formats.documents', []),
+        ));
+
+        $extensionRule = 'required|string|in:'.implode(',', $allFormats);
+
         return [
             'file_type' => 'required|in:receipt,document',
             'collection_ids' => 'nullable|array',
@@ -28,7 +35,7 @@ class CreateBulkSessionRequest extends FormRequest
             'files.*.path' => 'nullable|string|max:1000',
             'files.*.size' => 'required|integer|min:1|max:104857600', // 100MB
             'files.*.hash' => ['required', 'string', 'regex:/^(sha256:)?[a-f0-9]{64}$/i'],
-            'files.*.extension' => 'required|string|in:jpeg,jpg,png,pdf,tiff,tif,csv',
+            'files.*.extension' => $extensionRule,
             'files.*.mime_type' => 'required|string|max:100',
             'files.*.file_type' => 'nullable|in:receipt,document',
             'files.*.collection_ids' => 'nullable|array',
@@ -41,6 +48,11 @@ class CreateBulkSessionRequest extends FormRequest
 
     public function messages(): array
     {
+        $allFormats = array_unique(array_merge(
+            config('processing.documents.supported_formats.receipts', []),
+            config('processing.documents.supported_formats.documents', []),
+        ));
+
         return [
             'file_type.required' => 'A default file type is required.',
             'file_type.in' => 'File type must be receipt or document.',
@@ -48,7 +60,7 @@ class CreateBulkSessionRequest extends FormRequest
             'files.max' => 'Maximum 10000 files per session.',
             'files.*.hash.regex' => 'Hash must be a valid SHA-256 hex string, optionally prefixed with sha256:.',
             'files.*.size.max' => 'Maximum file size is 100MB.',
-            'files.*.extension.in' => 'Supported formats: jpeg, jpg, png, pdf, tiff, tif, csv.',
+            'files.*.extension.in' => 'Supported formats: '.implode(', ', $allFormats).'.',
         ];
     }
 }

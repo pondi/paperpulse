@@ -98,6 +98,39 @@ it('detects duplicate files during session creation', function () {
     expect($duplicateFile->status)->toBe(BulkUploadFileStatus::Duplicate);
 });
 
+it('creates a bulk upload session with office document formats', function () {
+    $response = $this->postJson('/api/v1/bulk/sessions', [
+        'file_type' => 'document',
+        'files' => [
+            [
+                'filename' => 'report.docx',
+                'size' => 245000,
+                'hash' => hash('sha256', 'docx-content'),
+                'extension' => 'docx',
+                'mime_type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            ],
+            [
+                'filename' => 'spreadsheet.xlsx',
+                'size' => 120000,
+                'hash' => hash('sha256', 'xlsx-content'),
+                'extension' => 'xlsx',
+                'mime_type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ],
+            [
+                'filename' => 'notes.txt',
+                'size' => 5000,
+                'hash' => hash('sha256', 'txt-content'),
+                'extension' => 'txt',
+                'mime_type' => 'text/plain',
+            ],
+        ],
+    ]);
+
+    $response->assertStatus(201)
+        ->assertJsonPath('data.total_files', 3)
+        ->assertJsonPath('data.uploadable_files', 3);
+});
+
 it('validates session creation request', function () {
     $this->postJson('/api/v1/bulk/sessions', [])
         ->assertStatus(422);

@@ -25,6 +25,8 @@ class Merchant extends Model
         'website',
     ];
 
+    protected $with = ['logo'];
+
     protected $appends = ['logo_url'];
 
     protected $casts = [

@@ -42,3 +42,8 @@ Schedule::job(new SendWeeklySummary)->dailyAt('09:00')
 Schedule::command('cleanup:soft-deleted --days=30')->dailyAt('04:00')
     ->name('cleanup-soft-deleted-records')
     ->withoutOverlapping();
+
+// Clean up expired bulk upload sessions and orphaned S3 files daily at 5am
+Schedule::command('bulk:cleanup-expired --hours=48')->dailyAt('05:00')
+    ->name('cleanup-expired-bulk-sessions')
+    ->withoutOverlapping();

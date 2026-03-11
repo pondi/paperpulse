@@ -104,6 +104,34 @@ return [
             ],
         ],
 
+        // Uplink incoming bucket for bulk desktop uploads
+        'uplink' => [
+            'driver' => 's3',
+            'key' => env('S3_KEY'),
+            'secret' => env('S3_SECRET'),
+            'region' => env('S3_REGION'),
+            'bucket' => env('AWS_INCOMING_BUCKET'),
+            'url' => env('S3_URL'),
+            'endpoint' => env('S3_ENDPOINT'),
+            'use_path_style_endpoint' => env('S3_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'throw' => true,
+            'options' => [
+                'ACL' => 'private',
+                'http' => [
+                    'synchronous' => false,
+                ],
+            ],
+            'client' => [
+                'http' => [
+                    'verify' => false,
+                    'synchronous' => false,
+                ],
+                'signature_version' => 'v4',
+                'use_aws_shared_config_files' => false,
+            ],
+        ],
+
         // Textract temporary storage
         'textract' => [
             'driver' => 's3',
@@ -141,5 +169,6 @@ return [
     */
 
     'incoming_prefix' => env('S3_INCOMING_PREFIX', 'incoming/'),
+    'uplink_prefix' => env('S3_UPLINK_PREFIX', 'uplink-incoming/'),
 
 ];

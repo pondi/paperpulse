@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BankStatementController;
+use App\Http\Controllers\Api\V1\BulkUploadController;
 use App\Http\Controllers\Api\V1\CollectionController;
 use App\Http\Controllers\Api\V1\ContractController;
 use App\Http\Controllers\Api\V1\FileContentController;
@@ -76,4 +77,26 @@ Route::middleware(['auth:sanctum', 'api.rate_limit:200,1'])->group(function () {
     // Warranties
     Route::get('warranties', [WarrantyController::class, 'index'])->name('api.warranties.index');
     Route::get('warranties/{warranty}', [WarrantyController::class, 'show'])->name('api.warranties.show');
+
+    // Bulk Upload (Uplink)
+    Route::prefix('bulk')->group(function () {
+        Route::get('sessions', [BulkUploadController::class, 'index'])
+            ->name('api.bulk.sessions.index');
+        Route::post('sessions', [BulkUploadController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('api.bulk.sessions.store');
+        Route::get('sessions/{uuid}', [BulkUploadController::class, 'show'])
+            ->name('api.bulk.sessions.show');
+        Route::post('sessions/{uuid}/presign', [BulkUploadController::class, 'presign'])
+            ->middleware('throttle:60,1')
+            ->name('api.bulk.sessions.presign');
+        Route::post('sessions/{uuid}/files/{fileUuid}/presign', [BulkUploadController::class, 'presignFile'])
+            ->middleware('throttle:60,1')
+            ->name('api.bulk.files.presign');
+        Route::post('sessions/{uuid}/files/{fileUuid}/confirm', [BulkUploadController::class, 'confirmFile'])
+            ->middleware('throttle:600,1')
+            ->name('api.bulk.files.confirm');
+        Route::post('sessions/{uuid}/cancel', [BulkUploadController::class, 'cancel'])
+            ->name('api.bulk.sessions.cancel');
+    });
 });

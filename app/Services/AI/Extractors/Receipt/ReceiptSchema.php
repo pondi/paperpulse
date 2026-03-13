@@ -142,6 +142,16 @@ class ReceiptSchema
         return <<<'PROMPT'
 Extract all receipt information from this document.
 
+## IMPORTANT: Verify this is actually a receipt
+
+A receipt is a PROOF OF PURCHASE issued at the point of sale. It must show items bought, prices paid, and typically a merchant name. If this document is any of the following, set confidence_score to 0.1 and extract only basic fields:
+- An email or letter that mentions a purchase but is NOT the receipt itself
+- A screenshot of an order confirmation (not the actual receipt)
+- A forwarded message discussing a transaction
+- A bank notification about a payment (this is NOT a receipt)
+
+Only extract full receipt data if the document IS the actual receipt.
+
 **What to extract:**
 
 1. **Merchant details**: Store name, address, VAT number, phone, category

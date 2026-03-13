@@ -24,8 +24,8 @@ class DocumentSchema
                 'properties' => [
                     // Document metadata (flattened)
                     'document_title' => ['type' => 'string', 'description' => 'Document title or heading'],
-                    'document_type' => ['type' => 'string', 'description' => 'Type of document (letter, report, memo, article, etc.)'],
-                    'document_category' => ['type' => 'string', 'description' => 'Document category (business, personal, legal, technical, etc.)'],
+                    'document_type' => ['type' => 'string', 'description' => 'Type of document (email, letter, report, memo, article, form, notification, correspondence, etc.)'],
+                    'document_category' => ['type' => 'string', 'description' => 'Document category (business, personal, legal, technical, financial, correspondence, etc.)'],
 
                     // Author and dates (flattened)
                     'author' => ['type' => 'string', 'description' => 'Document author name'],
@@ -76,10 +76,18 @@ class DocumentSchema
         return <<<'PROMPT'
 Extract all document information from this text or image.
 
+This is the generic document type — used for all documents that are NOT one of the specialized types (receipt, invoice, contract, voucher, warranty, bank statement). This includes but is not limited to:
+- **Emails and correspondence** (even if they discuss invoices, contracts, or payments)
+- Letters, memos, and notes
+- Reports, articles, and presentations
+- Screenshots and forwarded messages
+- Forms, applications, and registrations
+- Any document that REFERENCES a specialized type but is not itself that type
+
 **What to extract:**
 
-1. **Document metadata**: Title, type (letter, report, memo, article), category (business, personal, legal, technical)
-2. **Author and dates**: Author name, creation date (YYYY-MM-DD format)
+1. **Document metadata**: Title, type (email, letter, report, memo, article, form, notification, correspondence), category (business, personal, legal, technical, financial, correspondence)
+2. **Author and dates**: Author/sender name, creation/sent date (YYYY-MM-DD format)
 3. **Content summary**: 2-3 sentence overview of what the document contains
 4. **Key points**: Main topics, ideas, or findings covered (as bullet points)
 5. **Entities mentioned**: All named entities such as:
@@ -91,7 +99,7 @@ Extract all document information from this text or image.
 7. **Confidence**: Your confidence in the extraction (0.0-1.0) based on clarity and completeness
 
 **Important:**
-- Extract document_title (required) - this is the main subject/title
+- Extract document_title (required) - this is the main subject/title. For emails, use the subject line.
 - Use YYYY-MM-DD format for dates
 - Include all named entities with their type
 - Be comprehensive with key_points - extract all main topics

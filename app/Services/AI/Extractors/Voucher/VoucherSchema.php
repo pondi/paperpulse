@@ -57,6 +57,16 @@ class VoucherSchema
         return <<<'PROMPT'
 Extract all voucher information from this document.
 
+## IMPORTANT: Verify this is actually a voucher
+
+A voucher is a document that grants a specific monetary value, discount, or entitlement — such as a gift card, store credit, coupon, or promotional code. It must contain a redeemable code or value. If this document is any of the following, set confidence_score to 0.1 and extract only basic fields:
+- An email or message that mentions a discount but does not contain the actual voucher/code
+- A marketing email advertising a promotion (the email itself is not the voucher)
+- An advertisement showing a sale or discount
+- A receipt that happens to show a discount was applied (that is a receipt, not a voucher)
+
+Only extract full voucher data if the document IS the actual voucher, gift card, or coupon.
+
 **What to extract:**
 
 1. **Issuer details**: Organization name, contact information (email, phone, website)

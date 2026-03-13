@@ -97,6 +97,17 @@ class ContractSchema
         return <<<'PROMPT'
 Extract all contract information from this document.
 
+## IMPORTANT: Verify this is actually a contract
+
+A contract is a FORMAL LEGAL AGREEMENT between two or more parties with binding terms, obligations, and signatures. If this document is any of the following, set confidence_score to 0.1 and extract only basic fields:
+- An email or letter that DISCUSSES or REFERENCES a contract but is not the contract itself
+- A proposal or draft that has not been signed or executed
+- Meeting notes about contract negotiations
+- A summary or overview of contract terms sent via correspondence
+- Terms of service from a website (unless explicitly structured as a contract)
+
+Only extract full contract data if the document IS the actual contract or agreement.
+
 **What to extract:**
 
 1. **Contract identification**: Contract number, official title, type (NDA, Service Agreement, License, etc.)

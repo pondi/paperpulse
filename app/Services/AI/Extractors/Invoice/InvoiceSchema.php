@@ -102,6 +102,18 @@ class InvoiceSchema
         return <<<'PROMPT'
 Extract all invoice information from this document.
 
+## IMPORTANT: Verify this is actually an invoice
+
+An invoice is a FORMAL PAYMENT REQUEST issued by a seller to a buyer. It must contain an invoice number, line items or services rendered, amounts, and payment terms. If this document is any of the following, set confidence_score to 0.1 and extract only basic fields:
+- An email or letter that REFERENCES or DISCUSSES an invoice but is not the invoice itself
+- A payment reminder or collection notice (not the original invoice)
+- A purchase order (this is a request to buy, not an invoice)
+- A quote or estimate (not yet an invoice)
+- A payment confirmation or receipt (this is proof of payment, not an invoice)
+- A screenshot or forwarded copy of invoice details in a message
+
+Only extract full invoice data if the document IS the actual invoice document.
+
 **What to extract:**
 
 1. **Vendor details**: Seller name, address, VAT/tax number, contact info

@@ -68,6 +68,17 @@ class BankStatementSchema
         return <<<'PROMPT'
 Extract all bank statement information from this document.
 
+## IMPORTANT: Verify this is actually a bank statement
+
+A bank statement is an OFFICIAL DOCUMENT from a bank showing account transactions over a period. It must contain an account number, transaction list with dates and amounts, and opening/closing balances. If this document is any of the following, set confidence_score to 0.1 and extract only basic fields:
+- An email or SMS notification about a single transaction
+- A payment confirmation or transfer receipt
+- A screenshot of a banking app
+- A spreadsheet or personal record of transactions (not from the bank)
+- A letter from the bank that discusses account activity but is not the statement
+
+Only extract full bank statement data if the document IS the actual bank statement.
+
 **What to extract:**
 
 1. **Bank details**: Bank name, account holder name, account number

@@ -67,14 +67,26 @@ class ClassificationSchema
 Classify this document into one of the following types:
 
 - **receipt**: Purchase receipt from a store/restaurant showing items bought, prices, and payment
-- **invoice**: Business invoice requesting payment for goods/services rendered
+- **invoice**: Business invoice requesting payment for goods/services rendered. Must be the ACTUAL invoice document with line items, totals, and payment terms — not a reference to one.
 - **voucher**: Gift card, store credit, promotional code, or discount voucher
 - **warranty**: Product warranty or guarantee information
 - **return_policy**: Return/exchange policy information
-- **contract**: Legal contract or agreement between parties
+- **contract**: Legal contract or agreement between parties. Must be the ACTUAL contract/agreement — not a letter or email discussing one.
 - **bank_statement**: Bank account statement with transactions
 - **document**: Generic document (if none of the above fit)
 - **unknown**: Cannot determine type from the content
+
+## CRITICAL CLASSIFICATION RULES
+
+You must classify based on WHAT THE DOCUMENT ITSELF IS, not what it references or discusses:
+
+- An **email** that mentions an invoice, attaches an invoice, or discusses payment → classify as **document**, NOT invoice
+- A **letter** that references a contract or agreement → classify as **document**, NOT contract
+- A **screenshot** of a conversation about a receipt → classify as **document**, NOT receipt
+- A **forwarded email** with bank transaction details → classify as **document**, NOT bank_statement
+- A **notification** about a warranty claim → classify as **document**, NOT warranty
+
+The document must BE the actual financial/legal instrument to be classified as that type. If the document is correspondence (email, letter, memo, chat) that merely references or discusses another document type, classify it as **document**.
 
 **Hints:**
 - Filename: {$filename}

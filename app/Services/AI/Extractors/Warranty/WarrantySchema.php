@@ -56,6 +56,16 @@ class WarrantySchema
         return <<<'PROMPT'
 Extract all warranty information from this document.
 
+## IMPORTANT: Verify this is actually a warranty
+
+A warranty is a FORMAL GUARANTEE document specifying coverage terms, duration, and what defects or issues are covered for a specific product. If this document is any of the following, set confidence_score to 0.1 and extract only basic fields:
+- An email confirming a warranty registration (the email is not the warranty)
+- A product manual that briefly mentions warranty terms (the manual is a document, not a warranty)
+- A customer service conversation about a warranty claim
+- A marketing page listing warranty as a product feature
+
+Only extract full warranty data if the document IS the actual warranty certificate, guarantee, or warranty terms document.
+
 **What to extract:**
 
 1. **Provider details**: Company name offering the warranty, contact information (phone, email, website)

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CollectionController;
+use App\Http\Controllers\PublicCollectionLinkController;
 use App\Models\Collection;
 use Illuminate\Support\Facades\Route;
 
@@ -32,7 +33,14 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::delete('/{collection}/files', [CollectionController::class, 'removeFiles'])->name('files.remove');
 
         // Sharing
-        Route::post('/{collection}/share', [CollectionController::class, 'share'])->name('share');
-        Route::delete('/{collection}/share/{user}', [CollectionController::class, 'unshare'])->name('unshare');
+        Route::scopeBindings()->group(function () {
+            Route::post('/{collection}/share', [CollectionController::class, 'share'])->name('share');
+            Route::delete('/{collection}/share/{user}', [CollectionController::class, 'unshare'])->name('unshare');
+        });
+
+        // Public links
+        Route::post('/{collection}/public-links', [PublicCollectionLinkController::class, 'store'])->name('public-links.store');
+        Route::delete('/{collection}/public-links/{publicCollectionLink}', [PublicCollectionLinkController::class, 'destroy'])->name('public-links.destroy');
+        Route::get('/{collection}/public-links/{publicCollectionLink}/logs', [PublicCollectionLinkController::class, 'logs'])->name('public-links.logs');
     });
 });

@@ -95,6 +95,15 @@
                     </div>
                 </div>
 
+                <!-- Public Sharing -->
+                <PublicLinkManager
+                    v-if="isOwner"
+                    :collection-id="collection.id"
+                    :public-links="publicLinks"
+                    :flash-public-link="$page.props.flash?.publicLink"
+                    class="mb-6"
+                />
+
                 <!-- Files Grid -->
                 <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg p-6">
                     <div class="flex items-center justify-between mb-6">
@@ -161,6 +170,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import IconPicker from '@/Components/Forms/IconPicker.vue';
 import ColorPicker from '@/Components/Forms/ColorPicker.vue';
+import PublicLinkManager from '@/Components/Domain/PublicLinkManager.vue';
 
 const props = defineProps({
     collection: {
@@ -176,6 +186,10 @@ const props = defineProps({
         default: false
     },
     breadcrumbs: {
+        type: Array,
+        default: () => []
+    },
+    publicLinks: {
         type: Array,
         default: () => []
     }

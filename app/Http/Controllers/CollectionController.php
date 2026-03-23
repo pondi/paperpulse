@@ -10,6 +10,7 @@ use App\Models\Collection;
 use App\Models\User;
 use App\Services\CollectionService;
 use App\Services\CollectionSharingService;
+use App\Services\PublicCollectionSharingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,8 @@ class CollectionController extends Controller
 {
     public function __construct(
         protected CollectionService $collectionService,
-        protected CollectionSharingService $sharingService
+        protected CollectionSharingService $sharingService,
+        protected PublicCollectionSharingService $publicSharingService,
     ) {}
 
     /**
@@ -43,7 +45,7 @@ class CollectionController extends Controller
         }
 
         // Apply sorting
-        $sort = $request->get('sort', 'name');
+        $sort = $request->input('sort', 'name');
         match ($sort) {
             '-name' => $query->orderBy('name', 'desc'),
             'files' => $query->orderBy('files_count', 'desc'),
@@ -59,7 +61,7 @@ class CollectionController extends Controller
             'collections' => $collections,
             'filters' => [
                 'search' => $request->search,
-                'sort' => $request->get('sort', 'name'),
+                'sort' => $request->input('sort', 'name'),
                 'archived' => $showArchived,
             ],
         ]);
@@ -114,11 +116,16 @@ class CollectionController extends Controller
         $stats = $this->collectionService->getCollectionStats($collection);
         $shares = $this->sharingService->getShares($collection);
 
+        $publicLinks = $collection->user_id === auth()->id()
+            ? $this->publicSharingService->getAllLinksForCollection($collection)
+            : collect();
+
         return Inertia::render('Collections/Show', [
             'collection' => $collection,
             'stats' => $stats,
             'shares' => $shares,
             'isOwner' => $collection->user_id === auth()->id(),
+            'publicLinks' => $publicLinks,
             'breadcrumbs' => [
                 ['label' => 'Dashboard', 'href' => route('dashboard')],
                 ['label' => 'Collections', 'href' => route('collections.index')],

@@ -22,7 +22,7 @@ class TagController extends Controller
             $query->search($request->search);
         }
 
-        $sort = $request->get('sort', 'desc');
+        $sort = $request->input('sort', 'desc');
 
         // Note: orderByUsage() already calls withCount('files'), so we only add it for name sorting
         switch ($sort) {
@@ -49,7 +49,7 @@ class TagController extends Controller
             'tags' => $tags,
             'filters' => [
                 'search' => $request->search,
-                'sort' => $request->get('sort', 'desc'),
+                'sort' => $request->input('sort', 'desc'),
             ],
         ]);
     }

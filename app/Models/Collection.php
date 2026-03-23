@@ -114,6 +114,11 @@ class Collection extends Model
         return $this->hasMany(CollectionShare::class);
     }
 
+    public function publicLinks(): HasMany
+    {
+        return $this->hasMany(PublicCollectionLink::class);
+    }
+
     public function sharedUsers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'collection_shares', 'collection_id', 'shared_with_user_id')

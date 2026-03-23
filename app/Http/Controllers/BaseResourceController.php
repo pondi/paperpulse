@@ -90,7 +90,7 @@ abstract class BaseResourceController extends Controller
         $sortDirection = $request->input('sort_direction', $this->defaultSortDirection);
         $query->orderBy($sortField, $sortDirection);
 
-        $items = $query->paginate($request->get('per_page', $this->perPage));
+        $items = $query->paginate($request->input('per_page', $this->perPage));
 
         return Inertia::render("{$this->resource}/Index", [
             'items' => $items->through(fn ($item) => $this->transformForIndex($item)),

@@ -10,7 +10,9 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::post('/{voucher}/redeem', [VoucherController::class, 'redeem'])->name('redeem');
         Route::delete('/{voucher}', [VoucherController::class, 'destroy'])->name('destroy');
         Route::get('/{voucher}/download', [VoucherController::class, 'download'])->name('download');
-        Route::post('/{voucher}/tags', [VoucherController::class, 'attachTag'])->name('tags.store');
-        Route::delete('/{voucher}/tags/{tag}', [VoucherController::class, 'detachTag'])->name('tags.destroy');
+        Route::scopeBindings()->group(function () {
+            Route::post('/{voucher}/tags', [VoucherController::class, 'attachTag'])->name('tags.store');
+            Route::delete('/{voucher}/tags/{tag}', [VoucherController::class, 'detachTag'])->name('tags.destroy');
+        });
     });
 });

@@ -91,7 +91,7 @@ class DocumentController extends BaseResourceController
         $sortDirection = $request->input('sort_direction', 'desc');
         $query->orderBy($sortField, $sortDirection);
 
-        $files = $query->paginate($request->get('per_page', $this->perPage));
+        $files = $query->paginate($request->input('per_page', $this->perPage));
 
         return Inertia::render('Documents/Index', [
             'documents' => $files->through(function ($file) {
@@ -140,10 +140,13 @@ class DocumentController extends BaseResourceController
         $data['file_name'] = $file->fileName ?? $file->original_filename;
         $data['file_type'] = $file->fileType ?? $file->mime_type;
 
-        // Add note if available on the entity
-        $data['note'] = $entity->note ?? null;
+        // Note and description live on the File model; read directly to avoid lazy-loading
+        $data['note'] = $file->note ?? null;
+        $data['description'] = $entity->description ?? $entity->summary ?? null;
+        $data['uploaded_at'] = $file->uploaded_at?->toIso8601String();
 
-        if (in_array($entityType, ['Document', 'Invoice']) && $entity->category) {
+        if (in_array($entityType, ['Document', 'Invoice']) && method_exists($entity, 'category')) {
+            $entity->loadMissing('category');
             $data['category'] = $entity->category;
         }
 
@@ -152,33 +155,61 @@ class DocumentController extends BaseResourceController
         // Add shared users count
         $data['shared_with_count'] = 0;
 
-        // Add entity-specific details for richer index cards
+        // Add entity-specific details for richer index cards and drawer
         $data['entity_details'] = match ($entityType) {
             'Invoice' => [
                 'date' => $entity->invoice_date?->format('Y-m-d'),
+                'due_date' => $entity->due_date?->format('Y-m-d'),
                 'total' => $entity->total_amount,
                 'currency' => $entity->currency,
                 'status' => $entity->payment_status,
                 'from' => $entity->from_name,
+                'to' => $entity->to_name,
+                'payment_terms' => $entity->payment_method,
+                'invoice_number' => $entity->invoice_number,
             ],
             'Contract' => [
                 'effective_date' => $entity->effective_date?->format('Y-m-d'),
                 'expiration_date' => $entity->expiry_date?->format('Y-m-d'),
                 'type' => $entity->contract_type,
                 'status' => $entity->status,
+                'parties' => $entity->parties,
+                'contract_value' => $entity->contract_value,
+                'currency' => $entity->currency,
+                'summary' => $entity->key_terms ? implode('. ', array_slice((array) $entity->key_terms, 0, 3)) : null,
             ],
             'Voucher' => [
                 'expiry_date' => $entity->expiry_date?->format('Y-m-d'),
                 'discount' => $entity->discount_value,
                 'code' => $entity->code,
+                'voucher_type' => $entity->voucher_type,
+                'original_value' => $entity->original_value,
+                'current_value' => $entity->current_value,
+                'currency' => $entity->currency,
+                'is_redeemed' => $entity->is_redeemed,
             ],
             'Warranty' => [
-                'expiry_date' => $entity->expiry_date?->format('Y-m-d'),
+                'expiry_date' => $entity->warranty_end_date?->format('Y-m-d'),
                 'product' => $entity->product_name,
+                'manufacturer' => $entity->manufacturer,
+                'warranty_type' => $entity->warranty_type,
+                'start_date' => $entity->warranty_start_date?->format('Y-m-d'),
+                'coverage_type' => $entity->coverage_type,
             ],
             'BankStatement' => [
                 'date' => $entity->statement_date?->format('Y-m-d'),
                 'closing_balance' => $entity->closing_balance,
+                'bank_name' => $entity->bank_name,
+                'currency' => $entity->currency,
+                'opening_balance' => $entity->opening_balance,
+                'transaction_count' => $entity->transaction_count,
+                'period_start' => $entity->statement_period_start?->format('Y-m-d'),
+                'period_end' => $entity->statement_period_end?->format('Y-m-d'),
+            ],
+            'Document' => [
+                'summary' => $entity->summary ? mb_substr($entity->summary, 0, 200) : null,
+                'document_type' => $entity->document_type,
+                'document_date' => $entity->document_date?->format('Y-m-d'),
             ],
             default => [],
         };

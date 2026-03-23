@@ -10,7 +10,9 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::patch('/{invoice}', [InvoiceController::class, 'update'])->name('update');
         Route::delete('/{invoice}', [InvoiceController::class, 'destroy'])->name('destroy');
         Route::get('/{invoice}/download', [InvoiceController::class, 'download'])->name('download');
-        Route::post('/{invoice}/tags', [InvoiceController::class, 'attachTag'])->name('tags.store');
-        Route::delete('/{invoice}/tags/{tag}', [InvoiceController::class, 'detachTag'])->name('tags.destroy');
+        Route::scopeBindings()->group(function () {
+            Route::post('/{invoice}/tags', [InvoiceController::class, 'attachTag'])->name('tags.store');
+            Route::delete('/{invoice}/tags/{tag}', [InvoiceController::class, 'detachTag'])->name('tags.destroy');
+        });
     });
 });

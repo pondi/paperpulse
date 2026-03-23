@@ -1,10 +1,14 @@
 <?php
 
+use App\Models\BankStatement;
 use App\Models\Contract;
 use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Invoice;
+use App\Models\ReturnPolicy;
+use App\Models\Voucher;
+use App\Models\Warranty;
 use Laravel\Dusk\Browser;
 
 test('upload page loads', function () {
@@ -160,51 +164,39 @@ test('documents index shows documents when they exist', function () {
 test('documents index shows entity type badges', function () {
     $user = $this->createUser();
 
-    // Create a Document entity
-    $docFile = File::factory()->create([
-        'user_id' => $user->id,
-        'file_type' => 'document',
-        'processing_type' => 'document',
-        'status' => 'completed',
-    ]);
+    // Helper to create a file + entity + extractable link
+    $createEntity = function (string $entityClass, string $type, array $entityAttrs = []) use ($user) {
+        $file = File::factory()->create([
+            'user_id' => $user->id,
+            'file_type' => 'document',
+            'processing_type' => $type,
+            'status' => 'completed',
+        ]);
 
-    $document = Document::factory()->create([
-        'file_id' => $docFile->id,
-        'user_id' => $user->id,
-        'title' => 'Badge Test Doc',
-    ]);
+        $entity = $entityClass::factory()->create(array_merge([
+            'file_id' => $file->id,
+            'user_id' => $user->id,
+        ], $entityAttrs));
 
-    ExtractableEntity::create([
-        'file_id' => $docFile->id,
-        'user_id' => $user->id,
-        'entity_type' => 'document',
-        'entity_id' => $document->id,
-        'is_primary' => true,
-        'extracted_at' => now(),
-    ]);
+        ExtractableEntity::create([
+            'file_id' => $file->id,
+            'user_id' => $user->id,
+            'entity_type' => $type,
+            'entity_id' => $entity->id,
+            'is_primary' => true,
+            'extracted_at' => now(),
+        ]);
 
-    // Create an Invoice entity
-    $invoiceFile = File::factory()->create([
-        'user_id' => $user->id,
-        'file_type' => 'document',
-        'processing_type' => 'invoice',
-        'status' => 'completed',
-    ]);
+        return $entity;
+    };
 
-    $invoice = Invoice::factory()->create([
-        'file_id' => $invoiceFile->id,
-        'user_id' => $user->id,
-        'from_name' => 'Acme Corp',
-    ]);
-
-    ExtractableEntity::create([
-        'file_id' => $invoiceFile->id,
-        'user_id' => $user->id,
-        'entity_type' => 'invoice',
-        'entity_id' => $invoice->id,
-        'is_primary' => true,
-        'extracted_at' => now(),
-    ]);
+    $createEntity(Document::class, 'document', ['title' => 'Badge Test Doc']);
+    $createEntity(Invoice::class, 'invoice', ['from_name' => 'Acme Corp']);
+    $createEntity(Contract::class, 'contract', ['contract_title' => 'Service Agreement']);
+    $createEntity(Voucher::class, 'voucher', ['code' => 'HOLIDAY-2026']);
+    $createEntity(Warranty::class, 'warranty', ['product_name' => 'Laptop Pro']);
+    $createEntity(ReturnPolicy::class, 'return_policy');
+    $createEntity(BankStatement::class, 'bank_statement', ['bank_name' => 'First Bank']);
 
     $this->browse(function (Browser $browser) use ($user) {
         $this->loginAs($browser, $user);
@@ -212,9 +204,13 @@ test('documents index shows entity type badges', function () {
         $browser->visit('/documents')
             ->waitForText('Documents')
             ->pause(500)
+            ->assertDontSee('No documents found')
             ->assertSee('Document')
             ->assertSee('Invoice')
-            ->assertDontSee('No documents found');
+            ->assertSee('Contract')
+            ->assertSee('Voucher')
+            ->assertSee('Warranty')
+            ->assertSee('Statement');
     });
 });
 

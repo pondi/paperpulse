@@ -47,3 +47,8 @@ Schedule::command('cleanup:soft-deleted --days=30')->dailyAt('04:00')
 Schedule::command('bulk:cleanup-expired --hours=48')->dailyAt('05:00')
     ->name('cleanup-expired-bulk-sessions')
     ->withoutOverlapping();
+
+// Deactivate expired public collection links daily at 6am
+Schedule::command('public-links:cleanup')->dailyAt('06:00')
+    ->name('cleanup-expired-public-links')
+    ->withoutOverlapping();

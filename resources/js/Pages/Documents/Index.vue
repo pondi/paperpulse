@@ -1,52 +1,79 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import SearchBar from '@/Components/Features/SearchBar.vue';
 import Checkbox from '@/Components/Forms/Checkbox.vue';
 import Modal from '@/Components/Common/Modal.vue';
-import PdfViewer from '@/Components/Common/PdfViewer.vue';
-import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
 import DangerButton from '@/Components/Buttons/DangerButton.vue';
 import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
-import { 
-    DocumentIcon, 
-    FolderIcon, 
-    TagIcon, 
+import DocumentDrawer from '@/Components/Domain/DocumentDrawer.vue';
+import {
+    DocumentIcon,
     ShareIcon,
     TrashIcon,
     ArrowDownTrayIcon,
     EyeIcon,
-    XMarkIcon,
     FunnelIcon,
     Squares2X2Icon,
-    ListBulletIcon
+    ListBulletIcon,
 } from '@heroicons/vue/24/outline';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 interface Document {
     id: number;
     title: string;
     note?: string | null;
+    description?: string | null;
     file_name: string;
     file_type: string;
     size: number;
     created_at: string;
     updated_at: string;
+    uploaded_at?: string;
     entity_type?: string;
     entity_details?: {
+        // Invoice
         date?: string;
+        due_date?: string;
         total?: number;
         currency?: string;
         status?: string;
         from?: string;
+        to?: string;
+        payment_terms?: string;
+        invoice_number?: string;
+        // Contract
         effective_date?: string;
         expiration_date?: string;
         type?: string;
+        parties?: string[];
+        contract_value?: number;
+        summary?: string;
+        // Voucher
         expiry_date?: string;
         discount?: number;
         code?: string;
+        voucher_type?: string;
+        original_value?: number;
+        current_value?: number;
+        is_redeemed?: boolean;
+        // Warranty
         product?: string;
+        manufacturer?: string;
+        warranty_type?: string;
+        start_date?: string;
+        coverage_type?: string;
+        // BankStatement
         closing_balance?: number;
+        bank_name?: string;
+        opening_balance?: number;
+        transaction_count?: number;
+        period_start?: string;
+        period_end?: string;
+        // Document
+        document_type?: string;
+        document_date?: string;
     };
     category?: {
         id: number;
@@ -56,6 +83,7 @@ interface Document {
     tags: Array<{
         id: number;
         name: string;
+        color?: string;
     }>;
     shared_with_count: number;
     file?: {
@@ -92,17 +120,21 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const isMounted = ref(false);
+const { formatDate: formatDateLocalized, formatCurrency: formatCurrencyLocalized } = useDateFormatter();
+
 const selectedDocuments = ref<number[]>([]);
 const showDeleteModal = ref(false);
 const showFilters = ref(false);
 const viewMode = ref<'grid' | 'list'>('grid');
-const showDocumentDrawer = ref(false);
-const showPdfViewer = ref(false);
+const isDrawerOpen = ref(false);
 const selectedDocument = ref<Document | null>(null);
 
 onMounted(() => {
-    isMounted.value = true;
+    document.addEventListener('keydown', handleKeyDown);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('keydown', handleKeyDown);
 });
 
 const allSelected = computed(() => {
@@ -146,14 +178,42 @@ const toggleDocument = (id: number) => {
     }
 };
 
-const viewDocument = (document: Document) => {
-    selectedDocument.value = document;
-    // Show PDF viewer if document has a PDF URL (for PDFs and documents with PDF conversions)
-    if (document.file?.pdfUrl || document.file?.is_pdf) {
-        showPdfViewer.value = true;
-    } else {
-        // Show drawer for image previews
-        showDocumentDrawer.value = true;
+const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024);
+
+const handleResize = () => {
+    windowWidth.value = window.innerWidth;
+};
+
+onMounted(() => {
+    window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('resize', handleResize);
+});
+
+const containerStyle = computed(() => ({
+    paddingLeft: '1.5rem',
+    paddingRight: isDrawerOpen.value ? (windowWidth.value < 640 ? '0' : '532px') : '1.5rem',
+    maxWidth: '100vw',
+    transition: 'padding-right 500ms ease-in-out',
+}));
+
+const viewDocument = (doc: Document) => {
+    selectedDocument.value = doc;
+    isDrawerOpen.value = true;
+};
+
+const closeDrawer = () => {
+    isDrawerOpen.value = false;
+    setTimeout(() => {
+        selectedDocument.value = null;
+    }, 500);
+};
+
+const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && isDrawerOpen.value) {
+        closeDrawer();
     }
 };
 
@@ -225,10 +285,7 @@ const getEntityTypeBadge = (entityType?: string) => {
 
 const formatCurrency = (amount?: number, currency?: string) => {
     if (amount == null) return null;
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency || 'USD',
-    }).format(amount);
+    return formatCurrencyLocalized(amount, currency);
 };
 </script>
 
@@ -253,7 +310,7 @@ const formatCurrency = (amount?: number, currency?: string) => {
         </template>
 
         <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div class="max-w-7xl mx-auto transition-all duration-500 ease-in-out" :style="containerStyle">
                 <!-- Flash Message -->
                 <div v-if="$page.props.flash?.success" class="mb-6 rounded-md bg-green-50 p-4">
                     <div class="flex">
@@ -748,51 +805,7 @@ const formatCurrency = (amount?: number, currency?: string) => {
                     </div>
                 </div>
 
-                <!-- Document Drawer (for image previews) -->
-                <Teleport v-if="isMounted" to="body">
-                    <div v-if="showDocumentDrawer" class="fixed inset-0 overflow-hidden z-50">
-                        <div class="absolute inset-0 bg-black bg-opacity-50" @click="showDocumentDrawer = false"></div>
-                        <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white dark:bg-zinc-800 shadow-xl">
-                            <div class="flex items-center justify-between p-4 border-b dark:border-zinc-700">
-                                <h3 class="text-lg font-medium text-zinc-900 dark:text-white">
-                                    {{ selectedDocument?.title }}
-                                </h3>
-                                <button
-                                    @click="showDocumentDrawer = false"
-                                    class="text-zinc-400 hover:text-zinc-500 dark:hover:text-zinc-300"
-                                >
-                                    <XMarkIcon class="h-6 w-6" />
-                                </button>
-                            </div>
-                            <div class="p-4">
-                                <div class="aspect-[8.5/11] bg-amber-100 dark:bg-zinc-700 rounded-lg flex items-center justify-center overflow-hidden relative">
-                                    <template v-if="selectedDocument?.file?.previewUrl || selectedDocument?.file?.url">
-                                        <img
-                                            :src="selectedDocument.file.previewUrl || selectedDocument.file.url"
-                                            class="w-full h-auto"
-                                            :alt="selectedDocument.title"
-                                        />
-                                    </template>
-                                    <template v-else>
-                                        <div class="text-center text-zinc-500 dark:text-zinc-300">No preview available</div>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </Teleport>
-
-                <!-- PDF Viewer (full-screen) -->
-                <PdfViewer
-                    v-if="isMounted"
-                    :show="showPdfViewer"
-                    :pdf-url="selectedDocument?.file?.pdfUrl || selectedDocument?.file?.url || null"
-                    :title="selectedDocument?.title"
-                    :download-url="selectedDocument ? route('documents.download', selectedDocument.id) : undefined"
-                    @close="showPdfViewer = false"
-                />
-
-                <!-- Delete Confirmation Modal -->
+                <!-- Delete Confirmation Modal (bulk) -->
                 <Modal :show="showDeleteModal" @close="showDeleteModal = false">
                     <div class="p-6">
                         <h2 class="text-lg font-black text-zinc-900 dark:text-zinc-100">
@@ -813,5 +826,12 @@ const formatCurrency = (amount?: number, currency?: string) => {
                 </Modal>
             </div>
         </div>
+
+        <!-- Document Drawer -->
+        <DocumentDrawer
+            :document="selectedDocument"
+            :show="isDrawerOpen"
+            @close="closeDrawer"
+        />
     </AuthenticatedLayout>
 </template>

@@ -10,7 +10,9 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::patch('/{contract}', [ContractController::class, 'update'])->name('update');
         Route::delete('/{contract}', [ContractController::class, 'destroy'])->name('destroy');
         Route::get('/{contract}/download', [ContractController::class, 'download'])->name('download');
-        Route::post('/{contract}/tags', [ContractController::class, 'attachTag'])->name('tags.store');
-        Route::delete('/{contract}/tags/{tag}', [ContractController::class, 'detachTag'])->name('tags.destroy');
+        Route::scopeBindings()->group(function () {
+            Route::post('/{contract}/tags', [ContractController::class, 'attachTag'])->name('tags.store');
+            Route::delete('/{contract}/tags/{tag}', [ContractController::class, 'detachTag'])->name('tags.destroy');
+        });
     });
 });

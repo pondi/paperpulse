@@ -21,8 +21,8 @@ class AnalyticsController extends Controller
     public function index(Request $request)
     {
         $userId = auth()->id();
-        $period = $request->get('period', 'all');
-        $tab = $request->get('tab', 'overview');
+        $period = $request->input('period', 'all');
+        $tab = $request->input('tab', 'overview');
         $startDate = $this->getStartDate($period);
         $endDate = Carbon::now();
 
@@ -56,7 +56,7 @@ class AnalyticsController extends Controller
         // Ensure user is admin
         abort_unless(auth()->user()?->isAdmin(), 403, 'Admin access required');
 
-        $days = $request->get('days', 7);
+        $days = $request->input('days', 7);
 
         // Get all analytics data
         $documentTypes = $analytics->getDocumentTypeDistribution();

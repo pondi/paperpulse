@@ -77,4 +77,14 @@ class CollectionPolicy
     {
         return $this->sharingService()->userHasAccess($collection, $user, 'edit');
     }
+
+    public function createPublicLink(User $user, Collection $collection): bool
+    {
+        return $user->id === $collection->user_id;
+    }
+
+    public function managePublicLink(User $user, Collection $collection): bool
+    {
+        return $user->id === $collection->user_id;
+    }
 }

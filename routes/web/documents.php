@@ -28,9 +28,11 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::patch('/{document}', [DocumentController::class, 'update'])->name('update');
         Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
         Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download');
-        Route::post('/{document}/share', [DocumentController::class, 'share'])->name('share');
-        Route::delete('/{document}/share/{user}', [DocumentController::class, 'unshare'])->name('unshare');
-        Route::post('/{document}/tags', [DocumentController::class, 'attachTag'])->name('tags.store');
-        Route::delete('/{document}/tags/{tag}', [DocumentController::class, 'detachTag'])->name('tags.destroy');
+        Route::scopeBindings()->group(function () {
+            Route::post('/{document}/share', [DocumentController::class, 'share'])->name('share');
+            Route::delete('/{document}/share/{user}', [DocumentController::class, 'unshare'])->name('unshare');
+            Route::post('/{document}/tags', [DocumentController::class, 'attachTag'])->name('tags.store');
+            Route::delete('/{document}/tags/{tag}', [DocumentController::class, 'detachTag'])->name('tags.destroy');
+        });
     });
 });

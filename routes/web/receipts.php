@@ -16,14 +16,16 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::get('/merchant/{merchant}', [ReceiptController::class, 'byMerchant'])->name('byMerchant');
         Route::delete('/{receipt}', [ReceiptController::class, 'destroy'])->name('destroy');
         Route::patch('/{receipt}', [ReceiptController::class, 'update'])->name('update');
-        Route::post('/{receipt}/line-items', [LineItemController::class, 'store'])->name('line-items.store');
-        Route::patch('/{receipt}/line-items/{lineItem}', [LineItemController::class, 'update'])->name('line-items.update');
-        Route::delete('/{receipt}/line-items/{lineItem}', [LineItemController::class, 'destroy'])->name('line-items.destroy');
-        // Use ReceiptController for share/unshare via ShareableController trait
-        Route::post('/{receipt}/share', [ReceiptController::class, 'share'])->name('share');
-        Route::delete('/{receipt}/share/{user}', [ReceiptController::class, 'unshare'])->name('unshare');
-        Route::post('/{receipt}/tags', [ReceiptController::class, 'attachTag'])->name('tags.store');
-        Route::delete('/{receipt}/tags/{tag}', [ReceiptController::class, 'detachTag'])->name('tags.destroy');
+        Route::scopeBindings()->group(function () {
+            Route::post('/{receipt}/line-items', [LineItemController::class, 'store'])->name('line-items.store');
+            Route::patch('/{receipt}/line-items/{lineItem}', [LineItemController::class, 'update'])->name('line-items.update');
+            Route::delete('/{receipt}/line-items/{lineItem}', [LineItemController::class, 'destroy'])->name('line-items.destroy');
+            // Use ReceiptController for share/unshare via ShareableController trait
+            Route::post('/{receipt}/share', [ReceiptController::class, 'share'])->name('share');
+            Route::delete('/{receipt}/share/{user}', [ReceiptController::class, 'unshare'])->name('unshare');
+            Route::post('/{receipt}/tags', [ReceiptController::class, 'attachTag'])->name('tags.store');
+            Route::delete('/{receipt}/tags/{tag}', [ReceiptController::class, 'detachTag'])->name('tags.destroy');
+        });
     });
 
     // Bulk operations

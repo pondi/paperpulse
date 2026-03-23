@@ -23,7 +23,7 @@ class RegisteredUserController extends Controller
     public function create(Request $request): Response
     {
         $invitation = null;
-        $token = $request->get('token');
+        $token = $request->input('token');
 
         if ($token) {
             $invitation = Invitation::findValidByToken($token);

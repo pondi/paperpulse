@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0](https://github.com/pondi/paperpulse/compare/v1.2.3...v1.3.0) (2026-03-26)
+
+
+### Features
+
+* add bulk upload API for Uplink desktop client ([7be2ae9](https://github.com/pondi/paperpulse/commit/7be2ae9776f55758fc048c6b5380f5fa5116cb19))
+* bulk upload API and full document format support ([2bdcb04](https://github.com/pondi/paperpulse/commit/2bdcb04ec999670aaacd055f3c15b16a1cc31896))
+* public collection sharing ([#35](https://github.com/pondi/paperpulse/issues/35)) ([5c2692e](https://github.com/pondi/paperpulse/commit/5c2692eb02545250e1e6c757ed6e4d4e4dc9d8bb))
+* support all document formats in API file upload endpoints ([18cded3](https://github.com/pondi/paperpulse/commit/18cded33ce4a15d60116599f163999d759aba0f1))
+
+
+### Bug Fixes
+
+* add staging environment to Horizon supervisor config ([c4479bb](https://github.com/pondi/paperpulse/commit/c4479bb3c033e06d43d049e198669eba7cb5e6d4))
+* add staging environment to Horizon supervisor config ([8a02fb6](https://github.com/pondi/paperpulse/commit/8a02fb669bf896adb4f1d802ebf938fa1a06e7d5))
+* eager load logo relationship on Merchant to prevent lazy loading violation ([04b9e95](https://github.com/pondi/paperpulse/commit/04b9e95e0ee9178744126157c4ee72fc0b591220))
+* route PHP-FPM error log to stderr for container log visibility ([9b603f3](https://github.com/pondi/paperpulse/commit/9b603f3b6cf9db157395ee29465ab113ec0ff0d3))
+* route PHP-FPM error log to stderr for container log visibility ([327bf57](https://github.com/pondi/paperpulse/commit/327bf57806c19e204108a292576a4419b925e54e))
+* route PHP-FPM error log to stderr for container log visibility ([30cad1a](https://github.com/pondi/paperpulse/commit/30cad1ad5c4acd96d501a729b6ef32b85aa2428a))
+* search 500, tag/collection creation, and file reclassification ([5e36b35](https://github.com/pondi/paperpulse/commit/5e36b35e4ae8a3b8d81d5545d328540c1d54ae61))
+* stop classifying emails about invoices as invoices ([4c6de74](https://github.com/pondi/paperpulse/commit/4c6de74d417e98382b265cf2a8f7b771fb0e4618))
+* stop classifying emails about invoices as invoices ([cefc255](https://github.com/pondi/paperpulse/commit/cefc2551a38811ff2ba8870c8fc596b733adec08))
+
+
+### Miscellaneous
+
+* **deps:** bump jspdf from 4.2.0 to 4.2.1 in the npm_and_yarn group across 1 directory ([2781876](https://github.com/pondi/paperpulse/commit/2781876696b82a54de1e90ef7f69f6e81f601822))
+* **deps:** bump jspdf in the npm_and_yarn group across 1 directory ([888d468](https://github.com/pondi/paperpulse/commit/888d4688d737a48f111567d146cfaea35aa42c94))
+* **deps:** bump socket.io-parser ([#34](https://github.com/pondi/paperpulse/issues/34)) ([301ff0c](https://github.com/pondi/paperpulse/commit/301ff0c1273e2e011045b7eb41616a66c85ed7b4))
+* **deps:** bump the npm_and_yarn group across 1 directory with 1 update ([#36](https://github.com/pondi/paperpulse/issues/36)) ([d2ea4b5](https://github.com/pondi/paperpulse/commit/d2ea4b593aa3d0669a1f470f04b6d951421fa8de))
+
 ## [1.2.3](https://github.com/pondi/paperpulse/compare/v1.2.2...v1.2.3) (2026-03-10)
 
 

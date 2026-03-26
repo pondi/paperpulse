@@ -46,6 +46,20 @@ describe('Collection Web Controller', function () {
         ]);
     });
 
+    test('can create a collection and returns JSON when requested via ajax', function () {
+        $response = $this->actingAs($this->user)->postJson('/collections', [
+            'name' => 'Ajax Collection',
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonFragment(['name' => 'Ajax Collection']);
+
+        $this->assertDatabaseHas('collections', [
+            'user_id' => $this->user->id,
+            'name' => 'Ajax Collection',
+        ]);
+    });
+
     test('can view own collection', function () {
         $collection = Collection::factory()->create(['user_id' => $this->user->id]);
 

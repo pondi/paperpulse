@@ -28,14 +28,14 @@ class SearchResultFormatter
                 'filename' => $receipt->file?->original_filename ?? $receipt->file?->fileName,
                 'url' => route('receipts.show', $receipt->id),
                 'date' => $this->formatDate($receipt->receipt_date),
-                'total' => $receipt->total_amount ? number_format($receipt->total_amount, 2).' '.$receipt->currency : null,
+                'total' => $receipt->total_amount ? number_format((float) $receipt->total_amount, 2).' '.$receipt->currency : null,
                 'category' => $receipt->receipt_category,
                 'tags' => $receipt->tags ? $receipt->tags->pluck('name')->all() : [],
                 'items' => $receipt->lineItems ? $receipt->lineItems->take(3)->map(function ($item) use ($receipt) {
                     return [
                         'description' => $item->text ?? '',
                         'quantity' => $item->qty ?? 0,
-                        'price' => number_format($item->price ?? 0, 2).' '.($receipt->currency ?? ''),
+                        'price' => number_format((float) ($item->price ?? 0), 2).' '.($receipt->currency ?? ''),
                     ];
                 })->all() : [],
                 'file' => $receipt->file ? [
@@ -289,7 +289,7 @@ class SearchResultFormatter
             $parts[] = $receipt->merchant->name;
         }
         if ($receipt->total_amount) {
-            $parts[] = number_format($receipt->total_amount, 2).' '.$receipt->currency;
+            $parts[] = number_format((float) $receipt->total_amount, 2).' '.$receipt->currency;
         }
         if ($receipt->receipt_date) {
             $parts[] = $this->formatDate($receipt->receipt_date);

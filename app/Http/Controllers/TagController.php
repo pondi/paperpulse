@@ -79,6 +79,10 @@ class TagController extends Controller
             $validated['color'] ?? null
         );
 
+        if ($request->wantsJson()) {
+            return response()->json($tag->only('id', 'name', 'color'), 201);
+        }
+
         return back()->with('success', __('Tag created successfully.'));
     }
 

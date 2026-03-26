@@ -95,9 +95,13 @@ class CollectionController extends Controller
     /**
      * Store a newly created collection.
      */
-    public function store(StoreCollectionRequest $request): RedirectResponse
+    public function store(StoreCollectionRequest $request): RedirectResponse|JsonResponse
     {
         $collection = $this->collectionService->create($request->validated(), auth()->id());
+
+        if ($request->wantsJson()) {
+            return response()->json($collection->only('id', 'name', 'color'), 201);
+        }
 
         return back()->with('success', __('Collection created successfully.'));
     }

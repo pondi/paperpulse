@@ -75,6 +75,26 @@ it('creates a tag with valid data', function () {
     ]);
 });
 
+it('creates a tag and returns JSON when requested via ajax', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson(route('tags.store'), [
+            'name' => 'Ajax Tag',
+            'color' => '#10B981',
+        ])
+        ->assertCreated()
+        ->assertJsonFragment([
+            'name' => 'Ajax Tag',
+            'color' => '#10B981',
+        ]);
+
+    $this->assertDatabaseHas('tags', [
+        'user_id' => $user->id,
+        'name' => 'Ajax Tag',
+    ]);
+});
+
 it('rejects tag without name', function () {
     $user = User::factory()->create();
 

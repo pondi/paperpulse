@@ -146,7 +146,17 @@ const removeCollection = (collectionId) => {
 const createNewCollection = async () => {
     if (!searchQuery.value.trim() || exactMatch.value) return;
 
-    emit('create-collection', searchQuery.value.trim());
+    try {
+        const response = await axios.post(route('collections.store'), {
+            name: searchQuery.value.trim(),
+        });
+        const newCollection = response.data;
+        allCollections.value.push(newCollection);
+        emit('update:modelValue', [...props.modelValue, newCollection.id]);
+        emit('create-collection', newCollection);
+    } catch (error) {
+        console.error('Failed to create collection:', error);
+    }
     searchQuery.value = '';
 };
 

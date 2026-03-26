@@ -150,6 +150,19 @@ class ProcessFileGemini extends BaseJob
                         );
                     }
 
+                    // Update file_type if Gemini reclassified (e.g. receipt → document)
+                    $classifiedType = $classification->type === 'receipt' ? 'receipt' : 'document';
+                    if ($file->file_type !== $classifiedType) {
+                        Log::info('[ProcessFileGemini] Reclassifying file type', [
+                            'file_id' => $file->id,
+                            'original_type' => $file->file_type,
+                            'new_type' => $classifiedType,
+                            'classified_as' => $classification->type,
+                        ]);
+                        $file->file_type = $classifiedType;
+                        $file->save();
+                    }
+
                     $this->updateProgress(50);
 
                     // PASS 2: Extract structured data

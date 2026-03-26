@@ -140,7 +140,17 @@ const removeTag = (tagId) => {
 const createNewTag = async () => {
     if (!searchQuery.value.trim() || exactMatch.value) return;
 
-    emit('create-tag', searchQuery.value.trim());
+    try {
+        const response = await axios.post(route('tags.store'), {
+            name: searchQuery.value.trim(),
+        });
+        const newTag = response.data;
+        allTags.value.push(newTag);
+        emit('update:modelValue', [...props.modelValue, newTag.id]);
+        emit('create-tag', newTag);
+    } catch (error) {
+        console.error('Failed to create tag:', error);
+    }
     searchQuery.value = '';
 };
 

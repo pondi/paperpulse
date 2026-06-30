@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1](https://github.com/pondi/paperpulse/compare/v1.3.0...v1.3.1) (2026-06-30)
+
+
+### Miscellaneous
+
+* prepare for Laravel Forge migration ([72962e3](https://github.com/pondi/paperpulse/commit/72962e30960d6ca143b5e65eed9ea58971c8aaf3))
+
 ## [1.3.0](https://github.com/pondi/paperpulse/compare/v1.2.3...v1.3.0) (2026-05-31)
 
 

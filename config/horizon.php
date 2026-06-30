@@ -151,9 +151,9 @@ return [
     | allowing a new instance of Horizon to start while the last
     | instance will continue to terminate each of its workers.
     |
-    | IMPORTANT: This should be TRUE in production Kubernetes deployments
-    | to enable zero-downtime rolling updates. New pods can start processing
-    | jobs immediately while old pods finish their current work.
+    | Set to FALSE on traditional servers (Forge/bare-metal) so all workers
+    | finish their current jobs before the new release takes over. Set to
+    | TRUE on Kubernetes where new pods can start while old ones drain.
     |
     */
 
@@ -204,9 +204,7 @@ return [
     'environments' => [
         'production' => [
             'supervisor-1' => [
-                // Keep conservative defaults for containerized deployments; scale with pods instead of
-                // spawning many PHP worker processes in one pod (which can trigger OOMKilled).
-                'maxProcesses' => (int) env('HORIZON_MAX_PROCESSES', 2),
+                'maxProcesses' => (int) env('HORIZON_MAX_PROCESSES', 5),
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
@@ -214,7 +212,7 @@ return [
 
         'staging' => [
             'supervisor-1' => [
-                'maxProcesses' => (int) env('HORIZON_MAX_PROCESSES', 2),
+                'maxProcesses' => (int) env('HORIZON_MAX_PROCESSES', 3),
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],

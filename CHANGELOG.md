@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.2](https://github.com/pondi/paperpulse/compare/v1.3.1...v1.3.2) (2026-09-29)
+
+
+### Miscellaneous
+
+* **deps:** bump esbuild in the npm_and_yarn group across 1 directory ([#38](https://github.com/pondi/paperpulse/issues/38)) ([1b91588](https://github.com/pondi/paperpulse/commit/1b915881827907009f2a07707c4600f9a60682c6))
+* **deps:** bump the npm_and_yarn group across 1 directory with 3 updates ([#41](https://github.com/pondi/paperpulse/issues/41)) ([b8b7312](https://github.com/pondi/paperpulse/commit/b8b73121578969e2cffcff10052bf60bf925b5c1))
+
 ## [1.3.1](https://github.com/pondi/paperpulse/compare/v1.3.0...v1.3.1) (2026-06-30)
 
 

@@ -12,6 +12,7 @@ use App\Models\Receipt;
 use App\Services\AI\Extractors\EntityExtractorFactory;
 use App\Services\AI\FileManager\GeminiFileManager;
 use App\Services\AI\Providers\GeminiFileAnalyzer;
+use App\Services\AI\TypeClassification\ClassificationResult;
 use App\Services\AI\TypeClassification\GeminiTypeClassifier;
 use App\Services\BankStatements\TransactionCategorizationService;
 use App\Services\DuplicateDetectionService;
@@ -70,6 +71,10 @@ class ProcessFileGemini extends BaseJob
                 'metadata' => $metadata,
             ]);
             throw new Exception("File record not found: {$fileId}");
+        }
+
+        if ($file->status === 'needs_review') {
+            return;
         }
 
         // Idempotency: skip if file already has entities (prevents duplicates on retry)
@@ -154,11 +159,14 @@ class ProcessFileGemini extends BaseJob
                         'file_uri' => $fileUri,
                     ]);
 
-                    $classification = $classifier->classify($fileUri, [
-                        'filename' => $file->filename,
-                        'extension' => $extension,
-                        'mime_type' => $uploadResult['mimeType'],
-                    ]);
+                    $correctedType = $file->meta['review']['corrected_type'] ?? null;
+                    $classification = $correctedType
+                        ? new ClassificationResult($correctedType, 1.0, 'Owner corrected document type')
+                        : $classifier->classify($fileUri, [
+                            'filename' => $file->filename,
+                            'extension' => $extension,
+                            'mime_type' => $uploadResult['mimeType'],
+                        ]);
 
                     Log::info('[ProcessFileGemini] Classification result', [
                         'file_id' => $file->id,
@@ -167,11 +175,17 @@ class ProcessFileGemini extends BaseJob
                         'reasoning' => $classification->reasoning,
                     ]);
 
-                    // Validate classification
                     if (! $classification->isValid()) {
-                        throw new Exception(
-                            "Classification failed: {$classification->reasoning} (confidence: {$classification->confidence})"
-                        );
+                        $file->status = 'needs_review';
+                        $file->meta = array_merge($file->meta ?? [], ['review' => [
+                            'reason' => 'uncertain_classification',
+                            'confidence' => $classification->confidence,
+                            'reasoning' => mb_substr($classification->reasoning, 0, 1000),
+                            'classification' => $classification->toArray(),
+                        ]]);
+                        $file->save();
+
+                        return ['needs_review' => true];
                     }
 
                     // Update file_type if Gemini reclassified (e.g. receipt → document)

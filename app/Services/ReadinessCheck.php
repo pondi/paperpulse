@@ -95,7 +95,7 @@ class ReadinessCheck
             }
 
             return ($connection ?? $this->boundedConnection())->table($configuration['table'])
-                ->where('queue', $configuration['queue'])->count() >= 0;
+                ->where('queue', $configuration['queue'])->limit(1)->get() !== null;
         }
 
         return in_array($driver, ['sync', 'null'], true);

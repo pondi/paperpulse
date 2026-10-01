@@ -83,7 +83,7 @@ it('processes a file successfully through the full pipeline', function () {
 
     $this->fileMetadata->shouldReceive('updateFileWithS3Path')
         ->once()
-        ->with($file, 's3://bucket/path/receipt.jpg');
+        ->with($file, 'receipts/'.$this->user->id.'/test-guid/original.jpg');
 
     // deleteWorkingFile may or may not be called depending on file_exists() check
     $this->fileStorage->shouldReceive('deleteWorkingFile')

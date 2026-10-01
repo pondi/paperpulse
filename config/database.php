@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Str;
+use Pdo\Mysql;
 
 return [
 
@@ -65,7 +66,7 @@ return [
                 }
 
                 $attr = defined('Pdo\\Mysql::ATTR_SSL_CA')
-                    ? Pdo\Mysql::ATTR_SSL_CA
+                    ? Mysql::ATTR_SSL_CA
                     : PDO::MYSQL_ATTR_SSL_CA;
 
                 return [$attr => $sslCa];
@@ -98,7 +99,7 @@ return [
                 }
 
                 $attr = defined('Pdo\\Mysql::ATTR_SSL_CA')
-                    ? Pdo\Mysql::ATTR_SSL_CA
+                    ? Mysql::ATTR_SSL_CA
                     : PDO::MYSQL_ATTR_SSL_CA;
 
                 return [$attr => $sslCa];
@@ -201,6 +202,18 @@ return [
             'password' => env('REDIS_PASSWORD'),
             'port' => env('REDIS_PORT', '6379'),
             'database' => env('REDIS_SESSION_DB', '2'),
+        ],
+
+        'health' => [
+            'host' => env('REDIS_HOST', '127.0.0.1'),
+            'username' => env('REDIS_USERNAME'),
+            'password' => env('REDIS_PASSWORD'),
+            'port' => env('REDIS_PORT', '6379'),
+            'database' => env('REDIS_DB', '0'),
+            'timeout' => 1,
+            'read_timeout' => 1,
+            'retry_interval' => 0,
+            'max_retries' => 0,
         ],
 
         'conversion' => [

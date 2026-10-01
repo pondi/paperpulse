@@ -52,3 +52,6 @@ Schedule::command('bulk:cleanup-expired --hours=48')->dailyAt('05:00')
 Schedule::command('public-links:cleanup')->dailyAt('06:00')
     ->name('cleanup-expired-public-links')
     ->withoutOverlapping();
+
+Schedule::command('files:recover-processing')->everyMinute()
+    ->name('recover-file-processing-requests')->withoutOverlapping();

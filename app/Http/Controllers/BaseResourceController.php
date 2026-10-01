@@ -130,7 +130,8 @@ abstract class BaseResourceController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $item = $this->model::findOrFail($id);
+        $item = $id instanceof Model ? $id : $this->model::findOrFail($id);
+        abort_unless($item instanceof $this->model, 404);
 
         $this->authorize('update', $item);
 
@@ -146,7 +147,8 @@ abstract class BaseResourceController extends Controller
      */
     public function destroy($id)
     {
-        $item = $this->model::findOrFail($id);
+        $item = $id instanceof Model ? $id : $this->model::findOrFail($id);
+        abort_unless($item instanceof $this->model, 404);
 
         $this->authorize('delete', $item);
 

@@ -3,8 +3,13 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseApiController;
+use App\Http\Requests\BrowseFoldersRequest;
+use App\Http\Requests\StoreCollectionRequest;
+use App\Http\Requests\UpdateCollectionRequest;
 use App\Http\Resources\Api\V1\CollectionResource;
 use App\Models\Collection;
+use App\Services\CollectionService;
+use App\Services\FolderTreeService;
 use Illuminate\Http\Request;
 
 class CollectionController extends BaseApiController
@@ -12,16 +17,12 @@ class CollectionController extends BaseApiController
     /**
      * List user's collections with optional filtering
      */
-    public function index(Request $request)
+    public function index(BrowseFoldersRequest $request)
     {
-        $validated = $request->validate([
-            'search' => 'nullable|string|max:255',
-            'archived' => 'nullable|boolean',
-            'page' => 'nullable|integer|min:1',
-            'per_page' => 'nullable|integer|min:1|max:100',
-        ]);
+        $validated = $request->validated();
 
         $query = Collection::where('user_id', $request->user()->id)
+            ->where('parent_id', $validated['parent_id'] ?? null)
             ->withCount('files');
 
         if (! empty($validated['search'])) {
@@ -46,18 +47,14 @@ class CollectionController extends BaseApiController
     /**
      * Create a new collection
      */
-    public function store(Request $request)
+    public function store(StoreCollectionRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
-            'icon' => 'nullable|string|in:'.implode(',', Collection::ICONS),
-            'color' => 'nullable|string|max:7',
-        ]);
+        $validated = $request->validated();
 
         // Check for existing collection with same name
         $existingCollection = Collection::where('user_id', $request->user()->id)
-            ->where('name', $validated['name'])
+            ->where('normalized_name', Collection::normalizeIdentity($validated['name']))
+            ->where('parent_id', $validated['parent_id'] ?? null)
             ->first();
 
         if ($existingCollection) {
@@ -66,13 +63,7 @@ class CollectionController extends BaseApiController
             ]);
         }
 
-        $collection = Collection::create([
-            'user_id' => $request->user()->id,
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'icon' => $validated['icon'] ?? 'folder',
-            'color' => $validated['color'] ?? null,
-        ]);
+        $collection = app(CollectionService::class)->create($validated, $request->user()->id);
 
         return $this->success(
             new CollectionResource($collection),
@@ -84,25 +75,20 @@ class CollectionController extends BaseApiController
     /**
      * Update an existing collection
      */
-    public function update(Request $request, Collection $collection)
+    public function update(UpdateCollectionRequest $request, Collection $collection)
     {
         // Verify ownership
         if ($collection->user_id !== $request->user()->id) {
             return $this->forbidden('You do not have permission to update this collection');
         }
 
-        $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'description' => 'nullable|string|max:1000',
-            'icon' => 'nullable|string|in:'.implode(',', Collection::ICONS),
-            'color' => 'nullable|string|max:7',
-            'is_archived' => 'nullable|boolean',
-        ]);
+        $validated = $request->validated();
 
         // Check for existing collection with same name (excluding current collection)
         if (isset($validated['name'])) {
             $existingCollection = Collection::where('user_id', $request->user()->id)
-                ->where('name', $validated['name'])
+                ->where('normalized_name', Collection::normalizeIdentity($validated['name']))
+                ->where('parent_id', array_key_exists('parent_id', $validated) ? $validated['parent_id'] : $collection->parent_id)
                 ->where('id', '!=', $collection->id)
                 ->first();
 
@@ -113,7 +99,10 @@ class CollectionController extends BaseApiController
             }
         }
 
-        $collection->update($validated);
+        $collection = app(CollectionService::class)->update($collection, $validated);
+        if (array_key_exists('is_archived', $validated)) {
+            app(FolderTreeService::class)->archiveTree($collection, $validated['is_archived']);
+        }
 
         return $this->success(
             new CollectionResource($collection->fresh()->loadCount('files')),
@@ -131,7 +120,7 @@ class CollectionController extends BaseApiController
             return $this->forbidden('You do not have permission to delete this collection');
         }
 
-        $collection->delete();
+        app(CollectionService::class)->delete($collection);
 
         return $this->success(null, 'Collection deleted successfully');
     }

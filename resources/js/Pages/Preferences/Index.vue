@@ -94,6 +94,13 @@
           </header>
 
           <div class="mt-6 space-y-4">
+            <div class="flex items-center justify-between gap-4">
+              <label for="auto_organize_documents" class="flex flex-col">
+                <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Organize documents automatically</span>
+                <span class="text-sm text-zinc-500 dark:text-zinc-400">New files start in Inbox. Clear property or employer evidence places them in Building or Work folders; uncertain documents need review. Manual placements are kept.</span>
+              </label>
+              <input id="auto_organize_documents" v-model="form.auto_organize_documents" type="checkbox" class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500" />
+            </div>
             <div class="flex items-center justify-between">
               <label for="auto_categorize" class="flex flex-col">
                 <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ __('auto_categorize') }}</span>
@@ -463,6 +470,7 @@ const form = useForm({
   date_format: props.preferences.date_format || 'Y-m-d',
   currency: props.preferences.currency || 'NOK',
   auto_categorize: props.preferences.auto_categorize ?? true,
+  auto_organize_documents: props.preferences.auto_organize_documents ?? true,
   extract_line_items: props.preferences.extract_line_items ?? true,
   default_category_id: props.preferences.default_category_id || null,
   notify_processing_complete: props.preferences.notify_processing_complete ?? true,

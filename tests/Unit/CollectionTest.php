@@ -30,7 +30,7 @@ test('collection generates unique slug per user', function () {
 
     $collection2 = Collection::factory()->create([
         'user_id' => $user->id,
-        'name' => 'Test Collection',
+        'name' => 'Test Collection!',
     ]);
 
     expect($collection1->slug)->toBe('test-collection')

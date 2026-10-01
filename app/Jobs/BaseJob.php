@@ -5,10 +5,12 @@ namespace App\Jobs;
 use App\Models\File;
 use App\Models\JobHistory;
 use App\Services\Jobs\JobMetadataPersistence;
+use App\Services\Jobs\JobParentStatusCalculator;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -85,6 +87,7 @@ abstract class BaseJob implements ShouldQueue
         if (empty($jobID)) {
             throw new InvalidArgumentException('JobID cannot be empty');
         }
+        $this->uuid = (string) Str::uuid();
         $this->jobID = $jobID;
         $this->jobName = class_basename($this);
     }
@@ -131,6 +134,10 @@ abstract class BaseJob implements ShouldQueue
             $this->uuid = (string) Str::uuid();
         }
 
+        if (JobHistory::query()->where('uuid', $this->uuid)->where('status', 'completed')->exists()) {
+            return;
+        }
+
         // Add request ID to log context for end-to-end tracing
         if ($this->requestId) {
             Log::withContext(['request_id' => $this->requestId]);
@@ -143,9 +150,12 @@ abstract class BaseJob implements ShouldQueue
             $this->handleJob();
             $this->markAsCompleted();
         } catch (Throwable $e) {
-            // Don't call failed() here - Laravel's queue system will call it
-            // automatically when we re-throw. Calling it twice causes duplicate
-            // entries in failed_jobs table and double logging.
+            JobHistory::query()->where('uuid', $this->uuid)->update([
+                'status' => 'retrying',
+                'exception' => $this->exceptionMessageForStorage($e),
+                'finished_at' => null,
+            ]);
+            $this->updateParentJobStatus();
             throw $e;
         }
     }
@@ -156,6 +166,12 @@ abstract class BaseJob implements ShouldQueue
      * Implemented by subclasses.
      */
     abstract protected function handleJob(): void;
+
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping('processing-step:'.$this->uuid))->shared()
+            ->releaseAfter(30)->expireAfter($this->timeout + 60)];
+    }
 
     /**
      * Get the tags that should be assigned to the job.
@@ -221,45 +237,16 @@ abstract class BaseJob implements ShouldQueue
      */
     protected function createOrUpdateJobHistory(): void
     {
-        // Check if this is the first job in the chain (order = 1)
-        $isFirstInChain = $this->getOrderInChain() === 1;
-
-        if ($isFirstInChain) {
-            // This is the parent job - create it with jobID as uuid and no parent
-            // Get metadata directly since we're in the processing context
-            $metadata = $this->getMetadata();
-            $chainName = 'Processing Job'; // Default fallback
-
-            if ($metadata && isset($metadata['jobName'])) {
-                $chainName = $metadata['jobName'];
-            } elseif ($metadata && isset($metadata['fileName'])) {
-                $chainName = 'Processing: '.$metadata['fileName'];
-            } else {
-                // Fallback based on job type
-                $chainName = match ($this->getOrderInChain()) {
-                    1 => 'File Processing Job',
-                    2 => str_contains($this->jobName, 'Receipt') ? 'Receipt Processing Job' : 'Document Processing Job',
-                    default => 'Processing Job',
-                };
-            }
-
-            $data = [
-                'uuid' => $this->jobID,
-                'parent_uuid' => null,
-                'name' => $chainName,
-                'queue' => property_exists($this, 'queue') && $this->queue ? $this->queue : 'default',
-                'status' => 'processing',
-                'started_at' => now(),
-                'attempt' => 1,
-                'order_in_chain' => 0, // Parent job has order 0
-                'request_id' => $this->requestId,
-            ];
-
-            JobHistory::updateOrCreate(
-                ['uuid' => $this->jobID],
-                $data
-            );
-        }
+        $metadata = $this->getMetadata();
+        JobHistory::query()->firstOrCreate(['uuid' => $this->jobID], [
+            'parent_uuid' => null,
+            'name' => $metadata['jobName'] ?? 'Processing Job',
+            'queue' => $this->queue ?? 'default',
+            'status' => 'pending',
+            'metadata' => $metadata,
+            'order_in_chain' => 0,
+            'request_id' => $this->requestId,
+        ]);
 
         // Create the individual task record
         $data = [
@@ -271,6 +258,8 @@ abstract class BaseJob implements ShouldQueue
             'started_at' => now(),
             'attempt' => $this->attempts() ?? 1,
             'order_in_chain' => $this->getOrderInChain(),
+            'finished_at' => null,
+            'exception' => null,
         ];
 
         JobHistory::updateOrCreate(
@@ -284,6 +273,12 @@ abstract class BaseJob implements ShouldQueue
      */
     protected function getOrderInChain(): int
     {
+        foreach ($this->getMetadata()['plannedSteps'] ?? [] as $step) {
+            if ($step['uuid'] === $this->uuid) {
+                return $step['order'];
+            }
+        }
+
         return JobOrder::getOrder($this->jobName);
     }
 
@@ -327,46 +322,7 @@ abstract class BaseJob implements ShouldQueue
      */
     protected function updateParentJobStatus(): void
     {
-        $parentJob = JobHistory::where('uuid', $this->jobID)->first();
-        if (! $parentJob) {
-            return;
-        }
-
-        $childJobs = JobHistory::where('parent_uuid', $this->jobID)->get();
-
-        if ($childJobs->isEmpty()) {
-            return;
-        }
-
-        // Calculate overall status
-        $allCompleted = $childJobs->every('status', 'completed');
-        $anyFailed = $childJobs->contains('status', 'failed');
-        $anyProcessing = $childJobs->contains('status', 'processing');
-
-        $status = 'pending';
-        if ($anyFailed) {
-            $status = 'failed';
-        } elseif ($allCompleted) {
-            $status = 'completed';
-        } elseif ($anyProcessing) {
-            $status = 'processing';
-        }
-
-        // Calculate overall progress
-        $totalProgress = $childJobs->sum('progress');
-        $avgProgress = $childJobs->count() > 0 ? round($totalProgress / $childJobs->count()) : 0;
-
-        // Update parent job
-        $updateData = [
-            'status' => $status,
-            'progress' => $avgProgress,
-        ];
-
-        if ($status === 'completed') {
-            $updateData['finished_at'] = now();
-        }
-
-        JobHistory::where('uuid', $this->jobID)->update($updateData);
+        JobParentStatusCalculator::update($this->jobID);
     }
 
     /**
@@ -383,6 +339,10 @@ abstract class BaseJob implements ShouldQueue
         if (! $this->uuid) {
             $this->uuid = (string) Str::uuid();
         }
+
+        $this->createOrUpdateJobHistory();
+        JobHistory::query()->where('parent_uuid', $this->jobID)->whereIn('status', ['pending', 'queued'])
+            ->where('uuid', '!=', $this->uuid)->update(['status' => 'cancelled', 'finished_at' => now()]);
 
         $exceptionMessage = $this->exceptionMessageForStorage($exception);
 

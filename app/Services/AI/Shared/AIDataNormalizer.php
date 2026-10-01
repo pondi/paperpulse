@@ -2,6 +2,8 @@
 
 namespace App\Services\AI\Shared;
 
+use App\Services\Receipts\DecimalAmount;
+
 /**
  * Normalizes heterogeneous AI outputs into expected internal structures.
  */
@@ -24,6 +26,18 @@ class AIDataNormalizer
         self::normalizeVendorLists($data, $normalized);
         self::normalizeItemVendors($data, $normalized);
         self::ensureRequiredDefaults($normalized);
+        foreach ($normalized['totals'] as $key => $value) {
+            if ($value !== null && in_array($key, ['total_amount', 'tax_amount', 'tip_amount', 'discount_amount', 'subtotal'], true)) {
+                $normalized['totals'][$key] = DecimalAmount::parse($value);
+            }
+        }
+        foreach ($normalized['items'] as &$item) {
+            foreach (['price', 'unit_price', 'total', 'total_price', 'quantity'] as $key) {
+                if (isset($item[$key])) {
+                    $item[$key] = DecimalAmount::parse($item[$key]);
+                }
+            }
+        }
 
         return $normalized;
     }
@@ -31,17 +45,16 @@ class AIDataNormalizer
     /**
      * Extract total tax amount from Norwegian VAT data structure.
      */
-    private static function extractTaxFromVatData(array $vatData): float
+    private static function extractTaxFromVatData(array $vatData): string
     {
-        $totalTax = 0.0;
-
+        $minor = 0;
         foreach ($vatData as $vatEntry) {
-            if (isset($vatEntry['vat_amount']) && is_numeric($vatEntry['vat_amount'])) {
-                $totalTax += (float) $vatEntry['vat_amount'];
+            if (isset($vatEntry['vat_amount'])) {
+                $minor += DecimalAmount::minorUnits($vatEntry['vat_amount']);
             }
         }
 
-        return $totalTax;
+        return DecimalAmount::format($minor);
     }
 
     /**
@@ -68,7 +81,7 @@ class AIDataNormalizer
 
         if (isset($receiptData['total'])) {
             $normalized['totals'] = [
-                'total_amount' => (float) $receiptData['total'],
+                'total_amount' => DecimalAmount::parse($receiptData['total']),
                 'tax_amount' => self::extractTaxFromVatData($receiptData['vat'] ?? []),
             ];
         }
@@ -135,9 +148,9 @@ class AIDataNormalizer
             if (isset($data['totals'])) {
                 $normalized['totals'] = $data['totals'];
             } elseif (isset($data['total'])) {
-                $normalized['totals'] = ['total_amount' => (float) $data['total']];
+                $normalized['totals'] = ['total_amount' => DecimalAmount::parse($data['total'])];
             } elseif (isset($data['total_amount'])) {
-                $normalized['totals'] = ['total_amount' => (float) $data['total_amount']];
+                $normalized['totals'] = ['total_amount' => DecimalAmount::parse($data['total_amount'])];
             }
         }
 
@@ -230,7 +243,7 @@ class AIDataNormalizer
         }
 
         if (! isset($normalized['totals'])) {
-            $normalized['totals'] = ['total_amount' => 0, 'tax_amount' => 0.0];
+            $normalized['totals'] = ['total_amount' => null, 'tax_amount' => '0.00'];
         }
 
         if (! isset($normalized['receipt_info'])) {

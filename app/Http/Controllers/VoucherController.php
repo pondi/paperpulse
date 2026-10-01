@@ -50,7 +50,8 @@ class VoucherController extends BaseResourceController
      */
     public function show($id): Response
     {
-        $voucher = Voucher::with($this->showWith)->findOrFail($id);
+        $voucher = Voucher::accessibleBy(auth()->user())->with($this->showWith)
+            ->with(['file' => fn ($query) => $query->withoutGlobalScope('user')])->findOrFail($id instanceof Voucher ? $id->id : $id);
 
         $this->authorize('view', $voucher);
 

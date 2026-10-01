@@ -60,7 +60,8 @@ class InvoiceController extends BaseResourceController
      */
     public function show($id): Response
     {
-        $invoice = Invoice::with($this->showWith)->findOrFail($id);
+        $invoice = Invoice::accessibleBy(auth()->user())->with($this->showWith)
+            ->with(['file' => fn ($query) => $query->withoutGlobalScope('user')])->findOrFail($id instanceof Invoice ? $id->id : $id);
 
         $this->authorize('view', $invoice);
 

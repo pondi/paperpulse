@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Models\Document;
 use App\Services\AI\AIService;
 use App\Services\AI\AIServiceFactory;
+use App\Services\AI\PromptTemplateService;
+use App\Services\AI\Shared\ProcessingStageCache;
+use App\Services\AI\Shared\ProcessingUsageBudget;
 use Exception;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Provides AI-powered analysis utilities for Document content.
@@ -37,9 +39,17 @@ class DocumentAnalysisService
 
         // Smart token limiting for large documents
         // OpenAI charges per token, so we need to be smart about what we send
-        $content = $this->prepareContentForAnalysis($content);
 
-        $result = $this->aiService->analyzeDocument($content, []);
+        $operation = fn () => $this->aiService->analyzeDocument($content, []);
+        if ($document->user_id !== null && $document->exists) {
+            $prompt = app(PromptTemplateService::class)->getPrompt('document', ['content' => '']);
+            $runId = $document->file?->meta['processing_generation'] ?? 'document:'.$document->id;
+            $result = ProcessingStageCache::remember($document->user_id, hash('sha256', $content), 'legacy_document', [
+                'prompt' => $prompt['messages'], 'schema' => $prompt['schema'], 'model' => config('ai.models.document'), 'options' => config('ai.document_analysis'),
+            ], fn () => ProcessingUsageBudget::run($document->user_id, $runId, 'analysis', $operation), $document->file?->guid);
+        } else {
+            $result = $operation();
+        }
 
         if (! is_array($result) || ! ($result['success'] ?? false)) {
             $error = is_array($result) ? ($result['error'] ?? 'Document analysis failed') : 'Document analysis failed';
@@ -57,41 +67,6 @@ class DocumentAnalysisService
      * - Last N characters (end of document)
      * - This gives AI enough context without wasting tokens on full content
      */
-    protected function prepareContentForAnalysis(string $content): string
-    {
-        // Max characters to send (roughly 8000 tokens = ~32,000 characters at 4 chars/token)
-        // We use 16,000 chars as a safe limit to leave room for system prompts
-        $maxChars = config('ai.document_analysis.max_chars', 16000);
-
-        // If content is already small enough, send it all
-        if (mb_strlen($content) <= $maxChars) {
-            return $content;
-        }
-
-        // For large documents, take beginning and end
-        $halfMax = (int) ($maxChars / 2);
-
-        $beginning = mb_substr($content, 0, $halfMax);
-        $end = mb_substr($content, -$halfMax);
-
-        $skippedChars = mb_strlen($content) - ($halfMax * 2);
-        $skippedWords = (int) ($skippedChars / 5); // Rough estimate
-
-        // Add a marker so AI knows content was truncated
-        $truncationNote = "\n\n[... {$skippedWords} words omitted from middle of document ...]\n\n";
-
-        $preparedContent = $beginning.$truncationNote.$end;
-
-        Log::info('[DocumentAnalysisService] Content truncated for AI analysis', [
-            'original_length' => mb_strlen($content),
-            'prepared_length' => mb_strlen($preparedContent),
-            'skipped_chars' => $skippedChars,
-            'max_chars_limit' => $maxChars,
-        ]);
-
-        return $preparedContent;
-    }
-
     /**
      * Generate a natural-language summary for the document content.
      */

@@ -27,7 +27,7 @@ class JobCommandInspector
         } catch (Throwable $e) {
             Log::warning('Failed to extract jobID from command', [
                 'command_class' => is_object($command) ? $command::class : gettype($command),
-                'error' => $e->getMessage(),
+                'error_class' => $e::class,
             ]);
 
             return null;

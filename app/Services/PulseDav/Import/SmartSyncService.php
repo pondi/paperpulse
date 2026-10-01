@@ -16,17 +16,14 @@ class SmartSyncService
     {
         $synced = 0;
 
-        foreach ($selections as $selection) {
-            if (empty($selection['s3_path'])) {
-                continue;
-            }
+        $validated = ImportValidator::validateSelections($selections, $user);
 
-            // Check if record already exists
+        foreach ($validated['valid'] as $selection) {
             $exists = PulseDavFile::where('user_id', $user->id)
                 ->where('s3_path', $selection['s3_path'])
                 ->exists();
 
-            if (! $exists && S3PathResolver::pathExists($selection['s3_path'])) {
+            if (! $exists) {
                 try {
                     FileRecordCreator::createFromS3Path($selection['s3_path'], $user);
                     $synced++;

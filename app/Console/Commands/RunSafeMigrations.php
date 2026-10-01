@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Services\MigrationLock;
 use Exception;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class RunSafeMigrations extends Command
@@ -16,7 +16,7 @@ class RunSafeMigrations extends Command
      */
     protected $signature = 'migrate:safe {--force : Force the operation to run in production}
                                         {--seed : Run seeders after migration}
-                                        {--lock-timeout=300 : Lock timeout in seconds}';
+                                        {--lock-timeout=300 : Retained for CLI compatibility; locks now last for the database session}';
 
     /**
      * The console command description.
@@ -26,14 +26,9 @@ class RunSafeMigrations extends Command
     protected $description = 'Run migrations with distributed locking to prevent concurrent execution';
 
     /**
-     * Lock key for migrations
-     */
-    private const LOCK_KEY = 'migrations:lock';
-
-    /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(MigrationLock $lock): int
     {
         if ($this->getLaravel()->environment('production') && ! $this->option('force')) {
             $this->error('Running migrations in production requires --force flag');
@@ -41,40 +36,14 @@ class RunSafeMigrations extends Command
             return 1;
         }
 
-        $lockTimeout = (int) $this->option('lock-timeout');
         $lockAcquired = false;
 
         try {
-            // Try to acquire lock
-            $lockAcquired = Cache::add(self::LOCK_KEY, gethostname().'-'.getmypid(), $lockTimeout);
-
+            $lockAcquired = $lock->acquire();
             if (! $lockAcquired) {
-                $this->warn('Another migration process is running. Waiting...');
+                $this->error('Another migration process owns the lock. Retry after it completes.');
 
-                // Wait for lock to be released
-                $maxWait = 60; // 5 minutes
-                $waited = 0;
-
-                while (Cache::has(self::LOCK_KEY) && $waited < $maxWait) {
-                    sleep(5);
-                    $waited++;
-                    $this->info("Waiting for migration lock... ({$waited}/{$maxWait})");
-                }
-
-                if ($waited >= $maxWait) {
-                    $this->error('Migration lock timeout. Consider checking for stuck migrations.');
-
-                    return 1;
-                }
-
-                // Try to acquire lock again
-                $lockAcquired = Cache::add(self::LOCK_KEY, gethostname().'-'.getmypid(), $lockTimeout);
-
-                if (! $lockAcquired) {
-                    $this->error('Failed to acquire migration lock after waiting.');
-
-                    return 1;
-                }
+                return 1;
             }
 
             $this->info('Migration lock acquired. Starting migrations...');
@@ -142,7 +111,7 @@ class RunSafeMigrations extends Command
         } finally {
             // Always release lock if we acquired it
             if ($lockAcquired) {
-                Cache::forget(self::LOCK_KEY);
+                $lock->release();
                 $this->info('Migration lock released.');
             }
         }

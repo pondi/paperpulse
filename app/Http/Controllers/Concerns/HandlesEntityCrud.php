@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Concerns;
 
-use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Tag;
+use App\Services\Files\FileDeletionService;
 use App\Services\StorageService;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -77,45 +76,11 @@ trait HandlesEntityCrud
         $this->authorize('delete', $entity);
 
         $entity->loadMissing('file');
-        $fileId = $entity->file_id;
-        $entityType = $entity->getEntityType();
         $modelName = $this->getModelName();
 
         try {
-            DB::transaction(function () use ($entity, $fileId, $entityType) {
-                // Delete stored file from S3
-                if ($entity->file && $entity->file->guid) {
-                    try {
-                        $storageService = app(StorageService::class);
-                        $extension = $entity->file->fileExtension ?? 'pdf';
-                        $fullPath = 'documents/'.$entity->user_id.'/'.$entity->file->guid.'/original.'.$extension;
-                        $storageService->deleteFile($fullPath);
-                    } catch (Exception $e) {
-                        Log::warning('Failed to delete S3 file during '.$entityType.' deletion', [
-                            $entityType.'_id' => $entity->id,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                }
-
-                // Delete the extractable_entity junction record
-                ExtractableEntity::where('entity_type', $entityType)
-                    ->where('entity_id', $entity->id)
-                    ->delete();
-
-                // Disable Scout indexing temporarily to avoid Meilisearch errors
-                $entity::withoutSyncingToSearch(function () use ($entity) {
-                    $entity->delete();
-                });
-
-                // Delete the file record if it no longer has any entities
-                if ($fileId) {
-                    $file = File::find($fileId);
-                    if ($file && ! $file->extractableEntities()->exists()) {
-                        $file->delete();
-                    }
-                }
-            });
+            app(FileDeletionService::class)
+                ->deleteEntity($entity, (int) auth()->id());
 
             return redirect()->route($this->getRouteName().'.index')
                 ->with('success', ucfirst($modelName).' deleted successfully');

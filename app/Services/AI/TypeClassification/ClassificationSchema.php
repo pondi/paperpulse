@@ -70,7 +70,7 @@ Classify this document into one of the following types:
 - **invoice**: Business invoice requesting payment for goods/services rendered. Must be the ACTUAL invoice document with line items, totals, and payment terms — not a reference to one.
 - **voucher**: Gift card, store credit, promotional code, or discount voucher
 - **warranty**: Product warranty or guarantee information
-- **return_policy**: Return/exchange policy information
+- **return_policy**: Standalone return/exchange policy information. A receipt containing supplemental return or warranty terms remains a receipt; extraction will retain its linked supplemental entities.
 - **contract**: Legal contract or agreement between parties. Must be the ACTUAL contract/agreement — not a letter or email discussing one.
 - **bank_statement**: Bank account statement with transactions
 - **document**: Generic document (if none of the above fit)

@@ -14,6 +14,7 @@ use App\Notifications\DuplicateFileDetected;
 use App\Services\Files\FileJobChainDispatcher;
 use App\Services\Jobs\JobHistoryCreator;
 use App\Services\Jobs\JobMetadataPersistence;
+use App\Services\PulseDav\Import\S3PathResolver;
 use Exception;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -331,6 +332,8 @@ class FileProcessingService
      */
     public function processPulseDavFile(string $incomingPath, string $fileType, int $userId, array $metadata = []): array
     {
+        $incomingPath = S3PathResolver::validateOwnedPath($incomingPath, $userId);
+
         try {
             Log::info('[FileProcessing] Processing PulseDav file', [
                 'incoming_path' => $incomingPath,

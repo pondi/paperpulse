@@ -17,6 +17,7 @@
           
           <!-- Right Column: Filters and Jobs -->
           <div class="lg:col-span-8 xl:col-span-9">
+            <Link :href="route('files.index', { status: 'needs_review' })" class="mb-4 inline-block text-amber-700 underline dark:text-amber-300">Review uncertain files</Link>
             <JobFilters :form="form" :queues="queues" @update:form="updateForm" class="mb-6" />
             
             <!-- Jobs List -->
@@ -44,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Link, Head, router } from '@inertiajs/vue3';
 import { reactive, watch, ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';

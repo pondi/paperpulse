@@ -11,15 +11,23 @@ use App\Models\Invoice;
 use App\Models\Receipt;
 use App\Services\AI\Extractors\EntityExtractorFactory;
 use App\Services\AI\FileManager\GeminiFileManager;
+use App\Services\AI\Providers\GeminiFileAnalyzer;
+use App\Services\AI\Shared\ProcessingStageCache;
+use App\Services\AI\Shared\ProcessingUsageBudget;
+use App\Services\AI\TypeClassification\ClassificationResult;
+use App\Services\AI\TypeClassification\ClassificationSchema;
 use App\Services\AI\TypeClassification\GeminiTypeClassifier;
 use App\Services\BankStatements\TransactionCategorizationService;
 use App\Services\DuplicateDetectionService;
 use App\Services\EntityFactory;
 use App\Services\Files\FileEntityCleanupService;
 use App\Services\Files\FilePreviewManager;
+use App\Services\Files\ImagePreviewGenerator;
+use App\Services\Receipts\Analysis\UserPreferencesLoader;
 use App\Services\Workers\WorkerFileManager;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use Spatie\PdfToImage\Pdf;
 use Throwable;
 
 class ProcessFileGemini extends BaseJob
@@ -69,6 +77,12 @@ class ProcessFileGemini extends BaseJob
             throw new Exception("File record not found: {$fileId}");
         }
 
+        if ($file->status === 'needs_review') {
+            return;
+        }
+
+        UserPreferencesLoader::load($file->user_id, $file);
+
         // Idempotency: skip if file already has entities (prevents duplicates on retry)
         $isReprocessing = $metadata['metadata']['reprocessing'] ?? false;
         if (! $isReprocessing && $file->status === 'completed' && $file->extractableEntities()->exists()) {
@@ -109,8 +123,28 @@ class ProcessFileGemini extends BaseJob
             function (string $localPath) use ($fileManager, $classifier, $file, $previewManager) {
                 $this->updateProgress(30);
 
+                $contentHash = hash_file('sha256', $localPath);
                 $mime = mime_content_type($localPath) ?: '';
                 $extension = strtolower(pathinfo($localPath, PATHINFO_EXTENSION));
+                $analyzer = app(GeminiFileAnalyzer::class);
+                $analyzer->ensureSupported($localPath);
+                $textContext = $analyzer->buildTextContext($localPath, $mime, $extension);
+                $large = $analyzer->buildLargeFileContext($localPath, $mime, filesize($localPath), $textContext);
+                $pages = $large['page_count'] ?? ($mime === 'application/pdf' ? (new Pdf($localPath))->pageCount() : 1);
+                $pageLimit = max(1, (int) config('ai.providers.gemini.large_pdf_page_limit', 25));
+                $exceeds = $pages > $pageLimit || ($textContext['truncated'] ?? false);
+                $file->meta = array_merge($file->meta ?? [], ['processing_coverage' => [
+                    'total_pages' => $pages, 'processed_pages' => 0, 'purpose' => 'extraction',
+                    'classification_sample_pages' => $large['sample_pages'] ?? [], 'complete' => false,
+                ]]);
+                if ($exceeds) {
+                    $file->status = 'needs_review';
+                    $file->meta = array_merge($file->meta, ['review' => ['reason' => 'processing_limit', 'page_limit' => $pageLimit]]);
+                    $file->save();
+
+                    return ['needs_review' => true];
+                }
+                $file->save();
 
                 // PASS 0: Upload to Gemini Files API
                 Log::info('[ProcessFileGemini] Uploading file to Gemini Files API', [
@@ -123,6 +157,7 @@ class ProcessFileGemini extends BaseJob
                 $geminiFileName = $uploadResult['name'];
 
                 try {
+                    $fileManager->waitUntilActive($uploadResult);
                     $this->updateProgress(40);
 
                     // PASS 1: Classify document type
@@ -131,10 +166,14 @@ class ProcessFileGemini extends BaseJob
                         'file_uri' => $fileUri,
                     ]);
 
-                    $classification = $classifier->classify($fileUri, [
-                        'filename' => $file->filename,
-                        'extension' => $extension,
-                    ]);
+                    $correctedType = $file->meta['review']['corrected_type'] ?? null;
+                    $hints = ['filename' => $file->filename, 'extension' => $extension, 'mime_type' => $uploadResult['mimeType']];
+                    $version = ['model' => config('ai.providers.gemini.model'), 'options' => ['mime' => $uploadResult['mimeType'], 'output_tokens' => config('ai.providers.gemini.max_output_tokens', 8192)]];
+                    $classification = $correctedType
+                        ? new ClassificationResult($correctedType, 1.0, 'Owner corrected document type')
+                        : ClassificationResult::fromGeminiResponse(ProcessingStageCache::remember($file->user_id, $contentHash, 'classification', [
+                            ...$version, 'prompt' => ClassificationSchema::getPrompt($hints), 'schema' => ClassificationSchema::get(),
+                        ], fn () => ProcessingUsageBudget::run($file->user_id, $this->jobID, 'classification', fn () => $classifier->classify($fileUri, $hints)->toArray()), $file->guid));
 
                     Log::info('[ProcessFileGemini] Classification result', [
                         'file_id' => $file->id,
@@ -143,11 +182,17 @@ class ProcessFileGemini extends BaseJob
                         'reasoning' => $classification->reasoning,
                     ]);
 
-                    // Validate classification
                     if (! $classification->isValid()) {
-                        throw new Exception(
-                            "Classification failed: {$classification->reasoning} (confidence: {$classification->confidence})"
-                        );
+                        $file->status = 'needs_review';
+                        $file->meta = array_merge($file->meta ?? [], ['review' => [
+                            'reason' => 'uncertain_classification',
+                            'confidence' => $classification->confidence,
+                            'reasoning' => mb_substr($classification->reasoning, 0, 1000),
+                            'classification' => $classification->toArray(),
+                        ]]);
+                        $file->save();
+
+                        return ['needs_review' => true];
                     }
 
                     // Update file_type if Gemini reclassified (e.g. receipt → document)
@@ -179,15 +224,20 @@ class ProcessFileGemini extends BaseJob
                     }
 
                     $extractor = EntityExtractorFactory::create($classification->type);
-                    $extracted = $extractor->extract($fileUri, $file, [
-                        'classification' => $classification,
-                    ]);
+                    $extracted = ProcessingStageCache::remember($file->user_id, $contentHash, 'extraction:'.$classification->type, [
+                        ...$version, 'prompt' => $extractor->getPrompt(), 'schema' => $extractor->getSchema(), 'normalizer_version' => 1,
+                    ], fn () => ProcessingUsageBudget::run($file->user_id, $this->jobID, 'extraction', fn () => $extractor->extract($fileUri, $file, [
+                        'classification' => $classification, 'mime_type' => $uploadResult['mimeType'],
+                    ])), $file->guid);
 
                     $this->updateProgress(70);
 
                     // Generate preview image for supported file types
                     try {
-                        $previewManager->generatePreviewForFile($file, $localPath);
+                        $generated = $previewManager->generatePreviewForFile($file, $localPath);
+                        if (! $generated && $file->image_generation_error !== null) {
+                            GenerateFilePreview::dispatch($file->id)->onQueue('files');
+                        }
                         Log::info('[ProcessFileGemini] Preview generated', [
                             'file_id' => $file->id,
                             'has_preview' => $file->fresh()->has_image_preview,
@@ -209,7 +259,7 @@ class ProcessFileGemini extends BaseJob
                             'subtype' => null,
                         ],
                         'parsed' => [
-                            'entities' => [$extracted],
+                            'entities' => array_merge([$extracted], $extracted['supplemental_entities'] ?? []),
                             'provider_response' => [
                                 'classification' => $classification->toArray(),
                             ],
@@ -222,11 +272,29 @@ class ProcessFileGemini extends BaseJob
                         'file_id' => $file->id,
                         'gemini_file_name' => $geminiFileName,
                     ]);
-                    $fileManager->deleteFile($geminiFileName);
+                    try {
+                        if (! $fileManager->deleteFile($geminiFileName)) {
+                            DeleteGeminiFile::dispatch($geminiFileName)->onQueue('files');
+                        }
+                    } catch (Throwable) {
+                        DeleteGeminiFile::dispatch($geminiFileName)->onQueue('files');
+                    }
                 }
             },
             'ProcessFileGemini'
         );
+
+        $file->meta = array_merge($file->fresh()->meta ?? [], ['processing_usage' => ProcessingUsageBudget::usage($file->user_id, $this->jobID)]);
+        $file->save();
+        if ($result['needs_review'] ?? false) {
+            return;
+        }
+        $meta = $file->fresh()->meta ?? [];
+        $coverage = $meta['processing_coverage'] ?? [];
+        $coverage['processed_pages'] = $coverage['total_pages'] ?? 1;
+        $coverage['complete'] = true;
+        $file->meta = array_merge($meta, ['processing_coverage' => $coverage]);
+        $file->save();
 
         // Persist parsed data on the file metadata for downstream factories
         $classification = $result['parsed']['provider_response']['classification'] ?? null;
@@ -296,7 +364,10 @@ class ProcessFileGemini extends BaseJob
             }
         }
 
-        $file->status = 'completed';
+        $file->refresh();
+        if ($file->status !== 'needs_review') {
+            $file->status = 'completed';
+        }
         $file->save();
 
         // Hard-delete old entities after successful reprocess
@@ -308,7 +379,7 @@ class ProcessFileGemini extends BaseJob
                     'file_id' => $file->id,
                     'entity_count' => $previousEntities['count'] ?? 0,
                 ]);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::warning('[ProcessFileGemini] Failed to hard-delete old entities', [
                     'file_id' => $file->id,
                     'error' => $e->getMessage(),
@@ -360,25 +431,7 @@ class ProcessFileGemini extends BaseJob
      */
     protected function generateThumbnail(string $filePath, string $fileGuid): ?string
     {
-        if (! extension_loaded('imagick')) {
-            return null;
-        }
-
-        try {
-            $imagick = new Imagick($filePath);
-            $imagick->thumbnailImage(300, 300, true, true);
-            $imagick->setImageFormat('jpeg');
-            $imagick->setImageCompressionQuality(85);
-            $data = base64_encode($imagick->getImageBlob());
-            $imagick->clear();
-            $imagick->destroy();
-
-            return $data;
-        } catch (Throwable $e) {
-            Log::warning('[ProcessFileGemini] Thumbnail error', ['error' => $e->getMessage()]);
-
-            return null;
-        }
+        return base64_encode(ImagePreviewGenerator::generatePreview($filePath, pathinfo($filePath, PATHINFO_EXTENSION)));
     }
 
     protected function flagDuplicateEntities(array $createdEntities): void

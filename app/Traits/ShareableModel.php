@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use App\Models\FileShare;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use InvalidArgumentException;
@@ -24,11 +25,13 @@ trait ShareableModel
      */
     public function sharedUsers(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'file_shares', 'file_id', 'shared_with_user_id')
+        return $this->belongsToMany(User::class, 'file_shares', 'file_id', 'shared_with_user_id', 'file_id')
             ->where('file_shares.file_type', $this->getShareableType())
             ->withPivot('permission', 'shared_at', 'expires_at')
-            ->wherePivot('expires_at', '>', now()->toDateTimeString())
-            ->orWherePivot('expires_at', null);
+            ->where(function (Builder $query) {
+                $query->whereNull('file_shares.expires_at')
+                    ->orWhere('file_shares.expires_at', '>', now());
+            });
     }
 
     /**

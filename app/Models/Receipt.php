@@ -43,6 +43,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @method static Builder|Receipt newQuery()
  * @method static Builder|Receipt query()
  */
+use Illuminate\Support\Facades\Cache;
 use Laravel\Scout\Searchable;
 
 class Receipt extends Model implements Taggable
@@ -58,7 +59,7 @@ class Receipt extends Model implements Taggable
     protected static function booted(): void
     {
         $flushDashboard = function (self $receipt): void {
-            \Illuminate\Support\Facades\Cache::forget("dashboard_stats:{$receipt->user_id}");
+            Cache::forget("dashboard_stats:{$receipt->user_id}");
         };
 
         static::created($flushDashboard);
@@ -78,6 +79,7 @@ class Receipt extends Model implements Taggable
         'receipt_category',
         'receipt_description',
         'receipt_data',
+        'note',
     ];
 
     protected $casts = [

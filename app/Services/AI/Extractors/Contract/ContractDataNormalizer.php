@@ -18,6 +18,7 @@ class ContractDataNormalizer
     public function normalize(array $geminiData): array
     {
         return [
+            'organization' => $geminiData['organization'] ?? [],
             // Contract identification
             'contract_number' => $geminiData['contract_number'] ?? null,
             'contract_title' => $geminiData['contract_title'] ?? null,

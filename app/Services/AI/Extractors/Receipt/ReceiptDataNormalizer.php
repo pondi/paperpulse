@@ -25,14 +25,14 @@ class ReceiptDataNormalizer
                 'vat_number' => $geminiData['merchant_vat_number'] ?? null,
                 'phone' => $geminiData['merchant_phone'] ?? null,
                 'category' => $geminiData['merchant_category'] ?? null,
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Receipt info (nested)
             'receipt_info' => array_filter([
                 'date' => $geminiData['receipt_date'] ?? null,
                 'time' => $geminiData['receipt_time'] ?? null,
                 'receipt_number' => $geminiData['receipt_number'] ?? null,
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Items (already array)
             'items' => $geminiData['items'] ?? [],
@@ -43,14 +43,14 @@ class ReceiptDataNormalizer
                 'tax_amount' => $geminiData['tax_amount'] ?? null,
                 'total_amount' => $geminiData['total_amount'] ?? null,
                 'total_discount' => $geminiData['total_discount'] ?? null,
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Payment (nested)
             'payment' => array_filter([
                 'method' => $geminiData['payment_method'] ?? null,
                 'card_type' => $geminiData['card_type'] ?? null,
-                'currency' => $geminiData['currency'] ?? 'NOK',
-            ]),
+                'currency' => $geminiData['currency'] ?? null,
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Metadata
             'receipt_description' => $geminiData['description'] ?? null,

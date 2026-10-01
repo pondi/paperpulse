@@ -5,8 +5,8 @@ namespace App\Services;
 use App\Enums\DeletedReason;
 use App\Models\File;
 use App\Models\Receipt;
+use App\Services\Files\FileDeletionService;
 use Exception;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -163,42 +163,11 @@ class ReceiptService
     public function deleteReceipt(Receipt $receipt): bool
     {
         try {
-            DB::beginTransaction();
-
-            // Save references to files that should be deleted
-            $fileGuid = $receipt->file?->guid;
-            $fileId = $receipt->file?->id;
-
-            // Soft delete line items first with user delete reason
-            foreach ($receipt->lineItems as $lineItem) {
-                $lineItem->deleted_reason = DeletedReason::UserDelete;
-                $lineItem->save();
-                $lineItem->delete();
-            }
-
-            // Soft delete the receipt itself with user delete reason
-            $receipt->deleted_reason = DeletedReason::UserDelete;
-            $receipt->save();
-            Receipt::withoutSyncingToSearch(function () use ($receipt) {
-                $receipt->delete();
-            });
-
-            // Soft delete the file record with user delete reason
-            // S3 cleanup will be handled by the permanent deletion job after 30 days
-            if ($fileId) {
-                $file = File::find($fileId);
-                if ($file) {
-                    $file->deleted_reason = DeletedReason::UserDelete;
-                    $file->save();
-                    $file->delete();
-                }
-            }
-
-            DB::commit();
+            app(FileDeletionService::class)
+                ->deleteEntity($receipt, (int) (auth()->id() ?? $receipt->user_id));
 
             return true;
         } catch (Exception $e) {
-            DB::rollBack();
             Log::error('[ReceiptService] Receipt deletion failed', [
                 'error' => $e->getMessage(),
                 'receipt_id' => $receipt->id,

@@ -5,6 +5,7 @@ namespace App\Traits;
 use App\Models\User;
 use App\Services\SharingService;
 use Exception;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
 trait ShareableController
@@ -31,7 +32,7 @@ trait ShareableController
      */
     public function share(Request $request, $id)
     {
-        $item = $this->model::findOrFail($id);
+        $item = $id instanceof Model ? $id : $this->model::findOrFail($id);
         $this->authorize('share', $item);
 
         $validated = $request->validate([
@@ -59,9 +60,10 @@ trait ShareableController
      */
     public function unshare($id, int $userId)
     {
-        $item = $this->model::findOrFail($id);
+        $item = $id instanceof Model ? $id : $this->model::findOrFail($id);
         $this->authorize('share', $item);
 
+        abort_unless($item->shares()->where('shared_with_user_id', $userId)->exists(), 404);
         $user = User::findOrFail($userId);
 
         try {
@@ -78,7 +80,7 @@ trait ShareableController
      */
     public function getShares($id)
     {
-        $item = $this->model::findOrFail($id);
+        $item = $id instanceof Model ? $id : $this->model::findOrFail($id);
         // Only owners can list shares for a resource
         $this->authorize('share', $item);
 
@@ -94,12 +96,13 @@ trait ShareableController
     {
         $shareableType = $this->getShareableType();
 
-        $query = $this->model::query()
+        $query = $this->model::query()->withoutGlobalScope('user')
             ->join('file_shares', function ($join) use ($shareableType) {
                 $join->on($this->getFileIdColumn(), '=', 'file_shares.file_id')
                     ->where('file_shares.file_type', '=', $shareableType);
             })
             ->where('file_shares.shared_with_user_id', auth()->id())
+            ->where(fn ($query) => $query->whereNull('file_shares.expires_at')->orWhere('file_shares.expires_at', '>', now()))
             ->with(array_merge($this->indexWith ?? [], ['owner']))
             ->select($this->getTableName().'.*', 'file_shares.permission', 'file_shares.shared_at');
 

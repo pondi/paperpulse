@@ -31,7 +31,9 @@ class JobHistoryCreator
         int $fileId,
         ?string $fileName = null
     ): JobHistory {
-        return JobHistory::create([
+        $metadata = JobMetadataPersistence::normalize($metadata);
+
+        return JobHistory::updateOrCreate(['uuid' => $jobId], [
             'uuid' => $jobId,
             'parent_uuid' => null,
             'name' => $jobName,

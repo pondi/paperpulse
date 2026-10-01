@@ -30,7 +30,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download');
         Route::scopeBindings()->group(function () {
             Route::post('/{document}/share', [DocumentController::class, 'share'])->name('share');
-            Route::delete('/{document}/share/{user}', [DocumentController::class, 'unshare'])->name('unshare');
+            Route::delete('/{document}/share/{user}', [DocumentController::class, 'unshare'])->withoutScopedBindings()->name('unshare');
             Route::post('/{document}/tags', [DocumentController::class, 'attachTag'])->name('tags.store');
             Route::delete('/{document}/tags/{tag}', [DocumentController::class, 'detachTag'])->name('tags.destroy');
         });

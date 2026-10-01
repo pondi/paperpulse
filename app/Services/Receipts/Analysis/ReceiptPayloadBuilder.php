@@ -37,7 +37,7 @@ class ReceiptPayloadBuilder
             'receipt_category' => $categoryName,
             'receipt_description' => $enricher->generateEnhancedDescription($data, $defaultCurrency, $categoryName),
             'note' => $note,
-            'receipt_data' => json_encode(array_merge($analysis, ['enriched_data' => $enriched])),
+            'receipt_data' => json_encode(array_merge($analysis, ['enriched_data' => $enriched, 'total_reconciliation' => $totals])),
         ];
     }
 }

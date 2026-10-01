@@ -6,7 +6,6 @@ use App\Exceptions\DuplicateFileException;
 use App\Jobs\BaseJob;
 use App\Models\PulseDavFile;
 use App\Services\FileProcessingService;
-use App\Services\PulseDavService;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -46,7 +45,6 @@ class ProcessPulseDavFile extends BaseJob
      */
     protected function handleJob(): void
     {
-        $pulseDavService = app(PulseDavService::class);
         $fileProcessingService = app(FileProcessingService::class);
 
         try {

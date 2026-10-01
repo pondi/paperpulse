@@ -13,6 +13,10 @@ class ImportProcessor
 {
     public static function processItem(array $selection, User $user, PulseDavImportBatch $batch, array $options): bool
     {
+        if ($batch->user_id !== $user->id || empty(ImportValidator::validateSelections([$selection], $user)['valid'])) {
+            return false;
+        }
+
         $file = S3PathResolver::resolveToRecord($selection['s3_path'], $user);
 
         if (! $file) {

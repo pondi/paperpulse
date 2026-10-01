@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import axios from 'axios';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import Modal from '@/Components/Common/Modal.vue';
@@ -80,7 +81,6 @@ interface Statement {
     total_credits: number | null;
     total_debits: number | null;
     transaction_count: number | null;
-    transactions: Transaction[];
     tags: Tag[];
     file: FileInfo | null;
     created_at: string | null;
@@ -92,8 +92,15 @@ interface Crumb {
     href?: string;
 }
 
+interface TransactionPage {
+    data: Transaction[];
+    meta: { current_page: number; last_page: number; total: number; per_page: number };
+}
+
 interface Props {
     statement: Statement;
+    transactions: TransactionPage;
+    transaction_stats: { credit_count: number; debit_count: number };
     available_tags: Tag[];
     category_groups: CategoryGroup[];
     breadcrumbs?: Crumb[];
@@ -110,6 +117,52 @@ const txCategoryFilter = ref('');
 const txSort = ref('transaction_date');
 const txSortDir = ref<'asc' | 'desc'>('desc');
 const showFilters = ref(false);
+const txDateFrom = ref('');
+const txDateTo = ref('');
+const txPerPage = ref(50);
+const transactionPage = ref(props.transactions);
+const txLoading = ref(false);
+const txError = ref('');
+let transactionRequest: AbortController | null = null;
+let filterTimer: ReturnType<typeof setTimeout> | undefined;
+let requestVersion = 0;
+
+const loadTransactions = async (page = 1) => {
+    const version = ++requestVersion;
+    transactionRequest?.abort();
+    transactionRequest = new AbortController();
+    txLoading.value = true;
+    txError.value = '';
+    try {
+        const response = await axios.get(route('bank-statements.transactions', props.statement.id), {
+            signal: transactionRequest.signal,
+            params: {
+                page, per_page: txPerPage.value, search: txSearch.value || undefined,
+                type: txTypeFilter.value || undefined, category_group: txCategoryFilter.value || undefined,
+                date_from: txDateFrom.value || undefined, date_to: txDateTo.value || undefined,
+                sort: txSort.value, sort_direction: txSortDir.value,
+            },
+        });
+        if (version === requestVersion) transactionPage.value = response.data;
+    } catch (error) {
+        if (version === requestVersion && !axios.isCancel(error)) {
+            txError.value = 'Unable to load transactions. Check the date range and try again.';
+        }
+    } finally {
+        if (version === requestVersion) txLoading.value = false;
+    }
+};
+
+watch([txSearch, txTypeFilter, txCategoryFilter, txDateFrom, txDateTo, txPerPage, txSort, txSortDir], () => {
+    clearTimeout(filterTimer);
+    transactionRequest?.abort();
+    requestVersion++;
+    filterTimer = setTimeout(() => loadTransactions(1), 250);
+});
+onBeforeUnmount(() => {
+    clearTimeout(filterTimer);
+    transactionRequest?.abort();
+});
 
 const statementTitle = computed(() => {
     if (props.statement.bank_name) return props.statement.bank_name;
@@ -132,49 +185,6 @@ const statementSubtitle = computed(() => {
 
 const netFlow = computed(() => {
     return (props.statement.total_credits || 0) - (props.statement.total_debits || 0);
-});
-
-const filteredTransactions = computed(() => {
-    let result = [...(props.statement.transactions || [])];
-
-    if (txSearch.value) {
-        const search = txSearch.value.toLowerCase();
-        result = result.filter(tx =>
-            (tx.description && tx.description.toLowerCase().includes(search)) ||
-            (tx.counterparty_name && tx.counterparty_name.toLowerCase().includes(search)) ||
-            (tx.reference && tx.reference.toLowerCase().includes(search))
-        );
-    }
-
-    if (txTypeFilter.value) {
-        result = result.filter(tx => tx.transaction_type === txTypeFilter.value);
-    }
-
-    if (txCategoryFilter.value) {
-        result = result.filter(tx => tx.category_group === txCategoryFilter.value);
-    }
-
-    result.sort((a, b) => {
-        let comparison = 0;
-        switch (txSort.value) {
-            case 'amount':
-                comparison = (a.amount || 0) - (b.amount || 0);
-                break;
-            case 'balance_after':
-                comparison = (a.balance_after || 0) - (b.balance_after || 0);
-                break;
-            case 'description':
-                comparison = (a.description || '').localeCompare(b.description || '');
-                break;
-            case 'transaction_date':
-            default:
-                comparison = (a.transaction_date || '').localeCompare(b.transaction_date || '');
-                break;
-        }
-        return txSortDir.value === 'desc' ? -comparison : comparison;
-    });
-
-    return result;
 });
 
 const sortBy = (field: string) => {
@@ -230,9 +240,8 @@ const handleTagRemoved = (tag: Tag) => {
 </script>
 
 <template>
-    <Head :title="`Bank Statement - ${statementTitle}`" />
-
     <AuthenticatedLayout>
+        <Head :title="`Bank Statement - ${statementTitle}`" />
         <template #header>
             <div class="flex justify-between items-center">
                 <div>
@@ -338,7 +347,7 @@ const handleTagRemoved = (tag: Tag) => {
                             <div class="flex items-center justify-between mb-3">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200">
                                     Transactions
-                                    <span class="text-sm font-normal text-zinc-500 dark:text-zinc-400">({{ filteredTransactions.length }})</span>
+                                    <span class="text-sm font-normal text-zinc-500 dark:text-zinc-400">({{ transactionPage.meta.total }})</span>
                                 </h3>
                                 <button
                                     @click="showFilters = !showFilters"
@@ -380,7 +389,20 @@ const handleTagRemoved = (tag: Tag) => {
                                         {{ cat.label }}
                                     </option>
                                 </select>
+                                <label class="text-sm text-zinc-700 dark:text-zinc-300">From
+                                    <input v-model="txDateFrom" type="date" class="w-full rounded border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700" />
+                                </label>
+                                <label class="text-sm text-zinc-700 dark:text-zinc-300">To
+                                    <input v-model="txDateTo" type="date" class="w-full rounded border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700" />
+                                </label>
+                                <label class="text-sm text-zinc-700 dark:text-zinc-300">Rows per page
+                                    <select v-model="txPerPage" class="w-full rounded border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700">
+                                        <option :value="50">50</option><option :value="100">100</option><option :value="200">200</option>
+                                    </select>
+                                </label>
                             </div>
+                            <p v-if="txLoading" role="status" class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Loading transactions…</p>
+                            <p v-if="txError" role="alert" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ txError }} <button @click="loadTransactions(transactionPage.meta.current_page)" class="underline">Retry</button></p>
                         </div>
 
                         <!-- Table -->
@@ -414,7 +436,7 @@ const handleTagRemoved = (tag: Tag) => {
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white dark:bg-zinc-800 divide-y divide-amber-100 dark:divide-zinc-700/50">
-                                    <tr v-for="tx in filteredTransactions" :key="tx.id" class="hover:bg-amber-50 dark:hover:bg-zinc-700/30">
+                                    <tr v-for="tx in transactionPage.data" :key="tx.id" class="hover:bg-amber-50 dark:hover:bg-zinc-700/30">
                                         <td class="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
                                             {{ formatShortDate(tx.transaction_date) }}
                                         </td>
@@ -436,13 +458,22 @@ const handleTagRemoved = (tag: Tag) => {
                                             {{ tx.balance_after !== null ? formatCurrency(tx.balance_after, statement.currency) : '' }}
                                         </td>
                                     </tr>
-                                    <tr v-if="filteredTransactions.length === 0">
+                                    <tr v-if="transactionPage.meta.total === 0">
                                         <td colspan="5" class="px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
                                             No transactions match your filters.
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 p-4 text-sm text-zinc-700 dark:text-zinc-300">
+                            <button @click="loadTransactions(transactionPage.meta.current_page - 1)"
+                                :disabled="txLoading || transactionPage.meta.current_page <= 1"
+                                class="rounded border border-zinc-300 dark:border-zinc-600 px-3 py-2 disabled:opacity-50">Previous</button>
+                            <span>Page {{ transactionPage.meta.current_page }} of {{ transactionPage.meta.last_page }}</span>
+                            <button @click="loadTransactions(transactionPage.meta.current_page + 1)"
+                                :disabled="txLoading || transactionPage.meta.current_page >= transactionPage.meta.last_page"
+                                class="rounded border border-zinc-300 dark:border-zinc-600 px-3 py-2 disabled:opacity-50">Next</button>
                         </div>
                     </div>
 
@@ -528,16 +559,16 @@ const handleTagRemoved = (tag: Tag) => {
                             <div class="flex justify-between">
                                 <dt class="text-sm text-zinc-600 dark:text-zinc-400">Avg Credit</dt>
                                 <dd class="text-sm font-medium text-green-600 dark:text-green-400">
-                                    {{ statement.transactions.filter(t => t.transaction_type === 'credit').length > 0
-                                        ? formatCurrency((statement.total_credits || 0) / statement.transactions.filter(t => t.transaction_type === 'credit').length, statement.currency)
+                                    {{ transaction_stats.credit_count > 0
+                                        ? formatCurrency((statement.total_credits || 0) / transaction_stats.credit_count, statement.currency)
                                         : 'N/A' }}
                                 </dd>
                             </div>
                             <div class="flex justify-between">
                                 <dt class="text-sm text-zinc-600 dark:text-zinc-400">Avg Debit</dt>
                                 <dd class="text-sm font-medium text-red-600 dark:text-red-400">
-                                    {{ statement.transactions.filter(t => t.transaction_type === 'debit').length > 0
-                                        ? formatCurrency((statement.total_debits || 0) / statement.transactions.filter(t => t.transaction_type === 'debit').length, statement.currency)
+                                    {{ transaction_stats.debit_count > 0
+                                        ? formatCurrency((statement.total_debits || 0) / transaction_stats.debit_count, statement.currency)
                                         : 'N/A' }}
                                 </dd>
                             </div>

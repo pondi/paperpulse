@@ -341,6 +341,8 @@ class ProcessReceipt extends BaseJob
         }
 
         // Cache the receipt data for potential job restarts (increased TTL)
+        $metadata['artifacts']['receipt'] = $receiptData;
+        $this->storeMetadata($metadata);
         Cache::put("job.{$this->jobID}.receiptMetaData", $receiptData, now()->addHours(4));
 
         Log::debug('Receipt data cached for merchant matching', [
@@ -390,7 +392,9 @@ class ProcessReceipt extends BaseJob
                 ]);
             }
 
-            $file->status = 'completed';
+            if ($file->status !== 'needs_review') {
+                $file->status = 'completed';
+            }
             $file->s3_processed_path = $metadata['s3OriginalPath']; // Use original as processed for receipts
 
             if ($thumbnailData) {

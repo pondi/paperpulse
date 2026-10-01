@@ -1,13 +1,21 @@
 <?php
 
 use App\Contracts\Services\TextAnalysisContract;
+use App\Jobs\BankStatements\ProcessCsvImport;
 use App\Models\BankStatement;
 use App\Models\BankTransaction;
 use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\User;
 use App\Services\BankStatements\CsvImportService;
+use App\Services\BankStatements\TransactionCategorizationService;
+use App\Services\Factories\BankStatementFactory;
+use App\Services\Jobs\JobMetadataPersistence;
+use App\Services\StorageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Validation\ValidationException;
 
 uses(RefreshDatabase::class);
 
@@ -694,4 +702,184 @@ it('correctly derives opening balance from first transaction', function () {
     // Opening = 4750 - (-250) = 5000 (balance before first transaction)
     expect((float) $statement->opening_balance)->toBe(5000.00);
     expect((float) $statement->closing_balance)->toBe(4700.00);
+});
+
+it('imports complete multiline CSV records with BOM escaped quotes and separators', function (string $delimiter) {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id]);
+    $description = "Store{$delimiter} \"special\"\nSecond line";
+    $stream = fopen('php://temp', 'w+');
+    fputcsv($stream, ['Date', 'Description', 'Amount'], $delimiter, '"', '');
+    fputcsv($stream, ['2026-01-01', $description, '-10.00'], $delimiter, '"', '');
+    fputcsv($stream, ['2026-01-02', 'Salary', '20.00'], $delimiter, '"', '');
+    rewind($stream);
+    $csv = "\xEF\xBB\xBF".stream_get_contents($stream);
+    fclose($stream);
+    $statement = createCsvImportService()->importFromContent($csv, $user->id, $file->id);
+    expect($statement->transactions()->count())->toBe(2)
+        ->and($statement->transactions()->orderBy('id')->first()->description)->toBe($description);
+})->with([',', ';', "\t", '|']);
+
+it('rejects oversized CSV input before mapping', function () {
+    createCsvImportService()->importFromContent(str_repeat('x', CsvImportService::MAX_INPUT_BYTES + 1), 1, 1);
+})->throws(Exception::class, '20 MB');
+
+it('rejects oversized multiline records', function () {
+    createCsvImportService()->sampleRows('Date,Description,Amount'."\n".'2026-01-01,"'.str_repeat('x', CsvImportService::MAX_RECORD_BYTES).'",-10');
+})->throws(Exception::class, 'record exceeds');
+
+it('rolls back financial records and linkage on a mid-import failure', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id]);
+    $count = 0;
+    BankTransaction::creating(function () use (&$count): void {
+        if (++$count === 2) {
+            throw new RuntimeException('Injected transaction failure');
+        }
+    });
+    try {
+        expect(fn () => createCsvImportService()->createStatementFromCsv([
+            ['2026-01-01', 'First', '-10'], ['2026-01-02', 'Second', '-20'],
+        ], ['transaction_date' => 0, 'description' => 1, 'amount' => 2], $user->id, $file->id))
+            ->toThrow(RuntimeException::class, 'Injected transaction failure');
+        expect(BankStatement::count())->toBe(0)
+            ->and(BankTransaction::count())->toBe(0)
+            ->and(ExtractableEntity::count())->toBe(0);
+    } finally {
+        BankTransaction::flushEventListeners();
+    }
+});
+
+it('reuses one complete import per file generation after retry and duplicate delivery', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id]);
+    $service = createCsvImportService();
+    $csv = "Date,Description,Amount\n2026-01-01,Shop,-10\n2026-01-02,Salary,20";
+    $first = $service->importFromContent($csv, $user->id, $file->id, 'first');
+    $retry = $service->importFromContent($csv, $user->id, $file->id, 'first');
+    expect($retry->id)->toBe($first->id)
+        ->and(BankStatement::count())->toBe(1)
+        ->and(BankTransaction::count())->toBe(2)
+        ->and(ExtractableEntity::count())->toBe(1);
+    $service->importFromContent($csv, $user->id, $file->id, 'second');
+    expect(BankStatement::count())->toBe(2);
+});
+
+it('resumes categorization without recreating financial records', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id, 'fileExtension' => 'csv']);
+    $csv = "Date,Description,Amount\n2026-01-01,Shop,-10\n2026-01-02,Salary,20";
+    $this->instance(CsvImportService::class, createCsvImportService());
+    $this->mock(StorageService::class, function ($mock) use ($csv): void {
+        $mock->shouldReceive('getFileByUserAndGuid')->twice()->andReturn($csv);
+    });
+    $attempt = 0;
+    $this->mock(TransactionCategorizationService::class, function ($mock) use (&$attempt): void {
+        $mock->shouldReceive('categorize')->twice()->andReturnUsing(function ($transactions) use (&$attempt): void {
+            if (++$attempt === 1) {
+                $transactions->first()->update(['category_group' => 'food_and_drink']);
+                throw new RuntimeException('Provider unavailable');
+            }
+            expect($transactions)->toHaveCount(1);
+            $transactions->first()->update(['category_group' => 'income']);
+        });
+    });
+    $job = new class('csv-test', $file->id) extends ProcessCsvImport
+    {
+        public function runImport(): void
+        {
+            $this->handleJob();
+        }
+
+        protected function getMetadata(): ?array
+        {
+            return ['processingGeneration' => 'csv-test'];
+        }
+
+        protected function updateProgress(int $progress): void {}
+    };
+    expect(fn () => $job->runImport())->toThrow(RuntimeException::class, 'Provider unavailable');
+    $statement = BankStatement::first();
+    expect(BankTransaction::count())->toBe(2)->and($statement->categorized_at)->toBeNull();
+    $job->runImport();
+    $job->runImport();
+    expect(BankStatement::count())->toBe(1)
+        ->and(BankTransaction::count())->toBe(2)
+        ->and($statement->fresh()->categorized_at)->not->toBeNull()
+        ->and($file->fresh()->status)->toBe('completed');
+});
+
+it('derives balances and period from descending transactions', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id]);
+    $statement = createCsvImportService()->importFromContent("Date,Description,Amount,Balance\n2026-01-03,Coffee,-5,95\n2026-01-02,Shop,-20,100\n2026-01-01,Salary,100,120", $user->id, $file->id);
+    expect((float) $statement->opening_balance)->toBe(20.0)
+        ->and((float) $statement->closing_balance)->toBe(95.0)
+        ->and($statement->statement_date->format('Y-m-d'))->toBe('2026-01-03')
+        ->and($statement->statement_period_start->format('Y-m-d'))->toBe('2026-01-01');
+});
+
+it('rejects invalid or ambiguous mappings before persistence', function (array $mapping, array $row) {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id]);
+    expect(fn () => createCsvImportService()->createStatementFromCsv([$row], $mapping, $user->id, $file->id))
+        ->toThrow(ValidationException::class);
+    expect(BankStatement::count())->toBe(0)->and(BankTransaction::count())->toBe(0);
+})->with([
+    'out of bounds' => [['transaction_date' => 0, 'description' => 1, 'amount' => 9], ['2026-01-01', 'Shop', '-10']],
+    'overlapping fields' => [['transaction_date' => 0, 'description' => 1, 'amount' => 1], ['2026-01-01', 'Shop', '-10']],
+    'invalid amount' => [['transaction_date' => 0, 'description' => 1, 'amount' => 2], ['2026-01-01', 'Shop', 'garbage']],
+    'invalid calendar date' => [['transaction_date' => 0, 'description' => 1, 'amount' => 2], ['2026-02-30', 'Shop', '-10']],
+    'ambiguous date' => [['transaction_date' => 0, 'description' => 1, 'amount' => 2], ['01/02/2026', 'Shop', '-10']],
+    'both debit and credit' => [['transaction_date' => 0, 'description' => 1, 'debit' => 2, 'credit' => 3], ['2026-01-01', 'Shop', '10', '20']],
+    'negative credit' => [['transaction_date' => 0, 'description' => 1, 'debit' => 2, 'credit' => 3], ['2026-01-01', 'Shop', '', '-20']],
+]);
+
+it('populates missing factory period and balances chronologically', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id]);
+    $statement = (new BankStatementFactory)->create([
+        'bank_name' => 'Test Bank',
+        'transactions' => [
+            ['date' => '2026-01-03', 'amount' => -5, 'balance' => 95],
+            ['date' => '2026-01-01', 'amount' => 100, 'balance' => 120],
+        ],
+    ], $file);
+    expect((float) $statement->opening_balance)->toBe(20.0)
+        ->and((float) $statement->closing_balance)->toBe(95.0)
+        ->and($statement->statement_date->format('Y-m-d'))->toBe('2026-01-03');
+});
+
+it('saves an owner corrected mapping and queues a retry', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id, 'fileExtension' => 'csv', 'status' => 'failed']);
+    $this->instance(CsvImportService::class, createCsvImportService());
+    $this->mock(StorageService::class, function ($mock): void {
+        $mock->shouldReceive('getFileByUserAndGuid')->once()->andReturn("Date,Desc,Value\n01/02/2026,Shop,-10");
+    });
+    $mapping = ['transaction_date' => 0, 'description' => 1, 'amount' => 2, 'date_format' => 'd/m/Y'];
+    $this->actingAs($user)->patch(route('bank-statements.csv-mapping.update', $file), ['mapping' => $mapping])->assertRedirect(route('files.index'));
+    expect($file->fresh()->meta['csv_mapping'])->toBe($mapping);
+    Queue::assertPushed(ProcessCsvImport::class, function (ProcessCsvImport $job) use ($file, $user): bool {
+        Cache::forget("job.{$job->jobID}.fileMetaData");
+        $metadata = JobMetadataPersistence::retrieve($job->jobID);
+        expect($metadata['fileId'])->toBe($file->id)
+            ->and($metadata['userId'])->toBe($user->id)
+            ->and($metadata['processingGeneration'])->toBe($file->fresh()->meta['processing_generation']);
+
+        return true;
+    });
+    $this->actingAs(User::factory()->create())->patchJson(route('bank-statements.csv-mapping.update', $file), ['mapping' => $mapping])->assertNotFound();
+});
+
+it('keeps CSV transaction totals and balances as exact decimal strings', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id]);
+    $statement = createCsvImportService()->importFromContent("Date,Description,Amount,Balance\n2026-01-01,First,0.10,0.10\n2026-01-02,Second,0.20,0.30", $user->id, $file->id);
+    expect($statement->total_credits)->toBe('0.30')
+        ->and($statement->total_debits)->toBe('0.00')
+        ->and($statement->opening_balance)->toBe('0.00')
+        ->and($statement->closing_balance)->toBe('0.30')
+        ->and($statement->transactions()->orderBy('id')->pluck('amount')->all())->toBe(['0.10', '0.20']);
 });

@@ -5,50 +5,36 @@ namespace App\Services;
 use App\Models\Collection;
 use App\Models\File;
 use App\Models\User;
+use App\Support\AuthorizedEntityRelations;
 use Illuminate\Support\Collection as SupportCollection;
 
 class CollectionService
 {
     public function create(array $data, int $userId): Collection
     {
-        return Collection::create([
-            'user_id' => $userId,
-            'name' => $data['name'],
-            'description' => $data['description'] ?? null,
-            'icon' => $data['icon'] ?? 'folder',
-            'color' => $data['color'] ?? null,
-        ]);
+        $folder = app(FolderTreeService::class)->ensureFolder($userId, $data['name'], $data['parent_id'] ?? null);
+
+        return app(FolderTreeService::class)->update($folder, $data);
     }
 
     public function update(Collection $collection, array $data): Collection
     {
-        $collection->update([
-            'name' => $data['name'] ?? $collection->name,
-            'description' => $data['description'] ?? $collection->description,
-            'icon' => $data['icon'] ?? $collection->icon,
-            'color' => $data['color'] ?? $collection->color,
-        ]);
-
-        return $collection->fresh();
+        return app(FolderTreeService::class)->update($collection, $data);
     }
 
     public function delete(Collection $collection): bool
     {
-        return $collection->delete();
+        return app(FolderTreeService::class)->deleteLeaf($collection);
     }
 
     public function archive(Collection $collection): Collection
     {
-        $collection->update(['is_archived' => true]);
-
-        return $collection->fresh();
+        return app(FolderTreeService::class)->archiveTree($collection);
     }
 
     public function unarchive(Collection $collection): Collection
     {
-        $collection->update(['is_archived' => false]);
-
-        return $collection->fresh();
+        return app(FolderTreeService::class)->archiveTree($collection, false);
     }
 
     /**
@@ -182,7 +168,7 @@ class CollectionService
     {
         /** @var \Illuminate\Database\Eloquent\Collection<int, File> $files */
         $files = $collection->files()->withoutGlobalScope('user')
-            ->with(['primaryEntity.entity' => fn ($query) => \App\Support\AuthorizedEntityRelations::load($query)])
+            ->with(['primaryEntity.entity' => fn ($query) => AuthorizedEntityRelations::load($query)])
             ->get();
 
         $totalAmount = 0;

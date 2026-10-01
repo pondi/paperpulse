@@ -48,4 +48,100 @@ class FolderTreeService
             return $locked->fresh();
         });
     }
+
+    /** @return list<int> */
+    public function subtreeIds(Collection $root): array
+    {
+        $ids = [$root->id];
+        $frontier = [$root->id];
+        while ($frontier !== []) {
+            $frontier = Collection::withoutGlobalScope('user')->where('user_id', $root->user_id)
+                ->whereIn('parent_id', $frontier)->whereNotIn('id', $ids)->pluck('id')->all();
+            $ids = array_values(array_unique(array_merge($ids, $frontier)));
+            if (count($ids) > 1000) {
+                throw ValidationException::withMessages(['collection' => 'This tree is too large for one operation. Work on a smaller branch.']);
+            }
+        }
+
+        return $ids;
+    }
+
+    /** @return array{folders: int, files: int, can_delete: bool, sharing_scope: string} */
+    public function preview(Collection $root): array
+    {
+        $ids = $this->subtreeIds($root);
+        $files = File::withoutGlobalScope('user')->where('user_id', $root->user_id)
+            ->whereHas('collections', fn ($query) => $query->withoutGlobalScope('user')->whereIn('collections.id', $ids))->count();
+
+        return ['folders' => count($ids), 'files' => $files, 'can_delete' => count($ids) === 1,
+            'sharing_scope' => 'Only files directly in each explicitly shared folder are shared.'];
+    }
+
+    /** @return list<array{id: int, label: string, href: string}> */
+    public function breadcrumbs(Collection $folder): array
+    {
+        $path = [];
+        $current = $folder;
+        for ($depth = 0; $current && $depth < 64; $depth++) {
+            array_unshift($path, ['id' => $current->id, 'label' => $current->name,
+                'href' => route('collections.show', $current->id)]);
+            $current = $current->parent_id ? Collection::withoutGlobalScope('user')
+                ->where('user_id', $folder->user_id)->find($current->parent_id) : null;
+        }
+
+        return $path;
+    }
+
+    public function update(Collection $folder, array $data): Collection
+    {
+        return $folder->getConnection()->transaction(function () use ($folder, $data): Collection {
+            User::query()->lockForUpdate()->findOrFail($folder->user_id);
+            $locked = Collection::withoutGlobalScope('user')->where('user_id', $folder->user_id)->lockForUpdate()->findOrFail($folder->id);
+            $attributes = array_intersect_key($data, array_flip(['name', 'description', 'icon', 'color', 'parent_id', 'is_pinned']));
+            if (array_key_exists('icon', $attributes) && $attributes['icon'] === null) {
+                $attributes['icon'] = 'folder';
+            }
+            if (array_key_exists('color', $attributes) && $attributes['color'] === null) {
+                $attributes['color'] = '#3B82F6';
+            }
+            $candidateName = $attributes['name'] ?? $locked->name;
+            $candidateParent = array_key_exists('parent_id', $attributes) ? $attributes['parent_id'] : $locked->parent_id;
+            if (Collection::withoutGlobalScope('user')->where('user_id', $locked->user_id)
+                ->where('identity_key', Collection::folderIdentity($candidateName, $candidateParent, $locked->folder_type))
+                ->whereKeyNot($locked->id)->exists()) {
+                throw ValidationException::withMessages(['name' => 'A folder with this name already exists in this location.']);
+            }
+            $locked->update($attributes);
+
+            return $locked->fresh();
+        });
+    }
+
+    public function archiveTree(Collection $folder, bool $archived = true): Collection
+    {
+        return $folder->getConnection()->transaction(function () use ($folder, $archived): Collection {
+            User::query()->lockForUpdate()->findOrFail($folder->user_id);
+            Collection::withoutGlobalScope('user')->where('user_id', $folder->user_id)
+                ->whereIn('id', $this->subtreeIds($folder))->update(['is_archived' => $archived]);
+
+            return $folder->fresh();
+        });
+    }
+
+    public function deleteLeaf(Collection $folder): bool
+    {
+        return $folder->getConnection()->transaction(function () use ($folder): bool {
+            User::query()->lockForUpdate()->findOrFail($folder->user_id);
+            $locked = Collection::withoutGlobalScope('user')->where('user_id', $folder->user_id)->lockForUpdate()->findOrFail($folder->id);
+            if ($locked->children()->withoutGlobalScope('user')->exists()) {
+                throw ValidationException::withMessages(['collection' => 'Move or delete child folders before deleting this folder.']);
+            }
+            $primaryFiles = File::withoutGlobalScope('user')->where('user_id', $folder->user_id)->where('primary_folder_id', $folder->id);
+            $primaryFiles->increment('placement_version');
+            $primaryFiles->update(['primary_folder_id' => null, 'placement_source' => null]);
+            $locked->files()->detach();
+
+            return $locked->delete();
+        });
+    }
 }

@@ -22,6 +22,8 @@
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <Breadcrumbs :crumbs="[{ label: 'Collections', href: route('collections.index') }, ...breadcrumbs]" />
+                <p v-if="actionError" role="alert" class="mb-4 text-red-600 dark:text-red-400">{{ actionError }}</p>
                 <!-- Search and Filters -->
                 <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg mb-6">
                     <div class="p-6">
@@ -138,6 +140,9 @@
                         ></textarea>
                     </div>
 
+                    <FolderLocationPicker v-model="form.parent_id" :exclude-id="editingCollection?.id" />
+                    <p v-if="form.errors.parent_id" class="text-sm text-red-600 dark:text-red-400">{{ form.errors.parent_id }}</p>
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">Moving a folder keeps its existing sharing permissions. Subfolders must be shared separately.</p>
                     <IconPicker
                         v-model="form.icon"
                         label="Icon"
@@ -172,6 +177,9 @@
 
 <script setup>
 import { ref } from 'vue';
+import axios from 'axios';
+import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
+import FolderLocationPicker from '@/Components/Domain/FolderLocationPicker.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CollectionCard from '@/Components/Domain/CollectionCard.vue';
@@ -185,18 +193,21 @@ const props = defineProps({
         type: Object,
         required: true
     },
+    breadcrumbs: { type: Array, default: () => [] },
     filters: {
         type: Object,
         default: () => ({})
     }
 });
 
+const actionError = ref('');
 const searchQuery = ref(props.filters.search || '');
 const showArchived = ref(props.filters.archived || false);
 const showModal = ref(false);
 const editingCollection = ref(null);
 
 const form = useForm({
+    parent_id: props.filters.parent_id ?? null,
     name: '',
     description: '',
     icon: 'folder',
@@ -214,7 +225,8 @@ const debounceSearch = () => {
 const applyFilters = () => {
     router.get(route('collections.index'), {
         search: searchQuery.value,
-        archived: showArchived.value
+        archived: showArchived.value,
+        parent_id: props.filters.parent_id ?? null
     }, {
         preserveState: true,
         preserveScroll: true
@@ -224,6 +236,7 @@ const applyFilters = () => {
 const openCreateModal = () => {
     editingCollection.value = null;
     form.reset();
+    form.parent_id = props.filters.parent_id ?? null;
     form.icon = 'folder';
     form.color = '#3B82F6';
     showModal.value = true;
@@ -231,6 +244,7 @@ const openCreateModal = () => {
 
 const editCollection = (collection) => {
     editingCollection.value = collection;
+    form.parent_id = collection.parent_id;
     form.name = collection.name;
     form.description = collection.description || '';
     form.icon = collection.icon;
@@ -262,11 +276,24 @@ const viewCollection = (collection) => {
     router.visit(route('collections.show', collection.id));
 };
 
-const archiveCollection = (collection) => {
-    if (confirm(`Archive "${collection.name}"? It will be hidden but can be restored later.`)) {
-        router.post(route('collections.archive', collection.id), {}, {
-            preserveScroll: true
-        });
+const previewAction = async (collection, action) => {
+    actionError.value = '';
+    try {
+        const { data } = await axios.get(route('collections.tree-preview', collection.id));
+        if (action === 'Delete' && !data.can_delete) {
+            actionError.value = 'Move or delete the subfolders before deleting this folder.';
+            return false;
+        }
+        return confirm(`${action} "${collection.name}"? This affects ${data.folders} folder(s) and ${data.files} unique file(s). Original files are kept. ${data.sharing_scope}`);
+    } catch {
+        actionError.value = 'The folder preview could not be loaded. Please try again.';
+        return false;
+    }
+};
+
+const archiveCollection = async (collection) => {
+    if (await previewAction(collection, 'Archive')) {
+        router.post(route('collections.archive', collection.id), {}, { preserveScroll: true });
     }
 };
 
@@ -276,11 +303,9 @@ const unarchiveCollection = (collection) => {
     });
 };
 
-const deleteCollection = (collection) => {
-    if (confirm(`Delete "${collection.name}"? This action cannot be undone.`)) {
-        router.delete(route('collections.destroy', collection.id), {
-            preserveScroll: true
-        });
+const deleteCollection = async (collection) => {
+    if (await previewAction(collection, 'Delete')) {
+        router.delete(route('collections.destroy', collection.id), { preserveScroll: true });
     }
 };
 </script>

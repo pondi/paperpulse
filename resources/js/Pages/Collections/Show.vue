@@ -53,6 +53,14 @@
                 <!-- Collection Details Card -->
                 <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg border-l-4 p-6 mb-6" :style="{ borderLeftColor: collection.color }">
                     <div class="space-y-6">
+                        <template v-if="isEditing">
+                            <label class="text-sm text-zinc-700 dark:text-zinc-300">Name
+                                <input v-model="editedCollection.name" class="block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100" />
+                            </label>
+                            <FolderLocationPicker v-model="editedCollection.parent_id" :exclude-id="collection.id" />
+                        </template>
+                        <p v-for="(error, field) in $page.props.errors" :key="field" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                        <p v-if="treePreview" class="text-sm text-zinc-600 dark:text-zinc-400">This branch contains {{ treePreview.folders }} folders and {{ treePreview.files }} unique files. {{ treePreview.sharing_scope }}</p>
                         <!-- Description -->
                         <div v-if="!isEditing && collection.description" class="text-sm text-zinc-600 dark:text-zinc-400">
                             {{ collection.description }}
@@ -104,6 +112,17 @@
                     class="mb-6"
                 />
 
+                <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg p-6 mb-6">
+                    <div class="flex items-center justify-between gap-3 mb-4">
+                        <h3 class="font-bold text-zinc-900 dark:text-zinc-100">Subfolders</h3>
+                        <Link v-if="isOwner" :href="route('collections.index', { parent_id: collection.id })" class="text-blue-600 dark:text-blue-400">Manage subfolders</Link>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <Link v-for="child in children.data" :key="child.id" :href="route('collections.show', child.id)" class="rounded-md bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 px-4 py-2">{{ child.name }}</Link>
+                    </div>
+                    <p v-if="!children.data.length" class="text-sm text-zinc-500 dark:text-zinc-400">No subfolders available.</p>
+                    <Pagination v-if="children.last_page > 1" :links="children.links" :from="children.from" :to="children.to" :total="children.total" class="mt-4" />
+                </div>
                 <!-- Files Grid -->
                 <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg p-6">
                     <div class="flex items-center justify-between mb-6">
@@ -147,6 +166,7 @@
                         </div>
                     </div>
 
+                    <Pagination v-if="filePagination" :links="filePagination" class="mt-4" />
                     <!-- Empty State -->
                     <div v-else class="text-center py-12">
                         <svg class="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,12 +187,17 @@
 import { ref, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import FolderLocationPicker from '@/Components/Domain/FolderLocationPicker.vue';
+import Pagination from '@/Components/Common/Pagination.vue';
 import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import IconPicker from '@/Components/Forms/IconPicker.vue';
 import ColorPicker from '@/Components/Forms/ColorPicker.vue';
 import PublicLinkManager from '@/Components/Domain/PublicLinkManager.vue';
 
 const props = defineProps({
+    children: { type: Object, default: () => ({ data: [] }) },
+    filePagination: { type: Array, default: null },
+    treePreview: { type: Object, default: null },
     collection: {
         type: Object,
         required: true
@@ -197,6 +222,8 @@ const props = defineProps({
 
 const isEditing = ref(false);
 const editedCollection = ref({
+    name: props.collection.name,
+    parent_id: props.collection.parent_id,
     description: props.collection.description || '',
     icon: props.collection.icon,
     color: props.collection.color
@@ -207,11 +234,14 @@ watch(isEditing, (newValue) => {
     if (!newValue) {
         // Exiting edit mode - save changes
         router.patch(route('collections.update', props.collection.id), editedCollection.value, {
-            preserveScroll: true
+            preserveScroll: true,
+            onError: () => { isEditing.value = true; }
         });
     } else {
         // Entering edit mode - reset form
         editedCollection.value = {
+            name: props.collection.name,
+            parent_id: props.collection.parent_id,
             description: props.collection.description || '',
             icon: props.collection.icon,
             color: props.collection.color

@@ -24,8 +24,7 @@ class StorageService
 
     public function __construct()
     {
-        // Delay initialization to avoid issues during bootstrap
-        $this->incomingPrefix = 'incoming/';
+        $this->incomingPrefix = rtrim(config('filesystems.incoming_prefix', 'incoming/'), '/').'/';
     }
 
     /**
@@ -37,15 +36,10 @@ class StorageService
             return; // Already configured
         }
 
-        try {
-            $this->incomingDisk = Storage::disk('pulsedav');
-            $this->storageDisk = Storage::disk('paperpulse');
-        } catch (Exception $e) {
-            Log::error('Failed to configure S3 disks: '.$e->getMessage());
-            // Fall back to local storage if S3 is not configured
-            $this->incomingDisk = Storage::disk('local');
-            $this->storageDisk = Storage::disk('local');
-        }
+        $incoming = Storage::disk(config('filesystems.incoming_disk', 'pulsedav'));
+        $permanent = Storage::disk(config('filesystems.permanent_disk', 'paperpulse'));
+        $this->incomingDisk = $incoming;
+        $this->storageDisk = $permanent;
     }
 
     /**
@@ -119,7 +113,9 @@ class StorageService
             }
 
             // Delete from incoming bucket
-            $this->incomingDisk->delete($incomingPath);
+            if (! $this->incomingDisk->delete($incomingPath)) {
+                throw new Exception('File was copied to permanent storage but incoming deletion failed');
+            }
 
             Log::info('[StorageService] File moved to storage', [
                 'incoming_path' => $incomingPath,
@@ -361,26 +357,28 @@ class StorageService
      */
     public function isS3Storage(): bool
     {
-        return config('filesystems.disks.paperpulse.driver') === 's3';
+        $disk = config('filesystems.permanent_disk', 'paperpulse');
+
+        return config("filesystems.disks.{$disk}.driver") === 's3';
     }
 
     /**
      * Get the storage disk instance.
-     *
-     * @return Filesystem
      */
-    public function getStorageDisk()
+    public function getStorageDisk(): Filesystem
     {
+        $this->configureDualBuckets();
+
         return $this->storageDisk;
     }
 
     /**
      * Get the incoming disk instance.
-     *
-     * @return Filesystem
      */
-    public function getIncomingDisk()
+    public function getIncomingDisk(): Filesystem
     {
+        $this->configureDualBuckets();
+
         return $this->incomingDisk;
     }
 
@@ -420,10 +418,6 @@ class StorageService
 
         if (! $this->storageDisk->exists($fromPath)) {
             throw new Exception("File not found in storage: {$fromPath}");
-        }
-
-        if ($this->storageDisk->exists($toPath)) {
-            $this->storageDisk->delete($toPath);
         }
 
         $moved = $this->storageDisk->move($fromPath, $toPath);

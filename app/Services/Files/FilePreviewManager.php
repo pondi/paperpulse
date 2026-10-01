@@ -3,8 +3,8 @@
 namespace App\Services\Files;
 
 use App\Models\File;
-use Exception;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Orchestrates image preview generation and storage for files.
@@ -70,7 +70,7 @@ class FilePreviewManager
             ]);
 
             return true;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             // Log error and update file record
             Log::error('[FilePreviewManager] Preview generation failed', [
                 'file_id' => $file->id,

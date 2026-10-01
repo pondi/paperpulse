@@ -61,6 +61,7 @@ class PublicCollectionLink extends Model
             'last_accessed_at' => 'datetime',
             'max_views' => 'integer',
             'view_count' => 'integer',
+            'access_version' => 'integer',
         ];
     }
 
@@ -139,6 +140,12 @@ class PublicCollectionLink extends Model
         return $this->is_password_protected;
     }
 
+    public function reserveView(): bool
+    {
+        return static::query()->whereKey($this->id)->active()
+            ->increment('view_count', 1, ['last_accessed_at' => now()]) === 1;
+    }
+
     public function incrementViewCount(): void
     {
         $this->increment('view_count');
@@ -163,7 +170,14 @@ class PublicCollectionLink extends Model
     {
         parent::boot();
 
+        static::updating(function (self $link): void {
+            if ($link->isDirty(['password_hash', 'is_password_protected', 'expires_at', 'max_views', 'is_active', 'token', 'collection_id'])) {
+                $link->access_version = (int) $link->getOriginal('access_version') + 1;
+            }
+        });
+
         static::creating(function (self $link) {
+            $link->access_version = 1;
             if (empty($link->token)) {
                 $link->token = static::generateToken();
             }

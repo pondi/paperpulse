@@ -1,11 +1,14 @@
 <?php
 
 use App\Http\Controllers\BankStatementController;
+use App\Http\Controllers\CsvMappingController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::prefix('bank-statements')->name('bank-statements.')->group(function () {
         Route::get('/', [BankStatementController::class, 'index'])->name('index');
+        Route::get('/csv/{file}/mapping', [CsvMappingController::class, 'edit'])->name('csv-mapping.edit');
+        Route::patch('/csv/{file}/mapping', [CsvMappingController::class, 'update'])->name('csv-mapping.update');
         Route::get('/{bankStatement}', [BankStatementController::class, 'show'])->name('show');
         Route::patch('/{bankStatement}', [BankStatementController::class, 'update'])->name('update');
         Route::delete('/{bankStatement}', [BankStatementController::class, 'destroy'])->name('destroy');

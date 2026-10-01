@@ -154,7 +154,7 @@ class PulseDavController extends Controller
     {
         Log::info('[PulseDavController] Import request received', [
             'user_id' => auth()->id(),
-            'request_data' => $request->all(),
+            'selections_count' => count($request->input('selections', [])),
         ]);
 
         try {
@@ -175,10 +175,10 @@ class PulseDavController extends Controller
 
                 if (config('app.debug')) {
                     $response['debug'] = [
-                        'request_data' => $request->all(),
+                        'selections_count' => count($request->input('selections', [])),
                         'failed_rules' => $validator->failed(),
                     ];
-                    Log::debug('[PulseDavController] Import validation failed', $response);
+                    Log::debug('[PulseDavController] Import validation failed', ['error_count' => count($validator->errors())]);
                 }
 
                 return response()->json($response, 422);
@@ -199,7 +199,7 @@ class PulseDavController extends Controller
                             'user_tag_ids' => $userTagIds,
                             'requested_tag_ids' => $request->tag_ids,
                         ];
-                        Log::debug('[PulseDavController] Import invalid tags', $response);
+                        Log::debug('[PulseDavController] Import invalid tags', ['user_id' => auth()->id()]);
                     }
 
                     return response()->json($response, 422);
@@ -226,7 +226,7 @@ class PulseDavController extends Controller
             );
 
             Log::info('[PulseDavController] Import completed', [
-                'result' => $result,
+                'completed' => true,
             ]);
 
             return response()->json([
@@ -237,8 +237,7 @@ class PulseDavController extends Controller
             ]);
         } catch (Exception $e) {
             Log::error('[PulseDavController] Import exception', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'error_class' => $e::class,
                 'request' => $request->all(),
             ]);
 

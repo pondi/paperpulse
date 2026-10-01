@@ -1,5 +1,14 @@
 <?php
 
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Redis;
+
+beforeEach(function (): void {
+    Redis::shouldReceive('connection')->with('health')->andReturnSelf();
+    Redis::shouldReceive('ping')->andReturn(true);
+    Queue::shouldReceive('size')->with('default')->andReturn(0);
+});
+
 describe('health check', function () {
     it('returns ok status with component checks', function () {
         $response = $this->getJson('/api/health');

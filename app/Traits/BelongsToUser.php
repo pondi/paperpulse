@@ -2,6 +2,8 @@
 
 namespace App\Traits;
 
+use App\Models\Collection;
+use App\Models\File;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -44,6 +46,11 @@ trait BelongsToUser
     /**
      * Get the user that owns this model.
      */
+    public function resolveRouteBindingQuery($query, $value, $field = null): Builder
+    {
+        return parent::resolveRouteBindingQuery($query, $value, $field)->accessibleBy(auth()->user());
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -74,20 +81,28 @@ trait BelongsToUser
     /**
      * Scope a query to include records accessible by a user (owned + shared).
      */
-    public function scopeAccessibleBy(Builder $query, User $user): Builder
+    public function scopeAccessibleBy(Builder $query, User $user, string $permission = 'view'): Builder
     {
-        return $query->withoutGlobalScope('user')->where(function ($q) use ($user) {
-            $q->where('user_id', $user->id);
+        $table = $query->getModel()->getTable();
 
-            // If the model uses ShareableModel trait, include shared records
-            if (in_array(ShareableModel::class, class_uses_recursive(static::class))) {
-                $q->orWhereHas('shares', function ($shareQuery) use ($user) {
-                    $shareQuery->where('shared_with_user_id', $user->id)
-                        ->where(function ($expQuery) {
-                            $expQuery->whereNull('expires_at')
-                                ->orWhere('expires_at', '>', now());
-                        });
-                });
+        return $query->withoutGlobalScope('user')->where(function (Builder $query) use ($user, $table, $permission): void {
+            $query->where($table.'.user_id', $user->id);
+
+            if ($query->getModel() instanceof Collection) {
+                $query->orWhereHas('shares', fn (Builder $shares) => $shares
+                    ->where('shared_with_user_id', $user->id)->active()
+                    ->whereIn('permission', $permission === 'edit' ? ['edit'] : ['view', 'edit']));
+            } elseif ($query->getModel() instanceof File) {
+                $query->orWhereHas('shares', fn (Builder $shares) => $shares
+                    ->where('shared_with_user_id', $user->id)->active()
+                    ->whereIn('permission', $permission === 'edit' ? ['edit'] : ['view', 'edit']))
+                    ->orWhereHas('collections', fn (Builder $collections) => $collections
+                        ->withoutGlobalScope('user')
+                        ->whereHas('shares', fn (Builder $shares) => $shares
+                            ->where('shared_with_user_id', $user->id)->active()
+                            ->whereIn('permission', $permission === 'edit' ? ['edit'] : ['view', 'edit'])));
+            } elseif (method_exists($query->getModel(), 'file')) {
+                $query->orWhereHas('file', fn (Builder $files) => $files->accessibleBy($user, $permission));
             }
         });
     }

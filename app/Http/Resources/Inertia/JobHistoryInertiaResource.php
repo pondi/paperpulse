@@ -2,10 +2,10 @@
 
 namespace App\Http\Resources\Inertia;
 
+use App\Services\Jobs\JobMetadataPersistence;
 use App\Services\Jobs\JobParentStatusCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Cache;
 
 class JobHistoryInertiaResource extends JsonResource
 {
@@ -66,7 +66,7 @@ class JobHistoryInertiaResource extends JsonResource
             ];
         }
 
-        $metadata = Cache::get("job.{$this->uuid}.fileMetaData");
+        $metadata = JobMetadataPersistence::retrieve($this->uuid);
         if ($metadata) {
             return [
                 'name' => $metadata['fileName'] ?? 'Unknown File',

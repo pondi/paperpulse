@@ -2,116 +2,38 @@
 
 namespace App\Services\Receipts;
 
-use Illuminate\Support\Facades\Log;
-
 class TotalsCalculator
 {
-    public static function calculate(array $items, array $data, $parser): array
+    public static function calculate(array $items, array $data, object $parser): array
     {
-        [$calculatedTotal, $validItemsCount, $itemValidationErrors] = self::calculateLineItemTotals($items);
-
-        $aiTotals = $parser->extractTotals($data);
-        $aiTotal = (float) ($aiTotals['total_amount'] ?? 0);
-        $aiTax = (float) ($aiTotals['tax_amount'] ?? 0);
-
-        self::logItemValidationErrors($itemValidationErrors, $items, $validItemsCount);
-
-        return self::decideTotalsSource($calculatedTotal, $validItemsCount, $aiTotal, $aiTax, $items);
-    }
-
-    private static function calculateLineItemTotals(array $items): array
-    {
-        $calculatedTotal = 0.0;
-        $validItemsCount = 0;
-        $itemValidationErrors = [];
-
-        foreach ($items as $index => $item) {
-            $quantity = (float) ($item['quantity'] ?? 1);
-            $unitPrice = (float) ($item['unit_price'] ?? $item['price'] ?? 0);
-            $itemTotal = (float) ($item['total_price'] ?? $item['total'] ?? 0);
-
-            if ($itemTotal == 0 && $unitPrice > 0) {
-                $itemTotal = $quantity * $unitPrice;
+        $totals = $parser->extractTotals($data);
+        $calculated = 0;
+        $covered = 0;
+        foreach ($items as $item) {
+            $value = $item['total_price'] ?? $item['total'] ?? null;
+            if ($value === null && (isset($item['unit_price']) || isset($item['price']))) {
+                $value = DecimalAmount::multiplyPrice($item['unit_price'] ?? $item['price'], $item['quantity'] ?? 1);
             }
-
-            $expectedTotal = $quantity * $unitPrice;
-            if ($unitPrice > 0 && abs($itemTotal - $expectedTotal) > 0.01) {
-                $itemValidationErrors[] = [
-                    'item_index' => $index,
-                    'item_name' => $item['name'] ?? $item['description'] ?? 'Unknown',
-                    'expected_total' => $expectedTotal,
-                    'actual_total' => $itemTotal,
-                    'quantity' => $quantity,
-                    'unit_price' => $unitPrice,
-                ];
-            }
-
-            if ($itemTotal > 0) {
-                $calculatedTotal += $itemTotal;
-                $validItemsCount++;
+            if ($value !== null) {
+                $calculated += DecimalAmount::minorUnits($value);
+                $covered++;
             }
         }
+        $source = isset($totals['total_amount']) ? DecimalAmount::minorUnits($totals['total_amount']) : null;
+        $tax = DecimalAmount::minorUnits($totals['tax_amount'] ?? 0);
+        $tip = DecimalAmount::minorUnits($totals['tip_amount'] ?? 0);
+        $discount = DecimalAmount::minorUnits($totals['discount_amount'] ?? 0);
+        $candidates = [$calculated, $calculated + $tax + $tip - $discount, $calculated + $tip - $discount];
+        $matches = $source !== null && min(array_map(static fn (int $candidate): int => abs($candidate - $source), $candidates)) <= 1;
 
-        return [$calculatedTotal, $validItemsCount, $itemValidationErrors];
-    }
-
-    private static function logItemValidationErrors(array $itemValidationErrors, array $items, int $validItemsCount): void
-    {
-        if (empty($itemValidationErrors)) {
-            return;
-        }
-
-        Log::warning('[ReceiptAnalysis] Line item calculation mismatches found', [
-            'validation_errors' => $itemValidationErrors,
+        return [
+            'total_amount' => DecimalAmount::format($source ?? ($calculated + $tax + $tip - $discount)),
+            'tax_amount' => DecimalAmount::format($tax),
+            'source_total' => $source === null ? null : DecimalAmount::format($source),
+            'calculated_total' => DecimalAmount::format($calculated),
+            'processed_items' => $covered,
             'total_items' => count($items),
-            'valid_items' => $validItemsCount,
-        ]);
-    }
-
-    private static function decideTotalsSource(
-        float $calculatedTotal,
-        int $validItemsCount,
-        float $aiTotal,
-        float $aiTax,
-        array $items
-    ): array {
-        $tolerance = 0.02;
-
-        if ($calculatedTotal > 0 && $validItemsCount > 0) {
-            $difference = abs($calculatedTotal - $aiTotal);
-            $percentDifference = $aiTotal > 0 ? ($difference / $aiTotal) : 0;
-
-            if ($percentDifference <= $tolerance) {
-                Log::info('[ReceiptAnalysis] Using AI total - close match with calculated items', [
-                    'calculated_total' => $calculatedTotal,
-                    'ai_total' => $aiTotal,
-                    'difference' => $difference,
-                    'percent_difference' => $percentDifference * 100,
-                    'valid_items_count' => $validItemsCount,
-                ]);
-
-                return ['total_amount' => $aiTotal, 'tax_amount' => $aiTax];
-            }
-
-            Log::warning('[ReceiptAnalysis] Significant difference between calculated and AI totals', [
-                'calculated_total' => $calculatedTotal,
-                'ai_total' => $aiTotal,
-                'difference' => $difference,
-                'percent_difference' => $percentDifference * 100,
-                'using' => 'calculated_total',
-                'valid_items_count' => $validItemsCount,
-            ]);
-
-            return ['total_amount' => $calculatedTotal, 'tax_amount' => $aiTax];
-        }
-
-        Log::warning('[ReceiptAnalysis] Using AI totals - insufficient line item data', [
-            'calculated_total' => $calculatedTotal,
-            'ai_total' => $aiTotal,
-            'valid_items_count' => $validItemsCount,
-            'total_items' => count($items),
-        ]);
-
-        return ['total_amount' => $aiTotal, 'tax_amount' => $aiTax];
+            'needs_review' => ($source !== null && $covered > 0 && ! $matches) || $covered < count($items) || ($source === null && $covered === 0),
+        ];
     }
 }

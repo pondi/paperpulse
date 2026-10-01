@@ -6,8 +6,10 @@ use App\Models\Receipt;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
+    Storage::fake('paperpulse');
     $this->user = User::factory()->create();
 });
 

@@ -55,7 +55,6 @@ return [
         | Enable/disable office document conversion
         */
         'enabled' => env('OFFICE_CONVERSION_ENABLED', true),
-
         /*
         | Gotenberg service URL
         */
@@ -64,7 +63,7 @@ return [
         /*
         | Conversion timeout in seconds
         */
-        'timeout' => (int) env('CONVERSION_TIMEOUT', 120),
+        'timeout' => min(240, max(1, (int) env('CONVERSION_TIMEOUT', 120))),
 
         /*
         | Maximum number of retry attempts for failed conversions

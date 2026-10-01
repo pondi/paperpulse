@@ -106,7 +106,7 @@ class CollectionSharingService
     {
         $shares = CollectionShare::where('shared_with_user_id', $user->id)
             ->active()
-            ->with(['collection.user'])
+            ->with(['collection' => fn ($query) => $query->withoutGlobalScope('user')->with('user')])
             ->get();
 
         return $shares->map(fn ($share) => $share->collection)->filter()->values();
@@ -148,9 +148,8 @@ class CollectionSharingService
     {
         return CollectionShare::where('shared_with_user_id', $user->id)
             ->active()
-            ->whereHas('collection.files', function ($query) use ($fileId) {
-                $query->where('files.id', $fileId);
-            })
+            ->whereHas('collection', fn ($collections) => $collections->withoutGlobalScope('user')
+                ->whereHas('files', fn ($files) => $files->withoutGlobalScope('user')->where('files.id', $fileId)))
             ->exists();
     }
 

@@ -2,9 +2,12 @@
 
 use App\Models\User;
 use Illuminate\Auth\Events\Verified;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
+
+beforeEach(fn () => $this->withoutVite());
 
 test('email verification screen can be rendered', function () {
     $user = User::factory()->create([
@@ -31,9 +34,7 @@ test('email can be verified', function () {
 
     $response = $this->actingAs($user)->get($verificationUrl);
 
-    if ($user instanceof MustVerifyEmail) {
-        Event::assertDispatched(Verified::class);
-    }
+    Event::assertDispatched(Verified::class);
     expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
     $response->assertRedirect(route('dashboard', absolute: false).'?verified=1');
 });
@@ -52,4 +53,39 @@ test('email is not verified with invalid hash', function () {
     $this->actingAs($user)->get($verificationUrl);
 
     expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
+});
+
+test('unverified existing accounts can resend and recover web access', function () {
+    Notification::fake();
+    $user = User::factory()->unverified()->create();
+    $this->actingAs($user)->get('/dashboard')->assertRedirect(route('verification.notice'));
+    $this->post(route('verification.send'))->assertRedirect()->assertSessionHas('status', 'verification-link-sent');
+    Notification::assertSentTo($user, VerifyEmail::class);
+    $this->artisan('users:send-verification', ['--user' => $user->id])->assertSuccessful();
+    Notification::assertSentToTimes($user, VerifyEmail::class, 2);
+});
+
+test('unverified accounts cannot get API tokens or access protected API resources', function () {
+    $user = User::factory()->unverified()->create();
+    $this->postJson('/api/v1/auth/login', ['email' => $user->email, 'password' => 'password'])->assertForbidden();
+    expect($user->tokens()->count())->toBe(0);
+    $token = $user->createToken('existing')->plainTextToken;
+    $this->withToken($token)->getJson('/api/v1/files')->assertForbidden();
+});
+
+test('unsigned and expired verification links are rejected', function () {
+    $user = User::factory()->unverified()->create();
+    $parameters = ['id' => $user->id, 'hash' => sha1($user->email)];
+    $this->actingAs($user)->get(route('verification.verify', $parameters))->assertForbidden();
+    $this->get(URL::temporarySignedRoute('verification.verify', now()->subMinute(), $parameters))->assertForbidden();
+    expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
+});
+
+test('PulseDAV follows the same verified account policy', function () {
+    config(['services.pulsedav.auth_enabled' => true]);
+    $user = User::factory()->unverified()->create();
+    $payload = ['username' => $user->email, 'password' => 'password'];
+    $this->postJson('/api/webdav/auth', $payload)->assertForbidden();
+    $user->markEmailAsVerified();
+    $this->postJson('/api/webdav/auth', $payload)->assertOk();
 });

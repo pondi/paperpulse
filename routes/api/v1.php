@@ -27,7 +27,7 @@ Route::prefix('auth')->group(function () {
 });
 
 // Protected API routes
-Route::middleware(['auth:sanctum', 'api.rate_limit:200,1'])->group(function () {
+Route::middleware(['auth:sanctum', 'verified', 'api.rate_limit:200,1'])->group(function () {
     // File upload & listing (single file upload only)
     Route::get('files', [FileController::class, 'index'])->name('api.files.index');
     Route::get('files/{file}', [FileController::class, 'show'])->name('api.files.show');

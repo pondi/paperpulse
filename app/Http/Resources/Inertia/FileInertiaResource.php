@@ -64,6 +64,11 @@ class FileInertiaResource extends JsonResource
             ]),
         ];
 
+        if ($this->status === 'needs_review') {
+            $review = $this->meta['review'] ?? [];
+            $data['review'] = array_intersect_key($review, array_flip(['reason', 'confidence', 'reasoning']));
+        }
+
         if ($this->includeDetailsUrl) {
             // Route to appropriate show page based on entity type
             $data['detailsUrl'] = $this->getEntityDetailsUrl();

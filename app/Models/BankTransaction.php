@@ -4,9 +4,11 @@ namespace App\Models;
 
 use App\Enums\DeletedReason;
 use App\Enums\TransactionCategory;
+use App\Services\BankStatements\TransactionCategorizationService;
 use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Scout\Searchable;
 
@@ -26,6 +28,7 @@ class BankTransaction extends Model
         'reference',
         'transaction_type',
         'category',
+        'category_source',
         'category_group',
         'subcategory',
         'amount',
@@ -44,7 +47,21 @@ class BankTransaction extends Model
         'deleted_reason' => DeletedReason::class,
     ];
 
-    public function bankStatement()
+    protected static function booted(): void
+    {
+        static::updating(function (self $transaction): void {
+            if (auth()->id() === $transaction->user_id && $transaction->isDirty(['category_group', 'subcategory']) && ! $transaction->isDirty('category_source')) {
+                $transaction->category_source = 'manual';
+            }
+        });
+        static::updated(function (self $transaction): void {
+            if ($transaction->category_source === 'manual' && $transaction->wasChanged(['category_group', 'subcategory'])) {
+                TransactionCategorizationService::rememberManual($transaction);
+            }
+        });
+    }
+
+    public function bankStatement(): BelongsTo
     {
         return $this->belongsTo(BankStatement::class, 'bank_statement_id');
     }

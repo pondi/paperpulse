@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace App\Services\Factories;
 
+use App\Contracts\Services\ReceiptParserContract;
 use App\Models\File;
+use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Services\Factories\Concerns\ResolvesMerchant;
 use App\Services\Receipt\ReceiptEnricherService;
+use App\Services\Receipts\Analysis\CategoryResolver;
+use App\Services\Receipts\Analysis\ReceiptProcessingPolicy;
+use App\Services\Receipts\Analysis\UserPreferencesLoader;
 use App\Services\Receipts\LineItemsCreator;
+use App\Services\Receipts\TotalsCalculator;
 use Illuminate\Database\Eloquent\Model;
 
 class ReceiptFactory extends BaseEntityFactory
@@ -58,20 +64,28 @@ class ReceiptFactory extends BaseEntityFactory
 
     protected function prepareData(array $data, File $file): array
     {
-        $totals = $data['totals'] ?? [];
+        $prefs = UserPreferencesLoader::load($file->user_id, $file);
+        $totals = TotalsCalculator::calculate($data['items'] ?? [], $data, app(ReceiptParserContract::class));
+        $merchantId = $data['merchant_id'] ?? $this->resolveMerchantId($data, $file);
+        $merchant = $merchantId ? Merchant::withoutGlobalScope('user')->where('user_id', $file->user_id)->find($merchantId) : null;
+        [$categoryName, $categoryId] = CategoryResolver::resolve($data, $prefs['user'], $merchant, $this->merchantEnricher, $prefs['auto_categorize'], $prefs['default_category_id']);
+        $data['total_reconciliation'] = $totals;
+        ReceiptProcessingPolicy::applyReview($file, $totals);
         $receiptInfo = $data['receipt_info'] ?? [];
         $payment = $data['payment'] ?? [];
         $metadata = $data['metadata'] ?? [];
 
-        return array_merge($data, [
-            'merchant_id' => $data['merchant_id'] ?? $this->resolveMerchantId($data, $file),
+        return ReceiptProcessingPolicy::preserveUserValues(array_merge($data, [
+            'merchant_id' => $merchantId,
+            'category_id' => $categoryId,
+            'receipt_category' => $categoryName,
             'receipt_date' => $receiptInfo['date'] ?? $data['receipt_date'] ?? null,
             'total_amount' => $totals['total_amount'] ?? $data['total_amount'] ?? 0,
             'tax_amount' => $totals['tax_amount'] ?? $data['tax_amount'] ?? 0,
-            'currency' => $payment['currency'] ?? ($totals['currency'] ?? ($data['currency'] ?? 'NOK')),
+            'currency' => $payment['currency'] ?? ($totals['currency'] ?? ($data['currency'] ?? $prefs['default_currency'])),
             'language' => $metadata['language'] ?? $data['language'] ?? null,
-            'receipt_data' => json_encode($data),
-        ]);
+            'receipt_data' => $data,
+        ]), $file);
     }
 
     protected function afterCreate(Model $model, array $data, File $file): void
@@ -79,7 +93,7 @@ class ReceiptFactory extends BaseEntityFactory
         $items = $data['items'] ?? [];
         $vendors = $data['vendors'] ?? [];
 
-        if (! empty($items)) {
+        if (UserPreferencesLoader::load($file->user_id, $file)['extract_line_items'] && ! empty($items)) {
             LineItemsCreator::create($model, $items, $vendors);
         }
     }

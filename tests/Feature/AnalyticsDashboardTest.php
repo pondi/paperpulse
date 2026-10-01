@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\BankStatement;
+use App\Models\BankTransaction;
 use App\Models\Contract;
 use App\Models\Document;
 use App\Models\File;
@@ -12,6 +13,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
+
+beforeEach(fn () => $this->withoutVite());
 
 it('requires authentication', function () {
     $this->get(route('analytics.index'))
@@ -203,7 +206,7 @@ it('shows invoice analytics with recipient breakdown', function () {
 it('shows banking analytics with statement data', function () {
     $user = User::factory()->create();
 
-    BankStatement::factory()->create([
+    $statement = BankStatement::factory()->create([
         'user_id' => $user->id,
         'statement_date' => now()->subDays(15),
         'opening_balance' => 1000.00,
@@ -211,6 +214,9 @@ it('shows banking analytics with statement data', function () {
         'total_credits' => 2000.00,
         'total_debits' => 1500.00,
     ]);
+
+    BankTransaction::factory()->create(['user_id' => $user->id, 'bank_statement_id' => $statement->id, 'transaction_date' => now()->subDays(15), 'amount' => 2000, 'balance_after' => null]);
+    BankTransaction::factory()->create(['user_id' => $user->id, 'bank_statement_id' => $statement->id, 'transaction_date' => now()->subDays(14), 'amount' => -1500, 'balance_after' => 1500]);
 
     $this->actingAs($user)
         ->get(route('analytics.index', ['tab' => 'banking']))
@@ -303,3 +309,33 @@ it('returns empty data gracefully for all tabs', function (string $tab) {
             ->has('tab_data')
         );
 })->with(['overview', 'receipts', 'invoices', 'banking', 'contracts', 'documents']);
+
+it('uses transaction boundaries categories and positive spending magnitudes for banking analytics', function () {
+    $this->travelTo(Carbon\Carbon::parse('2026-03-31 12:00:00'));
+    $user = User::factory()->create();
+    $statement = BankStatement::factory()->create(['user_id' => $user->id, 'statement_date' => '2025-01-01', 'total_debits' => 9999]);
+    foreach ([
+        ['2026-02-27', -999, 'food_and_drink', 'Groceries', 'Excluded'],
+        ['2026-02-28', -200, 'food_and_drink', 'Groceries', 'Large shop'],
+        ['2026-03-01', -10, 'entertainment', 'Games', 'Small shop'],
+        ['2026-03-31', 50, 'food_and_drink', 'Groceries', 'Large shop'],
+        ['2026-04-01', -888, 'food_and_drink', 'Groceries', 'Future'],
+    ] as [$date, $amount, $group, $subcategory, $counterparty]) {
+        BankTransaction::factory()->create(['user_id' => $user->id, 'bank_statement_id' => $statement->id,
+            'transaction_date' => $date, 'amount' => $amount, 'category' => 'Legacy incorrect category',
+            'category_group' => $group, 'subcategory' => $subcategory, 'counterparty_name' => $counterparty]);
+    }
+    $this->actingAs($user)->get(route('analytics.index', ['tab' => 'banking', 'period' => 'month']))
+        ->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('tab_data.stats.statement_count', 1)
+        ->where('tab_data.stats.transaction_count', 3)
+        ->where('tab_data.stats.total_credits', 50)
+        ->where('tab_data.stats.total_debits', 210)
+        ->where('tab_data.stats.net_flow', -160)
+        ->where('tab_data.spending_by_category.0.category_group', 'food_and_drink')
+        ->where('tab_data.spending_by_category.0.subcategory', 'Groceries')
+        ->where('tab_data.spending_by_category.0.total', 200)
+        ->where('tab_data.spending_by_category.1.total', 10)
+        ->where('tab_data.top_counterparties.0.name', 'Large shop')
+        ->where('tab_data.top_counterparties.0.total', 200));
+});

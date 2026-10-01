@@ -7,10 +7,13 @@ use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\StorageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
+
+beforeEach(fn () => $this->withoutVite());
 
 // ==========================================
 // Index
@@ -143,7 +146,7 @@ it('renders bank statement show with full details', function () {
             ->where('statement.id', $statement->id)
             ->where('statement.bank_name', 'Nordea')
             ->where('statement.file.id', $file->id)
-            ->has('statement.transactions', 3)
+            ->has('transactions.data', 3)
             ->has('available_tags')
             ->has('category_groups', 16)
         );
@@ -241,7 +244,7 @@ it('can delete a bank statement', function () {
         'extracted_at' => now(),
     ]);
 
-    $storageService = $this->mock(\App\Services\StorageService::class);
+    $storageService = $this->mock(StorageService::class);
     $storageService->shouldReceive('deleteFile')->once()->andReturn(true);
 
     $this->actingAs($user)
@@ -268,7 +271,7 @@ it('can download a bank statement file', function () {
         'file_id' => $file->id,
     ]);
 
-    $storageService = $this->mock(\App\Services\StorageService::class);
+    $storageService = $this->mock(StorageService::class);
     $storageService->shouldReceive('getFileByUserAndGuid')
         ->once()
         ->andReturn('fake-pdf-content');
@@ -356,7 +359,7 @@ it('returns paginated transactions as json', function () {
 
     $response->assertOk()
         ->assertJsonStructure([
-            'data' => ['data' => [['id', 'transaction_date', 'description', 'amount', 'transaction_type']]],
+            'data' => [['id', 'transaction_date', 'description', 'amount', 'transaction_type']],
             'meta' => ['current_page', 'last_page', 'per_page', 'total'],
         ])
         ->assertJsonPath('meta.total', 5);
@@ -510,4 +513,43 @@ it('requires authentication for bank statement routes', function () {
     $this->get(route('bank-statements.index'))->assertRedirect(route('login'));
     $this->get(route('bank-statements.show', 1))->assertRedirect(route('login'));
     $this->getJson(route('bank-statements.transactions', 1))->assertUnauthorized();
+});
+
+it('bounds the initial statement page and filters transactions beyond that page', function () {
+    $user = User::factory()->create();
+    $statement = BankStatement::factory()->create([
+        'user_id' => $user->id,
+        'file_id' => File::factory()->create(['user_id' => $user->id])->id,
+    ]);
+    BankTransaction::factory()->count(60)->create(['user_id' => $user->id, 'bank_statement_id' => $statement->id, 'transaction_date' => '2026-02-01', 'amount' => -10, 'category_group' => 'entertainment']);
+    $matching = BankTransaction::factory()->create(['user_id' => $user->id, 'bank_statement_id' => $statement->id,
+        'transaction_date' => '2026-01-01', 'description' => 'Beyond first page', 'amount' => -99, 'category_group' => 'food_and_drink']);
+    $this->actingAs($user)->get(route('bank-statements.show', $statement))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('transactions.data', 50)
+            ->where('transactions.meta.total', 61)
+            ->where('transaction_stats.debit_count', 61)
+            ->missing('statement.transactions'));
+    $this->getJson(route('bank-statements.transactions', ['bankStatement' => $statement, 'search' => 'Beyond', 'category_group' => 'food_and_drink', 'date_to' => '2026-01-01', 'sort' => 'amount', 'sort_direction' => 'asc']))
+        ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $matching->id)->assertJsonPath('meta.total', 1);
+    $this->getJson(route('bank-statements.transactions', ['bankStatement' => $statement, 'per_page' => 50, 'page' => 2]))
+        ->assertOk()->assertJsonCount(11, 'data')->assertJsonPath('meta.total', 61);
+});
+
+it('rejects invalid transaction page sort and filter inputs', function (string $field, mixed $value) {
+    $user = User::factory()->create();
+    $statement = BankStatement::factory()->create(['user_id' => $user->id]);
+    $this->actingAs($user)->getJson(route('bank-statements.transactions', ['bankStatement' => $statement, $field => $value]))
+        ->assertUnprocessable()->assertJsonValidationErrors($field);
+})->with([
+    ['per_page', 0], ['per_page', -1], ['per_page', 201], ['per_page', 'abc'], ['page', 0],
+    ['sort', 'user_id'], ['sort_direction', 'invalid'], ['category_group', 'invalid'], ['type', 'invalid'],
+    ['date_from', '2026-02-30'], ['date_to', 'not-a-date'],
+]);
+
+it('rejects reversed transaction date ranges', function () {
+    $user = User::factory()->create();
+    $statement = BankStatement::factory()->create(['user_id' => $user->id]);
+    $this->actingAs($user)->getJson(route('bank-statements.transactions', ['bankStatement' => $statement, 'date_from' => '2026-02-01', 'date_to' => '2026-01-01']))
+        ->assertUnprocessable()->assertJsonValidationErrors('date_to');
 });

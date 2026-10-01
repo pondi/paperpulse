@@ -2,6 +2,8 @@
 
 namespace App\Services\AI\Extractors\Document;
 
+use App\Services\OrganizationEvidenceSchema;
+
 /**
  * Simplified document schema for Gemini extraction (generic fallback).
  *
@@ -22,6 +24,7 @@ class DocumentSchema
             'responseSchema' => [
                 'type' => 'object',
                 'properties' => [
+                    'organization' => OrganizationEvidenceSchema::get(),
                     // Document metadata (flattened)
                     'document_title' => ['type' => 'string', 'description' => 'Document title or heading'],
                     'document_type' => ['type' => 'string', 'description' => 'Type of document (email, letter, report, memo, article, form, notification, correspondence, etc.)'],

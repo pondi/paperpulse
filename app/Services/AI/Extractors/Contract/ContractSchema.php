@@ -2,6 +2,8 @@
 
 namespace App\Services\AI\Extractors\Contract;
 
+use App\Services\OrganizationEvidenceSchema;
+
 /**
  * Simplified contract schema for Gemini extraction.
  *
@@ -21,6 +23,7 @@ class ContractSchema
             'responseSchema' => [
                 'type' => 'object',
                 'properties' => [
+                    'organization' => OrganizationEvidenceSchema::get(),
                     // Contract identification (flattened)
                     'contract_number' => ['type' => 'string', 'description' => 'Contract reference/agreement number'],
                     'contract_title' => ['type' => 'string', 'description' => 'Official contract title'],

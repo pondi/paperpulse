@@ -10,6 +10,9 @@ class CollectionResource extends BaseApiResource
     {
         return array_merge($this->commonFields(), $this->ownershipField(), [
             'name' => $this->name,
+            'parent_id' => $this->parent_id,
+            'folder_type' => $this->folder_type,
+            'is_pinned' => $this->is_pinned,
             'slug' => $this->slug,
             'description' => $this->description,
             'icon' => $this->icon,

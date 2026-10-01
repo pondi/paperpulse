@@ -127,7 +127,7 @@ describe('cleanupExpiredLinks', function () {
         expect($active->fresh()->is_active)->toBeTrue();
     });
 
-    test('deactivates links that exceeded max views', function () {
+    test('keeps exhausted links available to existing grants while blocking new visits', function () {
         $exceeded = PublicCollectionLink::factory()->withMaxViews(1)->create([
             'collection_id' => $this->collection->id,
             'created_by_user_id' => $this->user->id,
@@ -137,8 +137,11 @@ describe('cleanupExpiredLinks', function () {
 
         $count = $this->service->cleanupExpiredLinks();
 
-        expect($count)->toBe(1);
-        expect($exceeded->fresh()->is_active)->toBeFalse();
+        expect($count)->toBe(0);
+        expect($exceeded->fresh()->is_active)->toBeTrue();
+        expect($exceeded->fresh()->isAccessible())->toBeFalse();
+        expect($exceeded->reserveView())->toBeFalse();
+        expect($exceeded->fresh()->view_count)->toBe(1);
     });
 });
 

@@ -18,6 +18,7 @@ class DocumentDataNormalizer
     public function normalize(array $geminiData): array
     {
         return [
+            'organization' => $geminiData['organization'] ?? [],
             // Document metadata (nested)
             'metadata' => array_filter([
                 'title' => $geminiData['document_title'] ?? null,

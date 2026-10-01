@@ -268,19 +268,19 @@
                     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
                         <StatCard label="Statements" :value="tab_data.stats?.statement_count" />
                         <StatCard label="Transactions" :value="tab_data.stats?.transaction_count" />
-                        <StatCard label="Total Credits" :value="formatCurrency(tab_data.stats?.total_credits)" />
+                        <StatCard label="Money In" :value="formatCurrency(tab_data.stats?.total_credits)" />
                         <StatCard label="Net Cash Flow" :value="formatCurrency(tab_data.stats?.net_flow)" :alert="tab_data.stats?.net_flow < 0" />
                     </div>
 
                     <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
-                        <!-- Income vs Expenses -->
+                        <!-- Money In vs Money Out -->
                         <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
-                                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Income vs Expenses</h3>
+                                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Money In vs Money Out</h3>
                                 <div v-if="tab_data.stats?.total_credits > 0 || tab_data.stats?.total_debits > 0" class="space-y-4">
                                     <div>
                                         <div class="flex justify-between text-sm mb-1">
-                                            <span class="text-green-600 dark:text-green-400 font-medium">Credits (Income)</span>
+                                            <span class="text-green-600 dark:text-green-400 font-medium">Credits (Money In)</span>
                                             <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ formatCurrency(tab_data.stats?.total_credits) }}</span>
                                         </div>
                                         <div class="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-3">
@@ -289,7 +289,7 @@
                                     </div>
                                     <div>
                                         <div class="flex justify-between text-sm mb-1">
-                                            <span class="text-red-600 dark:text-red-400 font-medium">Debits (Expenses)</span>
+                                            <span class="text-red-600 dark:text-red-400 font-medium">Debits (Money Out)</span>
                                             <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ formatCurrency(tab_data.stats?.total_debits) }}</span>
                                         </div>
                                         <div class="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-3">
@@ -308,7 +308,7 @@
                                 <div v-if="tab_data.spending_by_category?.length > 0" class="space-y-3">
                                     <div v-for="(cat, i) in tab_data.spending_by_category" :key="`${i}-${cat.category}`" class="relative">
                                         <div class="flex justify-between text-sm mb-1">
-                                            <span class="text-zinc-600 dark:text-zinc-400 capitalize">{{ cat.category }}</span>
+                                            <span class="text-zinc-600 dark:text-zinc-400 capitalize">{{ cat.category }}<span v-if="cat.subcategory"> · {{ cat.subcategory }}</span></span>
                                             <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ formatCurrency(cat.total) }}</span>
                                         </div>
                                         <div class="w-full bg-amber-200 dark:bg-zinc-700 rounded-full h-2">
@@ -334,7 +334,7 @@
                         <!-- Top Counterparties -->
                         <div class="bg-white dark:bg-zinc-800 shadow rounded-lg lg:col-span-2">
                             <div class="px-4 py-5 sm:p-6">
-                                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Top Counterparties</h3>
+                                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Top Counterparties by Spending</h3>
                                 <div v-if="tab_data.top_counterparties?.length > 0" class="space-y-3">
                                     <div v-for="(party, i) in tab_data.top_counterparties" :key="`${i}-${party.name}`">
                                         <div class="flex justify-between items-center">

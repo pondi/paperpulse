@@ -18,15 +18,16 @@ class GeminiConversation
      * @param  string  $text  User prompt text
      * @param  string|null  $fileUri  Optional file URI to include
      */
-    public function addUserMessage(string $text, ?string $fileUri = null): self
+    public function addUserMessage(string $text, ?string $fileUri = null, string $mimeType = 'application/pdf'): self
     {
         $parts = [['text' => $text]];
 
         if ($fileUri) {
+            GeminiMimeType::validate($mimeType);
             $parts[] = [
                 'fileData' => [
                     'fileUri' => $fileUri,
-                    'mimeType' => 'application/pdf', // Default, can be made dynamic
+                    'mimeType' => $mimeType,
                 ],
             ];
         }

@@ -24,6 +24,21 @@ class FileDeletionService
     /** @var list<class-string<Model>> */
     public const ENTITY_CLASSES = [Receipt::class, Document::class, Invoice::class, BankStatement::class, Contract::class, Voucher::class, Warranty::class, ReturnPolicy::class];
 
+    public function hasActiveEntities(File $file): bool
+    {
+        if ($file->extractableEntities()->exists()) {
+            return true;
+        }
+        foreach (self::ENTITY_CLASSES as $entityClass) {
+            if ($entityClass::withoutGlobalScope('user')->where('user_id', $file->user_id)
+                ->where('file_id', $file->id)->exists()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function deleteFile(File $source, int $ownerId, DeletedReason $reason = DeletedReason::UserDelete): void
     {
         $source->getConnection()->transaction(function () use ($source, $ownerId, $reason): void {
@@ -147,11 +162,7 @@ class FileDeletionService
                 $this->softDelete($junction, $reason);
             }
 
-            $hasEntities = $file->extractableEntities()->exists();
-            foreach (self::ENTITY_CLASSES as $entityClass) {
-                $hasEntities = $hasEntities || $entityClass::withoutGlobalScope('user')
-                    ->where('user_id', $ownerId)->where('file_id', $file->id)->exists();
-            }
+            $hasEntities = $this->hasActiveEntities($file);
             if (! $hasEntities) {
                 $this->softDelete($file, $reason);
             }

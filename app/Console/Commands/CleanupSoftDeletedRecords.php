@@ -10,6 +10,7 @@ use App\Models\Contract;
 use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
+use App\Models\FileCleanupManifest;
 use App\Models\Invoice;
 use App\Models\InvoiceLineItem;
 use App\Models\LineItem;
@@ -19,6 +20,7 @@ use App\Models\ReturnPolicy;
 use App\Models\Vendor;
 use App\Models\Voucher;
 use App\Models\Warranty;
+use App\Services\Files\FileCleanupService;
 use App\Services\Files\FileDeletionService;
 use App\Services\StorageService;
 use Carbon\Carbon;
@@ -74,6 +76,26 @@ class CleanupSoftDeletedRecords extends Command
             $reasons[] = DeletedReason::Reprocess;
         }
 
+        if (! $this->dryRun) {
+            File::withoutGlobalScope('user')->onlyTrashed()->where('deleted_at', '<', $cutoffDate)
+                ->whereIn('deleted_reason', $reasons)->each(function (File $file) use ($days): void {
+                    $service = app(FileDeletionService::class);
+                    if ($file->deleted_reason === DeletedReason::Reprocess && $service->hasActiveEntities($file)) {
+                        return;
+                    }
+                    $service->deleteFile($file, $file->user_id, $file->deleted_reason);
+                    FileCleanupManifest::query()->where('file_id', $file->id)
+                        ->update(['available_at' => $file->deleted_at->copy()->addDays($days)]);
+                });
+            FileCleanupManifest::query()->whereNull('completed_at')->each(function ($manifest): void {
+                $result = app(FileCleanupService::class)->process($manifest);
+                $this->s3FilesDeleted += $result['objects_deleted'];
+                if ($result['failed']) {
+                    $this->warn("  Cleanup remains pending for file {$manifest->file_id}");
+                }
+            });
+        }
+
         // Clean up in order of dependencies (child records first)
         $this->cleanupModel(LineItem::class, $cutoffDate, $reasons, 'line items');
         $this->cleanupModel(BankTransaction::class, $cutoffDate, $reasons, 'bank transactions');
@@ -111,6 +133,11 @@ class CleanupSoftDeletedRecords extends Command
         $query = $modelClass::onlyTrashed()
             ->where('deleted_at', '<', $cutoffDate)
             ->whereIn('deleted_reason', $reasons);
+
+        $pending = app(FileCleanupService::class)->pendingSearchRecords();
+        if (isset($pending[$modelClass])) {
+            $query->whereNotIn('id', $pending[$modelClass]);
+        }
 
         $count = $query->count();
 
@@ -168,10 +195,11 @@ class CleanupSoftDeletedRecords extends Command
         foreach ($files as $file) {
             try {
                 DB::transaction(function () use ($file) {
-                    // Delete S3 files first
-                    $this->deleteS3Files($file);
+                    $manifest = FileCleanupManifest::query()->where('file_id', $file->id)->first();
+                    if (! $manifest?->completed_at) {
+                        throw new \RuntimeException('File cleanup has not completed.');
+                    }
 
-                    // Then permanently delete the database record
                     $file->forceDelete();
                 });
 
@@ -184,32 +212,6 @@ class CleanupSoftDeletedRecords extends Command
                 $this->error("  Failed to delete file {$file->id}: {$e->getMessage()}");
                 Log::error('[CleanupSoftDeleted] Failed to delete file', [
                     'file_id' => $file->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Delete all S3 files associated with a File record.
-     */
-    protected function deleteS3Files(File $file): void
-    {
-        $paths = array_filter([
-            $file->s3_original_path,
-            $file->s3_processed_path,
-            $file->s3_archive_path,
-            $file->s3_image_path,
-        ]);
-
-        foreach ($paths as $path) {
-            try {
-                $this->storageService->deleteFile($path);
-                $this->s3FilesDeleted++;
-            } catch (Exception $e) {
-                Log::warning('[CleanupSoftDeleted] Failed to delete S3 file', [
-                    'file_id' => $file->id,
-                    'path' => $path,
                     'error' => $e->getMessage(),
                 ]);
             }

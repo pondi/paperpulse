@@ -1,0 +1,121 @@
+<?php
+
+namespace App\Services\Files;
+
+use App\Models\File;
+use App\Models\FileCleanupManifest;
+use App\Services\StorageService;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
+use RuntimeException;
+use Throwable;
+
+class FileCleanupService
+{
+    public function __construct(protected StorageService $storage) {}
+
+    /** @return array{objects_deleted: int, failed: int} */
+    public function process(FileCleanupManifest $source): array
+    {
+        return $source->getConnection()->transaction(function () use ($source): array {
+            $file = File::withoutGlobalScope('user')->withTrashed()->lockForUpdate()->find($source->file_id);
+            $manifest = FileCleanupManifest::query()->lockForUpdate()->findOrFail($source->id);
+            $objectsDeleted = 0;
+            $failed = 0;
+            $search = $manifest->search_records;
+            foreach ($search as $index => $record) {
+                if ($record['done']) {
+                    continue;
+                }
+                try {
+                    $this->removeSearchRecord($record, $manifest->user_id);
+                    $search[$index]['done'] = true;
+                    $manifest->search_records = $search;
+                    $manifest->save();
+                } catch (Throwable $exception) {
+                    $manifest->last_error = $exception->getMessage();
+                    $failed++;
+                }
+            }
+            $objects = $manifest->objects;
+            if ((! $file || $file->trashed()) && $manifest->available_at?->isPast()) {
+                foreach ($objects as $key => $object) {
+                    if ($object['done']) {
+                        continue;
+                    }
+                    try {
+                        if (! $this->hasLiveReference($object['path'])) {
+                            if (! $this->storage->deleteFile($object['path'])) {
+                                throw new RuntimeException('Storage refused deletion: '.$object['path']);
+                            }
+                            $objectsDeleted++;
+                        }
+                        $objects[$key]['done'] = true;
+                        $manifest->objects = $objects;
+                        $manifest->save();
+                    } catch (Throwable $exception) {
+                        $manifest->last_error = $exception->getMessage();
+                        $failed++;
+                    }
+                }
+            }
+            $allDone = ! collect(array_merge(array_values($objects), $search))->contains(fn (array $record): bool => ! $record['done']);
+            $manifest->completed_at = $allDone ? now() : null;
+            if ($allDone) {
+                $manifest->last_error = null;
+            }
+            $manifest->save();
+
+            return ['objects_deleted' => $objectsDeleted, 'failed' => $failed];
+        });
+    }
+
+    /** @param array{type: class-string<Model>, id: int, done: bool} $record */
+    protected function removeSearchRecord(array $record, int $ownerId): void
+    {
+        $entity = $record['type']::withoutGlobalScope('user')->withTrashed()->find($record['id']);
+        $exists = $entity !== null;
+        if (! $entity) {
+            $entity = new $record['type'];
+            $entity->forceFill(['id' => $record['id'], 'user_id' => $ownerId]);
+            $entity->exists = true;
+        }
+        if (isset($entity->user_id) && (int) $entity->user_id !== $ownerId) {
+            throw new RuntimeException('Cleanup search owner does not match.');
+        }
+        if ($exists && ! $entity->trashed()) {
+            $entity->searchableUsing()->update(new Collection([$entity]));
+        } else {
+            $entity->searchableUsing()->delete(new Collection([$entity]));
+        }
+    }
+
+    protected function hasLiveReference(string $path): bool
+    {
+        return File::withoutGlobalScope('user')->where(function ($query) use ($path): void {
+            foreach (['s3_original_path', 's3_processed_path', 's3_archive_path', 's3_image_path', 'file_path'] as $column) {
+                $query->orWhere($column, $path);
+            }
+            if (preg_match('~^(?:documents|receipts)/(\d+)/([^/]+)/~', $path, $matches)) {
+                $query->orWhere(function ($query) use ($matches): void {
+                    $query->where('user_id', (int) $matches[1])->where('guid', $matches[2]);
+                });
+            }
+        })->exists();
+    }
+
+    /** @return array<class-string<Model>, list<int>> */
+    public function pendingSearchRecords(): array
+    {
+        $pending = [];
+        FileCleanupManifest::query()->whereNull('completed_at')->each(function (FileCleanupManifest $manifest) use (&$pending): void {
+            foreach ($manifest->search_records as $record) {
+                if (! $record['done']) {
+                    $pending[$record['type']][] = $record['id'];
+                }
+            }
+        });
+
+        return $pending;
+    }
+}

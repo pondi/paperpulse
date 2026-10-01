@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.5](https://github.com/pondi/paperpulse/compare/v1.3.4...v1.3.5) (2026-10-01)
+
+
+### Bug Fixes
+
+* **tests:** remove duplicate PulseDav test case binding ([49b1051](https://github.com/pondi/paperpulse/commit/49b10515b40ee55708b6b056d1048843ff64418e))
+* **tests:** resolve Pest bootstrap imports ([116b848](https://github.com/pondi/paperpulse/commit/116b848b34b41e49336e78a071703994ee625b45))
+* **tests:** resolve Pest bootstrap imports ([4734cf3](https://github.com/pondi/paperpulse/commit/4734cf39bb67e9545777ba8c695c5c322346f22c))
+
+
+### Tests
+
+* **pulsedav:** cover folder listing prefixes ([d137b64](https://github.com/pondi/paperpulse/commit/d137b641b4a216bb43be44c9b5b5f1a6c6251e17))
+
 ## [1.3.4](https://github.com/pondi/paperpulse/compare/v1.3.3...v1.3.4) (2026-10-01)
 
 

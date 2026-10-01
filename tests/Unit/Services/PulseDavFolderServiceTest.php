@@ -5,9 +5,6 @@ use App\Services\PulseDav\PulseDavFolderService;
 use Aws\Result;
 use Aws\S3\S3Client;
 use Illuminate\Support\Facades\Storage;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 it('lists named folders and files without returning the requested folder marker', function (string $folderPath) {
     config([

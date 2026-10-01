@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Documents;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
-use App\Models\File;
 use App\Rules\ExistsForUser;
 use App\Services\Files\FileDeletionService;
 use App\Services\StorageService;
 use Exception;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -49,15 +49,14 @@ class DocumentBulkController extends Controller
     /**
      * Bulk download documents
      */
-    public function downloadBulk(Request $request)
+    public function downloadBulk(Request $request): StreamedResponse|RedirectResponse
     {
         $validated = $request->validate([
             'ids' => 'required|array',
             'ids.*' => ['integer', new ExistsForUser('documents')],
         ]);
 
-        // Get user's documents with files
-        $documents = Document::belongingToUser()
+        $documents = Document::forUser($request->user())
             ->whereIn('id', $validated['ids'])
             ->with(['file'])
             ->get();

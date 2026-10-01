@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Http;
 
 it('extracts and persists a standalone return policy as a primary entity', function () {
     config(['ai.providers.gemini.api_key' => 'test']);
-    Http::fake(['*' => Http::response(['candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => json_encode([
+    Http::fake(['*' => Http::response(['totalTokens' => 100, 'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => json_encode([
         'conditions' => 'Unopened items accepted', 'requires_receipt' => false, 'is_final_sale' => false, 'restocking_fee' => 0,
     ])]]]]]])]);
     $file = File::factory()->create(['fileType' => 'application/pdf']);
@@ -27,7 +27,7 @@ it('keeps supplemental policies and warranties linked to their primary receipt',
     $data = ['merchant_name' => 'Shop', 'total_amount' => 10, 'receipt_date' => '2024-01-01', 'description' => 'Purchase', 'category' => 'Other',
         'return_policies' => [['conditions' => 'Return within 30 days', 'requires_receipt' => false]],
         'warranties' => [['provider_name' => 'Shop', 'product_name' => 'Device', 'warranty_end_date' => '2026-01-01']]];
-    Http::fake(['*' => Http::response(['candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => json_encode($data)]]]]]])]);
+    Http::fake(['*' => Http::response(['totalTokens' => 100, 'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => json_encode($data)]]]]]])]);
     $file = File::factory()->create(['fileType' => 'application/pdf']);
     $extracted = EntityExtractorFactory::create('receipt')->extract('https://gemini.test/file', $file);
     $created = app(EntityFactory::class)->createEntitiesFromParsedData(['entities' => array_merge([$extracted], $extracted['supplemental_entities'])], $file, 'receipt');

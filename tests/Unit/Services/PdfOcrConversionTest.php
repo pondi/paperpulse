@@ -63,3 +63,17 @@ it('cleans page images and partial local output after OCR fails', function () {
         ->and(glob(storage_path('app/temp/failure*')))->toBe([])
         ->and(Storage::disk('textract')->allFiles())->toBe(['failure.pdf']);
 });
+
+it('marks capped OCR pages as partial extraction requiring review', function () {
+    Storage::fake('textract');
+    Storage::disk('textract')->put('partial.pdf', processingPdfFixture());
+    config(['ai.ocr.options.pdf_image_max_pages' => 1]);
+    $client = Mockery::mock(TextractClient::class);
+    $client->shouldReceive('analyzeDocument')->once()->andReturn(new Result(['Blocks' => []]));
+    $result = TextractPdfImageProcessor::process($client, 'bucket', 'partial.pdf');
+    expect($result['metadata']['total_pages'])->toBe(2)
+        ->and($result['metadata']['processed_pages'])->toBe(1)
+        ->and($result['metadata']['coverage_complete'])->toBeFalse()
+        ->and($result['metadata']['needs_review'])->toBeTrue()
+        ->and($result['metadata']['coverage_purpose'])->toBe('extraction');
+});

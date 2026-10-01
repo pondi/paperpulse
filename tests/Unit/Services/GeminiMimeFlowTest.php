@@ -20,6 +20,9 @@ it('carries detected MIME through upload classification and real extraction adap
     }
     $calls = 0;
     Http::fake(function ($request) use ($mime, &$calls) {
+        if (str_contains($request->url(), ':countTokens')) {
+            return Http::response(['totalTokens' => 100]);
+        }
         if (str_contains($request->url(), '/upload/')) {
             expect($request->header('X-Goog-Upload-Header-Content-Type'))->toBe([$mime]);
 

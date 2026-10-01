@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\Receipt;
 use App\Services\AI\Extractors\EntityExtractorFactory;
 use App\Services\AI\FileManager\GeminiFileManager;
+use App\Services\AI\Providers\GeminiFileAnalyzer;
 use App\Services\AI\TypeClassification\GeminiTypeClassifier;
 use App\Services\BankStatements\TransactionCategorizationService;
 use App\Services\DuplicateDetectionService;
@@ -21,6 +22,7 @@ use App\Services\Files\ImagePreviewGenerator;
 use App\Services\Workers\WorkerFileManager;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use Spatie\PdfToImage\Pdf;
 use Throwable;
 
 class ProcessFileGemini extends BaseJob
@@ -112,6 +114,25 @@ class ProcessFileGemini extends BaseJob
 
                 $mime = mime_content_type($localPath) ?: '';
                 $extension = strtolower(pathinfo($localPath, PATHINFO_EXTENSION));
+                $analyzer = app(GeminiFileAnalyzer::class);
+                $analyzer->ensureSupported($localPath);
+                $textContext = $analyzer->buildTextContext($localPath, $mime, $extension);
+                $large = $analyzer->buildLargeFileContext($localPath, $mime, filesize($localPath), $textContext);
+                $pages = $large['page_count'] ?? ($mime === 'application/pdf' ? (new Pdf($localPath))->pageCount() : 1);
+                $pageLimit = max(1, (int) config('ai.providers.gemini.large_pdf_page_limit', 25));
+                $exceeds = $pages > $pageLimit || ($textContext['truncated'] ?? false);
+                $file->meta = array_merge($file->meta ?? [], ['processing_coverage' => [
+                    'total_pages' => $pages, 'processed_pages' => 0, 'purpose' => 'extraction',
+                    'classification_sample_pages' => $large['sample_pages'] ?? [], 'complete' => false,
+                ]]);
+                if ($exceeds) {
+                    $file->status = 'needs_review';
+                    $file->meta = array_merge($file->meta, ['review' => ['reason' => 'processing_limit', 'page_limit' => $pageLimit]]);
+                    $file->save();
+
+                    return ['needs_review' => true];
+                }
+                $file->save();
 
                 // PASS 0: Upload to Gemini Files API
                 Log::info('[ProcessFileGemini] Uploading file to Gemini Files API', [
@@ -240,6 +261,16 @@ class ProcessFileGemini extends BaseJob
             },
             'ProcessFileGemini'
         );
+
+        if ($result['needs_review'] ?? false) {
+            return;
+        }
+        $meta = $file->fresh()->meta ?? [];
+        $coverage = $meta['processing_coverage'] ?? [];
+        $coverage['processed_pages'] = $coverage['total_pages'] ?? 1;
+        $coverage['complete'] = true;
+        $file->meta = array_merge($meta, ['processing_coverage' => $coverage]);
+        $file->save();
 
         // Persist parsed data on the file metadata for downstream factories
         $classification = $result['parsed']['provider_response']['classification'] ?? null;

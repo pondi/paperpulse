@@ -54,6 +54,7 @@ class GeminiProvider
         $config = [
             'temperature' => $temperature,
             'responseMimeType' => 'application/json',
+            'maxOutputTokens' => max(256, min(16384, (int) config('ai.providers.gemini.max_output_tokens', 8192))),
         ];
 
         if ($responseSchema !== null) {
@@ -288,6 +289,15 @@ class GeminiProvider
             'conversation_turns' => count($contents),
         ]);
 
+        $count = Http::timeout(30)->post(sprintf('https://generativelanguage.googleapis.com/v1beta/models/%s:countTokens?key=%s', $model, $apiKey), ['contents' => $contents]);
+        $inputTokens = $count->json('totalTokens');
+        if (! $count->successful() || ! is_int($inputTokens)) {
+            throw new GeminiApiException('Unable to validate Gemini input budget', GeminiApiException::CODE_API_ERROR, true);
+        }
+        if ($inputTokens > (int) config('ai.providers.gemini.max_input_tokens', 32768)) {
+            throw new GeminiApiException('Gemini input token budget exceeded', GeminiApiException::CODE_FILE_TOO_LARGE, false);
+        }
+        Log::info('[GeminiProvider] Input budget checked', ['input_tokens' => $inputTokens, 'stage' => 'token_budget']);
         $result = $this->sendGeminiRequest($payload, $model, $apiKey);
 
         $parsed = $this->responseParser->parseJsonResponse($result['text']);

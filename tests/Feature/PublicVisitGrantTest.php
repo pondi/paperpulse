@@ -6,8 +6,14 @@ use App\Models\PublicCollectionLink;
 use App\Models\User;
 use App\Services\PublicCollectionSharingService;
 use App\Services\StorageService;
+use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Facades\Hash;
+use Inertia\Testing\AssertableInertia;
 
-beforeEach(fn () => $this->withoutVite());
+beforeEach(function () {
+    $this->withoutVite();
+    $this->withoutMiddleware(ThrottleRequests::class);
+});
 
 test('the final allowed visit can preview and download while new visits are exhausted', function () {
     $owner = User::factory()->create();
@@ -25,7 +31,7 @@ test('the final allowed visit can preview and download while new visits are exha
     $this->get(route('shared.collections.download', $link->token))->assertOk();
     expect(app(PublicCollectionSharingService::class)->cleanupExpiredLinks())->toBe(0);
     $this->get($url)->assertOk();
-    $this->get(route('shared.collections.show', $link->token))->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page->component('Public/SharedCollectionExpired'));
+    $this->get(route('shared.collections.show', $link->token))->assertInertia(fn (AssertableInertia $page) => $page->component('Public/SharedCollectionExpired'));
     $this->flushSession();
     $this->get($url)->assertNotFound();
 });
@@ -35,4 +41,28 @@ test('atomic reservations cannot exceed the view budget even with stale link mod
     $other = $link->fresh();
     expect($link->reserveView())->toBeTrue()->and($other->reserveView())->toBeFalse();
     expect($link->fresh()->view_count)->toBe(1);
+});
+
+test('changed passwords invalidate old public unlock and visit grants', function () {
+    $link = PublicCollectionLink::factory()->create(['is_password_protected' => true,
+        'password_hash' => Hash::make('first-password')]);
+    $this->post(route('shared.collections.verify', $link->token), ['password' => 'first-password'])->assertRedirect();
+    $this->get(route('shared.collections.show', $link->token))->assertInertia(fn (AssertableInertia $page) => $page->component('Public/SharedCollection'));
+    $version = $link->fresh()->access_version;
+    $link->update(['password_hash' => Hash::make('changed-password')]);
+    expect($link->fresh()->access_version)->toBe($version + 1);
+    $this->get(route('shared.collections.show', $link->token))->assertInertia(fn (AssertableInertia $page) => $page->component('Public/SharedCollectionPassword'));
+    $this->post(route('shared.collections.verify', $link->token), ['password' => 'first-password'])->assertSessionHasErrors('password');
+    $this->post(route('shared.collections.verify', $link->token), ['password' => 'changed-password'])->assertRedirect();
+});
+
+test('deleted collections are unavailable in every public action', function () {
+    $link = PublicCollectionLink::factory()->create();
+    $file = File::factory()->create(['user_id' => $link->collection->user_id]);
+    $link->collection->files()->attach($file->id);
+    $link->collection->delete();
+    $this->get(route('shared.collections.show', $link->token))->assertInertia(fn (AssertableInertia $page) => $page->component('Public/SharedCollectionExpired'));
+    $this->post(route('shared.collections.verify', $link->token), ['password' => 'any-password'])->assertInertia(fn (AssertableInertia $page) => $page->component('Public/SharedCollectionExpired'));
+    $this->get(route('shared.collections.file', [$link->token, $file->guid]))->assertNotFound();
+    $this->get(route('shared.collections.download', $link->token))->assertNotFound();
 });

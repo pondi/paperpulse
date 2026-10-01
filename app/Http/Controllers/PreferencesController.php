@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdatePreferencesRequest;
 use App\Models\UserPreference;
 use DateTimeZone;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\App;
 use Inertia\Inertia;
 
@@ -30,7 +31,7 @@ class PreferencesController extends Controller
     /**
      * Update the user's preferences.
      */
-    public function update(UpdatePreferencesRequest $request): \Illuminate\Http\RedirectResponse
+    public function update(UpdatePreferencesRequest $request): RedirectResponse
     {
         $user = auth()->user();
 

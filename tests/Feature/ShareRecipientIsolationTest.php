@@ -35,7 +35,6 @@ test('entity recipients use file keys and remain isolated by type and expiry', f
     expect($other->sharedUsers->modelKeys())->toBe([$recipients[1]->id]);
 })->with([[Receipt::class, 'receipt'], [Document::class, 'document']]);
 
-
 test('unshare routes remove only a recipient belonging to the authorized parent', function (string $model, string $path, string $shareModel, string $parentColumn) {
     $owner = User::factory()->create();
     $recipients = User::factory()->count(3)->create();

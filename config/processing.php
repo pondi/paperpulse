@@ -55,7 +55,7 @@ return [
         | Enable/disable office document conversion
         */
         'enabled' => env('OFFICE_CONVERSION_ENABLED', true),
-        'driver' => env('OFFICE_CONVERSION_DRIVER', 'local'),
+        'driver' => env('OFFICE_CONVERSION_DRIVER', 'external'),
         'max_input_bytes' => 20971520,
         'max_output_bytes' => 104857600,
         'local' => [

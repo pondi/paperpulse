@@ -2,6 +2,7 @@
 
 namespace App\Services\AI\Extractors\Receipt;
 
+use App\Exceptions\AIResponseException;
 use App\Exceptions\GeminiApiException;
 use App\Models\File;
 use App\Services\AI\Extractors\EntityExtractorContract;
@@ -90,7 +91,21 @@ class ReceiptExtractor implements EntityExtractorContract
                 'total' => $normalized['totals']['total_amount'] ?? 'N/A',
             ]);
 
+            $supplemental = [];
+            foreach (['return_policies' => 'ReturnPolicy', 'warranties' => 'Warranty'] as $field => $type) {
+                foreach ($rawData[$field] ?? [] as $entry) {
+                    $validator = app('App\\Services\\AI\\Extractors\\'.$type.'\\'.$type.'Validator');
+                    if (! $validator->validate($entry)['valid']) {
+                        throw new AIResponseException('Supplemental policy validation failed');
+                    }
+                    $normalizer = app('App\\Services\\AI\\Extractors\\'.$type.'\\'.$type.'DataNormalizer');
+                    $supplemental[] = ['type' => $field === 'warranties' ? 'warranty' : 'return_policy',
+                        'data' => $normalizer->normalize($entry), 'confidence_score' => $entry['confidence_score'] ?? 0.85];
+                }
+            }
+
             return [
+                'supplemental_entities' => $supplemental,
                 'type' => 'receipt',
                 'confidence_score' => $rawData['confidence_score'] ?? 0.85,
                 'data' => $normalized,

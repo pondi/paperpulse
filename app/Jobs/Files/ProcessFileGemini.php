@@ -216,7 +216,7 @@ class ProcessFileGemini extends BaseJob
                             'subtype' => null,
                         ],
                         'parsed' => [
-                            'entities' => [$extracted],
+                            'entities' => array_merge([$extracted], $extracted['supplemental_entities'] ?? []),
                             'provider_response' => [
                                 'classification' => $classification->toArray(),
                             ],

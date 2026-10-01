@@ -7,6 +7,7 @@ use App\Services\AI\Extractors\Contract\ContractExtractor;
 use App\Services\AI\Extractors\Document\DocumentExtractor;
 use App\Services\AI\Extractors\Invoice\InvoiceExtractor;
 use App\Services\AI\Extractors\Receipt\ReceiptExtractor;
+use App\Services\AI\Extractors\ReturnPolicy\ReturnPolicyExtractor;
 use App\Services\AI\Extractors\Voucher\VoucherExtractor;
 use App\Services\AI\Extractors\Warranty\WarrantyExtractor;
 use InvalidArgumentException;
@@ -32,6 +33,7 @@ class EntityExtractorFactory
             'invoice' => app(InvoiceExtractor::class),
             'voucher' => app(VoucherExtractor::class),
             'warranty' => app(WarrantyExtractor::class),
+            'return_policy' => app(ReturnPolicyExtractor::class),
             'contract' => app(ContractExtractor::class),
             'bank_statement' => app(BankStatementExtractor::class),
             'document' => app(DocumentExtractor::class),
@@ -57,6 +59,7 @@ class EntityExtractorFactory
             'invoice',
             'voucher',
             'warranty',
+            'return_policy',
             'contract',
             'bank_statement',
             'document',

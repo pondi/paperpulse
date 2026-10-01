@@ -7,8 +7,10 @@ namespace App\Http\Controllers\Public;
 use App\Enums\PublicShareAction;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Inertia\PublicCollectionFileResource;
+use App\Models\PublicCollectionLink;
 use App\Services\PublicCollectionSharingService;
 use App\Services\StorageService;
+use App\Support\UploadedContent;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -148,14 +150,14 @@ class PublicCollectionController extends Controller
 
         return new StreamedResponse(function () use ($content) {
             echo $content;
-        }, 200, [
+        }, 200, array_merge([
             'Content-Type' => $mimeType,
             'Content-Length' => strlen($content),
             'Content-Disposition' => $disposition.'; filename="'.preg_replace('/[^a-zA-Z0-9\-_\.]/', '_', $file->fileName ?? 'file').'.'.$extension.'"',
             'Cache-Control' => 'private, max-age=3600',
             'X-Frame-Options' => 'DENY',
             'X-Content-Type-Options' => 'nosniff',
-        ]);
+        ], UploadedContent::headers($extension, ($file->fileName ?? 'file').'.'.$extension, $disposition)));
     }
 
     public function downloadAll(Request $request, string $token): StreamedResponse
@@ -253,7 +255,7 @@ class PublicCollectionController extends Controller
         ]);
     }
 
-    private function canUseContent(Request $request, \App\Models\PublicCollectionLink $link): bool
+    private function canUseContent(Request $request, PublicCollectionLink $link): bool
     {
         if (! $link->collection || ! $link->is_active || $link->hasExpired()) {
             return false;
@@ -264,26 +266,26 @@ class PublicCollectionController extends Controller
     }
 
     /** @return array{version: int, fingerprint: string, expires_at: int} */
-    private function newGrant(\App\Models\PublicCollectionLink $link): array
+    private function newGrant(PublicCollectionLink $link): array
     {
         return ['version' => $link->access_version, 'fingerprint' => $this->grantFingerprint($link),
             'expires_at' => now()->addHour()->timestamp];
     }
 
-    private function isCurrentGrant(mixed $grant, \App\Models\PublicCollectionLink $link): bool
+    private function isCurrentGrant(mixed $grant, PublicCollectionLink $link): bool
     {
         return is_array($grant) && ($grant['version'] ?? null) === $link->access_version
             && ($grant['fingerprint'] ?? null) === $this->grantFingerprint($link)
             && ($grant['expires_at'] ?? 0) > now()->timestamp;
     }
 
-    private function grantFingerprint(\App\Models\PublicCollectionLink $link): string
+    private function grantFingerprint(PublicCollectionLink $link): string
     {
         return hash('sha256', json_encode([$link->password_hash, $link->is_password_protected,
             $link->collection_id, $link->token, $link->expires_at, $link->max_views, $link->is_active]));
     }
 
-    private function isUnlocked(Request $request, \App\Models\PublicCollectionLink $link): bool
+    private function isUnlocked(Request $request, PublicCollectionLink $link): bool
     {
         return $this->isCurrentGrant($request->session()->get('public_share_unlocked_'.$link->id), $link);
     }

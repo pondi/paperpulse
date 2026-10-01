@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Files;
 use App\Http\Controllers\Controller;
 use App\Models\File;
 use App\Services\StorageService;
+use App\Support\UploadedContent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -150,13 +151,13 @@ class FileServeController extends Controller
         // Create a StreamedResponse
         return new StreamedResponse(function () use ($content) {
             echo $content;
-        }, 200, [
+        }, 200, array_merge([
             'Content-Type' => $mimeType,
             'Content-Length' => strlen($content),
             'Content-Disposition' => 'inline; filename="document.'.$extension.'"',
             'Cache-Control' => 'private, max-age=3600',
             'X-Frame-Options' => 'SAMEORIGIN',
             'X-Content-Type-Options' => 'nosniff',
-        ]);
+        ], UploadedContent::headers($extension, 'document.'.$extension)));
     }
 }

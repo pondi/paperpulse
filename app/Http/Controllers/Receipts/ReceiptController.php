@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Receipts;
 
 use App\Http\Controllers\BaseResourceController;
+use App\Http\Requests\UpdateReceiptRequest;
 use App\Http\Resources\Inertia\ReceiptInertiaResource;
 use App\Models\Merchant;
 use App\Models\Receipt;
@@ -16,6 +17,7 @@ use App\Services\Tags\TagAttachmentService;
 use App\Traits\SanitizesInput;
 use App\Traits\ShareableController;
 use Exception;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -68,8 +70,8 @@ class ReceiptController extends BaseResourceController
     public function show($id): Response
     {
         $receipt = $this->model::accessibleBy(auth()->user())->with($this->showWith)->with(['file' => fn ($query) => $query->withoutGlobalScope('user'),
-                'merchant' => fn ($query) => $query->withoutGlobalScope('user'),
-                'category' => fn ($query) => $query->withoutGlobalScope('user')])->findOrFail($id instanceof Receipt ? $id->id : $id);
+            'merchant' => fn ($query) => $query->withoutGlobalScope('user'),
+            'category' => fn ($query) => $query->withoutGlobalScope('user')])->findOrFail($id instanceof Receipt ? $id->id : $id);
 
         $this->authorize('view', $receipt);
 
@@ -328,12 +330,12 @@ class ReceiptController extends BaseResourceController
     /**
      * Override update method to include custom validation and sanitization.
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, $id): RedirectResponse
     {
-        $receipt = $this->findModel($id);
+        $receipt = $id instanceof Receipt ? $id : Receipt::accessibleBy(auth()->user())->findOrFail($id);
         $this->authorize('update', $receipt);
 
-        $validated = $request->validate($this->getValidationRules('update'));
+        $validated = app(UpdateReceiptRequest::class)->validated();
 
         // Sanitize string inputs
         $validated = $this->sanitizeData($validated, ['receipt_category', 'receipt_description', 'note']);
@@ -354,7 +356,7 @@ class ReceiptController extends BaseResourceController
      */
     public function destroy($id)
     {
-        $receipt = $this->findModel($id);
+        $receipt = $id instanceof Receipt ? $id : Receipt::accessibleBy(auth()->user())->findOrFail($id);
         $this->authorize('delete', $receipt);
 
         $receiptService = app(ReceiptService::class);

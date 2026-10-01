@@ -2,6 +2,7 @@
 
 namespace App\Services\OCR;
 
+use App\Services\AI\Shared\ProcessingStageCache;
 use Illuminate\Support\Facades\Cache;
 
 class ExtractionCache
@@ -30,6 +31,7 @@ class ExtractionCache
 
     public static function clear(string $fileGuid): void
     {
+        ProcessingStageCache::clear($fileGuid);
         $cacheKey = self::key($fileGuid);
         Cache::forget($cacheKey);
         Cache::forget("{$cacheKey}.structured");

@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Jobs\RedactLogRecords;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -60,12 +61,14 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', $envNonEmpty('LOG_STACK', 'single')),
+            'channels' => explode(',', $envNonEmpty('LOG_STACK', 'daily')),
             'ignore_exceptions' => false,
         ],
 
         'single' => [
             'driver' => 'single',
+            'tap' => [RedactLogRecords::class],
+            'permission' => 0600,
             'path' => storage_path('logs/laravel.log'),
             'level' => $envNonEmpty('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
@@ -73,14 +76,17 @@ return [
 
         'daily' => [
             'driver' => 'daily',
+            'tap' => [RedactLogRecords::class],
+            'permission' => 0600,
             'path' => storage_path('logs/laravel.log'),
             'level' => $envNonEmpty('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
+            'days' => env('LOG_DAILY_DAYS', 7),
             'replace_placeholders' => true,
         ],
 
         'slack' => [
             'driver' => 'slack',
+            'tap' => [RedactLogRecords::class],
             'url' => env('LOG_SLACK_WEBHOOK_URL'),
             'username' => env('LOG_SLACK_USERNAME', 'Laravel Log'),
             'emoji' => env('LOG_SLACK_EMOJI', ':boom:'),
@@ -90,6 +96,7 @@ return [
 
         'papertrail' => [
             'driver' => 'monolog',
+            'tap' => [RedactLogRecords::class],
             'level' => $envNonEmpty('LOG_LEVEL', 'debug'),
             'handler' => $envNonEmpty('LOG_PAPERTRAIL_HANDLER', SyslogUdpHandler::class),
             'handler_with' => [
@@ -102,6 +109,7 @@ return [
 
         'stderr' => [
             'driver' => 'monolog',
+            'tap' => [RedactLogRecords::class],
             'level' => $envNonEmpty('LOG_LEVEL', 'debug'),
             'handler' => StreamHandler::class,
             'formatter' => $envNonEmpty('LOG_STDERR_FORMATTER'),
@@ -113,6 +121,7 @@ return [
 
         'syslog' => [
             'driver' => 'syslog',
+            'tap' => [RedactLogRecords::class],
             'level' => $envNonEmpty('LOG_LEVEL', 'debug'),
             'facility' => env('LOG_SYSLOG_FACILITY', LOG_USER),
             'replace_placeholders' => true,
@@ -120,12 +129,14 @@ return [
 
         'errorlog' => [
             'driver' => 'errorlog',
+            'tap' => [RedactLogRecords::class],
             'level' => $envNonEmpty('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
         ],
 
         'null' => [
             'driver' => 'monolog',
+            'tap' => [RedactLogRecords::class],
             'handler' => NullHandler::class,
         ],
 

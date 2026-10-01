@@ -10,7 +10,8 @@ type FileItem = {
     id: number;
     guid: string;
     name: string;
-    file_type: 'receipt' | 'document';
+    file_type: string;
+    review?: { reason: string; confidence?: number; reasoning?: string };
     status: 'pending' | 'processing' | 'failed' | 'completed' | string;
     uploaded_at: string | null;
     extension: string;
@@ -36,6 +37,7 @@ interface PaginationInfo {
 }
 
 interface Props {
+    reviewTypes?: string[];
     files: {
         data: FileItem[];
         links: any;
@@ -75,13 +77,13 @@ const form = reactive({
     page: props.pagination?.current_page ?? 1,
 });
 
-const selectedTypeById = ref<Record<number, 'receipt' | 'document'>>(
+const selectedTypeById = ref<Record<number, string>>(
     Object.fromEntries(
         props.files.data.map(f => [
             f.id,
             f.file_type === 'receipt' ? 'document' : 'receipt',
         ])
-    ) as Record<number, 'receipt' | 'document'>
+    ) as Record<number, string>
 );
 
 const expandedFileId = ref<number | null>(null);
@@ -226,6 +228,7 @@ const toggleExpanded = (fileId: number) => {
                             <option value="processing">Processing</option>
                             <option value="completed">Completed</option>
                             <option value="failed">Failed</option>
+                            <option value="needs_review">Needs review</option>
                         </select>
 
                         <select
@@ -347,6 +350,7 @@ const toggleExpanded = (fileId: number) => {
                                         </svg>
                                         Pending
                                     </span>
+                                    <span v-else-if="file.status === 'needs_review'" class="rounded-full bg-yellow-100 px-3 py-1.5 text-sm font-semibold text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200">Needs review</span>
                                     <span
                                         v-else
                                         class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1.5 text-sm font-semibold text-green-700 dark:bg-green-900/40 dark:text-green-200"
@@ -356,6 +360,18 @@ const toggleExpanded = (fileId: number) => {
                                         </svg>
                                         Completed
                                     </span>
+                                </div>
+                            </div>
+
+                            <div v-if="file.status === 'needs_review'" class="mt-4 rounded-lg bg-amber-50 p-4 dark:bg-zinc-900">
+                                <p class="text-sm text-zinc-800 dark:text-zinc-200">{{ file.review?.reasoning || 'This file needs review before processing can finish.' }}</p>
+                                <p v-if="file.review?.confidence != null" class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Classification confidence: {{ Math.round(file.review.confidence * 100) }}%</p>
+                                <div v-if="file.review?.reason === 'uncertain_classification'" class="mt-3 flex flex-wrap items-center gap-3">
+                                    <label :for="`type-${file.id}`" class="text-sm dark:text-zinc-200">Document type</label>
+                                    <select :id="`type-${file.id}`" v-model="selectedTypeById[file.id]" class="rounded border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white">
+                                        <option v-for="type in props.reviewTypes" :key="type" :value="type">{{ type.replaceAll('_', ' ') }}</option>
+                                    </select>
+                                    <PrimaryButton type="button" @click="changeTypeAndRestart(file.id)">Retry extraction</PrimaryButton>
                                 </div>
                             </div>
 

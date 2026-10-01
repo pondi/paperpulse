@@ -5,6 +5,7 @@ namespace App\Jobs\Receipts;
 use App\Jobs\BaseJob;
 use App\Models\Merchant;
 use App\Models\Receipt;
+use App\Services\Jobs\JobMetadataPersistence;
 use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -68,7 +69,7 @@ class MatchMerchant extends BaseJob
             // Idempotency: skip if receipt already has a merchant assigned
             $preCheckReceiptId = $this->useDirectData ? $this->receiptId : null;
             if (! $preCheckReceiptId) {
-                $receiptMetaData = Cache::get("job.{$this->jobID}.receiptMetaData");
+                $receiptMetaData = (JobMetadataPersistence::retrieve($this->jobID)['artifacts']['receipt'] ?? Cache::get("job.{$this->jobID}.receiptMetaData"));
                 $preCheckReceiptId = $receiptMetaData['receiptId'] ?? null;
             }
             if ($preCheckReceiptId) {
@@ -171,7 +172,7 @@ class MatchMerchant extends BaseJob
     private function fetchDataFromCache()
     {
         $fileMetaData = Cache::get("job.{$this->jobID}.fileMetaData");
-        $receiptMetaData = Cache::get("job.{$this->jobID}.receiptMetaData");
+        $receiptMetaData = (JobMetadataPersistence::retrieve($this->jobID)['artifacts']['receipt'] ?? Cache::get("job.{$this->jobID}.receiptMetaData"));
 
         if (! $fileMetaData || ! $receiptMetaData) {
             Log::error('(MatchMerchant) - Required cache data missing', [

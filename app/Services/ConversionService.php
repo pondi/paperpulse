@@ -5,9 +5,8 @@ namespace App\Services;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Spatie\PdfToImage\Exceptions\InvalidFormat;
-use Spatie\PdfToImage\Exceptions\PageDoesNotExist;
 use Spatie\PdfToImage\Pdf;
+use Throwable;
 
 class ConversionService
 {
@@ -77,9 +76,13 @@ class ConversionService
             $spatiePDF = new Pdf($storedFilePath);
 
             // Configure conversion settings
-            $spatiePDF->quality(85)
+            $savedFiles = $spatiePDF->selectPage(1)->quality(85)
                 ->resolution(144)
                 ->save($outputPath);
+
+            if (($savedFiles[0] ?? null) !== $outputPath) {
+                throw new Exception('PDF conversion returned an unexpected output path');
+            }
 
             // Verify output file was created
             if (! file_exists($outputPath)) {
@@ -120,23 +123,7 @@ class ConversionService
 
             return true;
 
-        } catch (InvalidFormat $e) {
-            Log::error('(ConversionService) [pdfToImage] - Invalid PDF format', [
-                'file_guid' => $fileGUID,
-                'error' => $e->getMessage(),
-                'file_path' => $storedFilePath,
-            ]);
-
-            return false;
-        } catch (PageDoesNotExist $e) {
-            Log::error('(ConversionService) [pdfToImage] - PDF page does not exist', [
-                'file_guid' => $fileGUID,
-                'error' => $e->getMessage(),
-                'file_path' => $storedFilePath,
-            ]);
-
-            return false;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Log::error('(ConversionService) [pdfToImage] - Error converting PDF to image', [
                 'file_guid' => $fileGUID,
                 'error' => $e->getMessage(),

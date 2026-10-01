@@ -13,6 +13,7 @@ use App\Jobs\Receipts\MatchMerchant;
 use App\Jobs\Receipts\ProcessReceipt;
 use App\Jobs\System\ApplyTags;
 use App\Models\File;
+use App\Services\Jobs\JobMetadataPersistence;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -61,9 +62,13 @@ class FileJobChainDispatcher
                 (new ProcessCsvImport($jobId, $fileId))->onQueue($queue),
             ];
         } else {
-            $provider = config('ai.file_processing_provider', 'textract+openai');
+            $provider = $metadata['processingProvider'] ?? config('ai.file_processing_provider', 'textract+openai');
+            $metadata['processingProvider'] = $provider;
+            JobMetadataPersistence::store($jobId, $metadata);
 
-            if ($provider === 'gemini') {
+            if ($provider === 'ocr-only') {
+                $jobs = [(new ProcessFile($jobId))->onQueue($queue)];
+            } elseif ($provider === 'gemini') {
                 Log::info('Routing to Gemini pipeline', ['jobId' => $jobId]);
                 $jobs = [
                     (new ProcessFile($jobId))->onQueue($queue),

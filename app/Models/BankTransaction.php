@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DeletedReason;
 use App\Enums\TransactionCategory;
+use App\Services\BankStatements\TransactionCategorizationService;
 use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +28,7 @@ class BankTransaction extends Model
         'transaction_type',
         'category',
         'category_group',
+        'category_source',
         'subcategory',
         'amount',
         'balance_after',
@@ -43,6 +45,20 @@ class BankTransaction extends Model
         'category_group' => TransactionCategory::class,
         'deleted_reason' => DeletedReason::class,
     ];
+
+    protected static function booted(): void
+    {
+        static::updating(function (self $transaction): void {
+            if (auth()->id() === $transaction->user_id && $transaction->isDirty(['category_group', 'subcategory']) && ! $transaction->isDirty('category_source')) {
+                $transaction->category_source = 'manual';
+            }
+        });
+        static::updated(function (self $transaction): void {
+            if ($transaction->category_source === 'manual' && $transaction->wasChanged(['category_group', 'subcategory'])) {
+                TransactionCategorizationService::rememberManual($transaction);
+            }
+        });
+    }
 
     public function bankStatement()
     {

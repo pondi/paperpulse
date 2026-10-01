@@ -2,9 +2,7 @@
 
 namespace App\Services\OCR;
 
-use App\Services\OCR\Providers\TesseractProvider;
 use App\Services\OCR\Providers\TextractProvider;
-use App\Services\StorageService;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
@@ -28,11 +26,7 @@ class OCRServiceFactory
         Log::info('Creating OCR provider instance', ['provider' => $provider]);
 
         $instance = match ($provider) {
-            'textract' => new TextractProvider(
-                app(StorageService::class),
-                app(TextractStorageBridge::class)
-            ),
-            'tesseract' => new TesseractProvider,
+            'textract' => app(TextractProvider::class),
             default => throw new InvalidArgumentException("Unsupported OCR provider: {$provider}")
         };
 
@@ -47,26 +41,15 @@ class OCRServiceFactory
      */
     public static function createForFile(string $filePath, array $providers = []): OCRService
     {
-        $providers = empty($providers) ? ['textract', 'tesseract'] : $providers;
-
+        $providers = empty($providers) ? [config('ai.ocr.provider', 'textract')] : $providers;
         foreach ($providers as $providerName) {
-            try {
-                $provider = self::create($providerName);
-                if ($provider->canHandle($filePath)) {
-                    return $provider;
-                }
-            } catch (Exception $e) {
-                Log::debug("OCR provider {$providerName} cannot handle file", [
-                    'file' => $filePath,
-                    'error' => $e->getMessage(),
-                ]);
-
-                continue;
+            $provider = self::create($providerName);
+            if ($provider->canHandle($filePath)) {
+                return $provider;
             }
         }
 
-        // Fallback to default provider
-        return self::create();
+        throw new InvalidArgumentException('No configured OCR provider supports this file.');
     }
 
     /**
@@ -74,7 +57,7 @@ class OCRServiceFactory
      */
     public static function getAvailableProviders(): array
     {
-        return ['textract', 'tesseract'];
+        return ['textract'];
     }
 
     /**

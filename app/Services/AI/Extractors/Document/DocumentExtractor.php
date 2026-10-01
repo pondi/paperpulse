@@ -50,7 +50,8 @@ class DocumentExtractor implements EntityExtractorContract
                 $fileUri,
                 $schema,
                 $prompt,
-                [] // No conversation history for now (can add context later)
+                [],
+                $context['mime_type'] ?? $file->fileType ?? 'application/pdf'
             );
 
             $rawData = $response['data'] ?? [];

@@ -2,6 +2,9 @@
 
 namespace App\Services\AI\Extractors\Receipt;
 
+use App\Services\AI\Extractors\ReturnPolicy\ReturnPolicySchema;
+use App\Services\AI\Extractors\Warranty\WarrantySchema;
+
 /**
  * Simplified receipt schema for Gemini extraction (Pass 2).
  *
@@ -126,6 +129,9 @@ class ReceiptSchema
                         'items' => ['type' => 'string'],
                     ],
 
+                    'return_policies' => ['type' => 'array', 'items' => ReturnPolicySchema::get()['responseSchema']],
+                    'warranties' => ['type' => 'array', 'items' => WarrantySchema::get()['responseSchema']],
+
                     // Metadata
                     'confidence_score' => ['type' => 'number', 'description' => 'Extraction confidence (0.0-1.0)'],
                 ],
@@ -140,7 +146,7 @@ class ReceiptSchema
     public static function getPrompt(): string
     {
         return <<<'PROMPT'
-Extract all receipt information from this document.
+Extract all receipt information from this document. Include explicitly stated supplemental return policies in return_policies and warranty certificates in warranties. The receipt is the primary entity; these supplemental entries remain linked to it.
 
 ## IMPORTANT: Verify this is actually a receipt
 

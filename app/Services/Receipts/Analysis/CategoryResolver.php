@@ -16,7 +16,7 @@ class CategoryResolver
         bool $autoCategorize,
         ?int $defaultCategoryId
     ): array {
-        $categoryName = $data['merchant']['category'] ?? $data['receipt_category'] ?? null;
+        $categoryName = $autoCategorize ? ($data['merchant']['category'] ?? $data['receipt_category'] ?? null) : null;
         $categoryId = null;
 
         if ($autoCategorize && ! $categoryName && $merchant) {

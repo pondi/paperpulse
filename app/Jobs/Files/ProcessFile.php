@@ -5,6 +5,7 @@ namespace App\Jobs\Files;
 use App\Jobs\BaseJob;
 use App\Models\File;
 use App\Services\ConversionService;
+use App\Services\Files\FileProcessingCapabilities;
 use App\Services\Files\StoragePathBuilder;
 use App\Services\StorageService;
 use App\Services\TextExtractionService;
@@ -53,6 +54,11 @@ class ProcessFile extends BaseJob
                 throw new Exception('No metadata found for job');
             }
 
+            $capabilities = FileProcessingCapabilities::fromMetadata($metadata);
+            $metadata['processingProvider'] = $capabilities->provider;
+            $metadata['pipeline_stages']['preprocessing'] = ['provider' => $capabilities->provider, 'ocr_required' => $capabilities->requiresOcr()];
+            $this->storeMetadata($metadata);
+
             $fileType = $metadata['fileType'] ?? 'receipt';
             $jobName = $metadata['jobName'] ?? 'unknown';
 
@@ -82,7 +88,7 @@ class ProcessFile extends BaseJob
             // Check if file requires conversion to PDF
             $docConversionService = app(\App\Services\Documents\ConversionService::class);
 
-            if ($docConversionService->requiresConversion($metadata['fileExtension'])) {
+            if (! $capabilities->supportsNativeExtension($metadata['fileExtension']) && $docConversionService->requiresConversion($metadata['fileExtension'])) {
                 Log::info("[ProcessFile] [{$jobName}] Office file detected, initiating conversion", [
                     'extension' => $metadata['fileExtension'],
                     'file_guid' => $metadata['fileGuid'],
@@ -158,7 +164,10 @@ class ProcessFile extends BaseJob
             $this->updateProgress(50);
 
             // Handle file type specific processing
-            if ($fileType === 'receipt') {
+            if (! $capabilities->requiresOcr()) {
+                $metadata['pipeline_stages']['ocr'] = ['provider' => null, 'status' => 'skipped_native'];
+                $this->storeMetadata($metadata);
+            } elseif ($fileType === 'receipt' && $capabilities->provider !== 'ocr-only') {
                 // For receipts, convert to image if PDF (existing behavior)
                 if ($metadata['fileExtension'] === 'pdf') {
                     Log::debug("[ProcessFile] [{$jobName}] Converting PDF to image for receipt processing");
@@ -202,12 +211,19 @@ class ProcessFile extends BaseJob
 
                     $metadata['extractedText'] = $text;
                     $metadata['textLength'] = strlen($text);
+                    $metadata['pipeline_stages']['ocr'] = ['provider' => config('ai.ocr.provider', 'textract'), 'status' => 'completed', 'text_length' => strlen($text)];
+                    if ($capabilities->provider === 'ocr-only' && isset($metadata['fileId'])) {
+                        File::whereKey($metadata['fileId'])->update(['status' => 'completed']);
+                    }
                     $this->storeMetadata($metadata);
 
                     Log::debug("[ProcessFile] [{$jobName}] Text pre-extracted for document", [
                         'text_length' => strlen($text),
                     ]);
                 } catch (Exception $e) {
+                    if ($capabilities->provider === 'ocr-only') {
+                        throw $e;
+                    }
                     Log::warning("[ProcessFile] [{$jobName}] Text pre-extraction failed, will retry in ProcessDocument", [
                         'error' => $e->getMessage(),
                     ]);

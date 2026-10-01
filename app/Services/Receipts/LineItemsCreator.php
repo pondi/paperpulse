@@ -24,8 +24,8 @@ class LineItemsCreator
                 'text' => $itemName !== '' ? $itemName : 'Unknown Item',
                 'sku' => $item['sku'] ?? null,
                 'qty' => $item['quantity'] ?? 1,
-                'price' => $item['unit_price'] ?? $item['price'] ?? 0,
-                'total' => $item['total_price'] ?? $item['total'] ?? (($item['unit_price'] ?? $item['price'] ?? 0) * ($item['quantity'] ?? 1)),
+                'price' => DecimalAmount::parse($item['unit_price'] ?? $item['price'] ?? 0),
+                'total' => DecimalAmount::format(DecimalAmount::minorUnits($item['total_price'] ?? $item['total'] ?? DecimalAmount::multiplyPrice($item['unit_price'] ?? $item['price'] ?? 0, $item['quantity'] ?? 1))),
             ]);
         }
     }

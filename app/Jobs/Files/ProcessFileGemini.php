@@ -135,6 +135,7 @@ class ProcessFileGemini extends BaseJob
                     $classification = $classifier->classify($fileUri, [
                         'filename' => $file->filename,
                         'extension' => $extension,
+                        'mime_type' => $uploadResult['mimeType'],
                     ]);
 
                     Log::info('[ProcessFileGemini] Classification result', [
@@ -182,6 +183,7 @@ class ProcessFileGemini extends BaseJob
                     $extractor = EntityExtractorFactory::create($classification->type);
                     $extracted = $extractor->extract($fileUri, $file, [
                         'classification' => $classification,
+                        'mime_type' => $uploadResult['mimeType'],
                     ]);
 
                     $this->updateProgress(70);

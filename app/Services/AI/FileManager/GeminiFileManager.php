@@ -46,7 +46,7 @@ class GeminiFileManager
         }
 
         $fileName = $displayName ?? basename($localPath);
-        $mimeType = mime_content_type($localPath) ?: 'application/octet-stream';
+        $mimeType = GeminiMimeType::detect($localPath);
         $fileSize = filesize($localPath);
 
         Log::info('[GeminiFileManager] Uploading file to Gemini Files API', [
@@ -126,6 +126,11 @@ class GeminiFileManager
                     false,
                     ['response' => $data]
                 );
+            }
+
+            if (isset($file['mimeType']) && $file['mimeType'] !== $mimeType) {
+                $this->deleteFile($file['name']);
+                throw new GeminiApiException('Uploaded resource MIME does not match source', GeminiApiException::CODE_UNSUPPORTED_MIME, false);
             }
 
             Log::info('[GeminiFileManager] File uploaded successfully', [

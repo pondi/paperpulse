@@ -63,6 +63,10 @@ WORKDIR /var/www/html
 RUN echo "GMT" > /etc/timezone \
     && apk add --no-cache \
         supervisor \
+        libreoffice \
+        bubblewrap \
+        font-dejavu \
+        font-liberation \
         bash \
         curl \
         php84 \

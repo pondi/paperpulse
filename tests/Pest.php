@@ -5,6 +5,9 @@ uses(
     // Illuminate\Foundation\Testing\DatabaseMigrations::class,
 )->in('Browser');
 
+use App\Models\File;
+use App\Services\Files\StoragePathBuilder;
+use Dompdf\Dompdf;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -64,4 +67,35 @@ function createFixturePngPath(): string
     file_put_contents($path, $pngData);
 
     return $path;
+}
+
+function conversionDocxFixture(): string
+{
+    $path = tempnam(sys_get_temp_dir(), 'office-fixture');
+    $zip = new ZipArchive;
+    $zip->open($path, ZipArchive::OVERWRITE);
+    $zip->addFromString('word/document.xml', '<document>Invoice</document>');
+    $zip->close();
+    try {
+        return file_get_contents($path);
+    } finally {
+        unlink($path);
+    }
+}
+
+function conversionPdfFixture(): string
+{
+    $pdf = new Dompdf;
+    $pdf->loadHtml('<p>Converted invoice</p>');
+    $pdf->render();
+
+    return $pdf->output();
+}
+
+function createOfficeConversionFile(): File
+{
+    $file = File::factory()->create(['file_type' => 'document', 'fileExtension' => 'docx']);
+    $file->update(['s3_original_path' => StoragePathBuilder::storagePath($file->user_id, $file->guid, 'document', 'original', 'docx')]);
+
+    return $file;
 }

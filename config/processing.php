@@ -55,6 +55,14 @@ return [
         | Enable/disable office document conversion
         */
         'enabled' => env('OFFICE_CONVERSION_ENABLED', true),
+        'driver' => env('OFFICE_CONVERSION_DRIVER', 'local'),
+        'max_input_bytes' => 20971520,
+        'max_output_bytes' => 104857600,
+        'local' => [
+            'binary' => env('LIBREOFFICE_BINARY', '/usr/lib/libreoffice/program/soffice.bin'),
+            'sandbox' => env('CONVERSION_SANDBOX_BINARY', '/usr/bin/bwrap'),
+        ],
+
         /*
         | Gotenberg service URL
         */

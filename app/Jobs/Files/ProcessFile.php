@@ -4,9 +4,11 @@ namespace App\Jobs\Files;
 
 use App\Jobs\BaseJob;
 use App\Models\File;
+use App\Models\FileConversion;
 use App\Services\ConversionService;
 use App\Services\Files\FileProcessingCapabilities;
 use App\Services\Files\StoragePathBuilder;
+use App\Services\Jobs\JobChainPlan;
 use App\Services\StorageService;
 use App\Services\TextExtractionService;
 use App\Services\Workers\WorkerFileManager;
@@ -94,69 +96,17 @@ class ProcessFile extends BaseJob
                     'file_guid' => $metadata['fileGuid'],
                 ]);
 
-                try {
-                    // Build output S3 path using StoragePathBuilder pattern (variant=archive)
-                    $outputS3Path = StoragePathBuilder::storagePath(
-                        $metadata['userId'],
-                        $metadata['fileGuid'],
-                        $fileType,
-                        'archive', // variant
-                        'pdf'      // extension
-                    );
+                $file = File::withoutGlobalScope('user')->where('user_id', $metadata['userId'])->findOrFail($metadata['fileId']);
+                $outputS3Path = StoragePathBuilder::storagePath($metadata['userId'], $metadata['fileGuid'], $fileType, 'archive', 'pdf');
+                $file->getConnection()->transaction(function () use ($docConversionService, $file, $metadata, $outputS3Path): void {
+                    $conversion = $docConversionService->queueConversion($file, $metadata['s3OriginalPath'], $outputS3Path, dispatch: false);
+                    $step = $docConversionService->prepareResume($conversion, $this->jobID, $this->chained, $this->uuid);
+                    JobChainPlan::prependStep($this->jobID, $this->uuid, $step);
+                    $this->prependToChain($step);
+                });
+                $this->updateProgress(100);
 
-                    $file = File::find($metadata['fileId']);
-
-                    // Queue conversion job to Redis
-                    $conversion = $docConversionService->queueConversion(
-                        $file,
-                        $metadata['s3OriginalPath'],
-                        $outputS3Path
-                    );
-
-                    $this->updateProgress(30);
-
-                    // Wait for conversion (blocks for up to 120s, polling status at configured interval)
-                    $result = $docConversionService->waitForCompletion(
-                        $conversion,
-                        config('processing.conversion.timeout', 120)
-                    );
-
-                    if ($result['success']) {
-                        // Conversion succeeded - update file record and metadata
-                        $file->s3_archive_path = $result['output_path'];
-                        $file->save();
-
-                        // Use archive PDF for downstream processing
-                        $metadata['s3ArchivePath'] = $result['output_path'];
-                        $metadata['originalExtension'] = $metadata['fileExtension'];
-                        $metadata['fileExtension'] = 'pdf'; // TextExtraction uses PDF
-                        $this->storeMetadata($metadata);
-
-                        Log::info("[ProcessFile] [{$jobName}] Conversion completed", [
-                            'conversion_id' => $conversion->id,
-                            'output_path' => $result['output_path'],
-                        ]);
-                    } else {
-                        // Conversion failed - log and continue with original
-                        Log::warning("[ProcessFile] [{$jobName}] Conversion failed, using original file", [
-                            'conversion_id' => $conversion->id,
-                            'error' => $result['error'],
-                        ]);
-
-                        $metadata['conversionFailed'] = true;
-                        $metadata['conversionError'] = $result['error'];
-                        $this->storeMetadata($metadata);
-                    }
-                } catch (Exception $e) {
-                    Log::error("[ProcessFile] [{$jobName}] Conversion process exception", [
-                        'error' => $e->getMessage(),
-                    ]);
-
-                    // Don't fail entire job - continue with original
-                    $metadata['conversionFailed'] = true;
-                    $metadata['conversionError'] = $e->getMessage();
-                    $this->storeMetadata($metadata);
-                }
+                return;
             }
 
             $this->updateProgress(35);
@@ -266,6 +216,20 @@ class ProcessFile extends BaseJob
                 'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
+        }
+    }
+
+    protected function restoreCompletedDelivery(): void
+    {
+        $conversion = FileConversion::query()->where('metadata->chain_id', $this->jobID)
+            ->where('metadata->origin_step_uuid', $this->uuid)->first();
+        if ($conversion === null) {
+            return;
+        }
+        $step = app(\App\Services\Documents\ConversionService::class)->prepareResume($conversion, $this->jobID, $this->chained, $this->uuid);
+        $first = isset($this->chained[0]) ? unserialize($this->chained[0], ['allowed_classes' => [ConvertOfficeFile::class]]) : null;
+        if (! $first instanceof ConvertOfficeFile || $first->uuid !== $step->uuid) {
+            $this->prependToChain($step);
         }
     }
 }

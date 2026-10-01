@@ -261,7 +261,7 @@ class ProcessReceipt extends BaseJob
     ): void {
         // Ensure file is available locally (download from S3 if needed)
         $localFilePath = $workerFileManager->ensureLocalFile(
-            $metadata['s3OriginalPath'],
+            $metadata['s3ArchivePath'] ?? $metadata['s3OriginalPath'],
             $metadata['fileGuid'],
             $metadata['fileExtension'],
             $metadata['filePath'] ?? null

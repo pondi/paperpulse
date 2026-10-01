@@ -169,6 +169,8 @@ return [
     */
 
     'incoming_prefix' => env('S3_INCOMING_PREFIX', 'incoming/'),
+    'incoming_disk' => env('INCOMING_FILESYSTEM_DISK', 'pulsedav'),
+    'permanent_disk' => env('PERMANENT_FILESYSTEM_DISK', 'paperpulse'),
     'uplink_prefix' => env('S3_UPLINK_PREFIX', 'uplink-incoming/'),
 
 ];

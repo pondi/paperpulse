@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
 
 beforeEach(function (): void {
     Storage::fake('paperpulse');
+    Storage::fake('pulsedav');
     $this->owner = User::factory()->create();
     $this->file = File::factory()->create(['user_id' => $this->owner->id, 'status' => 'completed', 's3_original_path' => 'documents/'.$this->owner->id.'/original.pdf']);
     Storage::disk('paperpulse')->put($this->file->s3_original_path, 'source');

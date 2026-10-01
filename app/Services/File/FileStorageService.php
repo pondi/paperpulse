@@ -28,6 +28,9 @@ class FileStorageService implements FileStorageContract
         try {
             $fileName = $fileGuid.'.'.$uploadedFile->getClientOriginalExtension();
             $storedFile = $uploadedFile->storeAs('uploads', $fileName, 'local');
+            if ($storedFile === false) {
+                throw new Exception('Failed to store the working upload');
+            }
 
             Log::debug('[FileStorageService] Working file stored', [
                 'file_path' => $storedFile,
@@ -53,7 +56,9 @@ class FileStorageService implements FileStorageContract
             $fileName = $fileGuid.'.'.$extension;
             $path = 'uploads/'.$fileName;
 
-            Storage::disk('local')->put($path, $content);
+            if (! Storage::disk('local')->put($path, $content)) {
+                throw new Exception('Failed to write the working file');
+            }
 
             Log::debug('[FileStorageService] Working content stored', [
                 'file_path' => $path,
@@ -91,6 +96,9 @@ class FileStorageService implements FileStorageContract
     public function storeUploadedFileToS3(UploadedFile $uploadedFile, int $userId, string $fileGuid, string $fileType, string $variant): string
     {
         $content = file_get_contents($uploadedFile->getRealPath());
+        if ($content === false) {
+            throw new Exception('Failed to read the uploaded file');
+        }
         $extension = $uploadedFile->getClientOriginalExtension();
 
         return $this->storeToS3($content, $userId, $fileGuid, $fileType, $variant, $extension);

@@ -2,6 +2,8 @@
 
 namespace App\Services\AI\Prompt\Schema;
 
+use App\Services\OrganizationEvidenceSchema;
+
 /**
  * Provides the JSON Schema used for document analysis prompts.
  */
@@ -13,6 +15,7 @@ class DocumentPromptSchemaProvider
         return [
             'type' => 'object',
             'properties' => [
+                'organization' => OrganizationEvidenceSchema::get(),
                 'title' => ['type' => 'string', 'description' => 'Document title or main heading'],
                 'document_type' => [
                     'type' => 'string',

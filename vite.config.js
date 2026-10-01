@@ -7,7 +7,6 @@ export default defineConfig({
         laravel({
             input: 'resources/js/app.js',
             refresh: true,
-            valetTls: 'paperpulse.test', // Enable HTTPS for Valet
         }),
         vue({
             template: {

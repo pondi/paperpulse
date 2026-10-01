@@ -1,6 +1,12 @@
 <?php
 
 use App\Models\Invitation;
+use App\Models\User;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia;
 
 beforeEach(fn () => $this->withoutVite());
 
@@ -28,13 +34,12 @@ test('new users can register', function () {
     $response->assertRedirect(route('dashboard', absolute: false));
 });
 
-
 test('invitation registration links reject invalid expired and used tokens', function (string $state) {
     $token = 'unknown';
     if ($state !== 'invalid') {
         $invitation = Invitation::create([
             'email' => 'invite@example.com',
-            'token' => \Illuminate\Support\Str::random(64),
+            'token' => Str::random(64),
             'status' => 'sent',
             'expires_at' => $state === 'expired' ? now()->subMinute() : now()->addDay(),
             'used_at' => $state === 'used' ? now() : null,
@@ -52,12 +57,11 @@ test('valid invitation links disclose the invited email and token', function () 
 
     $this->get(route('register', ['token' => $invitation->token]))
         ->assertOk()
-        ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+        ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('Auth/Register')
             ->where('invitation.email', $invitation->email)
             ->where('invitation.token', $invitation->token));
 });
-
 
 test('failed user creation leaves an invitation retryable', function () {
     $invitation = Invitation::create(['email' => 'retry@example.com', 'status' => 'sent']);
@@ -67,7 +71,7 @@ test('failed user creation leaves an invitation retryable', function () {
         'invitation_token' => $invitation->token,
     ];
     $fail = true;
-    \App\Models\User::creating(function () use (&$fail) {
+    User::creating(function () use (&$fail) {
         if ($fail) {
             $fail = false;
             throw new RuntimeException('Simulated failed insert');
@@ -93,7 +97,19 @@ test('an invitation cannot create a second account or be used for another email'
     expect($invitation->fresh()->used_at)->toBeNull();
     $payload['email'] = $invitation->email;
     $this->post('/register', $payload)->assertRedirect(route('dashboard', absolute: false));
-    \Illuminate\Support\Facades\Auth::logout();
+    Auth::logout();
     $this->post('/register', $payload)->assertSessionHasErrors('email');
-    expect(\App\Models\User::where('email', $invitation->email)->count())->toBe(1);
+    expect(User::where('email', $invitation->email)->count())->toBe(1);
+});
+
+test('invitation registration sends verification only after account creation commits', function () {
+    Notification::fake();
+    $invitation = Invitation::create(['email' => 'verify@example.com', 'status' => 'sent']);
+    $this->post('/register', ['name' => 'New User', 'email' => $invitation->email,
+        'password' => 'password', 'password_confirmation' => 'password', 'invitation_token' => $invitation->token])
+        ->assertRedirect(route('dashboard', absolute: false));
+    $user = User::where('email', $invitation->email)->firstOrFail();
+    expect($user->hasVerifiedEmail())->toBeFalse();
+    Notification::assertSentTo($user, VerifyEmail::class);
+    $this->get('/dashboard')->assertRedirect(route('verification.notice'));
 });

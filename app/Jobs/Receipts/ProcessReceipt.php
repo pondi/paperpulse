@@ -390,7 +390,9 @@ class ProcessReceipt extends BaseJob
                 ]);
             }
 
-            $file->status = 'completed';
+            if ($file->status !== 'needs_review') {
+                $file->status = 'completed';
+            }
             $file->s3_processed_path = $metadata['s3OriginalPath']; // Use original as processed for receipts
 
             if ($thumbnailData) {

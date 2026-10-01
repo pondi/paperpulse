@@ -20,6 +20,7 @@ use App\Services\EntityFactory;
 use App\Services\Files\FileEntityCleanupService;
 use App\Services\Files\FilePreviewManager;
 use App\Services\Files\ImagePreviewGenerator;
+use App\Services\Receipts\Analysis\UserPreferencesLoader;
 use App\Services\Workers\WorkerFileManager;
 use Exception;
 use Illuminate\Support\Facades\Log;
@@ -76,6 +77,8 @@ class ProcessFileGemini extends BaseJob
         if ($file->status === 'needs_review') {
             return;
         }
+
+        UserPreferencesLoader::load($file->user_id, $file);
 
         // Idempotency: skip if file already has entities (prevents duplicates on retry)
         $isReprocessing = $metadata['metadata']['reprocessing'] ?? false;
@@ -354,7 +357,10 @@ class ProcessFileGemini extends BaseJob
             }
         }
 
-        $file->status = 'completed';
+        $file->refresh();
+        if ($file->status !== 'needs_review') {
+            $file->status = 'completed';
+        }
         $file->save();
 
         // Hard-delete old entities after successful reprocess

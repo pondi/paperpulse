@@ -5,6 +5,7 @@ namespace App\Services\Receipts\Analysis;
 use App\Contracts\Services\ReceiptEnricherContract;
 use App\Contracts\Services\ReceiptParserContract;
 use App\Contracts\Services\ReceiptValidatorContract;
+use App\Models\File;
 use App\Models\Receipt;
 use App\Services\Receipts\Deduplication\ReceiptDeduplicator;
 use App\Services\Receipts\LineItemsCreator;
@@ -44,7 +45,8 @@ class ReceiptAnalysisRunner
         ReceiptAnalysisLogger::start($fileId, $userId, $content, $structuredData);
 
         try {
-            $prefs = UserPreferencesLoader::load($userId);
+            $file = File::where('user_id', $userId)->findOrFail($fileId);
+            $prefs = UserPreferencesLoader::load($userId, $file);
             if ($debug) {
                 ReceiptAnalysisLogger::preferences($fileId, $prefs);
             }
@@ -57,7 +59,7 @@ class ReceiptAnalysisRunner
 
             DB::beginTransaction();
 
-            $merchant = MerchantResolver::resolve($data, $this->parser, $this->enricher);
+            $merchant = MerchantResolver::resolve($data, $this->parser, $this->enricher, $userId);
             if ($debug) {
                 ReceiptAnalysisLogger::merchantProcessed($fileId, $merchant?->id, $merchant?->name);
             }
@@ -98,6 +100,8 @@ class ReceiptAnalysisRunner
                 ReceiptAnalysisLogger::creatingReceipt($fileId, $receiptPayload);
             }
 
+            $receiptPayload = ReceiptProcessingPolicy::preserveUserValues($receiptPayload, $file);
+            ReceiptProcessingPolicy::applyReview($file, $totals);
             $receipt = ReceiptDeduplicator::getOrCreate($receiptPayload, $data, $this->parser);
 
             if ($prefs['extract_line_items']) {

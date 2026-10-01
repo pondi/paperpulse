@@ -5,6 +5,7 @@ namespace App\Jobs\Receipts;
 use App\Jobs\BaseJob;
 use App\Models\Merchant;
 use App\Models\Receipt;
+use App\Services\Jobs\JobMetadataPersistence;
 use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -89,7 +90,7 @@ class MatchMerchant extends BaseJob
                 $this->fetchDataFromCache();
             } else {
                 // Get fileId from cache for direct data usage
-                $fileMetaData = Cache::get("job.{$this->jobID}.fileMetaData");
+                $fileMetaData = JobMetadataPersistence::retrieve($this->jobID);
                 if ($fileMetaData && isset($fileMetaData['fileId'])) {
                     $this->fileId = $fileMetaData['fileId'];
                 } else {
@@ -170,7 +171,7 @@ class MatchMerchant extends BaseJob
 
     private function fetchDataFromCache()
     {
-        $fileMetaData = Cache::get("job.{$this->jobID}.fileMetaData");
+        $fileMetaData = JobMetadataPersistence::retrieve($this->jobID);
         $receiptMetaData = Cache::get("job.{$this->jobID}.receiptMetaData");
 
         if (! $fileMetaData || ! $receiptMetaData) {

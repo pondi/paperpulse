@@ -16,7 +16,6 @@ use App\Models\File;
 use App\Models\JobHistory;
 use App\Services\Jobs\JobMetadataPersistence;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -36,7 +35,10 @@ class FileJobChainDispatcher
      */
     public function dispatch(string $jobId, string $fileType): void
     {
-        $metadata = Cache::get("job.{$jobId}.fileMetaData");
+        $metadata = JobMetadataPersistence::retrieve($jobId);
+        if (! $metadata) {
+            throw new \RuntimeException("Missing durable processing metadata for {$jobId}");
+        }
         $source = $metadata['metadata']['source'] ?? 'upload';
         $tagIds = $metadata['metadata']['tagIds'] ?? [];
         $pulseDavFileId = $metadata['metadata']['pulseDavFileId'] ?? null;
@@ -64,8 +66,6 @@ class FileJobChainDispatcher
             ];
         } else {
             $provider = $metadata['processingProvider'] ?? config('ai.file_processing_provider', 'textract+openai');
-            $metadata['processingProvider'] = $provider;
-            JobMetadataPersistence::store($jobId, $metadata);
 
             if ($provider === 'ocr-only') {
                 $jobs = [(new ProcessFile($jobId))->onQueue($queue)];
@@ -93,7 +93,7 @@ class FileJobChainDispatcher
         }
 
         if (! empty($tagIds) && isset($metadata['fileId'])) {
-            $file = File::find($metadata['fileId']);
+            $file = File::withoutGlobalScope('user')->where('user_id', $metadata['userId'])->find($metadata['fileId']);
             if ($file) {
                 $jobs[] = (new ApplyTags($jobId, $file, $tagIds))->onQueue($queue);
             }

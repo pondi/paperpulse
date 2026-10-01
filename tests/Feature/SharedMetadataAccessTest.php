@@ -4,8 +4,13 @@ use App\Models\Collection;
 use App\Models\CollectionShare;
 use App\Models\Document;
 use App\Models\ExtractableEntity;
+use App\Models\File;
+use App\Models\FileShare;
+use App\Models\Merchant;
+use App\Models\Receipt;
 use App\Models\User;
 use App\Services\CollectionSharingService;
+use App\Services\SharingService;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(fn () => $this->withoutVite());
@@ -33,4 +38,41 @@ test('shared collection metadata is visible only for active authorized recipient
     $collection->delete();
     expect(app(CollectionSharingService::class)->getSharedWithUser($recipient))->toHaveCount(0);
     $this->get('/collections/'.$collection->id)->assertNotFound();
+});
+
+test('mixed shared lists return actual active entities with a consistent shape', function () {
+    $owner = User::factory()->create();
+    $recipient = User::factory()->create();
+    $document = Document::factory()->create(['user_id' => $owner->id, 'file_id' => File::factory()->create(['user_id' => $owner->id])->id]);
+    $receipt = Receipt::factory()->create(['user_id' => $owner->id, 'file_id' => File::factory()->create(['user_id' => $owner->id])->id]);
+    foreach ([[$receipt, 'receipt', null], [$document, 'document', null]] as [$entity, $type, $expires]) {
+        FileShare::create(['file_id' => $entity->file_id, 'file_type' => $type,
+            'shared_by_user_id' => $owner->id, 'shared_with_user_id' => $recipient->id,
+            'permission' => 'view', 'shared_at' => now(), 'expires_at' => $expires]);
+    }
+    $expired = Document::factory()->create(['user_id' => $owner->id, 'file_id' => File::factory()->create(['user_id' => $owner->id])->id]);
+    FileShare::create(['file_id' => $expired->file_id, 'file_type' => 'document',
+        'shared_by_user_id' => $owner->id, 'shared_with_user_id' => $recipient->id,
+        'permission' => 'view', 'shared_at' => now(), 'expires_at' => now()->subMinute()]);
+    $this->actingAs($recipient);
+    $items = app(SharingService::class)->getSharedWithUser($recipient);
+    expect($items)->toHaveCount(2);
+    expect($items->pluck('file')->map(fn ($entity) => get_class($entity))->all())
+        ->toEqualCanonicalizing([Document::class, Receipt::class]);
+    foreach ($items as $item) {
+        expect(array_keys($item))->toBe(['share', 'file', 'shared_by', 'permission', 'expires_at']);
+    }
+    $document->delete();
+    expect(app(SharingService::class)->getSharedWithUser($recipient))->toHaveCount(1);
+});
+
+test('authorized receipt metadata retains merchant names for recipients', function () {
+    $owner = User::factory()->create();
+    $recipient = User::factory()->create();
+    $merchant = Merchant::create(['user_id' => $owner->id, 'name' => 'Visible merchant']);
+    $file = File::factory()->create(['user_id' => $owner->id]);
+    $receipt = Receipt::factory()->create(['file_id' => $file->id, 'user_id' => $owner->id, 'merchant_id' => $merchant->id]);
+    FileShare::create(['file_id' => $file->id, 'file_type' => 'receipt',
+        'shared_by_user_id' => $owner->id, 'shared_with_user_id' => $recipient->id, 'permission' => 'view', 'shared_at' => now()]);
+    $this->actingAs($recipient)->get('/receipts/'.$receipt->id)->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->where('receipt.merchant.name', 'Visible merchant'));
 });

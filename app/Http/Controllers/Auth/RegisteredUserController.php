@@ -20,7 +20,7 @@ class RegisteredUserController extends Controller
     /**
      * Display the registration view.
      */
-    public function create(Request $request): Response
+    public function create(Request $request): Response|RedirectResponse
     {
         $invitation = null;
         $token = $request->input('token');

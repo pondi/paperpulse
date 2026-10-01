@@ -10,6 +10,7 @@ use App\Services\AI\OpenAI\ResponseParser;
 use App\Services\AI\PromptTemplateService;
 use App\Services\AI\Shared\AIDataNormalizer;
 use App\Services\AI\Shared\AIFallbackHandler;
+use App\Services\AI\Shared\DocumentContentBudget;
 use App\Services\AI\Shared\ResponseShapeValidator;
 use Exception;
 use Illuminate\Support\Facades\Log;
@@ -148,7 +149,7 @@ class OpenAIProvider implements AIService
 
             // Use template service to get structured prompt
             $promptData = $this->promptService->getPrompt('document', [
-                'content' => substr($content, 0, 8000),
+                'content' => '',
                 'domain_context' => $options['domain_context'] ?? null,
                 'analysis_depth' => $options['analysis_depth'] ?? 'standard',
                 'focus_areas' => $options['focus_areas'] ?? null,
@@ -158,7 +159,24 @@ class OpenAIProvider implements AIService
                 'include_sentiment' => $options['include_sentiment'] ?? false,
             ], $options);
 
-            $response = OpenAI::chat()->create(ChatPayloadBuilder::forDocument($promptData, $model));
+            $payload = ChatPayloadBuilder::forDocument($promptData, $model);
+            $contextTokens = (int) config('ai.document_analysis.context_tokens', 32768);
+            $overheadBytes = strlen(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $budget = min((int) config('ai.document_analysis.max_chars', 16000), intdiv($contextTokens - $payload['max_completion_tokens'] - $overheadBytes - 128, 6));
+            $selected = DocumentContentBudget::select($content, $budget);
+            $promptData = $this->promptService->getPrompt('document', [
+                'content' => $selected['content'],
+                'domain_context' => $options['domain_context'] ?? null,
+                'analysis_depth' => $options['analysis_depth'] ?? 'standard',
+                'focus_areas' => $options['focus_areas'] ?? null,
+                'summary_length' => $options['summary_length'] ?? '2-3 sentences',
+                'max_tags' => $options['max_tags'] ?? '5-8',
+                'output_language' => $options['output_language'] ?? null,
+                'include_sentiment' => $options['include_sentiment'] ?? false,
+            ], $options);
+            $payload = ChatPayloadBuilder::forDocument($promptData, $model);
+            Log::info('[OpenAIProvider] Document coverage', $selected['coverage']);
+            $response = OpenAI::chat()->create($payload);
 
             $result = ResponseParser::jsonContent($response);
             if (isset($promptData['schema'])) {

@@ -157,7 +157,7 @@ return [
     |
     */
 
-    'fast_termination' => env('HORIZON_FAST_TERMINATION', true),
+    'fast_termination' => env('HORIZON_FAST_TERMINATION', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -186,7 +186,7 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['default', 'receipts', 'documents'],
+            'queue' => ['default', 'receipts', 'documents', 'conversions'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
@@ -194,7 +194,7 @@ return [
             'maxJobs' => 0,
             'memory' => 256,
             'tries' => 3,
-            'timeout' => 120,
+            'timeout' => 3660,
             'nice' => 0,
             'backoff' => [1, 5, 10],
             'rest' => 0,

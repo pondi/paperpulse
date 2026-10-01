@@ -9,6 +9,7 @@ use App\Support\UploadedContent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Support\UploadedContent;
 
 class FileServeController extends Controller
 {

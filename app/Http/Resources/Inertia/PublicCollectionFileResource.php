@@ -7,6 +7,7 @@ namespace App\Http\Resources\Inertia;
 use App\Models\File;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**

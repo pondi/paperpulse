@@ -12,7 +12,10 @@ use App\Models\Receipt;
 use App\Services\AI\Extractors\EntityExtractorFactory;
 use App\Services\AI\FileManager\GeminiFileManager;
 use App\Services\AI\Providers\GeminiFileAnalyzer;
+use App\Services\AI\Shared\ProcessingStageCache;
+use App\Services\AI\Shared\ProcessingUsageBudget;
 use App\Services\AI\TypeClassification\ClassificationResult;
+use App\Services\AI\TypeClassification\ClassificationSchema;
 use App\Services\AI\TypeClassification\GeminiTypeClassifier;
 use App\Services\BankStatements\TransactionCategorizationService;
 use App\Services\DuplicateDetectionService;
@@ -120,6 +123,7 @@ class ProcessFileGemini extends BaseJob
             function (string $localPath) use ($fileManager, $classifier, $file, $previewManager) {
                 $this->updateProgress(30);
 
+                $contentHash = hash_file('sha256', $localPath);
                 $mime = mime_content_type($localPath) ?: '';
                 $extension = strtolower(pathinfo($localPath, PATHINFO_EXTENSION));
                 $analyzer = app(GeminiFileAnalyzer::class);
@@ -163,13 +167,13 @@ class ProcessFileGemini extends BaseJob
                     ]);
 
                     $correctedType = $file->meta['review']['corrected_type'] ?? null;
+                    $hints = ['filename' => $file->filename, 'extension' => $extension, 'mime_type' => $uploadResult['mimeType']];
+                    $version = ['model' => config('ai.providers.gemini.model'), 'options' => ['mime' => $uploadResult['mimeType'], 'output_tokens' => config('ai.providers.gemini.max_output_tokens', 8192)]];
                     $classification = $correctedType
                         ? new ClassificationResult($correctedType, 1.0, 'Owner corrected document type')
-                        : $classifier->classify($fileUri, [
-                            'filename' => $file->filename,
-                            'extension' => $extension,
-                            'mime_type' => $uploadResult['mimeType'],
-                        ]);
+                        : ClassificationResult::fromGeminiResponse(ProcessingStageCache::remember($file->user_id, $contentHash, 'classification', [
+                            ...$version, 'prompt' => ClassificationSchema::getPrompt($hints), 'schema' => ClassificationSchema::get(),
+                        ], fn () => ProcessingUsageBudget::run($file->user_id, $this->jobID, 'classification', fn () => $classifier->classify($fileUri, $hints)->toArray()), $file->guid));
 
                     Log::info('[ProcessFileGemini] Classification result', [
                         'file_id' => $file->id,
@@ -220,10 +224,11 @@ class ProcessFileGemini extends BaseJob
                     }
 
                     $extractor = EntityExtractorFactory::create($classification->type);
-                    $extracted = $extractor->extract($fileUri, $file, [
-                        'classification' => $classification,
-                        'mime_type' => $uploadResult['mimeType'],
-                    ]);
+                    $extracted = ProcessingStageCache::remember($file->user_id, $contentHash, 'extraction:'.$classification->type, [
+                        ...$version, 'prompt' => $extractor->getPrompt(), 'schema' => $extractor->getSchema(), 'normalizer_version' => 1,
+                    ], fn () => ProcessingUsageBudget::run($file->user_id, $this->jobID, 'extraction', fn () => $extractor->extract($fileUri, $file, [
+                        'classification' => $classification, 'mime_type' => $uploadResult['mimeType'],
+                    ])), $file->guid);
 
                     $this->updateProgress(70);
 
@@ -279,6 +284,8 @@ class ProcessFileGemini extends BaseJob
             'ProcessFileGemini'
         );
 
+        $file->meta = array_merge($file->fresh()->meta ?? [], ['processing_usage' => ProcessingUsageBudget::usage($file->user_id, $this->jobID)]);
+        $file->save();
         if ($result['needs_review'] ?? false) {
             return;
         }

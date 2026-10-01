@@ -362,7 +362,10 @@ class ProcessDocument extends BaseJob
                 'extracted_at' => now(),
             ]);
 
-            $file->status = 'completed';
+            $file->refresh();
+            if ($file->status !== 'needs_review') {
+                $file->status = 'completed';
+            }
             $file->save();
 
             DB::commit();

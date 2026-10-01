@@ -7,6 +7,9 @@ use App\Contracts\Services\ReceiptParserContract;
 use App\Contracts\Services\ReceiptValidatorContract;
 use App\Models\File;
 use App\Models\Receipt;
+use App\Services\AI\PromptTemplateService;
+use App\Services\AI\Shared\ProcessingStageCache;
+use App\Services\AI\Shared\ProcessingUsageBudget;
 use App\Services\Receipts\Deduplication\ReceiptDeduplicator;
 use App\Services\Receipts\LineItemsCreator;
 use App\Services\Receipts\TotalsCalculator;
@@ -51,8 +54,20 @@ class ReceiptAnalysisRunner
                 ReceiptAnalysisLogger::preferences($fileId, $prefs);
             }
 
-            $analysis = $parseFn();
-            [$data, $warnings] = ParsedDataValidator::validateAndSanitize($analysis['data'], $fileId, $this->validator);
+            $prompt = app(PromptTemplateService::class)->getPrompt('receipt', ['content' => '']);
+            $runId = $file->meta['processing_generation'] ?? 'receipt:'.$fileId;
+            $analysis = ProcessingStageCache::remember($userId, hash('sha256', $content.json_encode($structuredData)), 'legacy_receipt', [
+                'prompt' => $prompt['messages'], 'schema' => $prompt['schema'], 'model' => config('ai.models.receipt'), 'options' => config('ai.options'),
+            ], fn () => ProcessingUsageBudget::run($userId, $runId, 'extraction', function () use ($parseFn, $fileId): array {
+                $analysis = $parseFn();
+                [$sanitized, $warnings] = ParsedDataValidator::validateAndSanitize($analysis['data'] ?? [], $fileId, $this->validator);
+
+                return [...$analysis, 'data' => $sanitized, 'processing_validation_warnings' => $warnings];
+            }), $file->guid);
+            $file->meta = array_merge($file->meta ?? [], ['processing_usage' => ProcessingUsageBudget::usage($userId, $runId)]);
+            $file->save();
+            $data = $analysis['data'];
+            $warnings = $analysis['processing_validation_warnings'] ?? [];
             if ($debug) {
                 ReceiptAnalysisLogger::dataValidated($fileId, $warnings);
             }

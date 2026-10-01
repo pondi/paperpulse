@@ -6,6 +6,7 @@ namespace App\Services\AI\Providers;
 
 use App\Exceptions\GeminiApiException;
 use App\Services\AI\FileManager\GeminiMimeType;
+use App\Services\AI\Shared\ProcessingUsageBudget;
 use App\Services\AI\Shared\ResponseShapeValidator;
 use Exception;
 use Illuminate\Support\Facades\Http;
@@ -88,10 +89,13 @@ class GeminiProvider
         $lastException = null;
 
         for ($attempt = 1; $attempt <= $this->maxProviderRetries; $attempt++) {
+            ProcessingUsageBudget::reserve(($payload['inputTokenCount'] ?? strlen(json_encode($payload['contents']))) + ($payload['generationConfig']['maxOutputTokens'] ?? 8192));
+            $requestPayload = $payload;
+            unset($requestPayload['inputTokenCount']);
             try {
                 $response = Http::timeout((int) config('ai.providers.gemini.timeout', 90))
                     ->asJson()
-                    ->post($endpoint, $payload);
+                    ->post($endpoint, $requestPayload);
             } catch (Exception $e) {
                 // Connection/timeout errors are always retryable at provider level
                 if ($attempt < $this->maxProviderRetries) {
@@ -110,6 +114,7 @@ class GeminiProvider
 
             if ($response->successful()) {
                 $responseBody = $response->json();
+                ProcessingUsageBudget::record((int) ($responseBody['usageMetadata']['promptTokenCount'] ?? 0), (int) ($responseBody['usageMetadata']['candidatesTokenCount'] ?? 0));
                 $textResponse = $this->responseParser->extractTextResponse($responseBody);
 
                 return ['body' => $responseBody, 'text' => $textResponse];
@@ -290,6 +295,7 @@ class GeminiProvider
             'conversation_turns' => count($contents),
         ]);
 
+        ProcessingUsageBudget::reserve(0);
         $count = Http::timeout(30)->post(sprintf('https://generativelanguage.googleapis.com/v1beta/models/%s:countTokens?key=%s', $model, $apiKey), ['contents' => $contents]);
         $inputTokens = $count->json('totalTokens');
         if (! $count->successful() || ! is_int($inputTokens)) {
@@ -299,6 +305,7 @@ class GeminiProvider
             throw new GeminiApiException('Gemini input token budget exceeded', GeminiApiException::CODE_FILE_TOO_LARGE, false);
         }
         Log::info('[GeminiProvider] Input budget checked', ['input_tokens' => $inputTokens, 'stage' => 'token_budget']);
+        $payload['inputTokenCount'] = $inputTokens;
         $result = $this->sendGeminiRequest($payload, $model, $apiKey);
 
         $parsed = $this->responseParser->parseJsonResponse($result['text']);

@@ -84,6 +84,8 @@ class ProcessFileGeminiTest extends TestCase
                 'mimeType' => 'text/plain',
                 'sizeBytes' => 20,
             ]);
+        $fileManager->shouldReceive('waitUntilActive')->once();
+        $fileManager->shouldNotReceive('countTokens');
         $fileManager->shouldReceive('deleteFile')
             ->once()
             ->with('files/test-file-123')
@@ -110,6 +112,8 @@ class ProcessFileGeminiTest extends TestCase
 
         // Mock DocumentExtractor (resolved by EntityExtractorFactory::create('document'))
         $documentExtractor = Mockery::mock(DocumentExtractor::class);
+        $documentExtractor->shouldReceive('getPrompt')->andReturn('Extract this document');
+        $documentExtractor->shouldReceive('getSchema')->andReturn(['type' => 'object']);
         $documentExtractor->shouldReceive('extract')
             ->once()
             ->andReturn([

@@ -341,6 +341,8 @@ class ProcessReceipt extends BaseJob
         }
 
         // Cache the receipt data for potential job restarts (increased TTL)
+        $metadata['artifacts']['receipt'] = $receiptData;
+        $this->storeMetadata($metadata);
         Cache::put("job.{$this->jobID}.receiptMetaData", $receiptData, now()->addHours(4));
 
         Log::debug('Receipt data cached for merchant matching', [

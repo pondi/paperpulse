@@ -83,7 +83,7 @@ class FileContentController extends BaseApiController
             return [null, 'pdf', 'application/pdf'];
         }
 
-        $extension = strtolower((string) ($file->fileExtension ?? pathinfo((string) $file->original_filename, PATHINFO_EXTENSION) ?? ''));
+        $extension = strtolower((string) ($file->fileExtension ?? pathinfo((string) $file->fileName, PATHINFO_EXTENSION) ?? ''));
         $extension = $extension !== '' ? $extension : 'bin';
 
         $contentType = $file->mime_type ?: $this->mimeForExtension($extension);
@@ -115,7 +115,7 @@ class FileContentController extends BaseApiController
 
     private function buildFilename(File $file, string $extension): string
     {
-        $base = $file->original_filename ?: ($file->fileName ?: 'file.'.$extension);
+        $base = $file->fileName ?: 'file.'.$extension;
 
         $base = preg_replace('/[^A-Za-z0-9._-]+/', '_', (string) $base);
 

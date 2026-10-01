@@ -17,7 +17,7 @@ class FileListResource extends JsonResource
         $entity = $primaryEntity?->entity;
         $entityType = $primaryEntity?->entity_type;
 
-        $extension = $this->fileExtension ?: pathinfo((string) $this->original_filename, PATHINFO_EXTENSION);
+        $extension = $this->fileExtension ?: pathinfo((string) $this->fileName, PATHINFO_EXTENSION);
         $hasArchivePdf = ! empty($this->s3_archive_path) || strtolower((string) $extension) === 'pdf';
 
         $title = $this->buildTitle($entity, $entityType);
@@ -35,7 +35,7 @@ class FileListResource extends JsonResource
             'processing_type' => $this->processing_type,
             'status' => $this->status,
 
-            'name' => $this->fileName ?? $this->original_filename,
+            'name' => $this->fileName,
             'extension' => $this->fileExtension,
             'mime_type' => $this->fileType ?? $this->mime_type,
             'size' => $this->fileSize ?? $this->file_size,
@@ -120,7 +120,7 @@ class FileListResource extends JsonResource
             return 'Invoice from '.($entity->vendor_name ?? $entity->from_name ?? 'Unknown');
         }
 
-        return $this->fileName ?? $this->original_filename;
+        return $this->fileName;
     }
 
     private function buildSnippet($entity, ?string $entityType): ?string

@@ -47,7 +47,7 @@ trait HandlesEntityCrud
                 abort(404, 'File not found');
             }
 
-            $rawFilename = $entity->file->original_filename
+            $rawFilename = $entity->file->fileName
                 ?? ($this->getEntityTitle($entity)
                     ? preg_replace('/[^a-zA-Z0-9\-_\.]/', '_', $this->getEntityTitle($entity)).'.'.$extension
                     : $this->getModelName().'.'.$extension);

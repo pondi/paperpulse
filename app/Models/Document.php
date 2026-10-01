@@ -196,7 +196,7 @@ class Document extends Model implements Taggable
             'category_name' => $this->category?->name,
             'tags' => $this->tags?->pluck('name')->toArray() ?? [],
             'collections' => $this->file?->collections?->pluck('name')->toArray() ?? [],
-            'file_name' => $this->file?->original_filename,
+            'file_name' => $this->file?->fileName,
             'file_type' => $this->file?->mime_type,
             'file_size' => $this->file?->file_size,
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),

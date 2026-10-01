@@ -35,7 +35,7 @@ class CsvMappingController extends Controller
         }
 
         return Inertia::render('BankStatements/CsvMapping', [
-            'file' => ['id' => $file->id, 'name' => $file->original_filename ?? $file->fileName],
+            'file' => ['id' => $file->id, 'name' => $file->fileName],
             'headers' => $headers,
             'rows' => $rows,
             'mapping' => $mapping,
@@ -58,7 +58,7 @@ class CsvMappingController extends Controller
             ]);
             JobHistory::create([
                 'uuid' => $jobId, 'name' => 'CSV Import', 'status' => 'pending', 'queue' => 'default', 'order_in_chain' => 0,
-                'file_id' => $file->id, 'file_name' => $file->original_filename ?? $file->fileName,
+                'file_id' => $file->id, 'file_name' => $file->fileName,
             ]);
             JobMetadataPersistence::store($jobId, [
                 'fileId' => $file->id, 'userId' => $file->user_id, 'processingGeneration' => $jobId,

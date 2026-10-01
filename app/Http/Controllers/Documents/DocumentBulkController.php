@@ -106,20 +106,19 @@ class DocumentBulkController extends Controller
                         continue;
                     }
 
-                    // Generate safe filename using original filename
-                    $originalName = $document->file->original_filename ?? $document->title;
+                    $originalName = $document->file->fileName;
                     $extension = $extension ?: 'txt';
 
-                    // Remove invalid characters
-                    $safeFilename = preg_replace('/[^a-zA-Z0-9\-_\.]/', '_', $originalName);
+                    $safeFilename = preg_replace('/[^\pL\pN _.-]/u', '_', $originalName);
+                    $baseFilename = str_ends_with(strtolower($safeFilename), '.'.strtolower($extension))
+                        ? $safeFilename
+                        : $safeFilename.'.'.$extension;
 
-                    // Handle duplicate filenames
-                    $baseFilename = $safeFilename.'.'.$extension;
                     $finalFilename = $baseFilename;
                     $counter = 1;
 
                     while (isset($filenameCounter[$finalFilename])) {
-                        $finalFilename = $safeFilename.'_'.$counter.'.'.$extension;
+                        $finalFilename = pathinfo($baseFilename, PATHINFO_FILENAME).'_'.$counter.'.'.pathinfo($baseFilename, PATHINFO_EXTENSION);
                         $counter++;
                     }
 

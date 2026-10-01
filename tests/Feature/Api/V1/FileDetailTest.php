@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Resources\Api\V1\FileListResource;
+use App\Http\Resources\Api\V1\FileResource;
 use App\Models\Category;
 use App\Models\Document;
 use App\Models\ExtractableEntity;
@@ -8,11 +10,35 @@ use App\Models\LineItem;
 use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Models\User;
+use App\Services\Files\StoragePathBuilder;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
     Sanctum::actingAs($this->user);
+});
+
+it('serializes and downloads the persisted uploaded filename', function (): void {
+    Storage::fake('paperpulse');
+    $file = File::factory()->create([
+        'user_id' => $this->user->id,
+        'file_type' => 'document',
+        'fileName' => 'uploaded-report.pdf',
+        'fileExtension' => 'pdf',
+    ]);
+    Storage::disk('paperpulse')->put(
+        StoragePathBuilder::storagePath($this->user->id, $file->guid, 'document', 'original', 'pdf'),
+        '%PDF-original'
+    );
+
+    expect((new FileResource($file))->resolve()['name'])->toBe('uploaded-report.pdf')
+        ->and((new FileListResource($file))->resolve()['name'])->toBe('uploaded-report.pdf')
+        ->and((new FileListResource($file))->resolve()['title'])->toBe('uploaded-report.pdf');
+
+    $this->get(route('api.files.content', ['file' => $file, 'disposition' => 'attachment']))
+        ->assertOk()
+        ->assertHeader('Content-Disposition', 'attachment; filename=uploaded-report.pdf');
 });
 
 it('returns detailed receipt data for a receipt file', function () {

@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *
  * @property int $id
  * @property int $user_id
- * @property string|null $original_filename
+ * @property string|null $fileName
  * @property string|null $file_path
  * @property string|null $mime_type
  * @property string|null $status
@@ -46,7 +46,6 @@ class File extends Model
         'file_created_at',
         'file_modified_at',
         'file_path',
-        'original_filename',
         'file_size',
         'mime_type',
         'status',

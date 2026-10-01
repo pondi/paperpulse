@@ -2,12 +2,15 @@
 
 use App\Models\BankStatement;
 use App\Models\Contract;
+use App\Models\Document;
 use App\Models\File;
 use App\Models\Invoice;
+use App\Models\Receipt;
 use App\Models\ReturnPolicy;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Models\Warranty;
+use App\Services\Search\SearchResultFormatter;
 use App\Services\SearchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -18,6 +21,30 @@ beforeEach(function () {
     $this->actingAs($this->user);
     $this->searchService = app(SearchService::class);
 });
+
+it('serializes the persisted uploaded filename in search results', function (string $model, string $method): void {
+    $file = File::factory()->create(['user_id' => $this->user->id, 'fileName' => 'uploaded-report.pdf']);
+    $entity = $model::factory()->create(['user_id' => $this->user->id, 'file_id' => $file->id]);
+    $result = app(SearchResultFormatter::class)->{$method}(collect([$entity]))->first();
+
+    expect($file->fresh()->fileName)->toBe('uploaded-report.pdf')
+        ->and($file->isFillable('original_filename'))->toBeFalse()
+        ->and($result['filename'])->toBe('uploaded-report.pdf')
+        ->and($result['file']['filename'])->toBe('uploaded-report.pdf');
+
+    if ($entity instanceof Document) {
+        expect($entity->toSearchableArray()['file_name'])->toBe('uploaded-report.pdf');
+    }
+})->with([
+    'receipt' => [Receipt::class, 'formatReceipts'],
+    'document' => [Document::class, 'formatDocuments'],
+    'invoice' => [Invoice::class, 'formatInvoices'],
+    'contract' => [Contract::class, 'formatContracts'],
+    'voucher' => [Voucher::class, 'formatVouchers'],
+    'warranty' => [Warranty::class, 'formatWarranties'],
+    'return policy' => [ReturnPolicy::class, 'formatReturnPolicies'],
+    'bank statement' => [BankStatement::class, 'formatBankStatements'],
+]);
 
 // ─── Type filtering ──────────────────────────────────────────────
 

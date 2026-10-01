@@ -136,7 +136,7 @@ class DocumentController extends BaseResourceController
 
         // Add file size for display
         $data['size'] = $file->fileSize ?? $file->file_size ?? 0;
-        $data['file_name'] = $file->fileName ?? $file->original_filename;
+        $data['file_name'] = $file->fileName;
         $data['file_type'] = $file->fileType ?? $file->mime_type;
 
         // Note and description live on the File model; read directly to avoid lazy-loading
@@ -405,8 +405,9 @@ class DocumentController extends BaseResourceController
                 abort(404, 'Document file not found');
             }
 
-            $filename = $document->file->original_filename
+            $filename = $document->file->fileName
                 ?? ($document->title ? preg_replace('/[^a-zA-Z0-9\-_\.]/', '_', $document->title).'.'.$extension : 'document.'.$extension);
+            $filename = preg_replace('/["\r\n\x00-\x1f\x7f]/', '_', $filename);
 
             return response($content)
                 ->header('Content-Type', $document->file->mime_type ?? 'application/octet-stream')

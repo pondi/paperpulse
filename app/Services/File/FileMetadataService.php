@@ -7,6 +7,7 @@ use App\Models\File;
 use App\Services\Files\DocumentMetadataExtractor;
 use App\Services\Files\ImageMetadataExtractor;
 use App\Services\Files\JobNameGenerator;
+use App\Services\FolderOrganizationService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 
@@ -51,6 +52,7 @@ class FileMetadataService implements FileMetadataContract
         $file->file_created_at = $dates['created_at'];
         $file->file_modified_at = $dates['modified_at'];
         $file->save();
+        $file = app(FolderOrganizationService::class)->initializeInbox($file);
 
         Log::debug('[FileMetadataService] File record created from upload', [
             'file_id' => $file->id,
@@ -84,6 +86,7 @@ class FileMetadataService implements FileMetadataContract
         $file->file_created_at = $fileData['file_created_at'] ?? null;
         $file->file_modified_at = $fileData['file_modified_at'] ?? null;
         $file->save();
+        $file = app(FolderOrganizationService::class)->initializeInbox($file);
 
         Log::debug('[FileMetadataService] File record created from data', [
             'file_id' => $file->id,
@@ -209,6 +212,7 @@ class FileMetadataService implements FileMetadataContract
     {
         $file->s3_original_path = $s3Path;
         $file->save();
+        $file = app(FolderOrganizationService::class)->initializeInbox($file);
 
         Log::debug('[FileMetadataService] File updated with S3 path', [
             'file_id' => $file->id,

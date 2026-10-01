@@ -149,6 +149,18 @@ abstract class BaseEntityFactory
             $attributes[$rawField] = $data[$rawField] ?? $data;
         }
 
+        if (in_array('metadata', $this->fields(), true)) {
+            $metadata = is_array($attributes['metadata'] ?? null) ? $attributes['metadata'] : [];
+            if (isset($data['organization']) && is_array($data['organization']) && $data['organization'] !== []) {
+                $metadata['organization_evidence'] = $data['organization'];
+            }
+            $confidence = $data['quality']['confidence_score'] ?? $data['confidence_score'] ?? null;
+            if (is_int($confidence) || is_float($confidence)) {
+                $metadata['extraction_confidence'] = $confidence;
+            }
+            $attributes['metadata'] = $metadata === [] ? null : $metadata;
+        }
+
         return $attributes;
     }
 }

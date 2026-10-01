@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\Inertia;
 
 use App\Models\File;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -50,6 +51,7 @@ class PublicCollectionFileResource extends JsonResource
             'downloadUrl' => $serveBaseUrl.'?download=1',
             'entity_type' => $entityData['type'],
             'entity_details' => $entityData['details'],
+            'supplemental_entities' => $this->supplementalEntities(),
             'tags' => $this->whenLoaded('tags', fn () => $this->tags->map(fn ($tag) => [
                 'id' => $tag->id,
                 'name' => $tag->name,
@@ -69,18 +71,36 @@ class PublicCollectionFileResource extends JsonResource
             return ['type' => null, 'title' => null, 'details' => []];
         }
 
-        $entity = $primaryEntity->entity;
-        $type = $primaryEntity->entity_type;
+        return $this->serializeEntity($primaryEntity->entity_type, $primaryEntity->entity);
+    }
+
+    /** @return array<int, array{type: string|null, title: string|null, details: array<string, mixed>}> */
+    private function supplementalEntities(): array
+    {
+        if (! $this->relationLoaded('extractableEntities')) {
+            return [];
+        }
+
+        return $this->extractableEntities->filter(fn ($extracted) => ! $extracted->is_primary
+            && in_array($extracted->entity_type, ['warranty', 'return_policy'], true) && $extracted->entity)
+            ->map(fn ($extracted) => $this->serializeEntity($extracted->entity_type, $extracted->entity))->values()->all();
+    }
+
+    /** @return array{type: string|null, title: string|null, details: array<string, mixed>} */
+    private function serializeEntity(string $type, Model $entity): array
+    {
 
         $parties = is_array($entity->parties ?? null) ? $entity->parties : [];
 
         $title = match ($type) {
-            'receipt' => $entity->merchant_name ?? null,
+            'receipt' => $entity->merchant?->name,
             'document' => $entity->title ?? null,
             'invoice' => $entity->invoice_number
                 ? 'Invoice #'.$entity->invoice_number
                 : ($entity->from_name ?? null),
             'contract' => $entity->contract_title ?? null,
+            'warranty' => $entity->product_name ?? null,
+            'return_policy' => 'Return policy',
             'voucher' => $entity->code ?? null,
             'bank_statement' => $entity->bank_name
                 ? 'Statement - '.$entity->bank_name
@@ -93,9 +113,9 @@ class PublicCollectionFileResource extends JsonResource
             'title' => $title,
             'details' => match ($type) {
                 'receipt' => [
-                    'merchant_name' => $entity->merchant_name ?? null,
-                    'purchase_date' => $entity->purchase_date?->toDateString(),
-                    'total' => $entity->total ?? null,
+                    'merchant_name' => $entity->merchant?->name,
+                    'purchase_date' => $entity->receipt_date?->toDateString(),
+                    'total' => $entity->total_amount ?? null,
                     'currency' => $entity->currency ?? null,
                 ],
                 'document' => [
@@ -111,7 +131,7 @@ class PublicCollectionFileResource extends JsonResource
                 ],
                 'contract' => [
                     'title' => $entity->contract_title ?? null,
-                    'parties' => ! empty($parties) ? implode(' & ', $parties) : null,
+                    'parties' => collect($parties)->map(fn ($party) => is_string($party) ? $party : (is_array($party) && is_string($party['name'] ?? null) ? $party['name'] : null))->filter(fn ($name) => $name !== null && $name !== '')->implode(' & ') ?: null,
                     'effective_date' => $entity->effective_date?->toDateString(),
                 ],
                 'voucher' => [
@@ -119,6 +139,16 @@ class PublicCollectionFileResource extends JsonResource
                     'value' => $entity->current_value ?? $entity->original_value ?? null,
                     'currency' => $entity->currency ?? null,
                     'expires_at' => $entity->expiry_date?->toDateString(),
+                ],
+                'warranty' => [
+                    'product_name' => $entity->product_name,
+                    'provider' => $entity->warranty_provider,
+                    'expires_at' => $entity->warranty_end_date?->toDateString(),
+                ],
+                'return_policy' => [
+                    'return_deadline' => $entity->return_deadline?->toDateString(),
+                    'is_final_sale' => (bool) $entity->is_final_sale,
+                    'requires_receipt' => (bool) $entity->requires_receipt,
                 ],
                 'bank_statement' => [
                     'bank_name' => $entity->bank_name ?? null,

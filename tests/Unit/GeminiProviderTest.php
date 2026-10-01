@@ -21,6 +21,7 @@ class GeminiProviderTest extends TestCase
             'generativelanguage.googleapis.com/*' => Http::response([
                 'candidates' => [
                     [
+                        'finishReason' => 'STOP',
                         'content' => [
                             'parts' => [
                                 ['text' => '{"entities": [{"type": "document", "data": {}}]}'],

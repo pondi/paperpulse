@@ -5,7 +5,6 @@ namespace Database\Factories;
 use App\Enums\TransactionCategory;
 use App\Models\BankStatement;
 use App\Models\BankTransaction;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -27,8 +26,8 @@ class BankTransactionFactory extends Factory
         }
 
         return [
-            'user_id' => User::factory(),
             'bank_statement_id' => BankStatement::factory(),
+            'user_id' => fn (array $attributes): int => BankStatement::withoutGlobalScope('user')->findOrFail($attributes['bank_statement_id'])->user_id,
             'transaction_date' => $this->faker->dateTimeBetween('-1 month', 'now'),
             'posting_date' => $this->faker->optional()->dateTimeBetween('-1 month', 'now'),
             'description' => $this->faker->sentence(),

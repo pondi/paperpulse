@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI\Providers;
 
 use App\Exceptions\GeminiApiException;
-use Exception;
-use Illuminate\Support\Facades\Log;
 use Spatie\PdfToImage\Pdf;
 
 /**
@@ -219,37 +217,13 @@ class GeminiFileAnalyzer
      */
     protected function getPdfPageCount(string $filePath): int
     {
+        if (! extension_loaded('imagick') || ! exec('which gs 2>/dev/null')) {
+            throw new GeminiApiException('PDF page counting requires Imagick and Ghostscript', GeminiApiException::CODE_API_ERROR, false);
+        }
         try {
-            if (! extension_loaded('imagick')) {
-                Log::debug('[GeminiFileAnalyzer] Imagick not available for PDF page counting, assuming single page');
-
-                return 1;
-            }
-
-            $gsPath = exec('which gs 2>/dev/null');
-            if (empty($gsPath)) {
-                Log::debug('[GeminiFileAnalyzer] Ghostscript not available for PDF page counting, assuming single page');
-
-                return 1;
-            }
-
-            $pdf = new Pdf($filePath);
-            $pageCount = $pdf->pageCount();
-
-            Log::debug('[GeminiFileAnalyzer] PDF page count determined', [
-                'file_path' => basename($filePath),
-                'page_count' => $pageCount,
-            ]);
-
-            return $pageCount;
-
-        } catch (Exception $e) {
-            Log::warning('[GeminiFileAnalyzer] Failed to determine PDF page count, assuming single page', [
-                'file_path' => basename($filePath),
-                'error' => $e->getMessage(),
-            ]);
-
-            return 1;
+            return (new Pdf($filePath))->pageCount();
+        } catch (\Throwable $exception) {
+            throw new GeminiApiException('Unable to determine PDF extraction coverage', GeminiApiException::CODE_RESPONSE_INVALID, false, previous: $exception);
         }
     }
 

@@ -9,6 +9,7 @@ use App\Models\Collection;
 use App\Models\File;
 use App\Models\PublicCollectionLink;
 use App\Models\PublicShareAccessLog;
+use App\Support\AuthorizedEntityRelations;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection as SupportCollection;
@@ -64,7 +65,8 @@ class PublicCollectionSharingService
 
     public function findLinkByToken(string $token): ?PublicCollectionLink
     {
-        return PublicCollectionLink::where('token', $token)->first();
+        return PublicCollectionLink::where('token', $token)
+            ->with(['collection' => fn ($query) => $query->withoutGlobalScope('user')])->first();
     }
 
     public function verifyPassword(PublicCollectionLink $link, string $password): bool
@@ -124,8 +126,8 @@ class PublicCollectionSharingService
         $files = $collection->files()
             ->withoutGlobalScope('user')
             ->with([
-                'extractableEntities.entity',
-                'primaryEntity.entity',
+                'extractableEntities.entity' => fn ($query) => AuthorizedEntityRelations::load($query),
+                'primaryEntity.entity' => fn ($query) => AuthorizedEntityRelations::load($query),
                 'tags',
             ])
             ->orderBy('fileName')
@@ -152,9 +154,6 @@ class PublicCollectionSharingService
                 $query->where(function ($q) {
                     $q->whereNotNull('expires_at')
                         ->where('expires_at', '<=', now());
-                })->orWhere(function ($q) {
-                    $q->whereNotNull('max_views')
-                        ->whereColumn('view_count', '>=', 'max_views');
                 });
             })
             ->update(['is_active' => false]);
@@ -168,7 +167,7 @@ class PublicCollectionSharingService
         return File::withoutGlobalScope('user')
             ->where('guid', $fileGuid)
             ->whereHas('collections', function ($query) use ($link) {
-                $query->where('collections.id', $link->collection_id);
+                $query->withoutGlobalScope('user')->where('collections.id', $link->collection_id);
             })
             ->first();
     }

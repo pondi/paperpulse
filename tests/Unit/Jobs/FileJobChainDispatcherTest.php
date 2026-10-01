@@ -10,6 +10,7 @@ use App\Jobs\Files\ProcessFileGemini;
 use App\Jobs\Maintenance\DeleteWorkingFiles;
 use App\Jobs\Receipts\MatchMerchant;
 use App\Jobs\Receipts\ProcessReceipt;
+use App\Models\File;
 use App\Services\Files\FileJobChainDispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -22,6 +23,7 @@ beforeEach(function () {
     Bus::fake();
     $this->dispatcher = new FileJobChainDispatcher;
     $this->jobId = (string) Str::uuid();
+    $this->file = File::factory()->create();
 });
 
 // --- Gemini pipeline ---
@@ -31,7 +33,7 @@ it('dispatches Gemini pipeline for receipts', function () {
 
     Cache::put("job.{$this->jobId}.fileMetaData", [
         'fileExtension' => 'jpg',
-        'fileId' => 1,
+        'fileId' => $this->file->id,
         'jobName' => 'TestJob',
         'metadata' => ['source' => 'upload'],
     ], 3600);
@@ -50,7 +52,7 @@ it('dispatches Gemini pipeline for documents', function () {
 
     Cache::put("job.{$this->jobId}.fileMetaData", [
         'fileExtension' => 'pdf',
-        'fileId' => 1,
+        'fileId' => $this->file->id,
         'jobName' => 'TestJob',
         'metadata' => ['source' => 'upload'],
     ], 3600);
@@ -71,7 +73,7 @@ it('dispatches legacy receipt pipeline', function () {
 
     Cache::put("job.{$this->jobId}.fileMetaData", [
         'fileExtension' => 'jpg',
-        'fileId' => 1,
+        'fileId' => $this->file->id,
         'jobName' => 'TestJob',
         'metadata' => ['source' => 'upload'],
     ], 3600);
@@ -91,7 +93,7 @@ it('dispatches legacy document pipeline', function () {
 
     Cache::put("job.{$this->jobId}.fileMetaData", [
         'fileExtension' => 'pdf',
-        'fileId' => 1,
+        'fileId' => $this->file->id,
         'jobName' => 'TestJob',
         'metadata' => ['source' => 'upload'],
     ], 3600);
@@ -111,7 +113,7 @@ it('dispatches legacy document pipeline', function () {
 it('routes CSV files to bank statement import pipeline', function () {
     Cache::put("job.{$this->jobId}.fileMetaData", [
         'fileExtension' => 'csv',
-        'fileId' => 42,
+        'fileId' => $this->file->id,
         'jobName' => 'TestCSVJob',
         'metadata' => ['source' => 'upload'],
     ], 3600);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Receipt;
+use App\Support\SpreadsheetSafeText;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -53,7 +54,6 @@ class ExportController extends Controller
         $callback = function () use ($receipts) {
             $file = fopen('php://output', 'w');
 
-            // Header row
             fputcsv($file, [
                 'Receipt Date',
                 'Merchant',
@@ -65,7 +65,7 @@ class ExportController extends Controller
                 'Currency',
                 'Items Count',
                 'Line Items',
-            ]);
+            ], ',', '"', '');
 
             foreach ($receipts as $receipt) {
                 $lineItems = $receipt->lineItems->map(function ($item) {
@@ -74,16 +74,16 @@ class ExportController extends Controller
 
                 fputcsv($file, [
                     $receipt->receipt_date ? Carbon::parse($receipt->receipt_date)->format('Y-m-d') : '',
-                    $receipt->merchant?->name ?? 'Unknown',
-                    $receipt->receipt_category ?? '',
-                    $receipt->receipt_description ?? '',
-                    $receipt->note ?? '',
+                    SpreadsheetSafeText::format($receipt->merchant?->name ?? 'Unknown'),
+                    SpreadsheetSafeText::format($receipt->receipt_category ?? ''),
+                    SpreadsheetSafeText::format($receipt->receipt_description ?? ''),
+                    SpreadsheetSafeText::format($receipt->note ?? ''),
                     $receipt->total_amount ?? 0,
                     $receipt->tax_amount ?? 0,
-                    $receipt->currency ?? auth()->user()->preference('currency', 'NOK'),
+                    SpreadsheetSafeText::format($receipt->currency ?? auth()->user()->preference('currency', 'NOK')),
                     $receipt->lineItems->count(),
-                    $lineItems,
-                ]);
+                    SpreadsheetSafeText::format($lineItems),
+                ], ',', '"', '');
             }
 
             fclose($file);

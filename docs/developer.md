@@ -495,18 +495,24 @@ FILESYSTEM_DISK=s3
 
 ### Queue Worker Configuration
 
-Supervisor configuration for queue workers:
+Run Horizon as the Forge daemon using the site's PHP 8.4 CLI. Horizon owns the queue list and worker timeouts in `config/horizon.php`; avoid a second daemon consuming those same queues.
 
 ```ini
-[program:paperpulse-worker]
-process_name=%(program_name)s_%(process_num)02d
-command=php /path/to/artisan queue:work redis --sleep=3 --tries=3
+[program:paperpulse-horizon]
+command=php8.4 /path/to/artisan horizon
 autostart=true
 autorestart=true
-numprocs=8
+user=forge
+stopasgroup=true
+killasgroup=true
+stopwaitsecs=3800
 redirect_stderr=true
-stdout_logfile=/path/to/worker.log
+stdout_logfile=/path/to/horizon.log
 ```
+
+Set the Forge daemon's graceful stop wait to at least 3800 seconds. Processing jobs may run for 3600 seconds, Horizon's worker timeout is 3660 seconds, and queue `retry_after` must be at least 3720 seconds. `REDIS_QUEUE_RETRY_AFTER` values below this floor are clamped by the queue configuration. Conversion operations are capped at 240 seconds, below the enclosing job timeout. Preserve operation timeout < job timeout < Horizon timeout < retry window whenever changing these limits.
+
+After deployment, run `php8.4 artisan horizon:terminate` so the daemon restarts Horizon after active jobs finish. Horizon fast termination stays disabled to preserve this graceful shutdown window.
 
 ## Troubleshooting Development
 

@@ -219,7 +219,7 @@ class JobChainService
             ];
 
             // Cache the rebuilt metadata
-            Cache::put("job.{$jobId}.fileMetaData", $metadata, now()->addHours(4));
+            JobMetadataPersistence::store($jobId, $metadata);
 
             Log::info('File metadata rebuilt successfully', [
                 'job_id' => $jobId,

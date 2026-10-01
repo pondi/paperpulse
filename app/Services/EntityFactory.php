@@ -14,6 +14,7 @@ use App\Services\Factories\ReturnPolicyFactory;
 use App\Services\Factories\VoucherFactory;
 use App\Services\Factories\WarrantyFactory;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Log;
 
 class EntityFactory
@@ -228,6 +229,10 @@ class EntityFactory
             ],
             'extracted_at' => now(),
         ]);
+        if ($isPrimary) {
+            app(FileOrganizationSummaryService::class)->capture($file, $model);
+        }
+
     }
 
     /**
@@ -300,7 +305,7 @@ class EntityFactory
             });
 
             return $category->id;
-        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+        } catch (UniqueConstraintViolationException $e) {
             $category = Category::where('user_id', $userId)
                 ->where('name', $categoryName)
                 ->first();

@@ -35,7 +35,8 @@ it('ignores empty-string logging env values', function () {
         $config = require base_path('config/logging.php');
 
         expect($config['default'])->toBe('stack');
-        expect($config['channels']['stack']['channels'])->toBe(['single']);
+        expect($config['channels']['stack']['channels'])->toBe(['daily']);
+        expect($config['channels']['daily']['days'])->toBe(7);
         expect($config['channels']['stderr']['formatter'])->toBeNull();
         expect($config['channels']['papertrail']['handler'])->toBe(SyslogUdpHandler::class);
     } finally {

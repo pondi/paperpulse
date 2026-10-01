@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\File;
+use App\Services\AI\Shared\ProcessingStageCache;
 use App\Services\OCR\ExtractionCache;
 use App\Services\OCR\OcrErrorFormatter;
 use App\Services\OCR\OCRServiceFactory;
@@ -36,23 +38,35 @@ class TextExtractionService
      */
     public function extractWithStructuredData(string $filePath, string $fileType, string $fileGuid): array
     {
-        try {
-            // Check cache first
-            if (config('ai.ocr.options.cache_results', true)) {
-                $cached = ExtractionCache::get($fileGuid);
-                if ($cached !== null) {
-                    Log::debug('[TextExtractionService] Using cached text', ['file_guid' => $fileGuid]);
-
-                    return [
-                        'text' => $cached['text'],
-                        'structured_data' => $cached['structured'],
-                        'blocks' => [],
-                        'ocr_metadata' => [],
-                        'provider' => config('ai.ocr.provider', 'textract'),
-                    ];
-                }
+        $file = File::withoutGlobalScope('user')->where('guid', $fileGuid)->first();
+        $operation = function () use ($filePath, $fileType, $fileGuid): array {
+            $result = $this->extractUncachedStructuredData($filePath, $fileType, $fileGuid);
+            if (trim($result['text']) === '' && empty($result['structured_data'])) {
+                throw new Exception('OCR returned no usable content');
             }
 
+            return $result;
+        };
+        if ($file && config('ai.ocr.options.cache_results', true)) {
+            $result = ProcessingStageCache::remember($file->user_id, hash_file('sha256', $filePath), 'ocr', [
+                'provider' => config('ai.ocr.provider', 'textract'), 'schema_version' => 1,
+                'options' => config('ai.ocr.options'), 'file_type' => $fileType,
+            ], $operation, $fileGuid);
+        } else {
+            $result = $operation();
+        }
+        if ($file && ($result['ocr_metadata']['needs_review'] ?? false)) {
+            $file->status = 'needs_review';
+            $file->meta = array_merge($file->meta ?? [], ['processing_coverage' => $result['ocr_metadata'], 'review' => ['reason' => 'processing_limit']]);
+            $file->save();
+        }
+
+        return $result;
+    }
+
+    protected function extractUncachedStructuredData(string $filePath, string $fileType, string $fileGuid): array
+    {
+        try {
             // Simplified: single provider flow
             $primaryProvider = config('ai.ocr.provider', 'textract');
             $allProviders = [$primaryProvider];
@@ -62,8 +76,8 @@ class TextExtractionService
 
             // Try each provider in order
             foreach ($allProviders as $providerName) {
+                $ocrProvider = OCRServiceFactory::create($providerName);
                 try {
-                    $ocrProvider = OCRServiceFactory::create($providerName);
 
                     Log::info('[TextExtractionService] Starting OCR extraction', [
                         'file_guid' => $fileGuid,
@@ -124,11 +138,6 @@ class TextExtractionService
                         $text = $fallbackText;
                     }
                 }
-            }
-
-            // Cache both text and structured data
-            if (config('ai.ocr.options.cache_results', true)) {
-                ExtractionCache::put($fileGuid, $text, $structuredData);
             }
 
             Log::info('[TextExtractionService] Text and structured data extracted successfully', [

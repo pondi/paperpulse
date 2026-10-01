@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UpdatePreferencesRequest;
 use App\Models\UserPreference;
-use App\Rules\ExistsForUser;
 use DateTimeZone;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Inertia\Inertia;
 
@@ -31,46 +30,8 @@ class PreferencesController extends Controller
     /**
      * Update the user's preferences.
      */
-    public function update(Request $request)
+    public function update(UpdatePreferencesRequest $request): \Illuminate\Http\RedirectResponse
     {
-        $request->validate([
-            // General preferences
-            'language' => 'required|string|in:en,nb',
-            'timezone' => 'required|string|timezone',
-            'date_format' => 'required|string',
-            'currency' => 'required|string|in:NOK,USD,EUR,GBP,SEK,DKK',
-
-            // Receipt processing preferences
-            'auto_categorize' => 'boolean',
-            'extract_line_items' => 'boolean',
-            'default_category_id' => ['nullable', new ExistsForUser('categories')],
-
-            // Notification preferences
-            'notify_processing_complete' => 'boolean',
-            'notify_processing_failed' => 'boolean',
-            'notify_bulk_complete' => 'boolean',
-            'notify_scanner_import' => 'boolean',
-            'notify_weekly_summary_ready' => 'boolean',
-            'email_notify_processing_complete' => 'boolean',
-            'email_notify_processing_failed' => 'boolean',
-            'email_notify_bulk_complete' => 'boolean',
-            'email_notify_scanner_import' => 'boolean',
-            'email_notify_weekly_summary' => 'boolean',
-            'email_weekly_summary' => 'boolean',
-            'weekly_summary_day' => 'required|string|in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
-
-            // Display preferences
-            'receipt_list_view' => 'required|string|in:grid,list',
-            'receipts_per_page' => 'required|integer|in:10,20,50,100',
-            'default_sort' => 'required|string',
-
-            // Scanner/Import preferences
-            'auto_process_scanner_uploads' => 'boolean',
-            'delete_after_processing' => 'boolean',
-            'file_retention_days' => 'required|integer|min:1|max:365',
-            'pulsedav_realtime_sync' => 'boolean',
-        ]);
-
         $user = auth()->user();
 
         // Verify the user owns the category if specified
@@ -84,7 +45,7 @@ class PreferencesController extends Controller
         // Update or create preferences
         $preferences = $user->preferences()->updateOrCreate(
             ['user_id' => $user->id],
-            $request->all()
+            $request->validated()
         );
 
         // Update application locale if language changed

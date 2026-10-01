@@ -22,31 +22,31 @@ class VoucherDataNormalizer
             'issuer' => array_filter([
                 'name' => $geminiData['issuer_name'] ?? null,
                 'contact' => $geminiData['issuer_contact'] ?? null,
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Voucher details (nested)
             'voucher' => array_filter([
                 'code' => $geminiData['voucher_code'] ?? null,
                 'type' => $geminiData['voucher_type'] ?? null,
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Dates (nested)
             'dates' => array_filter([
                 'issue_date' => $geminiData['issue_date'] ?? null,
                 'expiry_date' => $geminiData['expiry_date'] ?? null,
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Value (nested)
             'value' => array_filter([
                 'amount' => $geminiData['value_amount'] ?? null,
                 'currency' => $geminiData['currency'] ?? 'NOK',
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Redemption (nested)
             'redemption' => array_filter([
                 'instructions' => $geminiData['redemption_instructions'] ?? null,
                 'terms_conditions' => $geminiData['terms_conditions'] ?? null,
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Metadata
             'metadata' => [

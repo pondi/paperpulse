@@ -3,7 +3,7 @@
 namespace App\Services\PulseDav\Import;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class ImportValidator
 {
@@ -13,17 +13,24 @@ class ImportValidator
         $invalid = [];
 
         foreach ($selections as $selection) {
-            if (empty($selection['s3_path'])) {
+            if (! is_string($selection['s3_path'] ?? null) || $selection['s3_path'] === '') {
                 $invalid[] = ['reason' => 'Missing s3_path', 'data' => $selection];
 
                 continue;
             }
 
-            if (! S3PathResolver::pathExists($selection['s3_path'])) {
-                Log::warning('[ImportValidator] S3 path does not exist', [
-                    's3_path' => $selection['s3_path'],
-                    'user_id' => $user->id,
-                ]);
+            try {
+                $selection['s3_path'] = S3PathResolver::validateOwnedPath($selection['s3_path'], $user->id);
+            } catch (ValidationException $e) {
+                $invalid[] = ['reason' => 'Invalid owned path', 'data' => $selection];
+
+                continue;
+            }
+
+            if (! S3PathResolver::pathExists($selection['s3_path'], $user->id)) {
+                $invalid[] = ['reason' => 'Path does not exist', 'data' => $selection];
+
+                continue;
             }
 
             $valid[] = $selection;

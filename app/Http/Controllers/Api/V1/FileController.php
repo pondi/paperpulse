@@ -8,8 +8,13 @@ use App\Http\Requests\Api\V1\StoreFileRequest;
 use App\Http\Requests\Api\V1\UpdateFileRequest;
 use App\Http\Resources\Api\V1\FileDetailResource;
 use App\Http\Resources\Api\V1\FileListResource;
+use App\Models\Contract;
+use App\Models\Document;
 use App\Models\File;
+use App\Models\Invoice;
+use App\Models\Receipt;
 use App\Services\FileProcessingService;
+use App\Services\Files\FileDeletionService;
 use App\Services\Files\FileDetailService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -66,10 +71,10 @@ class FileController extends BaseApiController
             'primaryEntity.entity' => function ($morphTo) {
                 // Eager load relationships based on entity type
                 $morphTo->morphWith([
-                    \App\Models\Receipt::class => ['merchant', 'category'],
-                    \App\Models\Document::class => ['category'],
-                    \App\Models\Invoice::class => [],
-                    \App\Models\Contract::class => [],
+                    Receipt::class => ['merchant', 'category'],
+                    Document::class => ['category'],
+                    Invoice::class => [],
+                    Contract::class => [],
                 ]);
             },
         ];
@@ -200,7 +205,7 @@ class FileController extends BaseApiController
             return $this->notFound('File not found');
         }
 
-        $fileModel->delete();
+        app(FileDeletionService::class)->deleteFile($fileModel, (int) auth()->id());
 
         Log::info('[API] File deleted', [
             'user_id' => auth()->id(),

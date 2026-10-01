@@ -91,18 +91,32 @@ class FileShare extends Model
         return $this->belongsTo(User::class, 'shared_with_user_id');
     }
 
-    /**
-     * Get the shareable item (Document or Receipt).
-     */
-    public function shareable(): BelongsTo
+    public function sharedEntity(): ?Model
     {
-        // Use file_type to determine the model
-        if ($this->file_type === 'document') {
-            return $this->belongsTo(Document::class, 'file_id', 'file_id');
+        if (! $this->file) {
+            return null;
         }
 
-        // Default to receipt when type is not explicitly 'document'
+        $extracted = $this->file->extractableEntities->firstWhere('entity_type', $this->file_type);
+        if ($extracted) {
+            return $extracted->entity;
+        }
+
+        return match ($this->file_type) {
+            'receipt' => $this->receipt,
+            'document' => $this->document,
+            default => null,
+        };
+    }
+
+    public function receipt(): BelongsTo
+    {
         return $this->belongsTo(Receipt::class, 'file_id', 'file_id');
+    }
+
+    public function document(): BelongsTo
+    {
+        return $this->belongsTo(Document::class, 'file_id', 'file_id');
     }
 
     /**

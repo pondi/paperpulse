@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Inertia;
 
-use App\Http\Resources\BankTransactionResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -51,7 +50,6 @@ class BankStatementInertiaResource extends JsonResource
                 'swift_code' => $this->swift_code,
                 'file' => $this->buildFileInfo(),
                 'tags' => $this->mapTags(),
-                'transactions' => $this->mapTransactions(),
                 'created_at' => $this->created_at,
                 'updated_at' => $this->updated_at,
             ]);
@@ -131,14 +129,5 @@ class BankStatementInertiaResource extends JsonResource
             'name' => $tag->name,
             'color' => $tag->color,
         ])->values()->all();
-    }
-
-    private function mapTransactions(): array
-    {
-        if (! $this->relationLoaded('transactions')) {
-            return [];
-        }
-
-        return BankTransactionResource::collection($this->transactions)->resolve();
     }
 }

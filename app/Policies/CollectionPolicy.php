@@ -43,6 +43,11 @@ class CollectionPolicy
         return $this->sharingService()->userHasAccess($collection, $user, 'edit');
     }
 
+    public function manageTree(User $user, Collection $collection): bool
+    {
+        return $user->id === $collection->user_id;
+    }
+
     public function delete(User $user, Collection $collection): bool
     {
         return $user->id === $collection->user_id;

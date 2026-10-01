@@ -2,6 +2,8 @@
 
 namespace App\Services\AI\TypeClassification;
 
+use App\Services\AI\Extractors\EntityExtractorFactory;
+
 /**
  * Data Transfer Object for document classification results.
  */
@@ -39,7 +41,8 @@ class ClassificationResult
      */
     public function isValid(float $threshold = 0.7): bool
     {
-        return $this->confidence >= $threshold && $this->type !== 'unknown';
+        return is_finite($this->confidence) && $this->confidence >= $threshold && $this->confidence <= 1.0
+            && EntityExtractorFactory::hasExtractor($this->type);
     }
 
     /**

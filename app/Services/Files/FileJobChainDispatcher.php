@@ -13,8 +13,9 @@ use App\Jobs\Receipts\MatchMerchant;
 use App\Jobs\Receipts\ProcessReceipt;
 use App\Jobs\System\ApplyTags;
 use App\Models\File;
+use App\Models\JobHistory;
+use App\Services\Jobs\JobMetadataPersistence;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -34,7 +35,10 @@ class FileJobChainDispatcher
      */
     public function dispatch(string $jobId, string $fileType): void
     {
-        $metadata = Cache::get("job.{$jobId}.fileMetaData");
+        $metadata = JobMetadataPersistence::retrieve($jobId);
+        if (! $metadata) {
+            throw new \RuntimeException("Missing durable processing metadata for {$jobId}");
+        }
         $source = $metadata['metadata']['source'] ?? 'upload';
         $tagIds = $metadata['metadata']['tagIds'] ?? [];
         $pulseDavFileId = $metadata['metadata']['pulseDavFileId'] ?? null;
@@ -61,9 +65,11 @@ class FileJobChainDispatcher
                 (new ProcessCsvImport($jobId, $fileId))->onQueue($queue),
             ];
         } else {
-            $provider = config('ai.file_processing_provider', 'textract+openai');
+            $provider = $metadata['processingProvider'] ?? config('ai.file_processing_provider', 'textract+openai');
 
-            if ($provider === 'gemini') {
+            if ($provider === 'ocr-only') {
+                $jobs = [(new ProcessFile($jobId))->onQueue($queue)];
+            } elseif ($provider === 'gemini') {
                 Log::info('Routing to Gemini pipeline', ['jobId' => $jobId]);
                 $jobs = [
                     (new ProcessFile($jobId))->onQueue($queue),
@@ -87,7 +93,7 @@ class FileJobChainDispatcher
         }
 
         if (! empty($tagIds) && isset($metadata['fileId'])) {
-            $file = File::find($metadata['fileId']);
+            $file = File::withoutGlobalScope('user')->where('user_id', $metadata['userId'])->find($metadata['fileId']);
             if ($file) {
                 $jobs[] = (new ApplyTags($jobId, $file, $tagIds))->onQueue($queue);
             }
@@ -101,6 +107,32 @@ class FileJobChainDispatcher
             $jobs[] = (new UpdatePulseDavFileStatus($jobId, $metadata['fileId'], $pulseDavFileId, $fileType))->onQueue($queue);
         }
 
+        $parent = JobHistory::query()->firstOrCreate(['uuid' => $jobId], [
+            'parent_uuid' => null,
+            'name' => $metadata['jobName'] ?? 'Processing Job',
+            'queue' => $queue,
+            'status' => 'pending',
+            'metadata' => $metadata,
+            'order_in_chain' => 0,
+        ]);
+        $oldPlan = $parent->metadata['plannedSteps'] ?? [];
+        $plannedSteps = [];
+        foreach ($jobs as $index => $job) {
+            if (isset($oldPlan[$index]) && $oldPlan[$index]['class'] === $job::class) {
+                $job->uuid = $oldPlan[$index]['uuid'];
+            }
+            $plannedSteps[] = ['uuid' => $job->uuid, 'class' => $job::class, 'order' => $index + 1, 'required' => true];
+            JobHistory::query()->firstOrCreate(['uuid' => $job->uuid], [
+                'parent_uuid' => $jobId,
+                'name' => $job->jobName,
+                'queue' => $queue,
+                'status' => 'pending',
+                'order_in_chain' => $index + 1,
+            ]);
+        }
+        $metadata['plannedSteps'] = $plannedSteps;
+        $parent->update(['metadata' => $metadata]);
+        JobMetadataPersistence::store($jobId, $metadata);
         Bus::chain($jobs)->dispatch();
     }
 }

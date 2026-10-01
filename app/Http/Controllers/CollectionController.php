@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BrowseFoldersRequest;
 use App\Http\Requests\CollectionFilesRequest;
 use App\Http\Requests\ShareCollectionRequest;
 use App\Http\Requests\StoreCollectionRequest;
@@ -10,7 +11,9 @@ use App\Models\Collection;
 use App\Models\User;
 use App\Services\CollectionService;
 use App\Services\CollectionSharingService;
+use App\Services\FolderTreeService;
 use App\Services\PublicCollectionSharingService;
+use App\Support\AuthorizedEntityRelations;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,9 +31,10 @@ class CollectionController extends Controller
     /**
      * Display a listing of collections.
      */
-    public function index(Request $request): Response
+    public function index(BrowseFoldersRequest $request): Response
     {
         $query = Collection::where('user_id', auth()->id())
+            ->where('parent_id', $request->input('parent_id'))
             ->withCount('files');
 
         // Apply search filter
@@ -59,11 +63,27 @@ class CollectionController extends Controller
 
         return Inertia::render('Collections/Index', [
             'collections' => $collections,
+            'breadcrumbs' => $request->filled('parent_id') ? app(FolderTreeService::class)->breadcrumbs(Collection::findOrFail($request->integer('parent_id'))) : [],
             'filters' => [
                 'search' => $request->search,
                 'sort' => $request->input('sort', 'name'),
                 'archived' => $showArchived,
+                'parent_id' => $request->input('parent_id'),
             ],
+        ]);
+    }
+
+    public function folders(BrowseFoldersRequest $request): JsonResponse
+    {
+        $parent = $request->filled('parent_id') ? Collection::findOrFail($request->integer('parent_id')) : null;
+        $folders = Collection::query()->where('user_id', $request->user()->id)
+            ->where('parent_id', $parent?->id)->active()->orderBy('name')
+            ->paginate(50, ['id', 'name', 'parent_id'])->withQueryString();
+
+        return response()->json([
+            'folders' => $folders,
+            'parent' => $parent ? ['id' => $parent->id, 'name' => $parent->name, 'parent_id' => $parent->parent_id] : null,
+            'path' => $parent ? app(FolderTreeService::class)->breadcrumbs($parent) : [],
         ]);
     }
 
@@ -85,7 +105,7 @@ class CollectionController extends Controller
         $collections = $this->sharingService->getSharedWithUser(auth()->user());
 
         // Load additional data for each collection
-        $collections->each(fn ($collection) => $collection->loadCount('files'));
+        $collections->each(fn ($collection) => $collection->loadCount(['files' => fn ($query) => $query->withoutGlobalScope('user')]));
 
         return Inertia::render('Collections/Shared', [
             'collections' => $collections,
@@ -113,10 +133,13 @@ class CollectionController extends Controller
     {
         $this->authorize('view', $collection);
 
-        $collection->loadCount('files');
-        $collection->load(['files' => function ($query) {
-            $query->with(['primaryEntity.entity']);
-        }]);
+        $collection->loadCount(['files' => fn ($query) => $query->withoutGlobalScope('user')]);
+        $filePage = $collection->files()->withoutGlobalScope('user')
+            ->with(['primaryEntity.entity' => fn ($query) => AuthorizedEntityRelations::load($query)])
+            ->orderBy('files.id')->paginate(50, ['files.*'], 'files_page');
+        $collection->setRelation('files', $filePage->getCollection());
+        $children = Collection::accessibleBy(auth()->user())->where('parent_id', $collection->id)
+            ->orderBy('name')->paginate(50, ['id', 'name', 'parent_id'], 'children_page');
         $stats = $this->collectionService->getCollectionStats($collection);
         $shares = $this->sharingService->getShares($collection);
 
@@ -126,6 +149,9 @@ class CollectionController extends Controller
 
         return Inertia::render('Collections/Show', [
             'collection' => $collection,
+            'children' => $children,
+            'filePagination' => $filePage->toArray()['links'],
+            'treePreview' => $collection->user_id === auth()->id() ? app(FolderTreeService::class)->preview($collection) : null,
             'stats' => $stats,
             'shares' => $shares,
             'isOwner' => $collection->user_id === auth()->id(),
@@ -133,7 +159,7 @@ class CollectionController extends Controller
             'breadcrumbs' => [
                 ['label' => 'Dashboard', 'href' => route('dashboard')],
                 ['label' => 'Collections', 'href' => route('collections.index')],
-                ['label' => $collection->name],
+                ...($collection->user_id === auth()->id() ? app(FolderTreeService::class)->breadcrumbs($collection) : [['label' => $collection->name]]),
             ],
         ]);
     }
@@ -144,6 +170,9 @@ class CollectionController extends Controller
     public function update(UpdateCollectionRequest $request, Collection $collection): RedirectResponse
     {
         $this->authorize('update', $collection);
+        if ($request->hasAny(['name', 'parent_id', 'is_pinned'])) {
+            $this->authorize('manageTree', $collection);
+        }
 
         $this->collectionService->update($collection, $request->validated());
 
@@ -254,8 +283,17 @@ class CollectionController extends Controller
     {
         $this->authorize('share', $collection);
 
+        abort_unless($collection->shares()->where('shared_with_user_id', $user->id)->exists(), 404);
+
         $this->sharingService->unshare($collection, $user);
 
         return back()->with('success', __('Share removed successfully.'));
+    }
+
+    public function treePreview(Collection $collection): JsonResponse
+    {
+        $this->authorize('manageTree', $collection);
+
+        return response()->json(app(FolderTreeService::class)->preview($collection));
     }
 }

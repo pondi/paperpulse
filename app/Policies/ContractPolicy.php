@@ -2,7 +2,7 @@
 
 namespace App\Policies;
 
-use App\Policies\Concerns\OwnedResourcePolicy;
+use App\Policies\Concerns\ShareableFilePolicy;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 /**
@@ -14,5 +14,5 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 class ContractPolicy
 {
     use HandlesAuthorization;
-    use OwnedResourcePolicy;
+    use ShareableFilePolicy;
 }

@@ -48,7 +48,8 @@ class InvoiceExtractor implements EntityExtractorContract
                 $fileUri,
                 $schema,
                 $prompt,
-                [] // No conversation history for now (can add Pass 1 context later)
+                [],
+                $context['mime_type'] ?? $file->fileType ?? 'application/pdf'
             );
 
             $rawData = $response['data'] ?? [];

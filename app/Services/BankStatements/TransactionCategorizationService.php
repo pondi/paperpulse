@@ -6,7 +6,9 @@ namespace App\Services\BankStatements;
 
 use App\Contracts\Services\TextAnalysisContract;
 use App\Enums\TransactionCategory;
+use App\Models\BankCategorizationRule;
 use App\Models\BankTransaction;
+use App\Services\AI\Shared\ProcessingUsageBudget;
 use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -24,13 +26,40 @@ class TransactionCategorizationService
      */
     public function categorize(Collection $transactions): void
     {
-        if ($transactions->isEmpty()) {
+        $pending = collect();
+        foreach ($transactions as $transaction) {
+            if ($transaction->category_group !== null) {
+                continue;
+            }
+            $rule = BankCategorizationRule::query()->where('user_id', $transaction->user_id)->where('fingerprint', self::fingerprint($transaction))->first();
+            if ($rule !== null) {
+                $transaction->update(['category_group' => $rule->category_group, 'subcategory' => $rule->subcategory, 'category_source' => 'rule']);
+            } else {
+                $pending->push($transaction);
+            }
+        }
+        $pending->groupBy('user_id')->each(function (Collection $owned): void {
+            $owned->chunk(self::BATCH_SIZE)->each(fn (Collection $batch) => $this->categorizeBatch($batch));
+        });
+    }
+
+    public static function fingerprint(BankTransaction $transaction): string
+    {
+        $identity = mb_strtolower(trim($transaction->counterparty_name ?: $transaction->description));
+        $identity = preg_replace('/[\p{N}\p{P}\p{S}]+/u', ' ', $identity);
+        $identity = preg_replace('/\s+/u', ' ', trim($identity));
+
+        return hash('sha256', ($identity === '' ? 'transaction:'.$transaction->id : $identity).'|'.$transaction->currency.'|'.$transaction->transaction_type.'|'.((float) $transaction->amount < 0 ? 'negative' : 'positive'));
+    }
+
+    public static function rememberManual(BankTransaction $transaction): void
+    {
+        if ($transaction->category_group === null) {
             return;
         }
-
-        $transactions->chunk(self::BATCH_SIZE)->each(function (Collection $batch) {
-            $this->categorizeBatch($batch);
-        });
+        BankCategorizationRule::query()->updateOrCreate(['user_id' => $transaction->user_id, 'fingerprint' => self::fingerprint($transaction)], [
+            'category_group' => $transaction->category_group, 'subcategory' => $transaction->subcategory, 'source' => 'manual',
+        ]);
     }
 
     /**
@@ -67,7 +96,7 @@ class TransactionCategorizationService
         Transactions to categorize (format: ID|Description|Type|Amount):
         {$transactionLines}
 
-        Return a JSON array of objects: [{"id": <id>, "category_group": "<group_value>", "subcategory": "<subcategory>"}]
+        Return a JSON object with a transactions array: {"transactions": [{"id": <id>, "category_group": "<group_value>", "subcategory": "<subcategory>"}]}
 
         Rules:
         - Use the exact enum values for category_group (e.g., "food_and_drink", not "Food & Drink")
@@ -78,9 +107,9 @@ class TransactionCategorizationService
         PROMPT;
 
         try {
-            $result = $this->ai->analyze($prompt);
+            $result = ProcessingUsageBudget::run($batch->first()->user_id, 'bank:'.$batch->first()->bank_statement_id, 'categorization', fn () => $this->ai->analyze($prompt));
 
-            $items = isset($result[0]) ? $result : [$result];
+            $items = $result['transactions'] ?? (isset($result[0]) ? $result : [$result]);
 
             $this->applyResults($items, $batch);
         } catch (Exception $e) {
@@ -104,16 +133,21 @@ class TransactionCategorizationService
         foreach ($batch as $transaction) {
             $result = $resultMap->get($transaction->id);
 
-            if (! $result || ! isset($result['category_group'])) {
+            if ($transaction->fresh()->category_group !== null || ! $result || ! isset($result['category_group'])) {
                 continue;
             }
 
             $category = TransactionCategory::tryFrom($result['category_group']);
 
-            if ($category) {
+            $subcategory = $result['subcategory'] ?? null;
+            if ($category && ($subcategory === null || in_array($subcategory, TransactionCategory::subcategories()[$category->value], true))) {
                 $transaction->update([
                     'category_group' => $category,
-                    'subcategory' => $result['subcategory'] ?? null,
+                    'subcategory' => $subcategory,
+                    'category_source' => 'ai',
+                ]);
+                BankCategorizationRule::query()->firstOrCreate(['user_id' => $transaction->user_id, 'fingerprint' => self::fingerprint($transaction)], [
+                    'category_group' => $category, 'subcategory' => $subcategory, 'source' => 'ai',
                 ]);
             }
         }

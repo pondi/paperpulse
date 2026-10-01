@@ -5,8 +5,10 @@ namespace App\Models;
 use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -64,16 +66,32 @@ class File extends Model
         'has_image_preview',
         'image_generation_error',
         'processing_type',
+        'primary_folder_id',
+        'placement_source',
+        'placement_version',
+        'organization_summary',
     ];
 
     protected $casts = [
         'meta' => 'array',
+        'placement_version' => 'integer',
+        'organization_summary' => 'array',
         'has_image_preview' => 'boolean',
         'uploaded_at' => 'datetime',
         'file_created_at' => 'datetime',
         'file_modified_at' => 'datetime',
         'deleted_reason' => DeletedReason::class,
     ];
+
+    public function resolveRouteBindingQuery($query, $value, $field = null): Builder
+    {
+        return parent::resolveRouteBindingQuery($query, $value, $field)->accessibleBy(auth()->user());
+    }
+
+    public function primaryFolder(): BelongsTo
+    {
+        return $this->belongsTo(Collection::class, 'primary_folder_id');
+    }
 
     public function user()
     {

@@ -8,6 +8,7 @@ use App\Models\Receipt;
 use App\Notifications\BulkOperationCompleted;
 use App\Rules\ExistsForUser;
 use App\Services\ReceiptService;
+use App\Support\SpreadsheetSafeText;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Exception;
@@ -130,7 +131,7 @@ class BulkOperationsController extends Controller
                 'Currency',
                 'Items Count',
                 'Line Items',
-            ]);
+            ], ',', '"', '');
 
             Receipt::with(['merchant', 'lineItems'])
                 ->whereIn('id', $receiptIds)
@@ -138,7 +139,7 @@ class BulkOperationsController extends Controller
                 ->orderBy('receipt_date', 'desc')
                 ->chunk(200, function ($receipts) use ($file) {
                     foreach ($receipts as $receipt) {
-                        fputcsv($file, $this->formatCsvRow($receipt));
+                        fputcsv($file, $this->formatCsvRow($receipt), ',', '"', '');
                     }
                 });
 
@@ -229,14 +230,14 @@ class BulkOperationsController extends Controller
 
         return [
             $receipt->receipt_date ? Carbon::parse($receipt->receipt_date)->format('Y-m-d') : '',
-            $receipt->merchant?->name ?? 'Unknown',
-            $receipt->receipt_category ?? '',
-            $receipt->receipt_description ?? '',
+            SpreadsheetSafeText::format($receipt->merchant?->name ?? 'Unknown'),
+            SpreadsheetSafeText::format($receipt->receipt_category ?? ''),
+            SpreadsheetSafeText::format($receipt->receipt_description ?? ''),
             $receipt->total_amount ?? 0,
             $receipt->tax_amount ?? 0,
-            $receipt->currency ?? '',
+            SpreadsheetSafeText::format($receipt->currency ?? ''),
             $receipt->lineItems->count(),
-            $lineItems,
+            SpreadsheetSafeText::format($lineItems),
         ];
     }
 }

@@ -6,6 +6,7 @@ namespace App\Services\AI;
 
 use App\Contracts\Services\TextAnalysisContract;
 use App\Services\AI\Providers\GeminiProvider;
+use App\Services\AI\Shared\ProcessingUsageBudget;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use OpenAI;
@@ -83,7 +84,9 @@ class TextAnalysisService implements TextAnalysisContract
             'has_schema' => $responseSchema !== null,
         ]);
 
+        ProcessingUsageBudget::reserve(strlen(json_encode($messages)) + $params['max_completion_tokens']);
         $response = OpenAI::chat()->create($params);
+        ProcessingUsageBudget::record($response->usage->promptTokens ?? 0, $response->usage->completionTokens ?? 0);
 
         $content = $response->choices[0]->message->content ?? '';
 

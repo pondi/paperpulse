@@ -36,7 +36,9 @@ class ProcessCsvImport extends BaseJob
         $file = File::findOrFail($this->fileId);
 
         // Idempotency: skip if bank statement already exists for this file
-        if ($file->status === 'completed' && BankStatement::where('file_id', $this->fileId)->exists()) {
+        $generation = (string) ($this->getMetadata()['processingGeneration'] ?? 'initial');
+        $existing = BankStatement::where('file_id', $this->fileId)->where('import_generation', $generation)->first();
+        if ($file->status === 'completed' && $existing?->categorized_at !== null) {
             Log::info('[ProcessCsvImport] Bank statement already exists for file, skipping', [
                 'file_id' => $this->fileId,
                 'job_id' => $this->jobID,
@@ -69,13 +71,19 @@ class ProcessCsvImport extends BaseJob
         $this->updateProgress(30);
 
         $csvImportService = app(CsvImportService::class);
-        $statement = $csvImportService->importFromContent($csvContent, $file->user_id, $this->fileId);
+        $statement = $csvImportService->importFromContent($csvContent, $file->user_id, $this->fileId, $generation);
 
         $this->updateProgress(60);
 
         $categorizationService = app(TransactionCategorizationService::class);
-        $statement->load('transactions');
-        $categorizationService->categorize($statement->transactions);
+        if ($statement->categorized_at === null) {
+            $pending = $statement->transactions()->whereNull('category_group')->get();
+            $categorizationService->categorize($pending);
+            if ($statement->transactions()->whereNull('category_group')->exists()) {
+                throw new RuntimeException('Transaction categorization is incomplete; retry will resume categorization.');
+            }
+            $statement->update(['categorized_at' => now()]);
+        }
 
         $this->updateProgress(90);
 

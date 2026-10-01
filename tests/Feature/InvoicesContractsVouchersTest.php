@@ -1,12 +1,16 @@
 <?php
 
 use App\Models\Contract;
+use App\Models\ExtractableEntity;
 use App\Models\File;
+use App\Models\FileCleanupManifest;
 use App\Models\Invoice;
 use App\Models\InvoiceLineItem;
 use App\Models\Merchant;
+use App\Models\Tag;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Services\StorageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -244,7 +248,7 @@ it('can delete an invoice', function () {
         'file_id' => $file->id,
     ]);
 
-    \App\Models\ExtractableEntity::create([
+    ExtractableEntity::create([
         'file_id' => $file->id,
         'user_id' => $user->id,
         'entity_type' => 'invoice',
@@ -254,14 +258,15 @@ it('can delete an invoice', function () {
         'extracted_at' => now(),
     ]);
 
-    $storageService = $this->mock(\App\Services\StorageService::class);
-    $storageService->shouldReceive('deleteFile')->once()->andReturn(true);
+    $storageService = $this->mock(StorageService::class);
+    $storageService->shouldNotReceive('deleteFile');
 
     $this->actingAs($user)
         ->delete(route('invoices.destroy', $invoice))
         ->assertRedirect(route('invoices.index'));
 
     expect(Invoice::withTrashed()->find($invoice->id)->trashed())->toBeTrue();
+    expect(FileCleanupManifest::where('file_id', $file->id)->count())->toBe(1);
 });
 
 it('can download an invoice file', function () {
@@ -277,7 +282,7 @@ it('can download an invoice file', function () {
         'file_id' => $file->id,
     ]);
 
-    $storageService = $this->mock(\App\Services\StorageService::class);
+    $storageService = $this->mock(StorageService::class);
     $storageService->shouldReceive('getFileByUserAndGuid')
         ->once()
         ->andReturn('fake-pdf-content');
@@ -321,7 +326,7 @@ it('can detach a tag from an invoice', function () {
         'file_id' => $file->id,
     ]);
 
-    $tag = \App\Models\Tag::create([
+    $tag = Tag::create([
         'name' => 'removeme',
         'user_id' => $user->id,
         'slug' => 'removeme',
@@ -395,7 +400,7 @@ it('can delete a contract', function () {
         'file_id' => $file->id,
     ]);
 
-    \App\Models\ExtractableEntity::create([
+    ExtractableEntity::create([
         'file_id' => $file->id,
         'user_id' => $user->id,
         'entity_type' => 'contract',
@@ -405,14 +410,15 @@ it('can delete a contract', function () {
         'extracted_at' => now(),
     ]);
 
-    $storageService = $this->mock(\App\Services\StorageService::class);
-    $storageService->shouldReceive('deleteFile')->once()->andReturn(true);
+    $storageService = $this->mock(StorageService::class);
+    $storageService->shouldNotReceive('deleteFile');
 
     $this->actingAs($user)
         ->delete(route('contracts.destroy', $contract))
         ->assertRedirect(route('contracts.index'));
 
     expect(Contract::withTrashed()->find($contract->id)->trashed())->toBeTrue();
+    expect(FileCleanupManifest::where('file_id', $file->id)->count())->toBe(1);
 });
 
 it('can download a contract file', function () {
@@ -428,7 +434,7 @@ it('can download a contract file', function () {
         'file_id' => $file->id,
     ]);
 
-    $storageService = $this->mock(\App\Services\StorageService::class);
+    $storageService = $this->mock(StorageService::class);
     $storageService->shouldReceive('getFileByUserAndGuid')
         ->once()
         ->andReturn('fake-pdf-content');
@@ -472,7 +478,7 @@ it('can detach a tag from a contract', function () {
         'file_id' => $file->id,
     ]);
 
-    $tag = \App\Models\Tag::create([
+    $tag = Tag::create([
         'name' => 'removeme',
         'user_id' => $user->id,
         'slug' => 'removeme-contract',

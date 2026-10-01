@@ -3,8 +3,10 @@
 use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
+use App\Models\FileCleanupManifest;
 use App\Models\Receipt;
 use App\Models\User;
+use App\Services\Files\FileCleanupService;
 use App\Services\Files\FileDuplicationService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -105,6 +107,7 @@ it('does not treat a deleted document as a duplicate source', function () {
 
     $fullPath = 'documents/'.$user->id.'/'.$guid.'/original.pdf';
     Storage::disk('paperpulse')->put($fullPath, $content);
+    $file->update(['s3_original_path' => $fullPath]);
 
     $dedupe = app(FileDuplicationService::class);
     expect($dedupe->checkDuplication($content, $user->id)['isDuplicate'])->toBeTrue();
@@ -113,6 +116,10 @@ it('does not treat a deleted document as a duplicate source', function () {
         ->delete(route('documents.destroy', $document))
         ->assertRedirect(route('documents.index'));
 
+    Storage::disk('paperpulse')->assertExists($fullPath);
+    $manifest = FileCleanupManifest::where('file_id', $file->id)->firstOrFail();
+    $this->travelTo($manifest->available_at->copy()->addSecond());
+    expect(app(FileCleanupService::class)->process($manifest)['failed'])->toBe(0);
     Storage::disk('paperpulse')->assertMissing($fullPath);
     expect(Document::find($document->id))->toBeNull();
     expect(File::find($file->id))->toBeNull();

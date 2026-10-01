@@ -5,6 +5,7 @@ namespace App\Services\Receipt;
 use App\Contracts\Services\ReceiptParserContract;
 use App\Services\AI\AIService;
 use App\Services\AI\AIServiceFactory;
+use App\Services\Receipts\DecimalAmount;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Log;
@@ -181,35 +182,20 @@ class ReceiptParserService implements ReceiptParserContract
      */
     public function extractTotals(array $data): array
     {
-        $totalAmount = 0;
-        $taxAmount = 0;
-
-        if (! empty($data['totals'])) {
-            $totalAmount = $data['totals']['total_amount'] ??
-                          $data['totals']['total'] ??
-                          $data['totals']['gross_amount'] ?? 0;
-            $taxAmount = $data['totals']['tax_amount'] ??
-                        $data['totals']['vat_amount'] ??
-                        $data['totals']['tax'] ?? 0;
-        } elseif (! empty($data['receipt']) && is_array($data['receipt'])) {
-            $receiptData = $data['receipt'];
-            $totalAmount = $receiptData['total'] ?? 0;
-
-            if (! empty($receiptData['vat']) && is_array($receiptData['vat'])) {
-                foreach ($receiptData['vat'] as $vatEntry) {
-                    if (isset($vatEntry['vat_amount']) && is_numeric($vatEntry['vat_amount'])) {
-                        $taxAmount += (float) $vatEntry['vat_amount'];
-                    }
-                }
+        $totals = $data['totals'] ?? $data['receipt'] ?? $data;
+        $total = $totals['total_amount'] ?? $totals['total'] ?? $totals['gross_amount'] ?? null;
+        $vatMinor = 0;
+        foreach ($totals['vat'] ?? [] as $entry) {
+            if (isset($entry['vat_amount'])) {
+                $vatMinor += DecimalAmount::minorUnits($entry['vat_amount']);
             }
-        } else {
-            $totalAmount = $data['total_amount'] ?? $data['total'] ?? 0;
-            $taxAmount = $data['tax_amount'] ?? $data['vat_amount'] ?? 0;
         }
 
         return [
-            'total_amount' => (float) $totalAmount,
-            'tax_amount' => (float) $taxAmount,
+            'total_amount' => $total,
+            'tax_amount' => $totals['tax_amount'] ?? $totals['vat_amount'] ?? $totals['tax'] ?? DecimalAmount::format($vatMinor),
+            'tip_amount' => $totals['tip_amount'] ?? $totals['tip'] ?? 0,
+            'discount_amount' => $totals['discount_amount'] ?? 0,
         ];
     }
 

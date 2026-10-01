@@ -17,7 +17,12 @@ class GeminiResponseParser
      */
     public function extractTextResponse(array $responseBody): string
     {
-        $parts = $responseBody['candidates'][0]['content']['parts'] ?? [];
+        $candidate = $responseBody['candidates'][0] ?? [];
+        $finish = $candidate['finishReason'] ?? null;
+        if ($finish !== 'STOP') {
+            throw new GeminiApiException('Gemini output was refused or incomplete', GeminiApiException::CODE_RESPONSE_INVALID, $finish === 'MAX_TOKENS');
+        }
+        $parts = $candidate['content']['parts'] ?? [];
         $texts = [];
         foreach ($parts as $part) {
             if (isset($part['text'])) {
@@ -25,7 +30,12 @@ class GeminiResponseParser
             }
         }
 
-        return trim(implode("\n", $texts));
+        $text = trim(implode("\n", $texts));
+        if ($text === '') {
+            throw new GeminiApiException('Gemini output was empty', GeminiApiException::CODE_RESPONSE_INVALID, false);
+        }
+
+        return $text;
     }
 
     /**
@@ -35,57 +45,16 @@ class GeminiResponseParser
      */
     public function parseJsonResponse(string $text): array
     {
-        // Try parsing as-is first
+        $text = trim($text);
+        if (preg_match('/^```(?:json)?\s*(.*?)\s*```$/s', $text, $matches)) {
+            $text = $matches[1];
+        }
         $decoded = json_decode($text, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            return $this->cleanNulls($decoded);
+        if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded) || $decoded === [] || array_is_list($decoded)) {
+            throw new GeminiApiException('Gemini output must contain a valid nonempty JSON object', GeminiApiException::CODE_RESPONSE_INVALID, false, ['response_length' => strlen($text)]);
         }
 
-        // Try extracting JSON snippet
-        $jsonSnippet = $this->extractJsonSnippet($text);
-        $decoded = json_decode($jsonSnippet, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            return $this->cleanNulls($decoded);
-        }
-
-        // Try cleaning and repairing the text
-        $cleanedText = $this->cleanJsonText($text);
-        $decoded = json_decode($cleanedText, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            Log::info('[GeminiResponseParser] JSON cleaned successfully');
-
-            return $this->cleanNulls($decoded);
-        }
-
-        // Try repairing known issues
-        $repairedText = $this->repairJson($cleanedText);
-        $decoded = json_decode($repairedText, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            Log::info('[GeminiResponseParser] JSON repaired successfully');
-
-            return $this->cleanNulls($decoded);
-        }
-
-        // Try repairing the snippet
-        $repairedSnippet = $this->repairJson($jsonSnippet);
-        $decoded = json_decode($repairedSnippet, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            Log::info('[GeminiResponseParser] JSON snippet repaired successfully');
-
-            return $this->cleanNulls($decoded);
-        }
-
-        // All parsing attempts failed
-        throw new GeminiApiException(
-            'Gemini response is not valid JSON.',
-            GeminiApiException::CODE_RESPONSE_INVALID,
-            false,
-            [
-                'error' => json_last_error_msg(),
-                'response_length' => strlen($text),
-                'response_preview' => substr($text, 0, 500),
-            ]
-        );
+        return $this->cleanNulls($decoded);
     }
 
     /**

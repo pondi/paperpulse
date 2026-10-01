@@ -23,20 +23,20 @@ class BankStatementDataNormalizer
                 'name' => $geminiData['bank_name'] ?? null,
                 'account_holder' => $geminiData['account_holder'] ?? null,
                 'account_number' => $geminiData['account_number'] ?? null,
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Statement period (nested)
             'statement_period' => array_filter([
                 'start_date' => $geminiData['statement_period_start'] ?? null,
                 'end_date' => $geminiData['statement_period_end'] ?? null,
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Balances (nested)
             'balances' => array_filter([
                 'opening_balance' => $geminiData['opening_balance'] ?? null,
                 'closing_balance' => $geminiData['closing_balance'] ?? null,
                 'currency' => $geminiData['currency'] ?? 'NOK',
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Transactions (already array)
             'transactions' => $geminiData['transactions'] ?? [],

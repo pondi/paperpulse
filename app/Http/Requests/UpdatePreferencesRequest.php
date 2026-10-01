@@ -24,6 +24,7 @@ class UpdatePreferencesRequest extends FormRequest
             'currency' => 'required|string|in:NOK,USD,EUR,GBP,SEK,DKK',
 
             'auto_categorize' => 'boolean',
+            'auto_organize_documents' => 'boolean',
             'extract_line_items' => 'boolean',
             'default_category_id' => ['nullable', new ExistsForUser('categories')],
 

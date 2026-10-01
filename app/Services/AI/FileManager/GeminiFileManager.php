@@ -46,7 +46,7 @@ class GeminiFileManager
         }
 
         $fileName = $displayName ?? basename($localPath);
-        $mimeType = mime_content_type($localPath) ?: 'application/octet-stream';
+        $mimeType = GeminiMimeType::detect($localPath);
         $fileSize = filesize($localPath);
 
         Log::info('[GeminiFileManager] Uploading file to Gemini Files API', [
@@ -128,6 +128,11 @@ class GeminiFileManager
                 );
             }
 
+            if (isset($file['mimeType']) && $file['mimeType'] !== $mimeType) {
+                $this->deleteFile($file['name']);
+                throw new GeminiApiException('Uploaded resource MIME does not match source', GeminiApiException::CODE_UNSUPPORTED_MIME, false);
+            }
+
             Log::info('[GeminiFileManager] File uploaded successfully', [
                 'file_uri' => $file['uri'] ?? null,
                 'file_name' => $file['name'] ?? null,
@@ -139,6 +144,7 @@ class GeminiFileManager
                 'name' => $file['name'],
                 'mimeType' => $file['mimeType'] ?? $mimeType,
                 'sizeBytes' => $file['sizeBytes'] ?? $fileSize,
+                'state' => $file['state'] ?? 'PROCESSING',
             ];
 
         } catch (GeminiApiException $e) {
@@ -160,73 +166,52 @@ class GeminiFileManager
      */
     public function deleteFile(string $fileName): bool
     {
-        Log::info('[GeminiFileManager] Deleting file from Gemini Files API', [
-            'file_name' => $fileName,
-        ]);
+        $response = Http::timeout(30)->delete($this->resourceUrl($fileName));
 
-        try {
-            $response = Http::timeout(30)
-                ->delete("{$this->filesEndpoint}/{$fileName}?key={$this->apiKey}");
-
-            if ($response->successful()) {
-                Log::info('[GeminiFileManager] File deleted successfully', [
-                    'file_name' => $fileName,
-                ]);
-
-                return true;
-            }
-
-            // If file doesn't exist (404), consider it success
-            if ($response->status() === 404) {
-                Log::warning('[GeminiFileManager] File not found (already deleted?)', [
-                    'file_name' => $fileName,
-                ]);
-
-                return true;
-            }
-
-            Log::warning('[GeminiFileManager] File deletion failed', [
-                'file_name' => $fileName,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            return false;
-
-        } catch (Exception $e) {
-            Log::error('[GeminiFileManager] File deletion error', [
-                'file_name' => $fileName,
-                'error' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
+        return $response->successful() || $response->status() === 404;
     }
 
-    /**
-     * Get file metadata from Gemini Files API.
-     *
-     * @param  string  $fileName  File name (e.g., "files/abc123")
-     */
     public function getFileMetadata(string $fileName): ?array
     {
-        try {
-            $response = Http::timeout(30)
-                ->get("{$this->filesEndpoint}/{$fileName}?key={$this->apiKey}");
-
-            if (! $response->successful()) {
-                return null;
-            }
-
-            return $response->json();
-
-        } catch (Exception $e) {
-            Log::error('[GeminiFileManager] Failed to get file metadata', [
-                'file_name' => $fileName,
-                'error' => $e->getMessage(),
-            ]);
-
-            return null;
+        $response = Http::timeout(30)->get($this->resourceUrl($fileName));
+        if (! $response->successful()) {
+            throw new GeminiApiException('Unable to read Gemini file state', GeminiApiException::CODE_API_ERROR, $response->status() >= 500, ['status' => $response->status()]);
         }
+
+        return $response->json();
+    }
+
+    public function waitUntilActive(array $reference): array
+    {
+        $attempts = max(1, min(20, (int) config('ai.providers.gemini.file_poll_attempts', 8)));
+        for ($attempt = 0; $attempt < $attempts; $attempt++) {
+            $state = $reference['state'] ?? 'PROCESSING';
+            if ($state === 'ACTIVE') {
+                return $reference;
+            }
+            if ($state !== 'PROCESSING') {
+                throw new GeminiApiException('Gemini file processing failed', GeminiApiException::CODE_RESPONSE_INVALID, false);
+            }
+            if ($attempt > 0) {
+                usleep(min(2000000, max(0, (int) config('ai.providers.gemini.file_poll_delay_ms', 250)) * (2 ** min($attempt - 1, 3)) * 1000));
+            }
+            $metadata = $this->getFileMetadata($reference['name']);
+            $reference['state'] = $metadata['state'] ?? 'STATE_UNSPECIFIED';
+        }
+        if (($reference['state'] ?? null) === 'ACTIVE') {
+            return $reference;
+        }
+
+        throw new GeminiApiException('Gemini file readiness timed out', GeminiApiException::CODE_TIMEOUT, true);
+    }
+
+    protected function resourceUrl(string $name): string
+    {
+        $id = str_starts_with($name, 'files/') ? substr($name, 6) : $name;
+        if (! preg_match('/^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/', $id)) {
+            throw new GeminiApiException('Invalid Gemini resource name', GeminiApiException::CODE_PARSE_ERROR, false);
+        }
+
+        return $this->filesEndpoint.'/'.$id.'?key='.$this->apiKey;
     }
 }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\AI\Providers;
 
 use App\Exceptions\GeminiApiException;
+use App\Services\AI\FileManager\GeminiMimeType;
+use App\Services\AI\Shared\ResponseShapeValidator;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -248,8 +250,10 @@ class GeminiProvider
         string $fileUri,
         array $schema,
         string $prompt,
-        array $conversationHistory = []
+        array $conversationHistory = [],
+        string $mimeType = 'application/pdf'
     ): array {
+        GeminiMimeType::validate($mimeType);
         [$model, $apiKey] = $this->resolveModelAndKey();
 
         Log::info('[GeminiProvider] Analyzing file by URI', [
@@ -269,7 +273,7 @@ class GeminiProvider
                 [
                     'fileData' => [
                         'fileUri' => $fileUri,
-                        'mimeType' => 'application/pdf',
+                        'mimeType' => $mimeType,
                     ],
                 ],
             ],
@@ -288,6 +292,7 @@ class GeminiProvider
         $result = $this->sendGeminiRequest($payload, $model, $apiKey);
 
         $parsed = $this->responseParser->parseJsonResponse($result['text']);
+        ResponseShapeValidator::validate($parsed, $schema['responseSchema'] ?? []);
 
         return [
             'provider' => 'gemini',

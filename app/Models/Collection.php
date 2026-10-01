@@ -88,14 +88,61 @@ class Collection extends Model
         'icon',
         'color',
         'is_archived',
+        'parent_id',
+        'folder_type',
+        'organization_source',
+        'is_pinned',
     ];
 
     protected function casts(): array
     {
         return [
             'is_archived' => 'boolean',
+            'is_pinned' => 'boolean',
             'deleted_reason' => DeletedReason::class,
         ];
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id');
+    }
+
+    public function primaryFiles(): HasMany
+    {
+        return $this->hasMany(File::class, 'primary_folder_id');
+    }
+
+    public static function normalizeIdentity(string $name): string
+    {
+        return mb_strtolower(preg_replace('/\s+/u', ' ', trim($name)));
+    }
+
+    public static function folderIdentity(string $name, ?int $parentId, string $type): string
+    {
+        return hash('sha256', ($parentId ?? 0).'|'.$type.'|'.static::normalizeIdentity($name));
+    }
+
+    public function validateTreePosition(): void
+    {
+        $visited = $this->exists ? [$this->id] : [];
+        $parentId = $this->parent_id;
+        for ($depth = 0; $parentId !== null; $depth++) {
+            if ($depth >= 64 || in_array($parentId, $visited, true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['parent_id' => 'Folder trees cannot contain cycles or exceed 64 levels.']);
+            }
+            $parent = static::withoutGlobalScope('user')->where('user_id', $this->user_id)->find($parentId);
+            if (! $parent) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['parent_id' => 'Select an active folder you own.']);
+            }
+            $visited[] = $parentId;
+            $parentId = $parent->parent_id;
+        }
     }
 
     public function user(): BelongsTo
@@ -106,7 +153,7 @@ class Collection extends Model
     public function files(): BelongsToMany
     {
         return $this->belongsToMany(File::class)
-            ->withTimestamps();
+            ->withPivot('is_primary_placement')->withTimestamps();
     }
 
     public function shares(): HasMany
@@ -249,6 +296,15 @@ class Collection extends Model
     protected static function boot(): void
     {
         parent::boot();
+
+        static::saving(function (self $collection): void {
+            $collection->validateTreePosition();
+            if (! $collection->exists || $collection->isDirty(['name', 'parent_id', 'folder_type'])) {
+                $collection->folder_type ??= 'folder';
+                $collection->normalized_name = static::normalizeIdentity($collection->name);
+                $collection->identity_key = static::folderIdentity($collection->name, $collection->parent_id, $collection->folder_type);
+            }
+        });
 
         static::creating(function ($collection) {
             if (empty($collection->slug)) {

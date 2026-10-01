@@ -3,6 +3,12 @@
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
 
+beforeEach(function (): void {
+    Illuminate\Support\Facades\Redis::shouldReceive('connection')->with('health')->andReturnSelf();
+    Illuminate\Support\Facades\Redis::shouldReceive('ping')->andReturn(true);
+    Illuminate\Support\Facades\Queue::shouldReceive('size')->with('default')->andReturn(0);
+});
+
 beforeEach(function () {
     $this->user = User::factory()->create();
     Sanctum::actingAs($this->user);

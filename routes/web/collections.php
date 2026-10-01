@@ -15,6 +15,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::prefix('collections')->name('collections.')->group(function () {
         // Static routes first
         Route::get('/', [CollectionController::class, 'index'])->name('index');
+        Route::get('/folders', [CollectionController::class, 'folders'])->name('folders');
         Route::get('/all', [CollectionController::class, 'all'])->name('all');
         Route::get('/shared', [CollectionController::class, 'shared'])->name('shared');
         Route::post('/', [CollectionController::class, 'store'])->name('store');
@@ -23,6 +24,8 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::get('/{collection}', [CollectionController::class, 'show'])->name('show');
         Route::patch('/{collection}', [CollectionController::class, 'update'])->name('update');
         Route::delete('/{collection}', [CollectionController::class, 'destroy'])->name('destroy');
+
+        Route::get('/{collection}/tree-preview', [CollectionController::class, 'treePreview'])->name('tree-preview');
 
         // Archive actions
         Route::post('/{collection}/archive', [CollectionController::class, 'archive'])->name('archive');

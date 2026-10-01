@@ -78,6 +78,7 @@ class Receipt extends Model implements Taggable
         'receipt_category',
         'receipt_description',
         'receipt_data',
+        'note',
     ];
 
     protected $casts = [

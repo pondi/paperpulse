@@ -8,6 +8,7 @@ use App\Services\Files\StoragePathBuilder;
 use App\Services\StorageService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Support\UploadedContent;
 
 class FileContentController extends BaseApiController
 {
@@ -39,12 +40,12 @@ class FileContentController extends BaseApiController
         return new StreamedResponse(function () use ($stream) {
             fpassthru($stream);
             fclose($stream);
-        }, 200, [
+        }, 200, array_merge([
             'Content-Type' => $contentType,
             'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
             'Cache-Control' => 'private, max-age=3600',
             'X-Content-Type-Options' => 'nosniff',
-        ]);
+        ], UploadedContent::headers($extension, $filename, $disposition)));
     }
 
     /**

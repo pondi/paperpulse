@@ -2,30 +2,33 @@
 
 namespace App\Services\AI\OpenAI;
 
-use Illuminate\Support\Facades\Log;
+use App\Exceptions\AIResponseException;
+use JsonException;
 
-/**
- * Helpers to parse OpenAI chat responses into arrays.
- */
 class ResponseParser
 {
-    /**
-     * Decode the first choice message content as JSON.
-     *
-     * @param  mixed  $response  OpenAI response object
-     */
-    public static function jsonContent($response): array
+    public static function jsonContent(mixed $response): array
     {
-        $content = $response->choices[0]->message->content ?? '{}';
-        $decoded = json_decode($content, true);
+        $choice = $response->choices[0] ?? null;
+        if (($choice?->finishReason ?? null) === 'length') {
+            throw new AIResponseException('AI output was truncated', true);
+        }
+        if (($choice?->finishReason ?? null) !== 'stop' || ! empty($choice?->message?->refusal)) {
+            throw new AIResponseException('AI output was refused or incomplete');
+        }
+        $content = $choice?->message?->content;
+        if (! is_string($content) || trim($content) === '') {
+            throw new AIResponseException('AI output was empty');
+        }
+        try {
+            $decoded = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            throw new AIResponseException('AI output was malformed JSON');
+        }
+        if (! is_array($decoded) || $decoded === [] || array_is_list($decoded)) {
+            throw new AIResponseException('AI output must contain a nonempty JSON object');
+        }
 
-        Log::debug('[ResponseParser] AI response content', [
-            'raw_content' => $content,
-            'decoded' => $decoded,
-            'is_array' => is_array($decoded),
-            'keys' => is_array($decoded) ? array_keys($decoded) : [],
-        ]);
-
-        return is_array($decoded) ? $decoded : [];
+        return $decoded;
     }
 }

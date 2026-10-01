@@ -1,7 +1,13 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Providers\HorizonServiceProvider;
+use App\Providers\OrganizationServiceProvider;
+use App\Providers\ServiceLayerServiceProvider;
+
 return [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\HorizonServiceProvider::class,
-    App\Providers\ServiceLayerServiceProvider::class,
+    AppServiceProvider::class,
+    HorizonServiceProvider::class,
+    OrganizationServiceProvider::class,
+    ServiceLayerServiceProvider::class,
 ];

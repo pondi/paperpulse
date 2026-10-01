@@ -43,13 +43,15 @@ function getEntityTypeBadge(type) {
         invoice: { label: 'Invoice', classes: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400' },
         contract: { label: 'Contract', classes: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
         voucher: { label: 'Voucher', classes: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400' },
+        warranty: { label: 'Warranty', classes: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+        return_policy: { label: 'Return policy', classes: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
         bank_statement: { label: 'Statement', classes: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' },
     }
     return badges[type] || { label: type || 'File', classes: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300' }
 }
 
 function formatCurrency(amount, currency) {
-    if (!amount) return null
+    if (amount === null || amount === undefined) return null
     try {
         return new Intl.NumberFormat(undefined, {
             style: 'currency',
@@ -217,7 +219,7 @@ function getDisplayTitle(file) {
                                     <p class="text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Date</p>
                                     <p class="text-sm text-zinc-900 dark:text-zinc-100">{{ selectedFile.entity_details.purchase_date }}</p>
                                 </div>
-                                <div v-if="selectedFile.entity_details.total">
+                                <div v-if="selectedFile.entity_details.total != null">
                                     <p class="text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Total</p>
                                     <p class="text-base font-semibold text-zinc-900 dark:text-zinc-100">
                                         {{ formatCurrency(selectedFile.entity_details.total, selectedFile.entity_details.currency) }}
@@ -251,7 +253,7 @@ function getDisplayTitle(file) {
                                     <p class="text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Due Date</p>
                                     <p class="text-sm text-zinc-900 dark:text-zinc-100">{{ selectedFile.entity_details.due_date }}</p>
                                 </div>
-                                <div v-if="selectedFile.entity_details.total_amount">
+                                <div v-if="selectedFile.entity_details.total_amount != null">
                                     <p class="text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Total</p>
                                     <p class="text-base font-semibold text-zinc-900 dark:text-zinc-100">
                                         {{ formatCurrency(selectedFile.entity_details.total_amount, selectedFile.entity_details.currency) }}
@@ -281,7 +283,7 @@ function getDisplayTitle(file) {
                                     <p class="text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Code</p>
                                     <p class="text-sm font-mono font-medium text-zinc-900 dark:text-zinc-100">{{ selectedFile.entity_details.code }}</p>
                                 </div>
-                                <div v-if="selectedFile.entity_details.value">
+                                <div v-if="selectedFile.entity_details.value != null">
                                     <p class="text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Value</p>
                                     <p class="text-base font-semibold text-zinc-900 dark:text-zinc-100">
                                         {{ formatCurrency(selectedFile.entity_details.value, selectedFile.entity_details.currency) }}
@@ -291,6 +293,13 @@ function getDisplayTitle(file) {
                                     <p class="text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Expires</p>
                                     <p class="text-sm text-zinc-900 dark:text-zinc-100">{{ selectedFile.entity_details.expires_at }}</p>
                                 </div>
+                            </template>
+
+                            <template v-else-if="selectedFile.entity_type === 'warranty' || selectedFile.entity_type === 'return_policy'">
+                                <p v-if="selectedFile.entity_details.product_name" class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ selectedFile.entity_details.product_name }}</p>
+                                <p v-if="selectedFile.entity_details.expires_at" class="text-sm text-zinc-700 dark:text-zinc-300">Expires {{ selectedFile.entity_details.expires_at }}</p>
+                                <p v-if="selectedFile.entity_details.return_deadline" class="text-sm text-zinc-700 dark:text-zinc-300">Return by {{ selectedFile.entity_details.return_deadline }}</p>
+                                <p v-if="selectedFile.entity_details.is_final_sale" class="text-sm text-zinc-700 dark:text-zinc-300">Final sale</p>
                             </template>
 
                             <!-- Bank statement details -->
@@ -308,6 +317,16 @@ function getDisplayTitle(file) {
                                     <p class="text-sm text-zinc-900 dark:text-zinc-100">{{ selectedFile.entity_details.statement_period }}</p>
                                 </div>
                             </template>
+                        </div>
+
+                        <div v-if="selectedFile.supplemental_entities?.length" class="flex flex-col gap-4">
+                            <div v-for="(entity, index) in selectedFile.supplemental_entities" :key="index" class="flex flex-col gap-1">
+                                <p class="text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{{ entity.type === 'warranty' ? 'Warranty' : 'Return policy' }}</p>
+                                <p v-if="entity.title" class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ entity.title }}</p>
+                                <p v-if="entity.details.expires_at" class="text-sm text-zinc-700 dark:text-zinc-300">Expires {{ entity.details.expires_at }}</p>
+                                <p v-if="entity.details.return_deadline" class="text-sm text-zinc-700 dark:text-zinc-300">Return by {{ entity.details.return_deadline }}</p>
+                                <p v-if="entity.details.is_final_sale" class="text-sm text-zinc-700 dark:text-zinc-300">Final sale</p>
+                            </div>
                         </div>
 
                         <!-- Tags -->

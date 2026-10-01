@@ -97,3 +97,16 @@ test('an invitation cannot create a second account or be used for another email'
     $this->post('/register', $payload)->assertSessionHasErrors('email');
     expect(\App\Models\User::where('email', $invitation->email)->count())->toBe(1);
 });
+
+
+test('invitation registration sends verification only after account creation commits', function () {
+    \Illuminate\Support\Facades\Notification::fake();
+    $invitation = Invitation::create(['email' => 'verify@example.com', 'status' => 'sent']);
+    $this->post('/register', ['name' => 'New User', 'email' => $invitation->email,
+        'password' => 'password', 'password_confirmation' => 'password', 'invitation_token' => $invitation->token])
+        ->assertRedirect(route('dashboard', absolute: false));
+    $user = \App\Models\User::where('email', $invitation->email)->firstOrFail();
+    expect($user->hasVerifiedEmail())->toBeFalse();
+    \Illuminate\Support\Facades\Notification::assertSentTo($user, \Illuminate\Auth\Notifications\VerifyEmail::class);
+    $this->get('/dashboard')->assertRedirect(route('verification.notice'));
+});

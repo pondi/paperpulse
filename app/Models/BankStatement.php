@@ -28,6 +28,8 @@ class BankStatement extends Model implements Taggable
 
     protected $fillable = [
         'file_id',
+        'import_generation',
+        'categorized_at',
         'user_id',
         'bank_name',
         'account_holder_name',
@@ -48,6 +50,7 @@ class BankStatement extends Model implements Taggable
 
     protected $casts = [
         'statement_data' => 'array',
+        'categorized_at' => 'datetime',
         'statement_date' => 'date',
         'statement_period_start' => 'date',
         'statement_period_end' => 'date',

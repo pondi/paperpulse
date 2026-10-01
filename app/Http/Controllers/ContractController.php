@@ -57,7 +57,8 @@ class ContractController extends BaseResourceController
      */
     public function show($id): Response
     {
-        $contract = Contract::with($this->showWith)->findOrFail($id);
+        $contract = Contract::accessibleBy(auth()->user())->with($this->showWith)
+            ->with(['file' => fn ($query) => $query->withoutGlobalScope('user')])->findOrFail($id instanceof Contract ? $id->id : $id);
 
         $this->authorize('view', $contract);
 

@@ -16,6 +16,7 @@ class UserPreference extends Model
         'date_format',
         'currency',
         'auto_categorize',
+        'auto_organize_documents',
         'extract_line_items',
         'default_category_id',
         'notify_processing_complete',
@@ -41,6 +42,7 @@ class UserPreference extends Model
 
     protected $casts = [
         'auto_categorize' => 'boolean',
+        'auto_organize_documents' => 'boolean',
         'extract_line_items' => 'boolean',
         'notify_processing_complete' => 'boolean',
         'notify_processing_failed' => 'boolean',
@@ -87,6 +89,7 @@ class UserPreference extends Model
             'date_format' => 'Y-m-d',
             'currency' => 'NOK',
             'auto_categorize' => true,
+            'auto_organize_documents' => true,
             'extract_line_items' => true,
             'notify_processing_complete' => true,
             'notify_processing_failed' => true,

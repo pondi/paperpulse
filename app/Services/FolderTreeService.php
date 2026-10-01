@@ -37,7 +37,12 @@ class FolderTreeService
                 return $locked;
             }
             if ($locked->primary_folder_id) {
-                $locked->collections()->wherePivot('is_primary_placement', true)->detach($locked->primary_folder_id);
+                $previous = Collection::withoutGlobalScope('user')->where('user_id', $locked->user_id)->find($locked->primary_folder_id);
+                if ($previous && $this->hasSharing($previous)) {
+                    $locked->collections()->updateExistingPivot($previous->id, ['is_primary_placement' => false]);
+                } else {
+                    $locked->collections()->wherePivot('is_primary_placement', true)->detach($locked->primary_folder_id);
+                }
             }
             if (! $locked->collections()->withoutGlobalScope('user')->whereKey($target->id)->exists()) {
                 $locked->collections()->attach($target->id, ['is_primary_placement' => true]);
@@ -47,6 +52,11 @@ class FolderTreeService
 
             return $locked->fresh();
         });
+    }
+
+    public function hasSharing(Collection $folder): bool
+    {
+        return $folder->shares()->exists() || $folder->publicLinks()->exists();
     }
 
     /** @return list<int> */

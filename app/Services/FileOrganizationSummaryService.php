@@ -32,7 +32,7 @@ class FileOrganizationSummaryService
             $locked = File::withoutGlobalScope('user')->where('user_id', $file->user_id)->lockForUpdate()->findOrFail($file->id);
             $locked->update(['organization_summary' => $summary]);
 
-            return $locked;
+            return app(FolderOrganizationService::class)->placeFromSummary($locked);
         });
     }
 }

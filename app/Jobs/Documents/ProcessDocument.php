@@ -11,6 +11,7 @@ use App\Services\Files\FilePreviewManager;
 use App\Services\TextExtractionService;
 use App\Services\Workers\WorkerFileManager;
 use Carbon\Carbon;
+use DateTimeInterface;
 use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -333,7 +334,7 @@ class ProcessDocument extends BaseJob
             $document->document_type = $this->detectDocumentType($extractedText, $file->fileName);
             $document->extracted_text = $this->prepareExtractedText($extractedText);
             $document->language = $this->detectLanguage($extractedText);
-            $document->document_date = $this->extractDocumentDate($extractedText) ?? now();
+            $document->document_date = $this->extractDocumentDate($extractedText);
             $document->page_count = $this->estimatePageCount($extractedText);
             $document->metadata = [
                 'original_filename' => $file->fileName,
@@ -528,7 +529,7 @@ class ProcessDocument extends BaseJob
     /**
      * Extract document date from text
      */
-    protected function extractDocumentDate(string $text): ?DateTime
+    protected function extractDocumentDate(string $text): ?DateTimeInterface
     {
         // Simple date extraction using regex
         // Matches: YYYY-MM-DD, DD.MM.YYYY, DD/MM/YYYY
@@ -541,7 +542,13 @@ class ProcessDocument extends BaseJob
         foreach ($patterns as $pattern => $format) {
             if (preg_match($pattern, $text, $matches)) {
                 try {
-                    return Carbon::createFromFormat($format, $matches[0]);
+                    if ($format === 'd/m/Y' && (int) $matches[1] <= 12 && (int) $matches[2] <= 12 && $matches[1] !== $matches[2]) {
+                        return null;
+                    }
+                    $date = Carbon::createFromFormat('!'.$format, $matches[0]);
+                    if ($date !== false && $date->format($format) === $matches[0]) {
+                        return $date;
+                    }
                 } catch (Exception $e) {
                     continue;
                 }

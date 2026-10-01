@@ -4,15 +4,15 @@ namespace App\Http\Middleware\Api;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
 
 class ApiRequestLogger
 {
     /**
      * Log sanitized API request/response metadata.
      */
-    public function handle(Request $request, Closure $next)
+    public function handle(Request $request, Closure $next): Response
     {
         $start = microtime(true);
         $response = $next($request);
@@ -27,7 +27,7 @@ class ApiRequestLogger
             'duration_ms' => $durationMs,
             'user_id' => $user?->id,
             'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
+            'user_agent_length' => strlen($request->userAgent() ?? ''),
             'payload' => $this->sanitizePayload($request),
         ]);
 
@@ -36,50 +36,6 @@ class ApiRequestLogger
 
     protected function sanitizePayload(Request $request): array
     {
-        $payload = [];
-
-        // Include query params for GET/HEAD
-        if (in_array($request->getMethod(), ['GET', 'HEAD'])) {
-            $payload['query'] = $request->query();
-        } else {
-            $body = $request->all();
-            $payload['body'] = Arr::except($body, [
-                'password',
-                'password_confirmation',
-                'token',
-                'access_token',
-                'refresh_token',
-            ]);
-        }
-
-        // Include file metadata only (not contents)
-        if ($request->files->count() > 0) {
-            $files = [];
-            foreach ($request->files as $key => $file) {
-                if (is_array($file)) {
-                    $files[$key] = array_map(function ($f) {
-                        return $this->fileInfo($f);
-                    }, $file);
-                } else {
-                    $files[$key] = $this->fileInfo($file);
-                }
-            }
-            $payload['files'] = $files;
-        }
-
-        return $payload;
-    }
-
-    protected function fileInfo($file): array
-    {
-        if (! $file) {
-            return [];
-        }
-
-        return [
-            'original_name' => $file->getClientOriginalName(),
-            'mime' => $file->getClientMimeType(),
-            'size' => $file->getSize(),
-        ];
+        return ['field_count' => count($request->all()), 'file_count' => $request->files->count()];
     }
 }

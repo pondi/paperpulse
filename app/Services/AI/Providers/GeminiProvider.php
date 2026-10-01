@@ -6,6 +6,7 @@ namespace App\Services\AI\Providers;
 
 use App\Exceptions\GeminiApiException;
 use App\Services\AI\FileManager\GeminiMimeType;
+use App\Services\AI\Shared\ResponseShapeValidator;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -301,6 +302,7 @@ class GeminiProvider
         $result = $this->sendGeminiRequest($payload, $model, $apiKey);
 
         $parsed = $this->responseParser->parseJsonResponse($result['text']);
+        ResponseShapeValidator::validate($parsed, $schema['responseSchema'] ?? []);
 
         return [
             'provider' => 'gemini',

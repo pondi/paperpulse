@@ -21,6 +21,7 @@ beforeEach(function () {
 it('retries transient 503 errors at the provider level and succeeds', function () {
     $successResponse = [
         'candidates' => [[
+            'finishReason' => 'STOP',
             'content' => [
                 'parts' => [['text' => '{"entities": [{"type": "receipt"}]}']],
             ],
@@ -94,6 +95,7 @@ it('does not retry non-retryable status codes like 400', function () {
 it('retries 429 rate limit errors at the provider level', function () {
     $successResponse = [
         'candidates' => [[
+            'finishReason' => 'STOP',
             'content' => [
                 'parts' => [['text' => '{"result": "ok"}']],
             ],
@@ -116,6 +118,7 @@ it('retries 429 rate limit errors at the provider level', function () {
 it('retries connection timeout errors (cURL error 28) at the provider level', function () {
     $successResponse = [
         'candidates' => [[
+            'finishReason' => 'STOP',
             'content' => [
                 'parts' => [['text' => '{"result": "recovered"}']],
             ],

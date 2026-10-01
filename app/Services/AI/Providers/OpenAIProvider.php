@@ -2,6 +2,7 @@
 
 namespace App\Services\AI\Providers;
 
+use App\Exceptions\AIResponseException;
 use App\Services\AI\AIService;
 use App\Services\AI\OpenAI\ChatPayloadBuilder;
 use App\Services\AI\OpenAI\FallbackPayloadFactory;
@@ -9,6 +10,7 @@ use App\Services\AI\OpenAI\ResponseParser;
 use App\Services\AI\PromptTemplateService;
 use App\Services\AI\Shared\AIDataNormalizer;
 use App\Services\AI\Shared\AIFallbackHandler;
+use App\Services\AI\Shared\ResponseShapeValidator;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use OpenAI\Laravel\Facades\OpenAI;
@@ -91,6 +93,9 @@ class OpenAIProvider implements AIService
             ]);
 
             $result = ResponseParser::jsonContent($response);
+            if (isset($promptData['schema'])) {
+                ResponseShapeValidator::validate($result, $promptData['schema']);
+            }
 
             $cost = null;
 
@@ -104,13 +109,16 @@ class OpenAIProvider implements AIService
 
             return $finalResult;
         } catch (Exception $e) {
-            if (AIFallbackHandler::shouldAttemptFallback($e)) {
+            if (($e instanceof AIResponseException && $e->retryable) || AIFallbackHandler::shouldAttemptFallback($e)) {
                 try {
                     $fallbackPayload = FallbackPayloadFactory::make($promptData['messages'], $model, $params);
 
                     $response = OpenAI::chat()->create($fallbackPayload);
 
                     $result = ResponseParser::jsonContent($response);
+                    if (isset($promptData['schema'])) {
+                        ResponseShapeValidator::validate($result, $promptData['schema']);
+                    }
 
                     $normalizedData = AIDataNormalizer::normalizeReceiptData($result);
 
@@ -153,6 +161,9 @@ class OpenAIProvider implements AIService
             $response = OpenAI::chat()->create(ChatPayloadBuilder::forDocument($promptData, $model));
 
             $result = ResponseParser::jsonContent($response);
+            if (isset($promptData['schema'])) {
+                ResponseShapeValidator::validate($result, $promptData['schema']);
+            }
 
             return AIFallbackHandler::createSuccessResult('openai', $result, [
                 'model' => $model,
@@ -265,6 +276,9 @@ class OpenAIProvider implements AIService
             ]);
 
             $result = ResponseParser::jsonContent($response);
+            if (isset($promptData['schema'])) {
+                ResponseShapeValidator::validate($result, $promptData['schema']);
+            }
 
             return $result['tags'] ?? [];
         } catch (Exception $e) {
@@ -340,6 +354,9 @@ class OpenAIProvider implements AIService
                 'response_format' => ['type' => 'json_object'],
             ]);
             $result = ResponseParser::jsonContent($response);
+            if (isset($promptData['schema'])) {
+                ResponseShapeValidator::validate($result, $promptData['schema']);
+            }
 
             return array_intersect_key($result, array_flip($types));
         } catch (Exception $e) {

@@ -64,10 +64,14 @@ class File extends Model
         'has_image_preview',
         'image_generation_error',
         'processing_type',
+        'primary_folder_id',
+        'placement_source',
+        'placement_version',
     ];
 
     protected $casts = [
         'meta' => 'array',
+        'placement_version' => 'integer',
         'has_image_preview' => 'boolean',
         'uploaded_at' => 'datetime',
         'file_created_at' => 'datetime',
@@ -78,6 +82,11 @@ class File extends Model
     public function resolveRouteBindingQuery($query, $value, $field = null): \Illuminate\Database\Eloquent\Builder
     {
         return parent::resolveRouteBindingQuery($query, $value, $field)->accessibleBy(auth()->user());
+    }
+
+    public function primaryFolder(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Collection::class, 'primary_folder_id');
     }
 
     public function user()

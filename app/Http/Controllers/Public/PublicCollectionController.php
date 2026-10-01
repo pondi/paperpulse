@@ -41,7 +41,10 @@ class PublicCollectionController extends Controller
 
         $data = $this->sharingService->getCollectionForPublicView($link);
 
-        $link->incrementViewCount();
+        if (! $link->reserveView()) {
+            return Inertia::render('Public/SharedCollectionExpired');
+        }
+        $request->session()->put('public_share_visit_'.$link->id, now()->addHour()->timestamp);
         $this->sharingService->logAccess($link, $request, PublicShareAction::View);
 
         $files = $data['files']->map(fn ($file) => (new PublicCollectionFileResource($file, $token))->resolve($request));
@@ -91,7 +94,7 @@ class PublicCollectionController extends Controller
     {
         $link = $this->sharingService->findLinkByToken($token);
 
-        if (! $link || ! $link->isAccessible()) {
+        if (! $link || ! $this->canUseContent($request, $link)) {
             abort(404);
         }
 
@@ -159,7 +162,7 @@ class PublicCollectionController extends Controller
     {
         $link = $this->sharingService->findLinkByToken($token);
 
-        if (! $link || ! $link->isAccessible()) {
+        if (! $link || ! $this->canUseContent($request, $link)) {
             abort(404);
         }
 
@@ -248,6 +251,16 @@ class PublicCollectionController extends Controller
             'Pragma' => 'no-cache',
             'Expires' => '0',
         ]);
+    }
+
+    private function canUseContent(Request $request, \App\Models\PublicCollectionLink $link): bool
+    {
+        if (! $link->is_active || $link->hasExpired()) {
+            return false;
+        }
+
+        return $link->max_views === null
+            || (int) $request->session()->get('public_share_visit_'.$link->id, 0) > now()->timestamp;
     }
 
     private function isUnlocked(Request $request, int $linkId): bool

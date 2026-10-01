@@ -139,6 +139,12 @@ class PublicCollectionLink extends Model
         return $this->is_password_protected;
     }
 
+    public function reserveView(): bool
+    {
+        return static::query()->whereKey($this->id)->active()
+            ->increment('view_count', 1, ['last_accessed_at' => now()]) === 1;
+    }
+
     public function incrementViewCount(): void
     {
         $this->increment('view_count');

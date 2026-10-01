@@ -152,9 +152,6 @@ class PublicCollectionSharingService
                 $query->where(function ($q) {
                     $q->whereNotNull('expires_at')
                         ->where('expires_at', '<=', now());
-                })->orWhere(function ($q) {
-                    $q->whereNotNull('max_views')
-                        ->whereColumn('view_count', '>=', 'max_views');
                 });
             })
             ->update(['is_active' => false]);

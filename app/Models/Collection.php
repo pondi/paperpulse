@@ -123,8 +123,10 @@ class Collection extends Model
     {
         return $this->belongsToMany(User::class, 'collection_shares', 'collection_id', 'shared_with_user_id')
             ->withPivot(['permission', 'shared_at', 'expires_at'])
-            ->wherePivot('expires_at', '>', now())
-            ->orWherePivotNull('expires_at');
+            ->where(function (Builder $query) {
+                $query->whereNull('collection_shares.expires_at')
+                    ->orWhere('collection_shares.expires_at', '>', now());
+            });
     }
 
     public function getFilesCountAttribute(): int

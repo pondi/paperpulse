@@ -5,6 +5,7 @@ use App\Http\Middleware\Api\ApiRequestLogger;
 use App\Http\Middleware\Api\ApiVersion;
 use App\Http\Middleware\Api\RequestId;
 use App\Http\Middleware\ApiSecurityHeaders;
+use App\Http\Middleware\ConfiguredTrustProxies;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SecurityHeaders;
@@ -17,6 +18,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Validation\ValidationException;
 use Spatie\Csp\AddCspHeaders;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -30,14 +32,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Trust all proxies for Kubernetes environments
-        $middleware->trustProxies(
-            at: '*',
-            headers: Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
-                     Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |
-                     Illuminate\Http\Request::HEADER_X_FORWARDED_PORT |
-                     Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO |
-                     Illuminate\Http\Request::HEADER_X_FORWARDED_AWS_ELB
+        $middleware->replace(
+            TrustProxies::class,
+            ConfiguredTrustProxies::class,
+        );
+
+        $middleware->trustHosts(
+            at: fn () => config('network.trusted_hosts', []),
+            subdomains: false,
         );
 
         $middleware->web(append: [

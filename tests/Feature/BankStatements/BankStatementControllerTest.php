@@ -5,6 +5,7 @@ use App\Models\BankStatement;
 use App\Models\BankTransaction;
 use App\Models\ExtractableEntity;
 use App\Models\File;
+use App\Models\FileCleanupManifest;
 use App\Models\Tag;
 use App\Models\User;
 use App\Services\StorageService;
@@ -245,13 +246,14 @@ it('can delete a bank statement', function () {
     ]);
 
     $storageService = $this->mock(StorageService::class);
-    $storageService->shouldReceive('deleteFile')->once()->andReturn(true);
+    $storageService->shouldNotReceive('deleteFile');
 
     $this->actingAs($user)
         ->delete(route('bank-statements.destroy', $statement))
         ->assertRedirect(route('bank-statements.index'));
 
     expect(BankStatement::withTrashed()->find($statement->id)->trashed())->toBeTrue();
+    expect(FileCleanupManifest::where('file_id', $file->id)->count())->toBe(1);
 });
 
 // ==========================================
@@ -517,7 +519,10 @@ it('requires authentication for bank statement routes', function () {
 
 it('bounds the initial statement page and filters transactions beyond that page', function () {
     $user = User::factory()->create();
-    $statement = BankStatement::factory()->create(['user_id' => $user->id]);
+    $statement = BankStatement::factory()->create([
+        'user_id' => $user->id,
+        'file_id' => File::factory()->create(['user_id' => $user->id])->id,
+    ]);
     BankTransaction::factory()->count(60)->create(['user_id' => $user->id, 'bank_statement_id' => $statement->id, 'transaction_date' => '2026-02-01', 'amount' => -10, 'category_group' => 'entertainment']);
     $matching = BankTransaction::factory()->create(['user_id' => $user->id, 'bank_statement_id' => $statement->id,
         'transaction_date' => '2026-01-01', 'description' => 'Beyond first page', 'amount' => -99, 'category_group' => 'food_and_drink']);

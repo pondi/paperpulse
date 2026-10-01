@@ -52,3 +52,6 @@ tests/Browser/console/*
 !tests/Browser/screenshots/.gitkeep
 !tests/Browser/source/.gitkeep
 !tests/Browser/console/.gitkeep
+
+/storage/framework/migrations.lock
+/.todo/

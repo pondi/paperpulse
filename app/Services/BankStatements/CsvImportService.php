@@ -9,10 +9,12 @@ use App\Models\BankStatement;
 use App\Models\BankTransaction;
 use App\Models\ExtractableEntity;
 use App\Models\User;
+use App\Services\Receipts\DecimalAmount;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 
 class CsvImportService
 {
@@ -478,7 +480,10 @@ class CsvImportService
         } elseif ($get('debit') !== null || $get('credit') !== null) {
             $debit = $this->parseAmount($get('debit') ?? '0');
             $credit = $this->parseAmount($get('credit') ?? '0');
-            $amount = $credit > 0 ? $credit : -abs($debit);
+            if ($debit === null || $credit === null) {
+                return null;
+            }
+            $amount = DecimalAmount::format(DecimalAmount::minorUnits($credit) > 0 ? DecimalAmount::minorUnits($credit) : -abs(DecimalAmount::minorUnits($debit)));
         }
 
         if ($amount === null) {
@@ -496,8 +501,8 @@ class CsvImportService
             'description' => $description,
             'reference' => $get('reference'),
             'transaction_type' => $transactionType,
-            'amount' => round($amount, 2),
-            'balance_after' => $balance !== null ? round($balance, 2) : null,
+            'amount' => $amount,
+            'balance_after' => $balance,
             'counterparty_name' => $get('counterparty'),
             'currency' => $currency,
         ];
@@ -506,27 +511,16 @@ class CsvImportService
     /**
      * Parse a numeric amount string, handling various formats.
      */
-    protected function parseAmount(string $value): ?float
+    protected function parseAmount(string $value): ?string
     {
         if ($value === '') {
             return null;
         }
-
-        $cleaned = preg_replace('/[^\d.,\-]/', '', $value);
-
-        // European format (1.234,56) vs US format (1,234.56)
-        if (preg_match('/\d+\.\d{3},\d{2}$/', $cleaned)) {
-            $cleaned = str_replace('.', '', $cleaned);
-            $cleaned = str_replace(',', '.', $cleaned);
-        } elseif (preg_match('/\d+,\d{2}$/', $cleaned) && ! str_contains($cleaned, '.')) {
-            $cleaned = str_replace(',', '.', $cleaned);
-        } else {
-            $cleaned = str_replace(',', '', $cleaned);
+        try {
+            return DecimalAmount::format(DecimalAmount::minorUnits($value));
+        } catch (InvalidArgumentException) {
+            return null;
         }
-
-        $result = (float) $cleaned;
-
-        return is_finite($result) ? $result : null;
     }
 
     /**

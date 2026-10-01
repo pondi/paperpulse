@@ -57,3 +57,43 @@ test('valid invitation links disclose the invited email and token', function () 
             ->where('invitation.email', $invitation->email)
             ->where('invitation.token', $invitation->token));
 });
+
+
+test('failed user creation leaves an invitation retryable', function () {
+    $invitation = Invitation::create(['email' => 'retry@example.com', 'status' => 'sent']);
+    $payload = [
+        'name' => 'Retry User', 'email' => $invitation->email,
+        'password' => 'password', 'password_confirmation' => 'password',
+        'invitation_token' => $invitation->token,
+    ];
+    $fail = true;
+    \App\Models\User::creating(function () use (&$fail) {
+        if ($fail) {
+            $fail = false;
+            throw new RuntimeException('Simulated failed insert');
+        }
+    });
+
+    $this->post('/register', $payload)->assertServerError();
+    expect($invitation->fresh()->used_at)->toBeNull();
+    $this->assertDatabaseMissing('users', ['email' => $invitation->email]);
+
+    $this->post('/register', $payload)->assertRedirect(route('dashboard', absolute: false));
+    expect($invitation->fresh()->used_at)->not->toBeNull();
+});
+
+test('an invitation cannot create a second account or be used for another email', function () {
+    $invitation = Invitation::create(['email' => 'once@example.com', 'status' => 'sent']);
+    $payload = [
+        'name' => 'Invited User', 'email' => 'other@example.com',
+        'password' => 'password', 'password_confirmation' => 'password',
+        'invitation_token' => $invitation->token,
+    ];
+    $this->post('/register', $payload)->assertSessionHasErrors('email');
+    expect($invitation->fresh()->used_at)->toBeNull();
+    $payload['email'] = $invitation->email;
+    $this->post('/register', $payload)->assertRedirect(route('dashboard', absolute: false));
+    \Illuminate\Support\Facades\Auth::logout();
+    $this->post('/register', $payload)->assertSessionHasErrors('email');
+    expect(\App\Models\User::where('email', $invitation->email)->count())->toBe(1);
+});

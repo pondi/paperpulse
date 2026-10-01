@@ -124,6 +124,7 @@ class ProcessFileGemini extends BaseJob
                 $geminiFileName = $uploadResult['name'];
 
                 try {
+                    $fileManager->waitUntilActive($uploadResult);
                     $this->updateProgress(40);
 
                     // PASS 1: Classify document type
@@ -228,7 +229,13 @@ class ProcessFileGemini extends BaseJob
                         'file_id' => $file->id,
                         'gemini_file_name' => $geminiFileName,
                     ]);
-                    $fileManager->deleteFile($geminiFileName);
+                    try {
+                        if (! $fileManager->deleteFile($geminiFileName)) {
+                            DeleteGeminiFile::dispatch($geminiFileName)->onQueue('files');
+                        }
+                    } catch (Throwable) {
+                        DeleteGeminiFile::dispatch($geminiFileName)->onQueue('files');
+                    }
                 }
             },
             'ProcessFileGemini'

@@ -1,12 +1,15 @@
 <?php
 
 use App\Contracts\Services\TextAnalysisContract;
+use App\Jobs\BankStatements\ProcessCsvImport;
 use App\Models\BankStatement;
 use App\Models\BankTransaction;
 use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\User;
 use App\Services\BankStatements\CsvImportService;
+use App\Services\BankStatements\TransactionCategorizationService;
+use App\Services\StorageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -719,3 +722,84 @@ it('rejects oversized CSV input before mapping', function () {
 it('rejects oversized multiline records', function () {
     createCsvImportService()->sampleRows('Date,Description,Amount'."\n".'2026-01-01,"'.str_repeat('x', CsvImportService::MAX_RECORD_BYTES).'",-10');
 })->throws(Exception::class, 'record exceeds');
+
+it('rolls back financial records and linkage on a mid-import failure', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id]);
+    $count = 0;
+    BankTransaction::creating(function () use (&$count): void {
+        if (++$count === 2) {
+            throw new RuntimeException('Injected transaction failure');
+        }
+    });
+    try {
+        expect(fn () => createCsvImportService()->createStatementFromCsv([
+            ['2026-01-01', 'First', '-10'], ['2026-01-02', 'Second', '-20'],
+        ], ['transaction_date' => 0, 'description' => 1, 'amount' => 2], $user->id, $file->id))
+            ->toThrow(RuntimeException::class, 'Injected transaction failure');
+        expect(BankStatement::count())->toBe(0)
+            ->and(BankTransaction::count())->toBe(0)
+            ->and(ExtractableEntity::count())->toBe(0);
+    } finally {
+        BankTransaction::flushEventListeners();
+    }
+});
+
+it('reuses one complete import per file generation after retry and duplicate delivery', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id]);
+    $service = createCsvImportService();
+    $csv = "Date,Description,Amount\n2026-01-01,Shop,-10\n2026-01-02,Salary,20";
+    $first = $service->importFromContent($csv, $user->id, $file->id, 'first');
+    $retry = $service->importFromContent($csv, $user->id, $file->id, 'first');
+    expect($retry->id)->toBe($first->id)
+        ->and(BankStatement::count())->toBe(1)
+        ->and(BankTransaction::count())->toBe(2)
+        ->and(ExtractableEntity::count())->toBe(1);
+    $service->importFromContent($csv, $user->id, $file->id, 'second');
+    expect(BankStatement::count())->toBe(2);
+});
+
+it('resumes categorization without recreating financial records', function () {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id, 'fileExtension' => 'csv']);
+    $csv = "Date,Description,Amount\n2026-01-01,Shop,-10\n2026-01-02,Salary,20";
+    $this->instance(CsvImportService::class, createCsvImportService());
+    $this->mock(StorageService::class, function ($mock) use ($csv): void {
+        $mock->shouldReceive('getFileByUserAndGuid')->twice()->andReturn($csv);
+    });
+    $attempt = 0;
+    $this->mock(TransactionCategorizationService::class, function ($mock) use (&$attempt): void {
+        $mock->shouldReceive('categorize')->twice()->andReturnUsing(function ($transactions) use (&$attempt): void {
+            if (++$attempt === 1) {
+                $transactions->first()->update(['category_group' => 'food_and_drink']);
+                throw new RuntimeException('Provider unavailable');
+            }
+            expect($transactions)->toHaveCount(1);
+            $transactions->first()->update(['category_group' => 'income']);
+        });
+    });
+    $job = new class('csv-test', $file->id) extends ProcessCsvImport
+    {
+        public function runImport(): void
+        {
+            $this->handleJob();
+        }
+
+        protected function getMetadata(): ?array
+        {
+            return ['processingGeneration' => 'csv-test'];
+        }
+
+        protected function updateProgress(int $progress): void {}
+    };
+    expect(fn () => $job->runImport())->toThrow(RuntimeException::class, 'Provider unavailable');
+    $statement = BankStatement::first();
+    expect(BankTransaction::count())->toBe(2)->and($statement->categorized_at)->toBeNull();
+    $job->runImport();
+    $job->runImport();
+    expect(BankStatement::count())->toBe(1)
+        ->and(BankTransaction::count())->toBe(2)
+        ->and($statement->fresh()->categorized_at)->not->toBeNull()
+        ->and($file->fresh()->status)->toBe('completed');
+});

@@ -8,10 +8,12 @@ use App\Contracts\Services\TextAnalysisContract;
 use App\Models\BankStatement;
 use App\Models\BankTransaction;
 use App\Models\ExtractableEntity;
+use App\Models\File;
 use App\Models\User;
 use App\Services\Receipts\DecimalAmount;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
@@ -45,8 +47,12 @@ class CsvImportService
     /**
      * Import from raw CSV content string (for jobs that already have the content).
      */
-    public function importFromContent(string $csvContent, int $userId, int $fileId): BankStatement
+    public function importFromContent(string $csvContent, int $userId, int $fileId, string $generation = 'initial'): BankStatement
     {
+        $existing = BankStatement::where('user_id', $userId)->where('file_id', $fileId)->where('import_generation', $generation)->first();
+        if ($existing) {
+            return $existing;
+        }
         if (trim($csvContent) === '') {
             throw new Exception('CSV content is empty.');
         }
@@ -64,6 +70,7 @@ class CsvImportService
             throw new Exception('CSV file contains no data rows.');
         }
 
+        File::where('user_id', $userId)->findOrFail($fileId);
         $mapping = $this->mapColumns($headers, $sampleRows);
 
         Log::info('[CsvImportService] Column mapping resolved', [
@@ -75,11 +82,12 @@ class CsvImportService
 
         $allRows = $this->parseAllRows($csvContent, $delimiter);
 
-        $statement = $this->createStatementFromCsv($allRows, $mapping, $userId, $fileId);
+        return (new BankStatement)->getConnection()->transaction(function () use ($allRows, $mapping, $userId, $fileId, $generation, $csvContent): BankStatement {
+            $statement = $this->createStatementFromCsv($allRows, $mapping, $userId, $fileId, $generation);
+            $this->enrichFromFooter($csvContent, $statement);
 
-        $this->enrichFromFooter($csvContent, $statement);
-
-        return $statement;
+            return $statement;
+        });
     }
 
     /**
@@ -242,7 +250,28 @@ class CsvImportService
     /**
      * Create a BankStatement and its transactions from parsed CSV rows.
      */
-    public function createStatementFromCsv(array $rows, array $mapping, int $userId, int $fileId): BankStatement
+    public function createStatementFromCsv(array $rows, array $mapping, int $userId, int $fileId, string $generation = 'initial'): BankStatement
+    {
+        return (new BankStatement)->getConnection()->transaction(function () use ($rows, $mapping, $userId, $fileId, $generation): BankStatement {
+            File::where('user_id', $userId)->lockForUpdate()->findOrFail($fileId);
+            $existing = BankStatement::where('user_id', $userId)->where('file_id', $fileId)->where('import_generation', $generation)->first();
+            if ($existing) {
+                return $existing;
+            }
+            if ($generation === 'initial') {
+                $legacy = BankStatement::where('user_id', $userId)->where('file_id', $fileId)->whereNull('import_generation')->first();
+                if ($legacy) {
+                    $legacy->update(['import_generation' => $generation]);
+
+                    return $legacy;
+                }
+            }
+
+            return $this->persistStatement($rows, $mapping, $userId, $fileId, $generation);
+        });
+    }
+
+    protected function persistStatement(array $rows, array $mapping, int $userId, int $fileId, string $generation): BankStatement
     {
         $transactions = [];
         $totalCredits = 0;
@@ -289,6 +318,7 @@ class CsvImportService
 
         $statement = BankStatement::create([
             'file_id' => $fileId,
+            'import_generation' => $generation,
             'user_id' => $userId,
             'bank_name' => null,
             'statement_date' => $lastDate,
@@ -393,6 +423,8 @@ class CsvImportService
                     'updates' => array_keys($updates),
                 ]);
             }
+        } catch (QueryException $e) {
+            throw $e;
         } catch (Exception $e) {
             Log::info('[CsvImportService] No footer data extracted', ['error' => $e->getMessage()]);
         }

@@ -6,10 +6,10 @@ namespace App\Http\Controllers;
 
 use App\Enums\TransactionCategory;
 use App\Http\Controllers\Concerns\HandlesEntityCrud;
+use App\Http\Requests\BankTransactionIndexRequest;
 use App\Http\Resources\BankTransactionResource;
 use App\Http\Resources\Inertia\BankStatementInertiaResource;
 use App\Models\BankStatement;
-use App\Models\BankTransaction;
 use App\Models\Tag;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +27,7 @@ class BankStatementController extends BaseResourceController
 
     protected array $indexWith = [];
 
-    protected array $showWith = ['transactions', 'file', 'tags'];
+    protected array $showWith = ['file', 'tags'];
 
     protected array $searchableFields = ['bank_name', 'account_holder_name', 'account_number'];
 
@@ -60,12 +60,19 @@ class BankStatementController extends BaseResourceController
      */
     public function show($id): Response
     {
-        $statement = BankStatement::with($this->showWith)->findOrFail($id);
+        $statement = BankStatement::query()->accessibleBy(auth()->user())
+            ->with(['file' => fn ($query) => $query->withoutGlobalScope('user'), 'tags'])
+            ->findOrFail($id);
 
         $this->authorize('view', $statement);
 
         return Inertia::render('BankStatements/Show', [
             'statement' => BankStatementInertiaResource::forShow($statement)->toArray(request()),
+            'transactions' => $this->transactionPage($statement, []),
+            'transaction_stats' => [
+                'credit_count' => $statement->transactions()->withoutGlobalScope('user')->where('amount', '>', 0)->count(),
+                'debit_count' => $statement->transactions()->withoutGlobalScope('user')->where('amount', '<', 0)->count(),
+            ],
             'available_tags' => auth()->user()->tags()->orderBy('name')->get(),
             'category_groups' => collect(TransactionCategory::cases())->map(fn (TransactionCategory $c) => [
                 'value' => $c->value,
@@ -82,57 +89,42 @@ class BankStatementController extends BaseResourceController
     /**
      * Return paginated, filterable transactions for a statement as JSON.
      */
-    public function transactions(Request $request, int $id): JsonResponse
+    public function transactions(BankTransactionIndexRequest $request, int $id): JsonResponse
     {
-        $statement = BankStatement::findOrFail($id);
+        $statement = BankStatement::query()->accessibleBy($request->user())->findOrFail($id);
         $this->authorize('view', $statement);
 
-        $query = BankTransaction::where('bank_statement_id', $statement->id);
+        return response()->json($this->transactionPage($statement, $request->validated()));
+    }
 
-        if ($type = $request->input('type')) {
-            $query->where('transaction_type', $type);
+    /** @return array<string, mixed> */
+    private function transactionPage(BankStatement $statement, array $filters): array
+    {
+        $query = $statement->transactions()->withoutGlobalScope('user');
+        foreach (['type' => 'transaction_type', 'category_group' => 'category_group'] as $filter => $column) {
+            if (! empty($filters[$filter])) {
+                $query->where($column, $filters[$filter]);
+            }
         }
-
-        if ($categoryGroup = $request->input('category_group')) {
-            $query->where('category_group', $categoryGroup);
-        }
-
-        if ($search = $request->input('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('description', 'like', "%{$search}%")
+        if (! empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($query) use ($search): void {
+                $query->where('description', 'like', "%{$search}%")
                     ->orWhere('counterparty_name', 'like', "%{$search}%")
                     ->orWhere('reference', 'like', "%{$search}%");
             });
         }
-
-        if ($from = $request->input('date_from')) {
-            $query->where('transaction_date', '>=', $from);
+        if (! empty($filters['date_from'])) {
+            $query->whereDate('transaction_date', '>=', $filters['date_from']);
         }
-        if ($to = $request->input('date_to')) {
-            $query->where('transaction_date', '<=', $to);
+        if (! empty($filters['date_to'])) {
+            $query->whereDate('transaction_date', '<=', $filters['date_to']);
         }
+        $transactions = $query->orderBy($filters['sort'] ?? 'transaction_date', $filters['sort_direction'] ?? 'desc')
+            ->orderBy('id', $filters['sort_direction'] ?? 'desc')
+            ->paginate($filters['per_page'] ?? 50, ['*'], 'page', $filters['page'] ?? 1);
 
-        $sortField = $request->input('sort', 'transaction_date');
-        $sortDirection = in_array(strtolower($request->input('sort_direction', 'desc')), ['asc', 'desc'], true)
-            ? strtolower($request->input('sort_direction', 'desc'))
-            : 'desc';
-        $allowedSorts = ['transaction_date', 'amount', 'balance_after', 'description', 'category_group'];
-        if (in_array($sortField, $allowedSorts)) {
-            $query->orderBy($sortField, $sortDirection);
-        }
-
-        $perPage = min((int) $request->input('per_page', 50), 200);
-        $transactions = $query->paginate($perPage);
-
-        return response()->json([
-            'data' => $transactions->through(fn ($tx) => (new BankTransactionResource($tx))->resolve()),
-            'meta' => [
-                'current_page' => $transactions->currentPage(),
-                'last_page' => $transactions->lastPage(),
-                'per_page' => $transactions->perPage(),
-                'total' => $transactions->total(),
-            ],
-        ]);
+        return BankTransactionResource::collection($transactions)->response()->getData(true);
     }
 
     protected function transformForIndex(Model $item): array

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
 import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
@@ -374,6 +374,11 @@ const toggleExpanded = (fileId: number) => {
                                 </a>
 
                                 <template v-if="file.status === 'failed'">
+                                    <Link v-if="file.extension?.toLowerCase() === 'csv'"
+                                        :href="route('bank-statements.csv-mapping.edit', file.id)"
+                                        class="text-blue-600 dark:text-blue-400 hover:underline">
+                                        Correct CSV mapping
+                                    </Link>
                                     <PrimaryButton type="button" @click="restart(file.id)">
                                         <svg class="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

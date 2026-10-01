@@ -56,7 +56,10 @@ class BankStatementFactory extends BaseEntityFactory
 
     protected function prepareData(array $data, File $file): array
     {
-        return $this->flattenData($data);
+        $prepared = $this->flattenData($data);
+        $prepared['currency'] ??= config('paperpulse.defaults.currency', 'NOK');
+
+        return $prepared;
     }
 
     protected function afterCreate(Model $model, array $data, File $file): void
@@ -115,6 +118,23 @@ class BankStatementFactory extends BaseEntityFactory
         }
         if ($statement->transaction_count === null) {
             $updates['transaction_count'] = count($created);
+        }
+        $chronological = collect($created)->filter(fn (BankTransaction $transaction): bool => $transaction->transaction_date !== null)
+            ->sortBy('transaction_date')->values();
+        if ($chronological->isNotEmpty()) {
+            $first = $chronological->first();
+            $last = $chronological->last();
+            foreach ([
+                'statement_period_start' => $first->transaction_date,
+                'statement_period_end' => $last->transaction_date,
+                'statement_date' => $last->transaction_date,
+                'opening_balance' => $first->balance_after !== null ? round((float) $first->balance_after - (float) $first->amount, 2) : null,
+                'closing_balance' => $last->balance_after,
+            ] as $field => $value) {
+                if ($statement->{$field} === null && $value !== null) {
+                    $updates[$field] = $value;
+                }
+            }
         }
         if (! empty($updates)) {
             $statement->update($updates);

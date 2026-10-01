@@ -418,59 +418,43 @@ class AnalyticsController extends Controller
 
     private function getBankingData(int $userId, ?Carbon $startDate, Carbon $endDate): array
     {
-        $statementCount = BankStatement::where('user_id', $userId)
-            ->when($startDate, fn ($q) => $q->whereBetween('statement_date', [$startDate, $endDate]))
-            ->count();
+        $transactions = BankTransaction::query()->where('user_id', $userId)
+            ->whereHas('bankStatement', fn ($query) => $query->where('user_id', $userId))
+            ->whereNotNull('transaction_date')
+            ->whereDate('transaction_date', '<=', $endDate->toDateString())
+            ->when($startDate, fn ($query) => $query->whereDate('transaction_date', '>=', $startDate->toDateString()));
 
-        $statementIds = BankStatement::where('user_id', $userId)
-            ->when($startDate, fn ($q) => $q->whereBetween('statement_date', [$startDate, $endDate]))
-            ->pluck('id');
+        $statementCount = (clone $transactions)->distinct()->count('bank_statement_id');
+        $transactionCount = (clone $transactions)->count();
+        $totalCredits = (float) (clone $transactions)->where('amount', '>', 0)->sum('amount');
+        $totalDebits = -(float) (clone $transactions)->where('amount', '<', 0)->sum('amount');
 
-        $transactionCount = BankTransaction::whereIn('bank_statement_id', $statementIds)->count();
-
-        $totalCredits = BankStatement::where('user_id', $userId)
-            ->when($startDate, fn ($q) => $q->whereBetween('statement_date', [$startDate, $endDate]))
-            ->sum('total_credits');
-
-        $totalDebits = BankStatement::where('user_id', $userId)
-            ->when($startDate, fn ($q) => $q->whereBetween('statement_date', [$startDate, $endDate]))
-            ->sum('total_debits');
-
-        $balanceTrend = BankStatement::where('user_id', $userId)
-            ->when($startDate, fn ($q) => $q->whereBetween('statement_date', [$startDate, $endDate]))
-            ->whereNotNull('statement_date')
-            ->select('statement_date', 'opening_balance', 'closing_balance', 'bank_name')
-            ->orderBy('statement_date')
-            ->get()
-            ->map(fn ($item) => [
-                'date' => Carbon::parse($item->statement_date)->format('M Y'),
-                'opening' => (float) $item->opening_balance,
-                'closing' => (float) $item->closing_balance,
-                'bank' => $item->bank_name,
+        $balanceTrend = (clone $transactions)->whereNotNull('balance_after')
+            ->with('bankStatement:id,bank_name')
+            ->orderBy('transaction_date')->orderBy('id')->get()
+            ->map(fn (BankTransaction $item): array => [
+                'date' => $item->transaction_date->format('Y-m-d'),
+                'opening' => round((float) $item->balance_after - (float) $item->amount, 2),
+                'closing' => (float) $item->balance_after,
+                'bank' => $item->bankStatement->bank_name,
             ]);
 
-        $spendingByCategory = BankTransaction::whereIn('bank_statement_id', $statementIds)
-            ->where('transaction_type', 'debit')
-            ->whereNotNull('category')
-            ->select('category', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as count'))
-            ->groupBy('category')
-            ->orderByDesc('total')
-            ->limit(10)
-            ->get()
-            ->map(fn ($item) => [
-                'category' => $item->category,
+        $spendingByCategory = (clone $transactions)->where('amount', '<', 0)
+            ->select('category_group', 'subcategory')
+            ->selectRaw('-SUM(amount) as total, COUNT(*) as count')
+            ->groupBy('category_group', 'subcategory')->orderByDesc('total')->limit(10)->get()
+            ->map(fn (BankTransaction $item): array => [
+                'category' => $item->category_group?->label() ?? 'Uncategorized',
+                'category_group' => $item->category_group?->value,
+                'subcategory' => $item->subcategory,
                 'total' => (float) $item->total,
                 'count' => $item->count,
             ]);
 
-        $topCounterparties = BankTransaction::whereIn('bank_statement_id', $statementIds)
-            ->whereNotNull('counterparty_name')
-            ->select('counterparty_name', DB::raw('COUNT(*) as transaction_count'), DB::raw('SUM(amount) as total'))
-            ->groupBy('counterparty_name')
-            ->orderByDesc('transaction_count')
-            ->limit(10)
-            ->get()
-            ->map(fn ($item) => [
+        $topCounterparties = (clone $transactions)->where('amount', '<', 0)->whereNotNull('counterparty_name')
+            ->select('counterparty_name')->selectRaw('COUNT(*) as transaction_count, -SUM(amount) as total')
+            ->groupBy('counterparty_name')->orderByDesc('total')->limit(10)->get()
+            ->map(fn (BankTransaction $item): array => [
                 'name' => $item->counterparty_name,
                 'transaction_count' => $item->transaction_count,
                 'total' => (float) $item->total,
@@ -480,9 +464,9 @@ class AnalyticsController extends Controller
             'stats' => [
                 'statement_count' => $statementCount,
                 'transaction_count' => $transactionCount,
-                'total_credits' => round((float) $totalCredits, 2),
-                'total_debits' => round((float) $totalDebits, 2),
-                'net_flow' => round((float) $totalCredits - (float) $totalDebits, 2),
+                'total_credits' => round($totalCredits, 2),
+                'total_debits' => round($totalDebits, 2),
+                'net_flow' => round($totalCredits - $totalDebits, 2),
             ],
             'balance_trend' => $balanceTrend,
             'spending_by_category' => $spendingByCategory,
@@ -610,9 +594,9 @@ class AnalyticsController extends Controller
     private function getStartDate(string $period): ?Carbon
     {
         return match ($period) {
-            'month' => Carbon::now()->subMonth(),
-            'quarter' => Carbon::now()->subQuarter(),
-            'year' => Carbon::now()->subYear(),
+            'month' => Carbon::now()->subMonthNoOverflow(),
+            'quarter' => Carbon::now()->subMonthsNoOverflow(3),
+            'year' => Carbon::now()->subYearNoOverflow(),
             'all' => null,
             default => null,
         };

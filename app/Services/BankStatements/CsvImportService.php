@@ -8,14 +8,23 @@ use App\Contracts\Services\TextAnalysisContract;
 use App\Models\BankStatement;
 use App\Models\BankTransaction;
 use App\Models\ExtractableEntity;
+use App\Models\File;
 use App\Models\User;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class CsvImportService
 {
+    public const MAX_INPUT_BYTES = 20 * 1024 * 1024;
+
+    public const MAX_RECORD_BYTES = 1024 * 1024;
+
+    public const MAX_RECORDS = 100000;
+
     public function __construct(
         protected TextAnalysisContract $ai
     ) {}
@@ -25,7 +34,7 @@ class CsvImportService
      */
     public function import(UploadedFile $file, int $userId, int $fileId): BankStatement
     {
-        $csvContent = file_get_contents($file->getRealPath());
+        $csvContent = file_get_contents($file->getRealPath(), false, null, 0, self::MAX_INPUT_BYTES + 1);
 
         if ($csvContent === false || trim($csvContent) === '') {
             throw new Exception('CSV file is empty or unreadable.');
@@ -37,13 +46,19 @@ class CsvImportService
     /**
      * Import from raw CSV content string (for jobs that already have the content).
      */
-    public function importFromContent(string $csvContent, int $userId, int $fileId): BankStatement
+    public function importFromContent(string $csvContent, int $userId, int $fileId, string $generation = 'initial'): BankStatement
     {
+        $existing = BankStatement::where('user_id', $userId)->where('file_id', $fileId)->where('import_generation', $generation)->first();
+        if ($existing) {
+            return $existing;
+        }
         if (trim($csvContent) === '') {
             throw new Exception('CSV content is empty.');
         }
 
+        $this->assertInputSize($csvContent);
         $csvContent = $this->ensureUtf8($csvContent);
+        $this->assertInputSize($csvContent);
 
         $delimiter = $this->detectDelimiter($csvContent);
 
@@ -54,7 +69,9 @@ class CsvImportService
             throw new Exception('CSV file contains no data rows.');
         }
 
-        $mapping = $this->mapColumns($headers, $sampleRows);
+        File::where('user_id', $userId)->findOrFail($fileId);
+        $mapping = File::find($fileId)?->meta['csv_mapping'] ?? $this->mapColumns($headers, $sampleRows);
+        $this->validateMapping($headers, $sampleRows, $mapping);
 
         Log::info('[CsvImportService] Column mapping resolved', [
             'file_id' => $fileId,
@@ -65,11 +82,12 @@ class CsvImportService
 
         $allRows = $this->parseAllRows($csvContent, $delimiter);
 
-        $statement = $this->createStatementFromCsv($allRows, $mapping, $userId, $fileId);
+        return (new BankStatement)->getConnection()->transaction(function () use ($allRows, $mapping, $userId, $fileId, $generation, $csvContent): BankStatement {
+            $statement = $this->createStatementFromCsv($allRows, $mapping, $userId, $fileId, $generation);
+            $this->enrichFromFooter($csvContent, $statement);
 
-        $this->enrichFromFooter($csvContent, $statement);
-
-        return $statement;
+            return $statement;
+        });
     }
 
     /**
@@ -129,14 +147,11 @@ class CsvImportService
      */
     public function parseHeaders(string $csvContent, string $delimiter = ','): array
     {
-        $lines = preg_split('/\R/', $csvContent, 2);
-        if (empty($lines[0])) {
-            return [];
+        foreach ($this->readRecords($csvContent, $delimiter) as $record) {
+            return $record;
         }
 
-        $parsed = str_getcsv(trim($lines[0]), $delimiter);
-
-        return array_map('trim', $parsed);
+        return [];
     }
 
     /**
@@ -146,20 +161,15 @@ class CsvImportService
      */
     public function sampleRows(string $csvContent, int $count = 5, string $delimiter = ','): array
     {
-        $lines = preg_split('/\R/', $csvContent);
-        if (count($lines) < 2) {
-            return [];
-        }
-
-        $dataLines = array_slice($lines, 1, $count);
         $rows = [];
-
-        foreach ($dataLines as $line) {
-            $line = trim($line);
-            if ($line === '') {
+        foreach ($this->readRecords($csvContent, $delimiter) as $index => $record) {
+            if ($index === 0) {
                 continue;
             }
-            $rows[] = array_map('trim', str_getcsv($line, $delimiter));
+            if (count($rows) >= $count) {
+                break;
+            }
+            $rows[] = $record;
         }
 
         return $rows;
@@ -224,7 +234,10 @@ class CsvImportService
             $result = $this->ai->analyze($prompt);
 
             if (is_array($result) && $this->isValidMapping($result)) {
-                return $this->normalizeMapping($result);
+                $mapping = $this->normalizeMapping($result);
+                $this->validateMapping($headers, $sampleRows, $mapping);
+
+                return $mapping;
             }
 
             Log::warning('[CsvImportService] AI returned invalid mapping, falling back to structural analysis');
@@ -234,14 +247,39 @@ class CsvImportService
             ]);
         }
 
-        return $this->structuralFallbackMapping($headers, $sampleRows);
+        $mapping = $this->structuralFallbackMapping($headers, $sampleRows);
+        $this->validateMapping($headers, $sampleRows, $mapping);
+
+        return $mapping;
     }
 
     /**
      * Create a BankStatement and its transactions from parsed CSV rows.
      */
-    public function createStatementFromCsv(array $rows, array $mapping, int $userId, int $fileId): BankStatement
+    public function createStatementFromCsv(array $rows, array $mapping, int $userId, int $fileId, string $generation = 'initial'): BankStatement
     {
+        return (new BankStatement)->getConnection()->transaction(function () use ($rows, $mapping, $userId, $fileId, $generation): BankStatement {
+            File::where('user_id', $userId)->lockForUpdate()->findOrFail($fileId);
+            $existing = BankStatement::where('user_id', $userId)->where('file_id', $fileId)->where('import_generation', $generation)->first();
+            if ($existing) {
+                return $existing;
+            }
+            if ($generation === 'initial') {
+                $legacy = BankStatement::where('user_id', $userId)->where('file_id', $fileId)->whereNull('import_generation')->first();
+                if ($legacy) {
+                    $legacy->update(['import_generation' => $generation]);
+
+                    return $legacy;
+                }
+            }
+
+            return $this->persistStatement($rows, $mapping, $userId, $fileId, $generation);
+        });
+    }
+
+    protected function persistStatement(array $rows, array $mapping, int $userId, int $fileId, string $generation): BankStatement
+    {
+        $this->validateMapping(array_fill(0, count($rows[0] ?? []), ''), $rows, $mapping);
         $transactions = [];
         $totalCredits = 0;
         $totalDebits = 0;
@@ -279,7 +317,11 @@ class CsvImportService
 
         $currency = $this->detectCurrency($transactions, $userId);
 
-        // Derived balances may be overridden by footer extraction
+        if ($transactions[0]['transaction_date'] > end($transactions)['transaction_date']) {
+            $transactions = array_reverse($transactions);
+        }
+        usort($transactions, fn (array $a, array $b): int => $a['transaction_date'] <=> $b['transaction_date']);
+
         $firstBalance = $transactions[0]['balance_after'] ?? null;
         $firstAmount = (float) ($transactions[0]['amount'] ?? 0);
         $openingBalance = $firstBalance !== null ? round($firstBalance - $firstAmount, 2) : null;
@@ -287,6 +329,7 @@ class CsvImportService
 
         $statement = BankStatement::create([
             'file_id' => $fileId,
+            'import_generation' => $generation,
             'user_id' => $userId,
             'bank_name' => null,
             'statement_date' => $lastDate,
@@ -391,6 +434,8 @@ class CsvImportService
                     'updates' => array_keys($updates),
                 ]);
             }
+        } catch (QueryException $e) {
+            throw $e;
         } catch (Exception $e) {
             Log::info('[CsvImportService] No footer data extracted', ['error' => $e->getMessage()]);
         }
@@ -403,18 +448,50 @@ class CsvImportService
      */
     protected function parseAllRows(string $csvContent, string $delimiter = ','): array
     {
-        $lines = preg_split('/\R/', $csvContent);
-        $rows = [];
+        $records = iterator_to_array($this->readRecords($csvContent, $delimiter), false);
 
-        foreach (array_slice($lines, 1) as $line) {
-            $line = trim($line);
-            if ($line === '') {
-                continue;
-            }
-            $rows[] = array_map('trim', str_getcsv($line, $delimiter));
+        return array_slice($records, 1);
+    }
+
+    protected function assertInputSize(string $content): void
+    {
+        if (strlen($content) > self::MAX_INPUT_BYTES) {
+            throw new Exception('CSV exceeds the 20 MB input limit.');
         }
+    }
 
-        return $rows;
+    /** @return \Generator<int, list<string>> */
+    protected function readRecords(string $content, string $delimiter): \Generator
+    {
+        $this->assertInputSize($content);
+        if (strlen($delimiter) !== 1) {
+            throw new Exception('CSV delimiter must be one character.');
+        }
+        $stream = fopen('php://temp', 'w+');
+        if ($stream === false) {
+            throw new Exception('Cannot open CSV reader.');
+        }
+        try {
+            fwrite($stream, $this->ensureUtf8($content));
+            rewind($stream);
+            $count = 0;
+            while (! feof($stream)) {
+                $start = ftell($stream);
+                $record = fgetcsv($stream, 0, $delimiter, '"', '');
+                if (ftell($stream) - $start > self::MAX_RECORD_BYTES) {
+                    throw new Exception('CSV record exceeds the 1 MB limit.');
+                }
+                if ($record === false || $record === [null]) {
+                    continue;
+                }
+                if (++$count > self::MAX_RECORDS) {
+                    throw new Exception('CSV exceeds the record limit.');
+                }
+                yield array_map(static fn (?string $value): string => trim($value ?? ''), $record);
+            }
+        } finally {
+            fclose($stream);
+        }
     }
 
     /**
@@ -434,8 +511,8 @@ class CsvImportService
         }
 
         // Require at least one valid date to filter out footer/summary rows
-        $txDate = $this->parseDate($get('transaction_date'));
-        $postDate = $this->parseDate($get('posting_date'));
+        $txDate = $this->parseDate($get('transaction_date'), $mapping['date_format'] ?? null);
+        $postDate = $this->parseDate($get('posting_date'), $mapping['date_format'] ?? null);
         if ($txDate === null && $postDate === null) {
             return null;
         }
@@ -446,7 +523,7 @@ class CsvImportService
         } elseif ($get('debit') !== null || $get('credit') !== null) {
             $debit = $this->parseAmount($get('debit') ?? '0');
             $credit = $this->parseAmount($get('credit') ?? '0');
-            $amount = $credit > 0 ? $credit : -abs($debit);
+            $amount = ($credit ?? 0) - abs($debit ?? 0);
         }
 
         if ($amount === null) {
@@ -459,7 +536,7 @@ class CsvImportService
         $currency = $get('currency');
 
         return [
-            'transaction_date' => $txDate,
+            'transaction_date' => $txDate ?? $postDate,
             'posting_date' => $postDate,
             'description' => $description,
             'reference' => $get('reference'),
@@ -480,7 +557,11 @@ class CsvImportService
             return null;
         }
 
-        $cleaned = preg_replace('/[^\d.,\-]/', '', $value);
+        $cleaned = preg_replace('/\s|\x{00A0}/u', '', trim($value));
+        $cleaned = preg_replace('/^[A-Z]{3}|[A-Z]{3}$/i', '', $cleaned);
+        if (! preg_match('/^[+-]?\d[\d.,]*$/', $cleaned)) {
+            return null;
+        }
 
         // European format (1.234,56) vs US format (1,234.56)
         if (preg_match('/\d+\.\d{3},\d{2}$/', $cleaned)) {
@@ -492,6 +573,9 @@ class CsvImportService
             $cleaned = str_replace(',', '', $cleaned);
         }
 
+        if (! is_numeric($cleaned)) {
+            return null;
+        }
         $result = (float) $cleaned;
 
         return is_finite($result) ? $result : null;
@@ -500,7 +584,7 @@ class CsvImportService
     /**
      * Parse a date string in various formats.
      */
-    protected function parseDate(?string $value): ?string
+    protected function parseDate(?string $value, ?string $dateFormat = null): ?string
     {
         if ($value === null || $value === '') {
             return null;
@@ -511,23 +595,18 @@ class CsvImportService
             'Y/m/d', 'd M Y', 'M d, Y', 'Y-m-d\TH:i:s',
         ];
 
+        if ($dateFormat !== null) {
+            $formats = [$dateFormat];
+        }
         foreach ($formats as $format) {
             try {
-                $date = Carbon::createFromFormat($format, trim($value));
-                if ($date && $date->year > 1990 && $date->year < 2100) {
+                $date = Carbon::createFromFormat('!'.$format, trim($value));
+                if ($date && ! Carbon::getLastErrors() && $date->format($format) === trim($value) && $date->year > 1990 && $date->year < 2100) {
                     return $date->format('Y-m-d');
                 }
             } catch (Exception) {
                 continue;
             }
-        }
-
-        try {
-            $date = Carbon::parse($value);
-            if ($date->year > 1990 && $date->year < 2100) {
-                return $date->format('Y-m-d');
-            }
-        } catch (Exception) {
         }
 
         return null;
@@ -566,6 +645,71 @@ class CsvImportService
             || (array_key_exists('credit', $mapping) && $mapping['credit'] !== null);
 
         return $hasAmount || $hasDebitCredit;
+    }
+
+    /**
+     * Reject ambiguous mappings before any financial records are created.
+     *
+     * @param  array<string, mixed>  $mapping
+     */
+    public function validateMapping(array $headers, array $rows, array $mapping): void
+    {
+        $fail = static function (string $message): never {
+            throw ValidationException::withMessages(['mapping' => $message.' Correct the CSV column mapping and retry.']);
+        };
+        if (! $this->isValidMapping($mapping) || $mapping['transaction_date'] === null || $mapping['description'] === null) {
+            $fail('Select a date, description and signed amount or debit/credit columns.');
+        }
+        $indices = [];
+        foreach ($mapping as $field => $index) {
+            if ($field === 'date_format' || $index === null) {
+                continue;
+            }
+            if (! is_int($index) || $index < 0 || $index >= count($headers)) {
+                $fail("The {$field} column is outside the CSV column range.");
+            }
+            if (in_array($index, $indices, true)) {
+                $fail('A column cannot represent multiple fields.');
+            }
+            $indices[] = $index;
+        }
+        if (isset($mapping['amount']) && (isset($mapping['debit']) || isset($mapping['credit']))) {
+            $fail('Use either one signed amount column or separate debit/credit columns.');
+        }
+        foreach ($rows as $offset => $row) {
+            $dateValue = $row[$mapping['transaction_date']] ?? '';
+            $date = $this->parseDate($dateValue, $mapping['date_format'] ?? null);
+            if ($date === null) {
+                if (preg_match('/\d{1,4}[-.\/]\d{1,2}[-.\/]\d{1,4}/', $dateValue)) {
+                    $fail('Row '.($offset + 2).' contains an invalid date.');
+                }
+
+                continue;
+            }
+            if (! isset($mapping['date_format']) && preg_match('/^(\d{1,2})\/(\d{1,2})\/\d{4}$/', $dateValue, $parts)
+                && (int) $parts[1] <= 12 && (int) $parts[2] <= 12 && $parts[1] !== $parts[2]) {
+                $fail('Choose day/month/year or month/day/year for ambiguous dates.');
+            }
+            if (($row[$mapping['description']] ?? '') === '') {
+                continue;
+            }
+            if (isset($mapping['amount'])) {
+                if ($this->parseAmount($row[$mapping['amount']] ?? '') === null) {
+                    $fail('Row '.($offset + 2).' contains an invalid amount.');
+                }
+            } else {
+                $debitValue = isset($mapping['debit']) ? ($row[$mapping['debit']] ?? '') : '';
+                $creditValue = isset($mapping['credit']) ? ($row[$mapping['credit']] ?? '') : '';
+                $debit = $debitValue === '' ? 0 : $this->parseAmount($debitValue);
+                $credit = $creditValue === '' ? 0 : $this->parseAmount($creditValue);
+                if ($debit === null || $credit === null || $credit < 0 || ($debit !== 0 && $credit !== 0) || ($debitValue === '' && $creditValue === '')) {
+                    $fail('Row '.($offset + 2).' must contain one debit magnitude (signed or unsigned) or one positive credit.');
+                }
+            }
+            if (isset($mapping['balance']) && ($row[$mapping['balance']] ?? '') !== '' && $this->parseAmount($row[$mapping['balance']]) === null) {
+                $fail('Row '.($offset + 2).' contains an invalid running balance.');
+            }
+        }
     }
 
     /**
@@ -723,29 +867,30 @@ class CsvImportService
         }
         $mapping['description'] = $descriptionCol;
 
-        // Columns with empty values in some rows suggest split debit/credit amounts
-        $splitCandidates = array_filter($numericColumns, fn ($c) => $c['has_empty']);
-
-        if (count($splitCandidates) >= 2) {
-            usort($splitCandidates, fn ($a, $b) => $a['index'] <=> $b['index']);
-            $mapping['credit'] = array_values($splitCandidates)[0]['index'];
-            $mapping['debit'] = array_values($splitCandidates)[1]['index'];
-        } elseif (count($numericColumns) === 1) {
-            $mapping['amount'] = $numericColumns[0]['index'];
-        } elseif (count($numericColumns) >= 2) {
-            $withNeg = array_filter($numericColumns, fn ($c) => $c['has_negative']);
-            if (count($withNeg) === 1) {
-                $mapping['amount'] = array_values($withNeg)[0]['index'];
-                $remaining = array_filter($numericColumns, fn ($c) => ! $c['has_negative']);
-                if (! empty($remaining)) {
-                    $mapping['balance'] = array_values($remaining)[0]['index'];
+        $roles = [
+            'transaction_date' => ['date', 'dato', 'utført dato'],
+            'description' => ['description', 'desc', 'forklaring', 'beskrivelse'],
+            'amount' => ['amount', 'beløp', 'sum'],
+            'balance' => ['balance', 'saldo'],
+            'debit' => ['debit', 'withdrawal', 'money out', 'beløp ut'],
+            'credit' => ['credit', 'deposit', 'money in', 'beløp inn'],
+        ];
+        foreach ($headers as $index => $header) {
+            foreach ($roles as $role => $names) {
+                if (in_array(mb_strtolower(trim($header)), $names, true)) {
+                    $mapping[$role] = $index;
                 }
+            }
+        }
+        if ($mapping['amount'] === null && $mapping['debit'] === null && $mapping['credit'] === null) {
+            if (count($numericColumns) === 1) {
+                $mapping['amount'] = $numericColumns[0]['index'];
             } else {
-                usort($numericColumns, fn ($a, $b) => $a['index'] <=> $b['index']);
-                $mapping['credit'] = $numericColumns[0]['index'];
-                $mapping['debit'] = $numericColumns[1]['index'];
-                if (count($numericColumns) > 2) {
-                    $mapping['balance'] = $numericColumns[2]['index'];
+                $withNegative = array_values(array_filter($numericColumns, fn (array $column): bool => $column['has_negative']));
+                if (count($withNegative) === 1 && ! $withNegative[0]['has_empty']) {
+                    $mapping['amount'] = $withNegative[0]['index'];
+                } else {
+                    throw ValidationException::withMessages(['mapping' => 'Amount columns are ambiguous. Correct the CSV column mapping and retry.']);
                 }
             }
         }

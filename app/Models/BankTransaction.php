@@ -7,6 +7,7 @@ use App\Enums\TransactionCategory;
 use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Scout\Searchable;
 
@@ -44,7 +45,7 @@ class BankTransaction extends Model
         'deleted_reason' => DeletedReason::class,
     ];
 
-    public function bankStatement()
+    public function bankStatement(): BelongsTo
     {
         return $this->belongsTo(BankStatement::class, 'bank_statement_id');
     }

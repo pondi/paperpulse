@@ -13,6 +13,7 @@ use App\Jobs\Receipts\MatchMerchant;
 use App\Jobs\Receipts\ProcessReceipt;
 use App\Jobs\System\ApplyTags;
 use App\Models\File;
+use App\Models\JobHistory;
 use App\Services\Jobs\JobMetadataPersistence;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
@@ -106,6 +107,32 @@ class FileJobChainDispatcher
             $jobs[] = (new UpdatePulseDavFileStatus($jobId, $metadata['fileId'], $pulseDavFileId, $fileType))->onQueue($queue);
         }
 
+        $parent = JobHistory::query()->firstOrCreate(['uuid' => $jobId], [
+            'parent_uuid' => null,
+            'name' => $metadata['jobName'] ?? 'Processing Job',
+            'queue' => $queue,
+            'status' => 'pending',
+            'metadata' => $metadata,
+            'order_in_chain' => 0,
+        ]);
+        $oldPlan = $parent->metadata['plannedSteps'] ?? [];
+        $plannedSteps = [];
+        foreach ($jobs as $index => $job) {
+            if (isset($oldPlan[$index]) && $oldPlan[$index]['class'] === $job::class) {
+                $job->uuid = $oldPlan[$index]['uuid'];
+            }
+            $plannedSteps[] = ['uuid' => $job->uuid, 'class' => $job::class, 'order' => $index + 1, 'required' => true];
+            JobHistory::query()->firstOrCreate(['uuid' => $job->uuid], [
+                'parent_uuid' => $jobId,
+                'name' => $job->jobName,
+                'queue' => $queue,
+                'status' => 'pending',
+                'order_in_chain' => $index + 1,
+            ]);
+        }
+        $metadata['plannedSteps'] = $plannedSteps;
+        $parent->update(['metadata' => $metadata]);
+        JobMetadataPersistence::store($jobId, $metadata);
         Bus::chain($jobs)->dispatch();
     }
 }

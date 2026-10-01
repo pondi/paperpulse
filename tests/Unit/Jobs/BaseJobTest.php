@@ -31,7 +31,7 @@ class TestConcreteJob extends BaseJob
         $this->executed = true;
 
         if ($this->shouldFail) {
-            throw new \RuntimeException('Test failure message');
+            throw new RuntimeException('Test failure message');
         }
     }
 }
@@ -49,18 +49,19 @@ it('sets job ID and name on construction', function () {
     expect($job->getJobName())->toBe('TestConcreteJob');
 });
 
-it('generates a UUID when handle is called', function () {
+it('generates a stable UUID before dispatch', function () {
     $jobId = (string) Str::uuid();
     $job = new TestConcreteJob($jobId);
 
     // Store metadata so handle can proceed
     JobMetadataPersistence::store($jobId, ['jobName' => 'Test']);
 
-    expect($job->getUUID())->toBeNull();
+    $uuid = $job->getUUID();
+    expect($uuid)->not->toBeNull();
 
     $job->handle();
 
-    expect($job->getUUID())->not->toBeNull();
+    expect($job->getUUID())->toBe($uuid);
 });
 
 // --- JobHistory tracking ---

@@ -9,9 +9,12 @@ use App\Contracts\Services\FileValidationContract;
 use App\Exceptions\DuplicateFileException;
 use App\Jobs\Files\ProcessFile;
 use App\Models\File;
+use App\Models\FileProcessingRequest;
 use App\Models\User;
 use App\Notifications\DuplicateFileDetected;
 use App\Services\Files\FileJobChainDispatcher;
+use App\Services\Files\FileProcessingRequestService;
+use App\Services\Files\StoragePathBuilder;
 use App\Services\Jobs\JobHistoryCreator;
 use App\Services\Jobs\JobMetadataPersistence;
 use Exception;
@@ -152,112 +155,44 @@ class FileProcessingService
                 $fileData['extension']
             );
 
-            // Upload to S3 BEFORE the DB transaction so we don't create
-            // orphaned DB records if S3 fails
-            $s3Path = $this->fileStorage->storeToS3(
-                $fileData['content'],
-                $userId,
-                $fileGuid,
-                $fileType,
-                'original',
-                $fileData['extension']
-            );
-
-            Log::info("[FileProcessing] [{$jobName}] File stored to S3, cleaning up local file", [
-                'file_guid' => $fileGuid,
-                's3_path' => $s3Path,
-                'local_path' => $workingPath,
-            ]);
-
-            // Clean up local file after successful S3 upload
-            if ($workingPath && file_exists($workingPath)) {
-                try {
-                    $this->fileStorage->deleteWorkingFile($workingPath);
-                    Log::debug("[FileProcessing] [{$jobName}] Local working file cleaned up", [
-                        'file_guid' => $fileGuid,
-                        'local_path' => $workingPath,
-                    ]);
-                    $workingPath = null; // Mark as cleaned up
-                } catch (Exception $e) {
-                    Log::warning("[FileProcessing] [{$jobName}] Failed to clean up local file", [
-                        'file_guid' => $fileGuid,
-                        'local_path' => $workingPath,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-
-            // Wrap all DB operations in a transaction for atomicity.
-            // If any DB write fails, no orphaned records are left behind.
-            [$file, $fileMetadata] = DB::transaction(function () use ($fileData, $fileGuid, $fileType, $userId, $fileHash, $s3Path, $jobId, $jobName, $metadata) {
-                // Create file record in database with hash
+            $s3Path = StoragePathBuilder::storagePath($userId, $fileGuid, $fileType, 'original', $fileData['extension']);
+            [$file, $request] = DB::transaction(function () use ($fileData, $fileGuid, $fileType, $userId, $fileHash, $s3Path, $jobId, $jobName, $metadata, $workingPath): array {
                 $file = $this->fileMetadata->createFileRecordFromData($fileData, $fileGuid, $fileType, $userId, $fileHash);
-
-                // Attach collections if specified
                 if (! empty($metadata['collection_ids'])) {
                     $file->collections()->sync($metadata['collection_ids']);
-                    Log::debug("[FileProcessing] [{$jobName}] Collections attached to file", [
-                        'file_id' => $file->id,
-                        'collection_ids' => $metadata['collection_ids'],
-                    ]);
                 }
-
-                // Attach tags if specified
                 if (! empty($metadata['tag_ids'])) {
                     $file->syncTags($metadata['tag_ids']);
-                    Log::debug("[FileProcessing] [{$jobName}] Tags attached to file", [
-                        'file_id' => $file->id,
-                        'tag_ids' => $metadata['tag_ids'],
-                    ]);
                 }
-
-                // Update file record with S3 path
                 $this->fileMetadata->updateFileWithS3Path($file, $s3Path);
+                $fileMetadata = $this->fileMetadata->prepareFileMetadata($file, $fileGuid, $fileData, $workingPath, $s3Path, $jobName, $metadata);
+                JobHistoryCreator::createParentJob($jobId, $jobName, $fileType, $fileMetadata, $file->id, $fileData['fileName'] ?? null);
+                JobMetadataPersistence::store($jobId, $fileMetadata);
+                $request = FileProcessingRequest::create([
+                    'job_id' => $jobId, 'user_id' => $userId, 'file_id' => $file->id,
+                    'file_type' => $fileType, 'guid' => $fileGuid, 'extension' => $fileData['extension'],
+                    'storage_disk' => config('filesystems.permanent_disk', 'paperpulse'),
+                    'original_path' => $s3Path, 'working_path' => $workingPath, 'state' => 'upload_pending',
+                ]);
 
-                // Prepare metadata for job chain
-                $fileMetadata = $this->fileMetadata->prepareFileMetadata(
-                    $file,
-                    $fileGuid,
-                    $fileData,
-                    null, // No local path - workers will download from S3
-                    $s3Path,
-                    $jobName,
-                    $metadata
-                );
-
-                // Create parent job history record
-                JobHistoryCreator::createParentJob(
-                    $jobId,
-                    $jobName,
-                    $fileType,
-                    $fileMetadata,
-                    $file->id,
-                    $fileData['fileName'] ?? null
-                );
-
-                return [$file, $fileMetadata];
+                return [$file, $request];
             });
-
-            // Store metadata in cache AFTER transaction commits (cache is external)
-            JobMetadataPersistence::store($jobId, $fileMetadata);
-
-            // Dispatch job AFTER transaction commits to avoid processing
-            // a file that might get rolled back
-            $this->jobChainDispatcher->dispatch($jobId, $fileType);
-
-            Log::info("[FileProcessing] [{$jobName}] File processing initiated", [
-                'job_id' => $jobId,
-                'file_id' => $file->id,
-                'file_guid' => $fileGuid,
-                's3_path' => $s3Path,
-            ]);
+            DB::afterCommit(function () use ($request, $fileData): void {
+                app(FileProcessingRequestService::class)
+                    ->process($request, $fileData['content'], $this->jobChainDispatcher, $this->fileStorage);
+                if ($request->fresh()->state === 'cleanup_pending') {
+                    throw new \RuntimeException($request->fresh()->last_error ?? 'The original upload could not be stored.');
+                }
+            });
+            $request->refresh();
+            if ($request->state === 'cleanup_pending') {
+                throw new \RuntimeException($request->last_error ?? 'The original upload could not be stored.');
+            }
 
             return [
-                'success' => true,
-                'fileId' => $file->id,
-                'fileGuid' => $fileGuid,
-                'jobId' => $jobId,
-                'jobName' => $jobName,
+                'success' => true, 'fileId' => $file->id, 'fileGuid' => $fileGuid,
+                'jobId' => $jobId, 'jobName' => $jobName,
+                'queue_pending' => $request->state !== 'dispatched',
             ];
         } catch (Exception $e) {
             // Clean up local file if it still exists and upload failed

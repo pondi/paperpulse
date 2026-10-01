@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Files;
 
 use App\Http\Controllers\Controller;
 use App\Models\File;
-use App\Models\FileShare;
 use App\Services\StorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -47,15 +46,7 @@ class FileServeController extends Controller
             $variant = 'preview';
         }
 
-        // Authorization: owner, valid share, or admin
-        $isOwner = $file->user_id === auth()->id();
-        $hasShare = FileShare::active()
-            ->where('file_id', $file->id)
-            ->where('file_type', $fileType)
-            ->where('shared_with_user_id', auth()->id())
-            ->exists();
-
-        if (! $isOwner && ! $hasShare && ! (auth()->user()?->is_admin)) {
+        if (! auth()->user()->can('view', $file)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

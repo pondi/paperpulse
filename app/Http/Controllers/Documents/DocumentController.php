@@ -5,19 +5,18 @@ namespace App\Http\Controllers\Documents;
 use App\Http\Controllers\BaseResourceController;
 use App\Http\Resources\Inertia\DocumentInertiaResource;
 use App\Models\Document;
-use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Tag;
 use App\Rules\ExistsForUser;
 use App\Services\Documents\DocumentUploadHandler;
 use App\Services\FileProcessingService;
+use App\Services\Files\FileDeletionService;
 use App\Services\StorageService;
 use App\Services\Tags\TagAttachmentService;
 use App\Traits\ShareableController;
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -348,44 +347,9 @@ class DocumentController extends BaseResourceController
             : Document::with('file')->findOrFail($id);
         $this->authorize('delete', $document);
 
-        $fileId = $document->file_id;
-
         try {
-            DB::transaction(function () use ($document, $fileId) {
-                // Delete stored file using StorageService and GUID path.
-                if ($document->file && $document->file->guid) {
-                    try {
-                        $storageService = app(StorageService::class);
-                        $extension = $document->file->fileExtension ?? 'pdf';
-                        $fullPath = 'documents/'.$document->user_id.'/'.$document->file->guid.'/original.'.$extension;
-                        $storageService->deleteFile($fullPath);
-                    } catch (Exception $e) {
-                        Log::warning('Failed to delete S3 file during document deletion', [
-                            'document_id' => $document->id,
-                            'error' => $e->getMessage(),
-                        ]);
-                        // Continue with deletion even if S3 delete fails
-                    }
-                }
-
-                // Delete the associated extractable_entity record
-                ExtractableEntity::where('entity_type', 'document')
-                    ->where('entity_id', $document->id)
-                    ->delete();
-
-                // Disable Scout indexing temporarily to avoid Meilisearch errors
-                Document::withoutSyncingToSearch(function () use ($document) {
-                    $document->delete();
-                });
-
-                // Delete the file record if it no longer has any entities
-                if ($fileId) {
-                    $file = File::find($fileId);
-                    if ($file && ! $file->extractableEntities()->exists()) {
-                        $file->delete();
-                    }
-                }
-            });
+            app(FileDeletionService::class)
+                ->deleteEntity($document, (int) auth()->id());
 
             return redirect()->route('documents.index')->with('success', 'Document deleted successfully');
         } catch (Exception $e) {

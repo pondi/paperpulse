@@ -3,6 +3,7 @@
 namespace App\Services\Receipt;
 
 use App\Contracts\Services\ReceiptValidatorContract;
+use App\Services\Receipts\DecimalAmount;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -102,9 +103,9 @@ class ReceiptValidatorService implements ReceiptValidatorContract
         $errors = [];
         $critical = false;
 
-        $hasValidTotal = ! empty($data['totals']['total_amount']) ||
-                        ! empty($data['receipt']['total']) ||
-                        ! empty($data['total']);
+        $hasValidTotal = isset($data['totals']['total_amount']) ||
+                        isset($data['receipt']['total']) ||
+                        isset($data['total']);
 
         if (! $hasValidTotal) {
             $errors[] = 'Missing total amount - no valid total found in receipt data';
@@ -119,8 +120,7 @@ class ReceiptValidatorService implements ReceiptValidatorContract
         if ($total !== null) {
             if (! is_numeric($total)) {
                 $errors[] = "Total amount is not numeric: {$total}";
-            } elseif ((float) $total < 0) {
-                $errors[] = "Total amount is negative: {$total}";
+
             } elseif ((float) $total > 999999.99) {
                 $errors[] = "Total amount seems unreasonably large: {$total}";
             }
@@ -299,9 +299,9 @@ class ReceiptValidatorService implements ReceiptValidatorContract
                    ! empty($data['receipt']['date']) ||
                    ! empty($data['date']);
 
-        $hasTotal = ! empty($data['totals']['total_amount']) ||
-                    ! empty($data['receipt']['total']) ||
-                    ! empty($data['total']);
+        $hasTotal = isset($data['totals']['total_amount']) ||
+                    isset($data['receipt']['total']) ||
+                    isset($data['total']);
 
         $hasItems = ! empty($data['items']) && is_array($data['items']);
 
@@ -357,15 +357,8 @@ class ReceiptValidatorService implements ReceiptValidatorContract
     /**
      * Clean numeric values
      */
-    protected function cleanNumeric($value): float
+    protected function cleanNumeric(mixed $value): string
     {
-        if (is_numeric($value)) {
-            return (float) $value;
-        }
-
-        // Try to extract numeric value from string
-        $cleaned = preg_replace('/[^\d.]/', '', (string) $value);
-
-        return is_numeric($cleaned) ? (float) $cleaned : 0;
+        return DecimalAmount::parse($value);
     }
 }

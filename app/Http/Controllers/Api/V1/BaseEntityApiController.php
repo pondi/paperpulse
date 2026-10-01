@@ -107,7 +107,7 @@ abstract class BaseEntityApiController extends BaseApiController
 
     public function show(int $id): JsonResponse
     {
-        $item = ($this->modelClass())::query()
+        $item = ($this->modelClass())::query()->accessibleBy(request()->user())
             ->with($this->showWith())
             ->find($id);
 

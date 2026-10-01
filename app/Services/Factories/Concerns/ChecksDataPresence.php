@@ -14,7 +14,7 @@ trait ChecksDataPresence
     protected function hasAny(array $data, array $keys): bool
     {
         foreach ($keys as $key) {
-            if (array_key_exists($key, $data) && ! empty($data[$key])) {
+            if (array_key_exists($key, $data) && $data[$key] !== null && $data[$key] !== '' && $data[$key] !== []) {
                 return true;
             }
         }

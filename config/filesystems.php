@@ -63,15 +63,13 @@ return [
                     'synchronous' => false,
                 ],
             ],
-            'client' => [
-                'http' => [
-                    'verify' => false,
-                    'synchronous' => false,
-                ],
-                // Allow for clock skew
-                'signature_version' => 'v4',
-                'use_aws_shared_config_files' => false,
+            'http' => [
+                'verify' => env('S3_CA_BUNDLE') ?: true,
+                'connect_timeout' => 5,
+                'timeout' => 60,
             ],
+            'signature_version' => 'v4',
+            'use_aws_shared_config_files' => false,
         ],
 
         // PaperPulse permanent storage bucket
@@ -93,15 +91,13 @@ return [
                     'synchronous' => false,
                 ],
             ],
-            'client' => [
-                'http' => [
-                    'verify' => false,
-                    'synchronous' => false,
-                ],
-                // Allow for clock skew
-                'signature_version' => 'v4',
-                'use_aws_shared_config_files' => false,
+            'http' => [
+                'verify' => env('S3_CA_BUNDLE') ?: true,
+                'connect_timeout' => 5,
+                'timeout' => 60,
             ],
+            'signature_version' => 'v4',
+            'use_aws_shared_config_files' => false,
         ],
 
         // Uplink incoming bucket for bulk desktop uploads
@@ -122,14 +118,13 @@ return [
                     'synchronous' => false,
                 ],
             ],
-            'client' => [
-                'http' => [
-                    'verify' => false,
-                    'synchronous' => false,
-                ],
-                'signature_version' => 'v4',
-                'use_aws_shared_config_files' => false,
+            'http' => [
+                'verify' => env('S3_CA_BUNDLE') ?: true,
+                'connect_timeout' => 5,
+                'timeout' => 60,
             ],
+            'signature_version' => 'v4',
+            'use_aws_shared_config_files' => false,
         ],
 
         // Textract temporary storage
@@ -169,6 +164,8 @@ return [
     */
 
     'incoming_prefix' => env('S3_INCOMING_PREFIX', 'incoming/'),
+    'incoming_disk' => env('INCOMING_FILESYSTEM_DISK', 'pulsedav'),
+    'permanent_disk' => env('PERMANENT_FILESYSTEM_DISK', 'paperpulse'),
     'uplink_prefix' => env('S3_UPLINK_PREFIX', 'uplink-incoming/'),
 
 ];

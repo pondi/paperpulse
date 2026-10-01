@@ -181,8 +181,8 @@ class CollectionService
     public function getCollectionStats(Collection $collection): array
     {
         /** @var \Illuminate\Database\Eloquent\Collection<int, File> $files */
-        $files = $collection->files()
-            ->with(['primaryEntity.entity'])
+        $files = $collection->files()->withoutGlobalScope('user')
+            ->with(['primaryEntity.entity' => fn ($query) => $query->withoutGlobalScope('user')])
             ->get();
 
         $totalAmount = 0;

@@ -1,7 +1,15 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Redis;
 use Laravel\Sanctum\Sanctum;
+
+beforeEach(function (): void {
+    Redis::shouldReceive('connection')->with('health')->andReturnSelf();
+    Redis::shouldReceive('ping')->andReturn(true);
+    Queue::shouldReceive('size')->with('default')->andReturn(0);
+});
 
 beforeEach(function () {
     $this->user = User::factory()->create();

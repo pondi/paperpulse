@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\BankStatement;
 use App\Models\Document;
 use App\Models\FileShare;
 use App\Models\Receipt;
@@ -11,6 +10,7 @@ use App\Notifications\DocumentSharedNotification;
 use App\Notifications\ReceiptSharedNotification;
 use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -131,7 +131,10 @@ class SharingService
                 $q->whereNull('expires_at')
                     ->orWhere('expires_at', '>', Carbon::now());
             })
-            ->with(['shareable', 'sharedBy']);
+            ->with(['receipt' => fn ($query) => $query->withoutGlobalScope('user'),
+                'document' => fn ($query) => $query->withoutGlobalScope('user'),
+                'file' => fn ($query) => $query->withoutGlobalScope('user')
+                    ->with(['extractableEntities.entity' => fn ($entities) => $entities->withoutGlobalScope('user')]), 'sharedBy']);
 
         if ($type) {
             $query->where('file_type', $type);
@@ -140,51 +143,20 @@ class SharingService
         return $query->get()->map(function ($share) {
             return [
                 'share' => $share,
-                'file' => $share->shareable(),
+                'file' => $share->sharedEntity(),
                 'shared_by' => $share->sharedBy,
                 'permission' => $share->permission,
                 'expires_at' => $share->expires_at,
             ];
-        });
+        })->filter(fn (array $item) => $item['file'] instanceof Model)->values();
     }
 
     /**
      * Check if a user has access to a file
      */
-    public function userHasAccess(Receipt|Document|BankStatement $file, User $user, string $permission = 'view'): bool
+    public function userHasAccess(Model $file, User $user, string $permission = 'view'): bool
     {
-        // Owner always has access
-        if ($file->user_id === $user->id) {
-            return true;
-        }
-
-        // Check for share
-        $fileType = match (true) {
-            $file instanceof Document => 'document',
-            $file instanceof BankStatement => 'bank_statement',
-            default => 'receipt',
-        };
-        $share = FileShare::where([
-            'file_type' => $fileType,
-            'file_id' => $file->file_id,
-            'shared_with_user_id' => $user->id,
-        ])
-            ->where(function ($q) {
-                $q->whereNull('expires_at')
-                    ->orWhere('expires_at', '>', Carbon::now());
-            })
-            ->first();
-
-        if (! $share) {
-            return false;
-        }
-
-        // Check permission level
-        if ($permission === 'edit' && $share->permission === 'view') {
-            return false;
-        }
-
-        return true;
+        return app(FileAccessService::class)->allows($user, $file, $permission);
     }
 
     /**
@@ -210,7 +182,7 @@ class SharingService
     public function updateSharePermission(FileShare $share, string $permission): FileShare
     {
         // Get the file and verify ownership
-        $file = $share->shareable();
+        $file = $share->sharedEntity();
         if (! $file || $file->user_id !== auth()->id()) {
             throw new AuthorizationException('You can only update shares for files you own');
         }

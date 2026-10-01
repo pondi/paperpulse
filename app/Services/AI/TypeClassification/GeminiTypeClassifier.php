@@ -41,7 +41,8 @@ class GeminiTypeClassifier implements TypeClassifier
                 $fileUri,
                 $schema,
                 $prompt,
-                [] // No conversation history for Pass 1
+                [],
+                $hints['mime_type'] ?? 'application/pdf'
             );
 
             $data = $response['data'] ?? [];

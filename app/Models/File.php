@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -74,6 +75,11 @@ class File extends Model
         'file_modified_at' => 'datetime',
         'deleted_reason' => DeletedReason::class,
     ];
+
+    public function resolveRouteBindingQuery($query, $value, $field = null): Builder
+    {
+        return parent::resolveRouteBindingQuery($query, $value, $field)->accessibleBy(auth()->user());
+    }
 
     public function user()
     {

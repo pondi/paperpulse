@@ -7,6 +7,7 @@ use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Spatie\PdfToImage\Pdf;
+use Throwable;
 
 class TextractPdfImageProcessor
 {
@@ -74,9 +75,12 @@ class TextractPdfImageProcessor
                     ->selectPage($page)
                     ->resolution(144)
                     ->quality(85)
-                    ->save($tempDir, $fileGuid.'_page_'.$page);
+                    ->save($tempDir.'/'.$fileGuid.'_page_'.$page.'.jpg');
 
-                $imagePath = $savedFiles[0]->path ?? storage_path('app/temp/'.$fileGuid.'_page_'.$page.'.jpg');
+                $imagePath = $savedFiles[0] ?? null;
+                if (! is_string($imagePath) || ! is_file($imagePath)) {
+                    throw new Exception('PDF conversion did not return an existing page image');
+                }
                 $imageContent = file_get_contents($imagePath);
                 $imageS3Path = "temp/{$fileGuid}/page_{$page}.jpg";
                 $textractDisk->put($imageS3Path, $imageContent);
@@ -108,7 +112,7 @@ class TextractPdfImageProcessor
                 } finally {
                     try {
                         $textractDisk->delete($imageS3Path);
-                    } catch (Exception $e) {
+                    } catch (Throwable $e) {
                     }
                     if (file_exists($imagePath)) {
                         @unlink($imagePath);
@@ -137,7 +141,7 @@ class TextractPdfImageProcessor
                 'forms' => $allForms,
                 'tables' => $allTables,
             ];
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Log::error('[Textract] Failed to convert/process PDF', ['error' => $e->getMessage(), 's3_path' => $s3Path]);
             foreach (glob(storage_path('app/temp/'.$fileGuid.'*')) as $tempFile) {
                 if (file_exists($tempFile)) {

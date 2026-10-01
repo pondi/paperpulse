@@ -25,7 +25,7 @@ class InvoiceDataNormalizer
                 'vat_number' => $geminiData['vendor_vat_number'] ?? null,
                 'email' => $geminiData['vendor_email'] ?? null,
                 'phone' => $geminiData['vendor_phone'] ?? null,
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Customer/To info (nested)
             'customer' => array_filter([
@@ -34,7 +34,7 @@ class InvoiceDataNormalizer
                 'vat_number' => $geminiData['customer_vat_number'] ?? null,
                 'email' => $geminiData['customer_email'] ?? null,
                 'phone' => $geminiData['customer_phone'] ?? null,
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Invoice metadata (nested)
             'invoice_info' => array_filter([
@@ -45,7 +45,7 @@ class InvoiceDataNormalizer
                 'delivery_date' => $geminiData['delivery_date'] ?? null,
                 'purchase_order_number' => $geminiData['purchase_order_number'] ?? null,
                 'reference_number' => $geminiData['reference_number'] ?? null,
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Line items (already array)
             'line_items' => $geminiData['line_items'] ?? [],
@@ -59,7 +59,7 @@ class InvoiceDataNormalizer
                 'total_amount' => $geminiData['total_amount'] ?? null,
                 'amount_paid' => $geminiData['amount_paid'] ?? null,
                 'amount_due' => $geminiData['amount_due'] ?? null,
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Payment (nested)
             'payment' => array_filter([
@@ -67,7 +67,7 @@ class InvoiceDataNormalizer
                 'status' => $geminiData['payment_status'] ?? 'unpaid',
                 'terms' => $geminiData['payment_terms'] ?? null,
                 'currency' => $geminiData['currency'] ?? 'NOK',
-            ]),
+            ], static fn (mixed $value): bool => $value !== null),
 
             // Notes
             'notes' => $geminiData['notes'] ?? null,

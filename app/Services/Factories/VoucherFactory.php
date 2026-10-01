@@ -75,6 +75,17 @@ class VoucherFactory extends BaseEntityFactory
 
     protected function prepareData(array $data, File $file): array
     {
+        $data = array_merge($data, [
+            'code' => $data['voucher']['code'] ?? $data['code'] ?? null,
+            'voucher_type' => $data['voucher']['type'] ?? $data['voucher_type'] ?? 'gift_card',
+            'original_value' => $data['value']['amount'] ?? $data['original_value'] ?? null,
+            'current_value' => $data['value']['amount'] ?? $data['current_value'] ?? $data['original_value'] ?? null,
+            'currency' => $data['value']['currency'] ?? $data['currency'] ?? 'NOK',
+            'issue_date' => $data['dates']['issue_date'] ?? $data['issue_date'] ?? null,
+            'expiry_date' => $data['dates']['expiry_date'] ?? $data['expiry_date'] ?? null,
+            'is_redeemed' => $data['is_redeemed'] ?? false,
+        ]);
+
         if (empty($data['merchant_id'])) {
             $data['merchant_id'] = $this->resolveMerchantId($data, $file);
         }

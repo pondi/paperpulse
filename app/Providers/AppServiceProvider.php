@@ -231,7 +231,15 @@ class AppServiceProvider extends ServiceProvider
         // Handles both Document models and ExtractableEntity redirects
         // Note: Route bindings execute before authentication middleware, so
         // we cannot use auth()->id() here. Authorization is handled by policies.
-        Route::bind('receipt', fn ($value) => Receipt::accessibleBy(auth()->user())->findOrFail($value));
+        foreach (['contract' => Contract::class, 'invoice' => Invoice::class,
+            'voucher' => Voucher::class, 'warranty' => Warranty::class,
+            'returnPolicy' => ReturnPolicy::class] as $parameter => $modelClass) {
+            Route::bind($parameter, fn ($value) => request()->is('api/*') ? $value : $modelClass::accessibleBy(auth()->user())
+                ->with(['file' => fn ($query) => $query->withoutGlobalScope('user')])->findOrFail($value));
+        }
+
+        Route::bind('receipt', fn ($value) => request()->is('api/*') ? $value : Receipt::accessibleBy(auth()->user())
+            ->with(['file' => fn ($query) => $query->withoutGlobalScope('user')])->findOrFail($value));
 
         Route::bind('document', function ($value) {
             // First, try to find an actual Document with this ID

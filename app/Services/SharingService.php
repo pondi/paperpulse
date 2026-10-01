@@ -151,40 +151,9 @@ class SharingService
     /**
      * Check if a user has access to a file
      */
-    public function userHasAccess(Receipt|Document|BankStatement $file, User $user, string $permission = 'view'): bool
+    public function userHasAccess(\Illuminate\Database\Eloquent\Model $file, User $user, string $permission = 'view'): bool
     {
-        // Owner always has access
-        if ($file->user_id === $user->id) {
-            return true;
-        }
-
-        // Check for share
-        $fileType = match (true) {
-            $file instanceof Document => 'document',
-            $file instanceof BankStatement => 'bank_statement',
-            default => 'receipt',
-        };
-        $share = FileShare::where([
-            'file_type' => $fileType,
-            'file_id' => $file->file_id,
-            'shared_with_user_id' => $user->id,
-        ])
-            ->where(function ($q) {
-                $q->whereNull('expires_at')
-                    ->orWhere('expires_at', '>', Carbon::now());
-            })
-            ->first();
-
-        if (! $share) {
-            return false;
-        }
-
-        // Check permission level
-        if ($permission === 'edit' && $share->permission === 'view') {
-            return false;
-        }
-
-        return true;
+        return app(FileAccessService::class)->allows($user, $file, $permission);
     }
 
     /**

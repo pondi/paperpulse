@@ -75,6 +75,11 @@ class File extends Model
         'deleted_reason' => DeletedReason::class,
     ];
 
+    public function resolveRouteBindingQuery($query, $value, $field = null): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::resolveRouteBindingQuery($query, $value, $field)->accessibleBy(auth()->user());
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

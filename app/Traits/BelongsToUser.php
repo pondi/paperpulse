@@ -7,6 +7,7 @@ use App\Models\File;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 /**
  * Provides automatic user scoping for multi-tenant Eloquent models.
@@ -46,7 +47,7 @@ trait BelongsToUser
     /**
      * Get the user that owns this model.
      */
-    public function resolveRouteBindingQuery($query, $value, $field = null): Builder
+    public function resolveRouteBindingQuery($query, $value, $field = null): Builder|Relation
     {
         return parent::resolveRouteBindingQuery($query, $value, $field)->accessibleBy(auth()->user());
     }

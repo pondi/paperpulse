@@ -69,7 +69,7 @@ class MatchMerchant extends BaseJob
             // Idempotency: skip if receipt already has a merchant assigned
             $preCheckReceiptId = $this->useDirectData ? $this->receiptId : null;
             if (! $preCheckReceiptId) {
-                $receiptMetaData = (\App\Services\Jobs\JobMetadataPersistence::retrieve($this->jobID)['artifacts']['receipt'] ?? Cache::get("job.{$this->jobID}.receiptMetaData"));
+                $receiptMetaData = (JobMetadataPersistence::retrieve($this->jobID)['artifacts']['receipt'] ?? Cache::get("job.{$this->jobID}.receiptMetaData"));
                 $preCheckReceiptId = $receiptMetaData['receiptId'] ?? null;
             }
             if ($preCheckReceiptId) {
@@ -172,7 +172,7 @@ class MatchMerchant extends BaseJob
     private function fetchDataFromCache()
     {
         $fileMetaData = JobMetadataPersistence::retrieve($this->jobID);
-        $receiptMetaData = (\App\Services\Jobs\JobMetadataPersistence::retrieve($this->jobID)['artifacts']['receipt'] ?? Cache::get("job.{$this->jobID}.receiptMetaData"));
+        $receiptMetaData = (JobMetadataPersistence::retrieve($this->jobID)['artifacts']['receipt'] ?? Cache::get("job.{$this->jobID}.receiptMetaData"));
 
         if (! $fileMetaData || ! $receiptMetaData) {
             Log::error('(MatchMerchant) - Required cache data missing', [

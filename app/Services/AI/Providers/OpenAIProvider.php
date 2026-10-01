@@ -301,11 +301,9 @@ class OpenAIProvider implements AIService
             ]);
 
             $result = ResponseParser::jsonContent($response);
-            if (isset($promptData['schema'])) {
-                ResponseShapeValidator::validate($result, $promptData['schema']);
-            }
+            ResponseShapeValidator::validate($result, $schema);
 
-            return $result['tags'] ?? [];
+            return $result['tags'];
         } catch (Exception $e) {
             Log::error('Tag suggestion failed', ['error' => $e->getMessage()]);
 
@@ -362,6 +360,11 @@ class OpenAIProvider implements AIService
     {
         $defaultTypes = ['people', 'organizations', 'locations', 'dates', 'amounts'];
         $types = empty($types) ? $defaultTypes : array_intersect($types, $defaultTypes);
+        $schema = [
+            'type' => 'object',
+            'properties' => array_fill_keys($types, ['type' => 'array']),
+            'required' => array_values($types),
+        ];
 
         try {
             $response = OpenAI::chat()->create([
@@ -379,9 +382,7 @@ class OpenAIProvider implements AIService
                 'response_format' => ['type' => 'json_object'],
             ]);
             $result = ResponseParser::jsonContent($response);
-            if (isset($promptData['schema'])) {
-                ResponseShapeValidator::validate($result, $promptData['schema']);
-            }
+            ResponseShapeValidator::validate($result, $schema);
 
             return array_intersect_key($result, array_flip($types));
         } catch (Exception $e) {

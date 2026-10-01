@@ -1,11 +1,14 @@
 <?php
 
 use App\Models\User;
+use App\Services\ReadinessCheck;
 use Laravel\Sanctum\Sanctum;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
     Sanctum::actingAs($this->user);
+    $this->mock(ReadinessCheck::class)->shouldReceive('check')
+        ->andReturn(['status' => 'ok', 'components' => []]);
 });
 
 describe('request id middleware', function () {

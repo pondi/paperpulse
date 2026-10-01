@@ -5,6 +5,7 @@ use App\Models\BankStatement;
 use App\Models\BankTransaction;
 use App\Models\ExtractableEntity;
 use App\Models\File;
+use App\Models\FileCleanupManifest;
 use App\Models\Tag;
 use App\Models\User;
 use App\Services\StorageService;
@@ -245,13 +246,14 @@ it('can delete a bank statement', function () {
     ]);
 
     $storageService = $this->mock(StorageService::class);
-    $storageService->shouldReceive('deleteFile')->once()->andReturn(true);
+    $storageService->shouldNotReceive('deleteFile');
 
     $this->actingAs($user)
         ->delete(route('bank-statements.destroy', $statement))
         ->assertRedirect(route('bank-statements.index'));
 
     expect(BankStatement::withTrashed()->find($statement->id)->trashed())->toBeTrue();
+    expect(FileCleanupManifest::where('file_id', $file->id)->count())->toBe(1);
 });
 
 // ==========================================

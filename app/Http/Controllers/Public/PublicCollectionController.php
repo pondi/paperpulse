@@ -16,6 +16,7 @@ use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Support\UploadedContent;
 use ZipArchive;
 
 class PublicCollectionController extends Controller
@@ -28,11 +29,11 @@ class PublicCollectionController extends Controller
     {
         $link = $this->sharingService->findLinkByToken($token);
 
-        if (! $link || ! $link->isAccessible()) {
+        if (! $link || ! $link->collection || ! $link->isAccessible()) {
             return Inertia::render('Public/SharedCollectionExpired');
         }
 
-        if ($link->isPasswordProtected() && ! $this->isUnlocked($request, $link->id)) {
+        if ($link->isPasswordProtected() && ! $this->isUnlocked($request, $link)) {
             return Inertia::render('Public/SharedCollectionPassword', [
                 'collectionName' => $link->collection->name,
                 'token' => $token,
@@ -41,7 +42,10 @@ class PublicCollectionController extends Controller
 
         $data = $this->sharingService->getCollectionForPublicView($link);
 
-        $link->incrementViewCount();
+        if (! $link->reserveView()) {
+            return Inertia::render('Public/SharedCollectionExpired');
+        }
+        $request->session()->put('public_share_visit_'.$link->id, $this->newGrant($link));
         $this->sharingService->logAccess($link, $request, PublicShareAction::View);
 
         $files = $data['files']->map(fn ($file) => (new PublicCollectionFileResource($file, $token))->resolve($request));
@@ -71,13 +75,13 @@ class PublicCollectionController extends Controller
 
         $link = $this->sharingService->findLinkByToken($token);
 
-        if (! $link || ! $link->isAccessible()) {
+        if (! $link || ! $link->collection || ! $link->isAccessible()) {
             return Inertia::render('Public/SharedCollectionExpired');
         }
 
         if ($this->sharingService->verifyPassword($link, $request->input('password'))) {
             $this->sharingService->logAccess($link, $request, PublicShareAction::PasswordSuccess);
-            $request->session()->put('public_share_unlocked_'.$link->id, true);
+            $request->session()->put('public_share_unlocked_'.$link->id, $this->newGrant($link));
 
             return redirect()->route('shared.collections.show', $token);
         }
@@ -91,11 +95,11 @@ class PublicCollectionController extends Controller
     {
         $link = $this->sharingService->findLinkByToken($token);
 
-        if (! $link || ! $link->isAccessible()) {
+        if (! $link || ! $this->canUseContent($request, $link)) {
             abort(404);
         }
 
-        if ($link->isPasswordProtected() && ! $this->isUnlocked($request, $link->id)) {
+        if ($link->isPasswordProtected() && ! $this->isUnlocked($request, $link)) {
             abort(403);
         }
 
@@ -145,25 +149,25 @@ class PublicCollectionController extends Controller
 
         return new StreamedResponse(function () use ($content) {
             echo $content;
-        }, 200, [
+        }, 200, array_merge([
             'Content-Type' => $mimeType,
             'Content-Length' => strlen($content),
             'Content-Disposition' => $disposition.'; filename="'.preg_replace('/[^a-zA-Z0-9\-_\.]/', '_', $file->fileName ?? 'file').'.'.$extension.'"',
             'Cache-Control' => 'private, max-age=3600',
             'X-Frame-Options' => 'DENY',
             'X-Content-Type-Options' => 'nosniff',
-        ]);
+        ], UploadedContent::headers($extension, ($file->fileName ?? 'file').'.'.$extension, $disposition)));
     }
 
     public function downloadAll(Request $request, string $token): StreamedResponse
     {
         $link = $this->sharingService->findLinkByToken($token);
 
-        if (! $link || ! $link->isAccessible()) {
+        if (! $link || ! $this->canUseContent($request, $link)) {
             abort(404);
         }
 
-        if ($link->isPasswordProtected() && ! $this->isUnlocked($request, $link->id)) {
+        if ($link->isPasswordProtected() && ! $this->isUnlocked($request, $link)) {
             abort(403);
         }
 
@@ -250,9 +254,39 @@ class PublicCollectionController extends Controller
         ]);
     }
 
-    private function isUnlocked(Request $request, int $linkId): bool
+    private function canUseContent(Request $request, \App\Models\PublicCollectionLink $link): bool
     {
-        return $request->session()->get('public_share_unlocked_'.$linkId) === true;
+        if (! $link->collection || ! $link->is_active || $link->hasExpired()) {
+            return false;
+        }
+
+        return $link->max_views === null
+            || $this->isCurrentGrant($request->session()->get('public_share_visit_'.$link->id), $link);
+    }
+
+    /** @return array{version: int, fingerprint: string, expires_at: int} */
+    private function newGrant(\App\Models\PublicCollectionLink $link): array
+    {
+        return ['version' => $link->access_version, 'fingerprint' => $this->grantFingerprint($link),
+            'expires_at' => now()->addHour()->timestamp];
+    }
+
+    private function isCurrentGrant(mixed $grant, \App\Models\PublicCollectionLink $link): bool
+    {
+        return is_array($grant) && ($grant['version'] ?? null) === $link->access_version
+            && ($grant['fingerprint'] ?? null) === $this->grantFingerprint($link)
+            && ($grant['expires_at'] ?? 0) > now()->timestamp;
+    }
+
+    private function grantFingerprint(\App\Models\PublicCollectionLink $link): string
+    {
+        return hash('sha256', json_encode([$link->password_hash, $link->is_password_protected,
+            $link->collection_id, $link->token, $link->expires_at, $link->max_views, $link->is_active]));
+    }
+
+    private function isUnlocked(Request $request, \App\Models\PublicCollectionLink $link): bool
+    {
+        return $this->isCurrentGrant($request->session()->get('public_share_unlocked_'.$link->id), $link);
     }
 
     private function getMimeType(string $extension): string

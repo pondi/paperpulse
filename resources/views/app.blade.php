@@ -15,7 +15,7 @@
         <link rel="apple-touch-icon" href="/icons/icon-192.png">
         @endif
 
-        <title inertia>{{ config('app.name', 'PaperPulse') }}</title>
+        <title data-inertia>{{ config('app.name', 'PaperPulse') }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">

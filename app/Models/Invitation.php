@@ -106,6 +106,7 @@ class Invitation extends Model
     public static function findValidByToken(string $token): ?self
     {
         return self::where('token', $token)
+            ->where('status', 'sent')
             ->where('expires_at', '>', now())
             ->whereNull('used_at')
             ->first();

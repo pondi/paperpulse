@@ -22,7 +22,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
             Route::delete('/{receipt}/line-items/{lineItem}', [LineItemController::class, 'destroy'])->name('line-items.destroy');
             // Use ReceiptController for share/unshare via ShareableController trait
             Route::post('/{receipt}/share', [ReceiptController::class, 'share'])->name('share');
-            Route::delete('/{receipt}/share/{user}', [ReceiptController::class, 'unshare'])->name('unshare');
+            Route::delete('/{receipt}/share/{user}', [ReceiptController::class, 'unshare'])->withoutScopedBindings()->name('unshare');
             Route::post('/{receipt}/tags', [ReceiptController::class, 'attachTag'])->name('tags.store');
             Route::delete('/{receipt}/tags/{tag}', [ReceiptController::class, 'detachTag'])->name('tags.destroy');
         });

@@ -27,6 +27,10 @@ class AuthController extends BaseApiController
             ]);
         }
 
+        if (! $user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Email not verified. Sign in on the web to resend verification.'], 403);
+        }
+
         $token = $user->createToken('api-token', ['*'], now()->addDays(30))->plainTextToken;
 
         Log::info('[API] Login success', [

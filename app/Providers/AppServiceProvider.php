@@ -231,9 +231,19 @@ class AppServiceProvider extends ServiceProvider
         // Handles both Document models and ExtractableEntity redirects
         // Note: Route bindings execute before authentication middleware, so
         // we cannot use auth()->id() here. Authorization is handled by policies.
+        foreach (['contract' => \App\Models\Contract::class, 'invoice' => \App\Models\Invoice::class,
+            'voucher' => \App\Models\Voucher::class, 'warranty' => \App\Models\Warranty::class,
+            'returnPolicy' => \App\Models\ReturnPolicy::class] as $parameter => $modelClass) {
+            Route::bind($parameter, fn ($value) => request()->is('api/*') ? $value : $modelClass::accessibleBy(auth()->user())
+                ->with(['file' => fn ($query) => $query->withoutGlobalScope('user')])->findOrFail($value));
+        }
+
+        Route::bind('receipt', fn ($value) => request()->is('api/*') ? $value : Receipt::accessibleBy(auth()->user())
+            ->with(['file' => fn ($query) => $query->withoutGlobalScope('user')])->findOrFail($value));
+
         Route::bind('document', function ($value) {
             // First, try to find an actual Document with this ID
-            $document = Document::find($value);
+            $document = Document::accessibleBy(auth()->user())->with(['file' => fn ($query) => $query->withoutGlobalScope('user')])->find($value);
 
             if ($document) {
                 return $document;
@@ -243,7 +253,8 @@ class AppServiceProvider extends ServiceProvider
             // Only check for entity types other than 'document' to avoid confusion
             $extractableEntity = ExtractableEntity::where('entity_id', $value)
                 ->whereNot('entity_type', 'document')
-                ->with('entity')
+                ->whereHas('file', fn ($query) => $query->accessibleBy(auth()->user()))
+                ->with(['entity' => fn ($query) => $query->withoutGlobalScope('user')])
                 ->first();
 
             if (! $extractableEntity) {

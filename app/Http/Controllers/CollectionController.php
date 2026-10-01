@@ -85,7 +85,7 @@ class CollectionController extends Controller
         $collections = $this->sharingService->getSharedWithUser(auth()->user());
 
         // Load additional data for each collection
-        $collections->each(fn ($collection) => $collection->loadCount('files'));
+        $collections->each(fn ($collection) => $collection->loadCount(['files' => fn ($query) => $query->withoutGlobalScope('user')]));
 
         return Inertia::render('Collections/Shared', [
             'collections' => $collections,
@@ -113,9 +113,9 @@ class CollectionController extends Controller
     {
         $this->authorize('view', $collection);
 
-        $collection->loadCount('files');
+        $collection->loadCount(['files' => fn ($query) => $query->withoutGlobalScope('user')]);
         $collection->load(['files' => function ($query) {
-            $query->with(['primaryEntity.entity']);
+            $query->withoutGlobalScope('user')->with(['primaryEntity.entity' => fn ($entities) => \App\Support\AuthorizedEntityRelations::load($entities)]);
         }]);
         $stats = $this->collectionService->getCollectionStats($collection);
         $shares = $this->sharingService->getShares($collection);
@@ -253,6 +253,8 @@ class CollectionController extends Controller
     public function unshare(Collection $collection, User $user): RedirectResponse
     {
         $this->authorize('share', $collection);
+
+        abort_unless($collection->shares()->where('shared_with_user_id', $user->id)->exists(), 404);
 
         $this->sharingService->unshare($collection, $user);
 

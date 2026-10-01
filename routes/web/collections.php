@@ -35,7 +35,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         // Sharing
         Route::scopeBindings()->group(function () {
             Route::post('/{collection}/share', [CollectionController::class, 'share'])->name('share');
-            Route::delete('/{collection}/share/{user}', [CollectionController::class, 'unshare'])->name('unshare');
+            Route::delete('/{collection}/share/{user}', [CollectionController::class, 'unshare'])->withoutScopedBindings()->name('unshare');
         });
 
         // Public links

@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Files;
 
 use App\Http\Controllers\Controller;
 use App\Models\File;
-use App\Models\FileShare;
 use App\Services\StorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Support\UploadedContent;
 
 class FileServeController extends Controller
 {
@@ -47,15 +47,7 @@ class FileServeController extends Controller
             $variant = 'preview';
         }
 
-        // Authorization: owner, valid share, or admin
-        $isOwner = $file->user_id === auth()->id();
-        $hasShare = FileShare::active()
-            ->where('file_id', $file->id)
-            ->where('file_type', $fileType)
-            ->where('shared_with_user_id', auth()->id())
-            ->exists();
-
-        if (! $isOwner && ! $hasShare && ! (auth()->user()?->is_admin)) {
+        if (! auth()->user()->can('view', $file)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -159,13 +151,13 @@ class FileServeController extends Controller
         // Create a StreamedResponse
         return new StreamedResponse(function () use ($content) {
             echo $content;
-        }, 200, [
+        }, 200, array_merge([
             'Content-Type' => $mimeType,
             'Content-Length' => strlen($content),
             'Content-Disposition' => 'inline; filename="document.'.$extension.'"',
             'Cache-Control' => 'private, max-age=3600',
             'X-Frame-Options' => 'SAMEORIGIN',
             'X-Content-Type-Options' => 'nosniff',
-        ]);
+        ], UploadedContent::headers($extension, 'document.'.$extension)));
     }
 }

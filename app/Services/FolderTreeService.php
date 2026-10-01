@@ -131,8 +131,11 @@ class FolderTreeService
     {
         return $folder->getConnection()->transaction(function () use ($folder, $archived): Collection {
             User::query()->lockForUpdate()->findOrFail($folder->user_id);
-            Collection::withoutGlobalScope('user')->where('user_id', $folder->user_id)
-                ->whereIn('id', $this->subtreeIds($folder))->update(['is_archived' => $archived]);
+            $changed = Collection::withoutGlobalScope('user')->where('user_id', $folder->user_id)
+                ->whereIn('id', $this->subtreeIds($folder))->where('is_archived', '!=', $archived)->update(['is_archived' => $archived]);
+            if ($changed > 0) {
+                app(OrganizationRevisionService::class)->record($folder);
+            }
 
             return $folder->fresh();
         });
@@ -147,8 +150,13 @@ class FolderTreeService
                 throw ValidationException::withMessages(['collection' => 'Move or delete child folders before deleting this folder.']);
             }
             $primaryFiles = File::withoutGlobalScope('user')->where('user_id', $folder->user_id)->where('primary_folder_id', $folder->id);
+            $primaryIds = $primaryFiles->pluck('id')->all();
             $primaryFiles->increment('placement_version');
             $primaryFiles->update(['primary_folder_id' => null, 'placement_source' => null]);
+            foreach ($primaryIds as $fileId) {
+                $changedFile = (new File)->forceFill(['id' => $fileId, 'user_id' => $folder->user_id]);
+                app(OrganizationRevisionService::class)->record($changedFile);
+            }
             $locked->files()->detach();
 
             return $locked->delete();

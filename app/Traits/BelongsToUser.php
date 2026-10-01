@@ -76,18 +76,23 @@ trait BelongsToUser
      */
     public function scopeAccessibleBy(Builder $query, User $user): Builder
     {
-        return $query->withoutGlobalScope('user')->where(function ($q) use ($user) {
-            $q->where('user_id', $user->id);
+        $table = $query->getModel()->getTable();
 
-            // If the model uses ShareableModel trait, include shared records
-            if (in_array(ShareableModel::class, class_uses_recursive(static::class))) {
-                $q->orWhereHas('shares', function ($shareQuery) use ($user) {
-                    $shareQuery->where('shared_with_user_id', $user->id)
-                        ->where(function ($expQuery) {
-                            $expQuery->whereNull('expires_at')
-                                ->orWhere('expires_at', '>', now());
-                        });
-                });
+        return $query->withoutGlobalScope('user')->where(function (Builder $query) use ($user, $table): void {
+            $query->where($table.'.user_id', $user->id);
+
+            if ($query->getModel() instanceof \App\Models\Collection) {
+                $query->orWhereHas('shares', fn (Builder $shares) => $shares
+                    ->where('shared_with_user_id', $user->id)->active());
+            } elseif ($query->getModel() instanceof \App\Models\File) {
+                $query->orWhereHas('shares', fn (Builder $shares) => $shares
+                    ->where('shared_with_user_id', $user->id)->active())
+                    ->orWhereHas('collections', fn (Builder $collections) => $collections
+                        ->withoutGlobalScope('user')
+                        ->whereHas('shares', fn (Builder $shares) => $shares
+                            ->where('shared_with_user_id', $user->id)->active()));
+            } elseif (method_exists($query->getModel(), 'file')) {
+                $query->orWhereHas('file', fn (Builder $files) => $files->accessibleBy($user));
             }
         });
     }

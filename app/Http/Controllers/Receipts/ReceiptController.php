@@ -67,7 +67,9 @@ class ReceiptController extends BaseResourceController
      */
     public function show($id): Response
     {
-        $receipt = $this->model::with($this->showWith)->findOrFail($id);
+        $receipt = $this->model::accessibleBy(auth()->user())->with($this->showWith)->with(['file' => fn ($query) => $query->withoutGlobalScope('user'),
+                'merchant' => fn ($query) => $query->withoutGlobalScope('user'),
+                'category' => fn ($query) => $query->withoutGlobalScope('user')])->findOrFail($id instanceof Receipt ? $id->id : $id);
 
         $this->authorize('view', $receipt);
 

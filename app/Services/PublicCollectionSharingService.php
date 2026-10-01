@@ -124,8 +124,8 @@ class PublicCollectionSharingService
         $files = $collection->files()
             ->withoutGlobalScope('user')
             ->with([
-                'extractableEntities.entity',
-                'primaryEntity.entity',
+                'extractableEntities.entity' => fn ($query) => \App\Support\AuthorizedEntityRelations::load($query),
+                'primaryEntity.entity' => fn ($query) => \App\Support\AuthorizedEntityRelations::load($query),
                 'tags',
             ])
             ->orderBy('fileName')

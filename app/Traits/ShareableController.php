@@ -96,12 +96,13 @@ trait ShareableController
     {
         $shareableType = $this->getShareableType();
 
-        $query = $this->model::query()
+        $query = $this->model::query()->withoutGlobalScope('user')
             ->join('file_shares', function ($join) use ($shareableType) {
                 $join->on($this->getFileIdColumn(), '=', 'file_shares.file_id')
                     ->where('file_shares.file_type', '=', $shareableType);
             })
             ->where('file_shares.shared_with_user_id', auth()->id())
+            ->where(fn ($query) => $query->whereNull('file_shares.expires_at')->orWhere('file_shares.expires_at', '>', now()))
             ->with(array_merge($this->indexWith ?? [], ['owner']))
             ->select($this->getTableName().'.*', 'file_shares.permission', 'file_shares.shared_at');
 

@@ -695,3 +695,27 @@ it('correctly derives opening balance from first transaction', function () {
     expect((float) $statement->opening_balance)->toBe(5000.00);
     expect((float) $statement->closing_balance)->toBe(4700.00);
 });
+
+it('imports complete multiline CSV records with BOM escaped quotes and separators', function (string $delimiter) {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id]);
+    $description = "Store{$delimiter} \"special\"\nSecond line";
+    $stream = fopen('php://temp', 'w+');
+    fputcsv($stream, ['Date', 'Description', 'Amount'], $delimiter, '"', '');
+    fputcsv($stream, ['2026-01-01', $description, '-10.00'], $delimiter, '"', '');
+    fputcsv($stream, ['2026-01-02', 'Salary', '20.00'], $delimiter, '"', '');
+    rewind($stream);
+    $csv = "\xEF\xBB\xBF".stream_get_contents($stream);
+    fclose($stream);
+    $statement = createCsvImportService()->importFromContent($csv, $user->id, $file->id);
+    expect($statement->transactions()->count())->toBe(2)
+        ->and($statement->transactions()->orderBy('id')->first()->description)->toBe($description);
+})->with([',', ';', "\t", '|']);
+
+it('rejects oversized CSV input before mapping', function () {
+    createCsvImportService()->importFromContent(str_repeat('x', CsvImportService::MAX_INPUT_BYTES + 1), 1, 1);
+})->throws(Exception::class, '20 MB');
+
+it('rejects oversized multiline records', function () {
+    createCsvImportService()->sampleRows('Date,Description,Amount'."\n".'2026-01-01,"'.str_repeat('x', CsvImportService::MAX_RECORD_BYTES).'",-10');
+})->throws(Exception::class, 'record exceeds');

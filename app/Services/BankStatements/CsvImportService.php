@@ -16,6 +16,12 @@ use Illuminate\Support\Facades\Log;
 
 class CsvImportService
 {
+    public const MAX_INPUT_BYTES = 20 * 1024 * 1024;
+
+    public const MAX_RECORD_BYTES = 1024 * 1024;
+
+    public const MAX_RECORDS = 100000;
+
     public function __construct(
         protected TextAnalysisContract $ai
     ) {}
@@ -25,7 +31,7 @@ class CsvImportService
      */
     public function import(UploadedFile $file, int $userId, int $fileId): BankStatement
     {
-        $csvContent = file_get_contents($file->getRealPath());
+        $csvContent = file_get_contents($file->getRealPath(), false, null, 0, self::MAX_INPUT_BYTES + 1);
 
         if ($csvContent === false || trim($csvContent) === '') {
             throw new Exception('CSV file is empty or unreadable.');
@@ -43,7 +49,9 @@ class CsvImportService
             throw new Exception('CSV content is empty.');
         }
 
+        $this->assertInputSize($csvContent);
         $csvContent = $this->ensureUtf8($csvContent);
+        $this->assertInputSize($csvContent);
 
         $delimiter = $this->detectDelimiter($csvContent);
 
@@ -129,14 +137,11 @@ class CsvImportService
      */
     public function parseHeaders(string $csvContent, string $delimiter = ','): array
     {
-        $lines = preg_split('/\R/', $csvContent, 2);
-        if (empty($lines[0])) {
-            return [];
+        foreach ($this->readRecords($csvContent, $delimiter) as $record) {
+            return $record;
         }
 
-        $parsed = str_getcsv(trim($lines[0]), $delimiter);
-
-        return array_map('trim', $parsed);
+        return [];
     }
 
     /**
@@ -146,20 +151,15 @@ class CsvImportService
      */
     public function sampleRows(string $csvContent, int $count = 5, string $delimiter = ','): array
     {
-        $lines = preg_split('/\R/', $csvContent);
-        if (count($lines) < 2) {
-            return [];
-        }
-
-        $dataLines = array_slice($lines, 1, $count);
         $rows = [];
-
-        foreach ($dataLines as $line) {
-            $line = trim($line);
-            if ($line === '') {
+        foreach ($this->readRecords($csvContent, $delimiter) as $index => $record) {
+            if ($index === 0) {
                 continue;
             }
-            $rows[] = array_map('trim', str_getcsv($line, $delimiter));
+            if (count($rows) >= $count) {
+                break;
+            }
+            $rows[] = $record;
         }
 
         return $rows;
@@ -403,18 +403,50 @@ class CsvImportService
      */
     protected function parseAllRows(string $csvContent, string $delimiter = ','): array
     {
-        $lines = preg_split('/\R/', $csvContent);
-        $rows = [];
+        $records = iterator_to_array($this->readRecords($csvContent, $delimiter), false);
 
-        foreach (array_slice($lines, 1) as $line) {
-            $line = trim($line);
-            if ($line === '') {
-                continue;
-            }
-            $rows[] = array_map('trim', str_getcsv($line, $delimiter));
+        return array_slice($records, 1);
+    }
+
+    protected function assertInputSize(string $content): void
+    {
+        if (strlen($content) > self::MAX_INPUT_BYTES) {
+            throw new Exception('CSV exceeds the 20 MB input limit.');
         }
+    }
 
-        return $rows;
+    /** @return \Generator<int, list<string>> */
+    protected function readRecords(string $content, string $delimiter): \Generator
+    {
+        $this->assertInputSize($content);
+        if (strlen($delimiter) !== 1) {
+            throw new Exception('CSV delimiter must be one character.');
+        }
+        $stream = fopen('php://temp', 'w+');
+        if ($stream === false) {
+            throw new Exception('Cannot open CSV reader.');
+        }
+        try {
+            fwrite($stream, $this->ensureUtf8($content));
+            rewind($stream);
+            $count = 0;
+            while (! feof($stream)) {
+                $start = ftell($stream);
+                $record = fgetcsv($stream, 0, $delimiter, '"', '');
+                if (ftell($stream) - $start > self::MAX_RECORD_BYTES) {
+                    throw new Exception('CSV record exceeds the 1 MB limit.');
+                }
+                if ($record === false || $record === [null]) {
+                    continue;
+                }
+                if (++$count > self::MAX_RECORDS) {
+                    throw new Exception('CSV exceeds the record limit.');
+                }
+                yield array_map(static fn (?string $value): string => trim($value ?? ''), $record);
+            }
+        } finally {
+            fclose($stream);
+        }
     }
 
     /**

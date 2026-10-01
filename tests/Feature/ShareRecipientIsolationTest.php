@@ -35,3 +35,25 @@ test('entity recipients use file keys and remain isolated by type and expiry', f
     expect($other->sharedUsers->modelKeys())->toBe([$recipients[1]->id]);
 })->with([[Receipt::class, 'receipt'], [Document::class, 'document']]);
 
+
+test('unshare routes remove only a recipient belonging to the authorized parent', function (string $model, string $path, string $shareModel, string $parentColumn) {
+    $owner = User::factory()->create();
+    $recipients = User::factory()->count(3)->create();
+    $item = $model::factory()->create(['user_id' => $owner->id]);
+    $parentKey = $parentColumn === 'file_id' ? $item->file_id : $item->id;
+    foreach ($recipients->take(2) as $recipient) {
+        $attributes = [$parentColumn => $parentKey, 'shared_by_user_id' => $owner->id,
+            'shared_with_user_id' => $recipient->id, 'permission' => 'view', 'shared_at' => now()];
+        if ($parentColumn === 'file_id') {
+            $attributes['file_type'] = $path === 'receipts' ? 'receipt' : 'document';
+        }
+        $shareModel::create($attributes);
+    }
+    $this->actingAs($owner)->delete("/{$path}/{$item->id}/share/{$recipients[2]->id}")->assertNotFound();
+    $this->delete("/{$path}/{$item->id}/share/{$recipients[0]->id}")->assertRedirect();
+    expect($shareModel::where($parentColumn, $parentKey)->pluck('shared_with_user_id')->all())->toBe([$recipients[1]->id]);
+})->with([
+    [Collection::class, 'collections', CollectionShare::class, 'collection_id'],
+    [Receipt::class, 'receipts', FileShare::class, 'file_id'],
+    [Document::class, 'documents', FileShare::class, 'file_id'],
+]);

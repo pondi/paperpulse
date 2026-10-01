@@ -5,6 +5,7 @@ namespace App\Traits;
 use App\Models\User;
 use App\Services\SharingService;
 use Exception;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
 trait ShareableController
@@ -31,7 +32,7 @@ trait ShareableController
      */
     public function share(Request $request, $id)
     {
-        $item = $this->model::findOrFail($id);
+        $item = $id instanceof Model ? $id : $this->model::findOrFail($id);
         $this->authorize('share', $item);
 
         $validated = $request->validate([
@@ -59,9 +60,10 @@ trait ShareableController
      */
     public function unshare($id, int $userId)
     {
-        $item = $this->model::findOrFail($id);
+        $item = $id instanceof Model ? $id : $this->model::findOrFail($id);
         $this->authorize('share', $item);
 
+        abort_unless($item->shares()->where('shared_with_user_id', $userId)->exists(), 404);
         $user = User::findOrFail($userId);
 
         try {
@@ -78,7 +80,7 @@ trait ShareableController
      */
     public function getShares($id)
     {
-        $item = $this->model::findOrFail($id);
+        $item = $id instanceof Model ? $id : $this->model::findOrFail($id);
         // Only owners can list shares for a resource
         $this->authorize('share', $item);
 

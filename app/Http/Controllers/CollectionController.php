@@ -254,6 +254,8 @@ class CollectionController extends Controller
     {
         $this->authorize('share', $collection);
 
+        abort_unless($collection->shares()->where('shared_with_user_id', $user->id)->exists(), 404);
+
         $this->sharingService->unshare($collection, $user);
 
         return back()->with('success', __('Share removed successfully.'));

@@ -19,6 +19,7 @@ use App\Models\ReturnPolicy;
 use App\Models\Vendor;
 use App\Models\Voucher;
 use App\Models\Warranty;
+use App\Services\Files\FileDeletionService;
 use App\Services\StorageService;
 use Carbon\Carbon;
 use Exception;
@@ -61,6 +62,10 @@ class CleanupSoftDeletedRecords extends Command
 
         if ($this->dryRun) {
             $this->warn('DRY RUN MODE - No records will actually be deleted');
+        }
+
+        if (! $this->dryRun) {
+            app(FileDeletionService::class)->backfillLegacyDeletions();
         }
 
         // Build the deleted reasons to include

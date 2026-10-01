@@ -16,11 +16,110 @@ use App\Models\Voucher;
 use App\Models\Warranty;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class FileDeletionService
 {
     /** @var list<class-string<Model>> */
     public const ENTITY_CLASSES = [Receipt::class, Document::class, Invoice::class, BankStatement::class, Contract::class, Voucher::class, Warranty::class, ReturnPolicy::class];
+
+    public function deleteFile(File $source, int $ownerId, DeletedReason $reason = DeletedReason::UserDelete): void
+    {
+        $source->getConnection()->transaction(function () use ($source, $ownerId, $reason): void {
+            $file = File::withoutGlobalScope('user')->withTrashed()
+                ->where('user_id', $ownerId)->lockForUpdate()->find($source->id);
+            if (! $file) {
+                throw new AuthorizationException('Only the owner may delete this file.');
+            }
+            if ($file->trashed() && FileCleanupManifest::query()->where('file_id', $file->id)->exists()) {
+                return;
+            }
+
+            $searchRecords = [];
+            $restoreRecords = [];
+            foreach (self::ENTITY_CLASSES as $entityClass) {
+                foreach ($entityClass::withoutGlobalScope('user')->where('user_id', $ownerId)
+                    ->where('file_id', $file->id)->get() as $entity) {
+                    $this->collectRestoreRecords($entity, $restoreRecords);
+                    $searchRecords = array_merge($searchRecords, $this->softDeleteEntity($entity, $reason));
+                }
+            }
+            foreach ($file->extractableEntities()->where('user_id', $ownerId)->get() as $junction) {
+                $restoreRecords[] = ['type' => $junction::class, 'id' => $junction->id];
+                $this->softDelete($junction, $reason);
+            }
+            $meta = $file->meta ?? [];
+            $meta['lifecycle']['deleted_records'] = $restoreRecords;
+            $file->meta = $meta;
+            $this->softDelete($file, $reason);
+            $this->recordCleanup($file, $reason, $searchRecords, true);
+        });
+    }
+
+    public function restoreFile(File $source, int $ownerId): File
+    {
+        return $source->getConnection()->transaction(function () use ($source, $ownerId): File {
+            $file = File::withoutGlobalScope('user')->withTrashed()
+                ->where('user_id', $ownerId)->lockForUpdate()->find($source->id);
+            if (! $file) {
+                throw new AuthorizationException('Only the owner may restore this file.');
+            }
+            $manifest = FileCleanupManifest::query()->where('file_id', $file->id)->lockForUpdate()->first();
+            if ($manifest && collect($manifest->objects)->contains(fn (array $object): bool => $object['done'])) {
+                throw ValidationException::withMessages(['file' => 'This file cannot be restored after asset cleanup has begun.']);
+            }
+            foreach ($file->meta['lifecycle']['deleted_records'] ?? [] as $record) {
+                $model = $record['type']::withoutGlobalScope('user')->withTrashed()->find($record['id']);
+                if ($model && $model->trashed() && $model->deleted_reason === $file->deleted_reason) {
+                    $restore = function () use ($model): void {
+                        $model->deleted_reason = null;
+                        $model->restore();
+                    };
+                    if (method_exists($model, 'withoutSyncingToSearch')) {
+                        $model::withoutSyncingToSearch($restore);
+                    } else {
+                        $restore();
+                    }
+                }
+            }
+            $file->deleted_reason = null;
+            $file->restore();
+            if ($manifest) {
+                $manifest->update(['objects' => [], 'available_at' => null, 'completed_at' => null]);
+            }
+
+            return $file;
+        });
+    }
+
+    public function backfillLegacyDeletions(): void
+    {
+        File::withoutGlobalScope('user')->onlyTrashed()->whereNull('deleted_reason')
+            ->whereIn('status', ['completed', 'failed'])->chunkById(100, function ($files): void {
+                foreach ($files as $file) {
+                    if (! data_get($file->meta, 'reprocessing') && ! data_get($file->meta, 'reprocess')) {
+                        $this->deleteFile($file, $file->user_id);
+                    }
+                }
+            });
+    }
+
+    /** @param list<array{type: class-string<Model>, id: int}> $records */
+    protected function collectRestoreRecords(Model $entity, array &$records): void
+    {
+        $records[] = ['type' => $entity::class, 'id' => $entity->id];
+        $relation = match (true) {
+            $entity instanceof Receipt, $entity instanceof Invoice => 'lineItems',
+            $entity instanceof BankStatement => 'transactions',
+            default => null,
+        };
+        if ($relation) {
+            foreach ($entity->{$relation}()->get() as $child) {
+                $this->collectRestoreRecords($child, $records);
+            }
+        }
+    }
 
     public function deleteEntity(Model $entity, int $ownerId, DeletedReason $reason = DeletedReason::UserDelete): void
     {
@@ -85,9 +184,17 @@ class FileDeletionService
     protected function softDelete(Model $model, DeletedReason $reason): void
     {
         $delete = function () use ($model, $reason): void {
+            if ($model instanceof File) {
+                $meta = $model->meta ?? [];
+                $meta['processing_generation'] = (string) Str::uuid();
+                $model->meta = $meta;
+                $model->shares()->delete();
+            }
             $model->deleted_reason = $reason;
             $model->save();
-            $model->delete();
+            if (! $model->trashed()) {
+                $model->delete();
+            }
         };
         if (method_exists($model, 'withoutSyncingToSearch')) {
             $model::withoutSyncingToSearch($delete);

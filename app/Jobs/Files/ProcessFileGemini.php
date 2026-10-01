@@ -17,6 +17,7 @@ use App\Services\DuplicateDetectionService;
 use App\Services\EntityFactory;
 use App\Services\Files\FileEntityCleanupService;
 use App\Services\Files\FilePreviewManager;
+use App\Services\Files\ImagePreviewGenerator;
 use App\Services\Workers\WorkerFileManager;
 use Exception;
 use Illuminate\Support\Facades\Log;
@@ -187,7 +188,10 @@ class ProcessFileGemini extends BaseJob
 
                     // Generate preview image for supported file types
                     try {
-                        $previewManager->generatePreviewForFile($file, $localPath);
+                        $generated = $previewManager->generatePreviewForFile($file, $localPath);
+                        if (! $generated && $file->image_generation_error !== null) {
+                            GenerateFilePreview::dispatch($file->id)->onQueue('files');
+                        }
                         Log::info('[ProcessFileGemini] Preview generated', [
                             'file_id' => $file->id,
                             'has_preview' => $file->fresh()->has_image_preview,
@@ -308,7 +312,7 @@ class ProcessFileGemini extends BaseJob
                     'file_id' => $file->id,
                     'entity_count' => $previousEntities['count'] ?? 0,
                 ]);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::warning('[ProcessFileGemini] Failed to hard-delete old entities', [
                     'file_id' => $file->id,
                     'error' => $e->getMessage(),
@@ -360,25 +364,7 @@ class ProcessFileGemini extends BaseJob
      */
     protected function generateThumbnail(string $filePath, string $fileGuid): ?string
     {
-        if (! extension_loaded('imagick')) {
-            return null;
-        }
-
-        try {
-            $imagick = new Imagick($filePath);
-            $imagick->thumbnailImage(300, 300, true, true);
-            $imagick->setImageFormat('jpeg');
-            $imagick->setImageCompressionQuality(85);
-            $data = base64_encode($imagick->getImageBlob());
-            $imagick->clear();
-            $imagick->destroy();
-
-            return $data;
-        } catch (Throwable $e) {
-            Log::warning('[ProcessFileGemini] Thumbnail error', ['error' => $e->getMessage()]);
-
-            return null;
-        }
+        return base64_encode(ImagePreviewGenerator::generatePreview($filePath, pathinfo($filePath, PATHINFO_EXTENSION)));
     }
 
     protected function flagDuplicateEntities(array $createdEntities): void

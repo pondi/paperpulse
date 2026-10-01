@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\FileConversion;
+use App\Services\Documents\ConversionService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Redis;
 
 class RetryFailedConversions extends Command
 {
@@ -31,6 +31,8 @@ class RetryFailedConversions extends Command
     {
         $limit = (int) $this->option('limit');
         $dryRun = (bool) $this->option('dry-run');
+        $service = app(ConversionService::class);
+        $requeued = $dryRun ? 0 : $service->reconcileAbandoned(max(1, min(100, $limit)));
 
         $this->info('Searching for failed conversions...');
 
@@ -49,46 +51,22 @@ class RetryFailedConversions extends Command
         $this->info("Found {$failedConversions->count()} failed conversions.");
         $this->newLine();
 
-        $redis = Redis::connection('conversion');
-        $redisQueue = config('processing.conversion.redis_queue', 'conversion:pending');
-
         foreach ($failedConversions as $conversion) {
+            if ($conversion->file === null) {
+                continue;
+            }
             $this->line("Conversion ID {$conversion->id} - File: {$conversion->file->fileName} ({$conversion->input_extension})");
             $this->line("  Error: {$conversion->error_message}");
 
             if (! $dryRun) {
-                // Reset retry count and status
-                $conversion->update([
-                    'status' => 'pending',
-                    'retry_count' => 0,
-                    'error_message' => null,
-                    'started_at' => null,
-                    'completed_at' => null,
-                ]);
+                if (! $service->retry($conversion)) {
+                    $this->warn("  Retry budget exhausted for conversion {$conversion->id}");
 
-                // Re-push to Redis queue
-                $payload = [
-                    'conversionId' => $conversion->id,
-                    'fileId' => $conversion->file_id,
-                    'fileGuid' => $conversion->file->guid,
-                    'userId' => $conversion->user_id,
-                    'inputS3Path' => $conversion->input_s3_path,
-                    'outputS3Path' => $conversion->output_s3_path,
-                    'inputExtension' => $conversion->input_extension,
-                    'retryCount' => 0,
-                    'maxRetries' => $conversion->max_retries,
-                    'createdAt' => now()->toIso8601String(),
-                    'timeout' => config('processing.conversion.timeout', 120),
-                ];
-
-                $redis->lpush($redisQueue, json_encode($payload));
-
-                // Update Redis status hash
-                $redis->hset("conversion:status:{$conversion->id}", 'status', 'pending');
-                $redis->hset("conversion:status:{$conversion->id}", 'updated_at', now()->toIso8601String());
-                $redis->expire("conversion:status:{$conversion->id}", 7200);
+                    continue;
+                }
 
                 $this->info("  ✓ Requeued conversion {$conversion->id}");
+                $requeued++;
             }
 
             $this->newLine();
@@ -98,7 +76,7 @@ class RetryFailedConversions extends Command
             $this->warn('Dry run mode - no conversions were actually retried.');
             $this->info('Run without --dry-run to retry conversions.');
         } else {
-            $this->info("Successfully requeued {$failedConversions->count()} conversions.");
+            $this->info("Successfully requeued {$requeued} conversions.");
         }
 
         return 0;

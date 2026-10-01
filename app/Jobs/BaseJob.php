@@ -135,6 +135,8 @@ abstract class BaseJob implements ShouldQueue
         }
 
         if (JobHistory::query()->where('uuid', $this->uuid)->where('status', 'completed')->exists()) {
+            $this->restoreCompletedDelivery();
+
             return;
         }
 
@@ -166,6 +168,8 @@ abstract class BaseJob implements ShouldQueue
      * Implemented by subclasses.
      */
     abstract protected function handleJob(): void;
+
+    protected function restoreCompletedDelivery(): void {}
 
     public function middleware(): array
     {

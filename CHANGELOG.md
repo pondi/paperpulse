@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.4](https://github.com/pondi/paperpulse/compare/v1.3.3...v1.3.4) (2026-10-01)
+
+
+### Bug Fixes
+
+* improve document workflows and data integrity ([5e187d9](https://github.com/pondi/paperpulse/commit/5e187d9043e40b75f4830159cf868510054d6e7f))
+* **integration:** reconcile supervisor and conversion defaults ([6b0b664](https://github.com/pondi/paperpulse/commit/6b0b6646e3abd41eb972146102cb1cb84d695c52))
+
 ## [1.3.3](https://github.com/pondi/paperpulse/compare/v1.3.2...v1.3.3) (2026-09-29)
 
 

@@ -6,6 +6,7 @@
       :src="src" 
       class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 max-w-full max-h-full pointer-events-none"
       @load="onImageLoad"
+      @error="onImageError"
     />
 
     <!-- SVG Overlay for Lines & Fill -->
@@ -42,14 +43,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onUnmounted, watch } from 'vue';
 
 const props = defineProps({
   src: String,
   initialPoints: Array // [{x,y}, {x,y}, {x,y}, {x,y}] (Natural coordinates from OpenCV)
 });
 
-const emit = defineEmits(['update:points']);
+const emit = defineEmits(['update:points', 'error']);
 
 const container = ref(null);
 const imageRef = ref(null);
@@ -65,6 +66,10 @@ const initPoints = () => {
     // Get displayed image dimensions
     const imgRect = imageRef.value.getBoundingClientRect();
     const contRect = container.value.getBoundingClientRect();
+    if (!imgRect.width || !imgRect.height || !imageRef.value.naturalWidth || !imageRef.value.naturalHeight) {
+        onImageError();
+        return;
+    }
 
     dims.value = {
         width: contRect.width,
@@ -106,6 +111,13 @@ const initPoints = () => {
     emit('update:points', getRelativePoints());
 };
 
+const onImageError = () => {
+    points.value = [];
+    dims.value.width = 0;
+    emit('update:points', null);
+    emit('error');
+};
+
 const onImageLoad = () => {
     initPoints();
 };
@@ -138,6 +150,7 @@ const startDrag = (index, event) => {
     document.addEventListener('mouseup', stopDrag);
     document.addEventListener('touchmove', onDrag, { passive: false });
     document.addEventListener('touchend', stopDrag);
+    document.addEventListener('touchcancel', stopDrag);
 };
 
 const onDrag = (event) => {
@@ -158,31 +171,29 @@ const onDrag = (event) => {
     let x = clientX - rect.left;
     let y = clientY - rect.top;
 
-    // Boundary checks (keep roughly within image area)
-    // We allow a little flexibility but keeping it bounds is good UX
-    // x = Math.max(dims.value.imgLeft, Math.min(x, dims.value.imgLeft + dims.value.imgWidth));
-    // y = Math.max(dims.value.imgTop, Math.min(y, dims.value.imgTop + dims.value.imgHeight));
-    
-    // Hard clamp to container
-    x = Math.max(0, Math.min(x, dims.value.width));
-    y = Math.max(0, Math.min(y, dims.value.height));
+    x = Math.max(dims.value.imgLeft, Math.min(x, dims.value.imgLeft + dims.value.imgWidth));
+    y = Math.max(dims.value.imgTop, Math.min(y, dims.value.imgTop + dims.value.imgHeight));
 
     points.value[draggingIndex] = { x, y };
 };
 
-const stopDrag = () => {
+const stopDrag = (emitPoints = true) => {
     draggingIndex = -1;
     document.removeEventListener('mousemove', onDrag);
     document.removeEventListener('mouseup', stopDrag);
     document.removeEventListener('touchmove', onDrag);
     document.removeEventListener('touchend', stopDrag);
+    document.removeEventListener('touchcancel', stopDrag);
     
-    emit('update:points', getRelativePoints());
+    if (emitPoints) emit('update:points', getRelativePoints());
 };
+
+onUnmounted(() => stopDrag(false));
 
 // Helper: Return points relative to the *natural* image size for processing
 const getRelativePoints = () => {
-    if (!imageRef.value || points.value.length !== 4) return null;
+    if (!imageRef.value || points.value.length !== 4 || !dims.value.imgWidth || !dims.value.imgHeight ||
+        !imageRef.value.naturalWidth || !imageRef.value.naturalHeight) return null;
     
     const scaleX = imageRef.value.naturalWidth / dims.value.imgWidth;
     const scaleY = imageRef.value.naturalHeight / dims.value.imgHeight;

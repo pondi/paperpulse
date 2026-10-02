@@ -29,8 +29,14 @@
       <div class="max-w-md">
         <ExclamationTriangleIcon class="w-12 h-12 text-amber-500 mx-auto mb-4" />
         <p class="text-lg font-medium mb-2">{{ error }}</p>
-        <button @click="startCamera" class="mt-4 px-6 py-2 bg-amber-600 rounded-lg hover:bg-amber-500 transition">
+        <button v-if="errorAction === 'scanner'" @click="loadOpenCV" class="mt-4 px-6 py-2 bg-amber-600 rounded-lg hover:bg-amber-500 transition">
+          Retry Scanner
+        </button>
+        <button v-else-if="step === 'camera'" @click="startCamera" class="mt-4 px-6 py-2 bg-amber-600 rounded-lg hover:bg-amber-500 transition">
           Retry Camera
+        </button>
+        <button v-else @click="error = null" class="mt-4 px-6 py-2 bg-amber-600 rounded-lg hover:bg-amber-500 transition">
+          Back to Scan
         </button>
       </div>
     </div>
@@ -100,6 +106,7 @@
           :src="capturedImage"
           :initial-points="detectedPoints"
           @update:points="onPointsUpdate"
+          @error="onImageError"
         />
         
         <!-- Loading Overlay -->
@@ -159,6 +166,7 @@ const collectionIds = ref([]);
 const tagIds = ref([]);
 const showNoteInput = ref(false);
 const error = ref(null);
+const errorAction = ref(null);
 const processing = ref(false);
 const detecting = ref(false);
 const cvLoaded = ref(false);
@@ -172,25 +180,60 @@ const detectedPoints = ref(null); // Array of 4 points {x,y}
 const currentPoints = ref([]); // Points from cropper
 
 let stream = null;
+let disposed = false;
+let cameraRequest = 0;
+let cancelCameraWait = null;
+let cancelImageWait = null;
+let cancelUpload = null;
+let script = null;
+let cvTimer = null;
+let runtimeReady = null;
 
-// Load OpenCV
+const cleanupOpenCVLoad = () => {
+  clearTimeout(cvTimer);
+  if (script) {
+    script.onload = null;
+    script.onerror = null;
+    script.remove();
+    script = null;
+  }
+  if (window.cv?.onRuntimeInitialized === runtimeReady) {
+    window.cv.onRuntimeInitialized = null;
+  }
+  runtimeReady = null;
+};
+
 const loadOpenCV = () => {
-  if (window.cv && window.cv.getBuildInformation) {
+  cleanupOpenCVLoad();
+  if (errorAction.value === 'scanner') error.value = null;
+  if (window.cv?.getBuildInformation) {
     cvLoaded.value = true;
     return;
   }
-  const script = document.createElement('script');
+  cvLoaded.value = false;
+  const fail = () => {
+    cleanupOpenCVLoad();
+    errorAction.value = 'scanner';
+    error.value = 'Scanner could not load. Please retry.';
+  };
+  runtimeReady = () => {
+    cvLoaded.value = true;
+    cleanupOpenCVLoad();
+  };
+  script = document.createElement('script');
   script.src = '/vendor/opencv.js?v=3';
   script.async = true;
+  script.onerror = fail;
   script.onload = () => {
-    if (window.cv && window.cv.getBuildInformation) {
-        cvLoaded.value = true;
+    if (window.cv?.getBuildInformation) {
+      runtimeReady();
+    } else if (window.cv) {
+      window.cv.onRuntimeInitialized = runtimeReady;
     } else {
-        window.cv.onRuntimeInitialized = () => {
-            cvLoaded.value = true;
-        };
+      fail();
     }
   };
+  cvTimer = setTimeout(fail, 15000);
   document.body.appendChild(script);
 };
 
@@ -203,7 +246,7 @@ const getCropperImageElement = () => {
 };
 
 const orderPoints = (points) => {
-  if (!points || points.length !== 4) {
+  if (!points || points.length !== 4 || points.some(point => !point || !Number.isFinite(point.x) || !Number.isFinite(point.y))) {
     return null;
   }
 
@@ -220,18 +263,32 @@ const orderPoints = (points) => {
 };
 
 const ensureImageReady = async (imgElement) => {
-  if (!imgElement || imgElement.complete) {
-    return;
+  if (!imgElement) throw new Error('Image is not ready. Please retake the scan.');
+  if (!imgElement.complete) {
+    await new Promise((resolve, reject) => {
+      const finish = (failure) => {
+        clearTimeout(timer);
+        imgElement.removeEventListener('load', loaded);
+        imgElement.removeEventListener('error', failed);
+        cancelImageWait = null;
+        failure ? reject(failure) : resolve();
+      };
+      const loaded = () => finish();
+      const failed = () => finish(new Error('Image could not load. Please retake the scan.'));
+      const timer = setTimeout(failed, 15000);
+      cancelImageWait = failed;
+      imgElement.addEventListener('load', loaded, { once: true });
+      imgElement.addEventListener('error', failed, { once: true });
+    });
   }
-
-  if (typeof imgElement.decode === 'function') {
-    await imgElement.decode();
-    return;
+  if (!imgElement.naturalWidth || !imgElement.naturalHeight) {
+    throw new Error('Image could not load. Please retake the scan.');
   }
+};
 
-  await new Promise((resolve) => {
-    imgElement.addEventListener('load', resolve, { once: true });
-  });
+const onImageError = () => {
+  errorAction.value = 'review';
+  error.value = 'Image could not load. Please retake the scan.';
 };
 
 const readImageMat = (imgElement) => {
@@ -250,23 +307,30 @@ const readImageMat = (imgElement) => {
 const detectDocument = async (imgElement) => {
     if (!cvLoaded.value || !imgElement) return null;
     
+    const resources = [];
     try {
         const { mat: src } = readImageMat(imgElement);
+        resources.push(src);
         const gray = new cv.Mat();
+        resources.push(gray);
         const blurred = new cv.Mat();
+        resources.push(blurred);
         const edges = new cv.Mat();
+        resources.push(edges);
         
         // 1. Preprocessing
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
         cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
         cv.Canny(blurred, edges, 75, 200);
         const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
+        resources.push(kernel);
         cv.morphologyEx(edges, edges, cv.MORPH_CLOSE, kernel);
-        kernel.delete();
 
         // 2. Find Contours
         const contours = new cv.MatVector();
+        resources.push(contours);
         const hierarchy = new cv.Mat();
+        resources.push(hierarchy);
         cv.findContours(edges, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
 
         const imageArea = src.rows * src.cols;
@@ -277,6 +341,7 @@ const detectDocument = async (imgElement) => {
 
         for (let i = 0; i < contours.size(); ++i) {
             const contour = contours.get(i);
+            resources.push(contour);
             contourList.push({ contour, area: cv.contourArea(contour) });
         }
 
@@ -288,6 +353,7 @@ const detectDocument = async (imgElement) => {
             }
             const peri = cv.arcLength(contour, true);
             const approx = new cv.Mat();
+            resources.push(approx);
             cv.approxPolyDP(contour, approx, 0.02 * peri, true);
 
             if (approx.rows === 4) {
@@ -298,11 +364,8 @@ const detectDocument = async (imgElement) => {
                         y: approx.data32S[j * 2 + 1]
                     });
                 }
-                approx.delete();
                 break;
             }
-
-            approx.delete();
         }
 
         if (!finalPoints && contourList.length > 0) {
@@ -325,15 +388,6 @@ const detectDocument = async (imgElement) => {
             }
         }
 
-        // Cleanup
-        contourList.forEach(({ contour }) => contour.delete());
-        src.delete();
-        gray.delete();
-        blurred.delete();
-        edges.delete();
-        contours.delete();
-        hierarchy.delete();
-
         if (finalPoints) {
             return orderPoints(finalPoints);
         }
@@ -342,10 +396,13 @@ const detectDocument = async (imgElement) => {
     } catch (e) {
         console.error("OpenCV processing error:", e);
         return null;
+    } finally {
+        resources.reverse().forEach(resource => resource.delete());
     }
 };
 
 const runAutoDetect = async () => {
+    if (detecting.value || processing.value || disposed) return;
     detecting.value = true;
     try {
         const img = getCropperImageElement();
@@ -358,6 +415,11 @@ const runAutoDetect = async () => {
         if (points) {
             detectedPoints.value = points;
         }
+    } catch (err) {
+        if (!disposed && step.value === 'review') {
+            errorAction.value = 'review';
+            error.value = err.message;
+        }
     } finally {
         detecting.value = false;
     }
@@ -368,37 +430,67 @@ const onPointsUpdate = (points) => {
     currentPoints.value = points;
 };
 
-// Camera Logic
-const startCamera = async () => {
-  error.value = null;
-  cameraReady.value = false;
-  try {
-    const constraints = {
-      video: {
-        facingMode: 'environment', // Rear camera
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
-      }
-    };
-    stream = await navigator.mediaDevices.getUserMedia(constraints);
-    if (video.value) {
-      video.value.srcObject = stream;
-      video.value.addEventListener('loadedmetadata', () => {
-        cameraReady.value = true;
-      }, { once: true });
-    }
-  } catch (err) {
-    console.error("Camera error:", err);
-    error.value = "Could not access camera. Please check permissions.";
-  }
-};
-
 const stopCamera = () => {
+  cameraRequest++;
+  cancelCameraWait?.();
   if (stream) {
     stream.getTracks().forEach(track => track.stop());
     stream = null;
   }
+  if (video.value) video.value.srcObject = null;
   cameraReady.value = false;
+};
+
+const startCamera = async () => {
+  stopCamera();
+  const request = cameraRequest;
+  error.value = null;
+  errorAction.value = 'camera';
+  try {
+    await new Promise((resolve, reject) => {
+      let element = null;
+      let settled = false;
+      const finish = (failure) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        element?.removeEventListener('loadedmetadata', loaded);
+        element?.removeEventListener('error', failed);
+        cancelCameraWait = null;
+        failure ? reject(failure) : resolve();
+      };
+      const loaded = () => {
+        cameraReady.value = true;
+        finish();
+      };
+      const failed = () => finish(new Error('Could not access camera. Please check permissions and retry.'));
+      const timer = setTimeout(failed, 15000);
+      cancelCameraWait = failed;
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+      }).then(candidate => {
+        if (settled || disposed || request !== cameraRequest) {
+          candidate.getTracks().forEach(track => track.stop());
+          return;
+        }
+        stream = candidate;
+        element = video.value;
+        if (!element) {
+          failed();
+          return;
+        }
+        element.addEventListener('loadedmetadata', loaded, { once: true });
+        element.addEventListener('error', failed, { once: true });
+        element.srcObject = stream;
+        if (element.readyState >= 1) loaded();
+      }).catch(failed);
+    });
+  } catch (err) {
+    if (!disposed && request === cameraRequest) {
+      stopCamera();
+      error.value = err.message;
+    }
+  }
 };
 
 const setMode = (newMode) => {
@@ -412,23 +504,29 @@ const capture = async () => {
     return;
   }
 
-  const canvas = document.createElement('canvas');
-  canvas.width = video.value.videoWidth;
-  canvas.height = video.value.videoHeight;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video.value, 0, 0);
-  
-  capturedImage.value = canvas.toDataURL('image/jpeg', 0.9);
-  stopCamera(); 
-  step.value = 'review';
-  
-  // Attempt auto-detect immediately
-  nextTick(async () => {
-    await runAutoDetect();
-  });
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = video.value.videoWidth;
+    canvas.height = video.value.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video.value, 0, 0);
+
+    capturedImage.value = canvas.toDataURL('image/jpeg', 0.9);
+    stopCamera();
+    step.value = 'review';
+
+    // Attempt auto-detect immediately
+    nextTick(async () => {
+      await runAutoDetect();
+    });
+  } catch (err) {
+    errorAction.value = 'camera';
+    error.value = 'Could not capture image. Please retry the camera.';
+  }
 };
 
 const retake = () => {
+  cancelImageWait?.();
   capturedImage.value = null;
   detectedPoints.value = null;
   currentPoints.value = [];
@@ -439,41 +537,41 @@ const retake = () => {
 // --- Processing & Warping ---
 
 const processAndUpload = async () => {
-  if (!currentPoints.value || currentPoints.value.length !== 4) return;
+  if (processing.value || detecting.value || disposed) return;
   processing.value = true;
+  error.value = null;
+  errorAction.value = 'review';
+  const resources = [];
+  let uploadTimer = null;
 
   try {
     if (!cvLoaded.value) {
-      error.value = 'Scanner is still loading. Please try again.';
-      processing.value = false;
-      return;
+      errorAction.value = 'scanner';
+      throw new Error('Scanner is still loading. Please retry the scanner.');
     }
-
     const srcImg = getCropperImageElement();
-    if (!srcImg) {
-      error.value = 'Image not ready yet. Please try again.';
-      processing.value = false;
-      return;
-    }
-
     await ensureImageReady(srcImg);
-    const { mat: srcMat } = readImageMat(srcImg);
-    
-    const sortedPts = orderPoints([...currentPoints.value]);
-    if (!sortedPts) {
-      error.value = 'Could not determine crop points.';
-      processing.value = false;
-      return;
-    }
+    const sortedPts = orderPoints(currentPoints.value);
+    const validPoints = sortedPts && sortedPts.every((point, index) => {
+      if (!Number.isFinite(point.x) || !Number.isFinite(point.y) ||
+          point.x < 0 || point.y < 0 || point.x > srcImg.naturalWidth || point.y > srcImg.naturalHeight) return false;
+      const next = sortedPts[(index + 1) % 4];
+      const after = sortedPts[(index + 2) % 4];
+      return (next.x - point.x) * (after.y - next.y) - (next.y - point.y) * (after.x - next.x) > 0;
+    });
+    if (!validPoints) throw new Error('Invalid crop. Adjust the corners and retry.');
 
     // Determine output width/height
     const widthTop = Math.hypot(sortedPts[1].x - sortedPts[0].x, sortedPts[1].y - sortedPts[0].y);
     const widthBottom = Math.hypot(sortedPts[2].x - sortedPts[3].x, sortedPts[2].y - sortedPts[3].y);
-    const maxWidth = Math.max(widthTop, widthBottom);
+    const maxWidth = Math.round(Math.max(widthTop, widthBottom));
 
     const heightLeft = Math.hypot(sortedPts[0].x - sortedPts[3].x, sortedPts[0].y - sortedPts[3].y);
     const heightRight = Math.hypot(sortedPts[1].x - sortedPts[2].x, sortedPts[1].y - sortedPts[2].y);
-    const maxHeight = Math.max(heightLeft, heightRight);
+    const maxHeight = Math.round(Math.max(heightLeft, heightRight));
+    if (maxWidth < 1 || maxHeight < 1) throw new Error('Invalid crop. Adjust the corners and retry.');
+    const { mat: srcMat } = readImageMat(srcImg);
+    resources.push(srcMat);
 
     // Source points matrix
     const srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
@@ -483,6 +581,8 @@ const processAndUpload = async () => {
         sortedPts[3].x, sortedPts[3].y
     ]);
 
+    resources.push(srcTri);
+
     // Destination points matrix (rect)
     const dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
         0, 0,
@@ -491,9 +591,13 @@ const processAndUpload = async () => {
         0, maxHeight
     ]);
 
+    resources.push(dstTri);
+
     // Compute Homography
     const M = cv.getPerspectiveTransform(srcTri, dstTri);
+    resources.push(M);
     const dstMat = new cv.Mat();
+    resources.push(dstMat);
     const dsize = new cv.Size(maxWidth, maxHeight);
     
     // Warp
@@ -503,12 +607,8 @@ const processAndUpload = async () => {
     const canvas = document.createElement('canvas');
     cv.imshow(canvas, dstMat);
     
-    // Clean up mats
-    srcMat.delete();
-    dstMat.delete();
-    srcTri.delete();
-    dstTri.delete();
-    M.delete();
+    resources.reverse().forEach(resource => resource.delete());
+    resources.length = 0;
 
     // 2. Generate PDF
     const imgData = canvas.toDataURL('image/jpeg', 0.85);
@@ -541,27 +641,38 @@ const processAndUpload = async () => {
       });
     }
 
-    // 4. Upload
-    router.post(route('documents.store'), formData, {
-      forceFormData: true,
-      onSuccess: (page) => {
-        processing.value = false;
-        const outcome = page.props.flash.upload_results[0];
-        if (outcome.status === 'failed') {
-          error.value = outcome.message;
-          return;
+    await new Promise(resolve => {
+      uploadTimer = setTimeout(() => {
+        error.value = 'Upload timed out. Please retry.';
+        cancelUpload?.cancel();
+      }, 60000);
+      router.post(route('documents.store'), formData, {
+        forceFormData: true,
+        onCancelToken: token => { cancelUpload = token; },
+        onSuccess: (page) => {
+          const outcome = page.props.flash.upload_results[0];
+          if (outcome.status === 'failed') {
+            error.value = outcome.message;
+            return;
+          }
+          router.visit(route(mode.value === 'document' ? 'documents.index' : 'receipts.index'));
+        },
+        onError: errors => { error.value = 'Upload failed: ' + Object.values(errors).join(', '); },
+        onNetworkError: () => { error.value = 'Upload failed. Check your connection and retry.'; return false; },
+        onHttpException: () => { error.value = 'Upload failed. Please retry.'; return false; },
+        onCancel: () => { error.value ||= 'Upload cancelled. Please retry.'; },
+        onFinish: () => {
+          clearTimeout(uploadTimer);
+          cancelUpload = null;
+          resolve();
         }
-        router.visit(route(mode.value === 'document' ? 'documents.index' : 'receipts.index'));
-      },
-      onError: (errors) => {
-        processing.value = false;
-        error.value = "Upload failed: " + Object.values(errors).join(', ');
-      }
+      });
     });
-
   } catch (err) {
-    console.error("Processing error:", err);
-    error.value = "Failed to process image.";
+    error.value = err.message || 'Failed to process image. Please retry.';
+  } finally {
+    clearTimeout(uploadTimer);
+    resources.reverse().forEach(resource => resource.delete());
     processing.value = false;
   }
 };
@@ -586,6 +697,10 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  disposed = true;
   stopCamera();
+  cancelImageWait?.();
+  cleanupOpenCVLoad();
+  cancelUpload?.cancel();
 });
 </script>

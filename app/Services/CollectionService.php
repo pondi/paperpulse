@@ -85,16 +85,6 @@ class CollectionService
     }
 
     /**
-     * Get all files in a collection.
-     */
-    public function getFiles(Collection $collection): SupportCollection
-    {
-        return $collection->files()
-            ->with(['primaryReceipt', 'primaryDocument', 'primaryEntity'])
-            ->get();
-    }
-
-    /**
      * Get collections for a user.
      */
     public function getCollectionsForUser(int $userId, bool $includeArchived = false): SupportCollection

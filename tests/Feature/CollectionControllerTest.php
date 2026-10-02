@@ -2,8 +2,11 @@
 
 use App\Models\Collection;
 use App\Models\CollectionShare;
+use App\Models\ExtractableEntity;
 use App\Models\File;
+use App\Models\Receipt;
 use App\Models\User;
+use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -62,10 +65,24 @@ describe('Collection Web Controller', function () {
 
     test('can view own collection', function () {
         $collection = Collection::factory()->create(['user_id' => $this->user->id]);
+        $file = File::factory()->create(['user_id' => $this->user->id]);
+        $receipt = Receipt::factory()->create(['user_id' => $this->user->id, 'file_id' => $file->id]);
+        ExtractableEntity::create([
+            'user_id' => $this->user->id,
+            'file_id' => $file->id,
+            'entity_type' => 'receipt',
+            'entity_id' => $receipt->id,
+            'is_primary' => true,
+            'extracted_at' => now(),
+        ]);
+        $collection->files()->attach($file);
 
         $response = $this->actingAs($this->user)->get("/collections/{$collection->id}");
 
-        $response->assertOk();
+        $response->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('collection.files', 1)
+            ->where('collection.files.0.primary_entity.entity.id', $receipt->id)
+        );
     });
 
     test('cannot view another users collection', function () {

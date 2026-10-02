@@ -11,6 +11,7 @@ use App\Models\BulkUploadSession;
 use App\Models\File;
 use App\Services\FileProcessingService;
 use Exception;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -32,7 +33,7 @@ class BulkUploadService
      *
      * @param  array{file_type: string, collection_ids?: array, tag_ids?: array, note?: string}  $defaults
      * @param  array<array{filename: string, path?: string, size: int, hash: string, extension: string, mime_type: string, file_type?: string, collection_ids?: array, tag_ids?: array, note?: string}>  $files
-     * @return array{session: BulkUploadSession, files: \Illuminate\Support\Collection}
+     * @return array{session: BulkUploadSession, files: Collection}
      */
     public function createSession(int $userId, array $defaults, array $files): array
     {
@@ -60,10 +61,11 @@ class BulkUploadService
 
             // Batch dedup check: single query for all hashes instead of N queries
             $allHashes = array_column($normalizedFiles, '_normalized_hash');
-            $existingFiles = File::withoutGlobalScopes()
+            $existingFiles = File::withoutGlobalScope('user')
                 ->where('user_id', $userId)
                 ->whereIn('file_hash', $allHashes)
-                ->whereIn('status', ['completed', 'processing', 'pending'])
+                ->deduplicatable()
+                ->orderByDesc('id')
                 ->get()
                 ->keyBy('file_hash');
 
@@ -72,12 +74,15 @@ class BulkUploadService
             $duplicateCount = 0;
             $insertRows = [];
             $fileUuids = [];
+            $manifestFiles = [];
 
             foreach ($normalizedFiles as $fileData) {
                 $fileUuid = (string) Str::uuid();
                 $hash = $fileData['_normalized_hash'];
                 $existingFile = $existingFiles->get($hash);
-                $isDuplicate = $existingFile !== null;
+                $manifestFileUuid = $manifestFiles[$hash] ?? null;
+                $isDuplicate = $existingFile !== null || $manifestFileUuid !== null;
+                $manifestFiles[$hash] ??= $fileUuid;
 
                 if ($isDuplicate) {
                     $duplicateCount++;
@@ -101,11 +106,11 @@ class BulkUploadService
                     'note' => $fileData['note'] ?? null,
                     's3_key' => $this->buildS3Key($userId, $sessionUuid, $fileUuid, $fileData['extension']),
                     'presigned_expires_at' => null,
-                    'file_id' => null,
+                    'file_id' => $existingFile?->id,
                     'job_id' => null,
-                    'error_message' => $isDuplicate
+                    'error_message' => $existingFile
                         ? "Duplicate of file ID {$existingFile->id} (guid: {$existingFile->guid})"
-                        : null,
+                        : ($manifestFileUuid ? "Duplicate of manifest file {$manifestFileUuid}" : null),
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];

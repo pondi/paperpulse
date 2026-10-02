@@ -4,6 +4,7 @@ use App\Enums\BulkUploadFileStatus;
 use App\Enums\BulkUploadSessionStatus;
 use App\Models\BulkUploadFile;
 use App\Models\BulkUploadSession;
+use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
@@ -63,11 +64,12 @@ it('creates a bulk upload session with file manifest', function () {
 it('detects duplicate files during session creation', function () {
     // Create an existing file with a known hash
     $knownHash = hash('sha256', 'known-content');
-    File::factory()->create([
+    $existing = File::factory()->create([
         'user_id' => $this->user->id,
         'file_hash' => $knownHash,
         'status' => 'completed',
     ]);
+    ExtractableEntity::factory()->create(['file_id' => $existing->id, 'user_id' => $this->user->id]);
 
     $response = $this->postJson('/api/v1/bulk/sessions', [
         'file_type' => 'receipt',
@@ -96,6 +98,49 @@ it('detects duplicate files during session creation', function () {
     // Verify the duplicate file is marked correctly
     $duplicateFile = BulkUploadFile::where('file_hash', $knownHash)->first();
     expect($duplicateFile->status)->toBe(BulkUploadFileStatus::Duplicate);
+    expect($duplicateFile->file_id)->toBe($existing->id);
+});
+
+it('allows bulk reuploads when the matching file is unusable or belongs to another user', function (string $state): void {
+    $hash = hash('sha256', 'reupload-content');
+    $file = File::factory()->create([
+        'user_id' => $state === 'foreign' ? User::factory()->create()->id : $this->user->id,
+        'file_hash' => $hash,
+        'status' => $state === 'failed' ? 'failed' : 'completed',
+    ]);
+    if ($state === 'deleted') {
+        ExtractableEntity::factory()->create(['file_id' => $file->id, 'user_id' => $this->user->id]);
+        $file->delete();
+    }
+
+    $this->postJson('/api/v1/bulk/sessions', [
+        'file_type' => 'receipt',
+        'files' => [[
+            'filename' => 'reupload.pdf', 'size' => 100, 'hash' => $hash,
+            'extension' => 'pdf', 'mime_type' => 'application/pdf',
+        ]],
+    ])->assertCreated()->assertJsonPath('data.duplicate_files', 0)->assertJsonPath('data.uploadable_files', 1);
+})->with(['deleted', 'failed', 'completed without entities', 'foreign']);
+
+it('deduplicates normalized manifest hashes while preserving each entry', function (): void {
+    $hash = hash('sha256', 'repeated-content');
+    $this->postJson('/api/v1/bulk/sessions', [
+        'file_type' => 'receipt',
+        'files' => [
+            ['filename' => 'first.pdf', 'size' => 100, 'hash' => $hash, 'extension' => 'pdf', 'mime_type' => 'application/pdf', 'note' => 'First entry'],
+            ['filename' => 'second.pdf', 'path' => 'folder/second.pdf', 'size' => 100, 'hash' => 'sha256:'.$hash, 'extension' => 'pdf', 'mime_type' => 'application/pdf', 'file_type' => 'document', 'note' => 'Second entry'],
+        ],
+    ])->assertCreated()->assertJsonPath('data.total_files', 2)
+        ->assertJsonPath('data.duplicate_files', 1)->assertJsonPath('data.uploadable_files', 1);
+
+    $first = BulkUploadFile::where('original_filename', 'first.pdf')->firstOrFail();
+    $second = BulkUploadFile::where('original_filename', 'second.pdf')->firstOrFail();
+    expect($first->status)->toBe(BulkUploadFileStatus::Pending)
+        ->and($second->status)->toBe(BulkUploadFileStatus::Duplicate)
+        ->and($second->status->canPresign())->toBeFalse()
+        ->and($second->error_message)->toBe('Duplicate of manifest file '.$first->uuid)
+        ->and($second->original_path)->toBe('folder/second.pdf')
+        ->and($second->note)->toBe('Second entry')->and($second->file_type)->toBe('document');
 });
 
 it('creates a bulk upload session with office document formats', function () {

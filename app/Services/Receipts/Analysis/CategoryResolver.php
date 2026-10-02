@@ -3,6 +3,7 @@
 namespace App\Services\Receipts\Analysis;
 
 use App\Contracts\Services\ReceiptEnricherContract;
+use App\Models\Category;
 use App\Models\Merchant;
 use App\Models\User;
 
@@ -34,6 +35,8 @@ class CategoryResolver
             $categoryId = $defaultCategoryId;
         }
 
-        return [$categoryName, $categoryId];
+        $category = $user && $categoryId ? Category::withoutGlobalScope('user')->where('user_id', $user->id)->find($categoryId) : null;
+
+        return [$category?->name, $category?->id];
     }
 }

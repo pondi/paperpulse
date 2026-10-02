@@ -2,18 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BulkCategoryRequest;
 use App\Http\Requests\BulkReceiptIdsRequest;
 use App\Jobs\Search\ReindexFile;
 use App\Models\Category;
 use App\Models\Receipt;
 use App\Notifications\BulkOperationCompleted;
-use App\Rules\ExistsForUser;
 use App\Services\ReceiptService;
 use App\Support\SpreadsheetSafeText;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Exception;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 
@@ -58,27 +57,14 @@ class BulkOperationsController extends Controller
     /**
      * Update category for multiple receipts
      */
-    public function bulkCategorize(Request $request)
+    public function bulkCategorize(BulkCategoryRequest $request)
     {
-        $validated = $request->validate([
-            'receipt_ids' => 'required|array',
-            'receipt_ids.*' => ['integer', new ExistsForUser('receipts')],
-            'category_id' => ['nullable', 'integer', new ExistsForUser('categories')],
-            'category' => 'nullable|string|max:255',
-        ]);
-
-        // Ensure either category_id or category is provided
-        if (! ($validated['category_id'] ?? null) && ! ($validated['category'] ?? null)) {
-            return redirect()->back()->with('error', 'Please select a category.');
-        }
-
+        $validated = $request->validated();
         $category = isset($validated['category_id'])
             ? Category::findOrFail($validated['category_id'])
-            : Category::where('user_id', auth()->id())->where('name', $validated['category'])->first();
-        if ($category) {
-            $this->authorize('update', $category);
-        }
-        $data = ['category_id' => $category?->id, 'receipt_category' => $category?->name ?? $validated['category']];
+            : Category::where('user_id', auth()->id())->where('name', $validated['category'])->firstOrFail();
+        $this->authorize('update', $category);
+        $data = ['category_id' => $category->id, 'receipt_category' => $category->name];
         $updatedCount = (new Receipt)->getConnection()->transaction(function () use ($validated, $data): int {
             $receipts = Receipt::whereIn('id', $validated['receipt_ids'])->where('user_id', auth()->id());
             $fileIds = (clone $receipts)->distinct()->pluck('file_id');

@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
+use App\Models\Receipt;
 use App\Models\User;
 use App\Rules\ExistsForUser;
+use App\Services\MonetarySummaryService;
 use App\Services\SharingService;
 use Exception;
 use Illuminate\Http\Request;
@@ -27,11 +29,14 @@ class CategoryController extends Controller
      */
     public function index()
     {
+        $currency = auth()->user()->preference('currency', 'NOK');
+        $summary = app(MonetarySummaryService::class)->aggregate(Receipt::where('user_id', auth()->id())->whereNotNull('category_id')->lazyById(200),
+            ['total' => 'total_amount'], 'receipt_date', $currency, ['category' => fn ($receipt) => $receipt->category_id]);
         $categories = auth()->user()->categories()
             ->ordered()
             ->withCount(['receipts', 'documents'])
             ->get()
-            ->map(function ($category) {
+            ->map(function ($category) use ($summary, $currency) {
                 return [
                     'id' => $category->id,
                     'name' => $category->name,
@@ -41,7 +46,8 @@ class CategoryController extends Controller
                     'description' => $category->description,
                     'receipt_count' => $category->receipts_count,
                     'document_count' => $category->documents_count,
-                    'total_amount' => $category->total_amount,
+                    'total_amount' => $summary['groups']['category'][$category->id]['total'] ?? (isset($summary['groups']['category'][$category->id]) ? null : 0),
+                    'currency' => $currency,
                     'is_active' => $category->is_active,
                     'sort_order' => $category->sort_order,
                 ];
@@ -104,11 +110,6 @@ class CategoryController extends Controller
     public function destroy(Category $category)
     {
         $this->authorize('delete', $category);
-
-        // Check if category has receipts or documents
-        if ($category->receipts()->exists() || $category->documents()->exists()) {
-            return redirect()->back()->with('error', 'Cannot delete category with items. Please reassign items first.');
-        }
 
         $category->delete();
 

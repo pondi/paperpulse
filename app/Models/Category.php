@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DeletedReason;
 use App\Jobs\Search\ReindexFile;
+use App\Services\MonetarySummaryService;
 use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,11 +23,26 @@ class Category extends Model
             if (! $category->wasChanged('name')) {
                 return;
             }
-            $category->receipts()->where('user_id', $category->user_id)->update(['receipt_category' => $category->name]);
+            $category->receipts()->withoutGlobalScope('user')->withTrashed()->where('user_id', $category->user_id)->update(['receipt_category' => $category->name]);
             foreach ([Receipt::class, Document::class, Invoice::class] as $model) {
                 $model::withoutGlobalScope('user')->where('user_id', $category->user_id)->where('category_id', $category->id)
                     ->select('file_id')->distinct()->cursor()->each(fn ($entity) => ReindexFile::forFile($entity->file_id));
             }
+        });
+    }
+
+    public function delete(): ?bool
+    {
+        return $this->getConnection()->transaction(function (): ?bool {
+            static::query()->whereKey($this->id)->lockForUpdate()->firstOrFail();
+            foreach ([Receipt::class, Document::class, Invoice::class] as $model) {
+                $query = $model::withoutGlobalScope('user')->withTrashed()->where('user_id', $this->user_id)->where('category_id', $this->id);
+                (clone $query)->select('file_id')->distinct()->cursor()->each(fn ($entity) => ReindexFile::forFile($entity->file_id));
+                $query->update($model === Receipt::class ? ['category_id' => null, 'receipt_category' => null] : ['category_id' => null]);
+            }
+            UserPreference::query()->where('user_id', $this->user_id)->where('default_category_id', $this->id)->update(['default_category_id' => null]);
+
+            return parent::delete();
         });
     }
 
@@ -117,9 +133,10 @@ class Category extends Model
     /**
      * Get the total amount for all receipts in this category.
      */
-    public function getTotalAmountAttribute()
+    public function getTotalAmountAttribute(): ?float
     {
-        return $this->receipts()->sum('total_amount');
+        return app(MonetarySummaryService::class)->aggregate($this->receipts()->where('user_id', $this->user_id)->lazyById(200),
+            ['total' => 'total_amount'], 'receipt_date', $this->user->preference('currency', 'NOK'))['amounts']['total'];
     }
 
     /**

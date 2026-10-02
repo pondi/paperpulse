@@ -99,7 +99,7 @@
                   </div>
                   <div class="flex items-center justify-between">
                     <span class="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">{{ __('total') }}</span>
-                    <span class="text-sm font-black text-zinc-900 dark:text-zinc-100">{{ formatCurrency(category.total_amount) }}</span>
+                    <span class="text-sm font-black text-zinc-900 dark:text-zinc-100">{{ formatCurrency(category.total_amount, category.currency) }}</span>
                   </div>
                 </div>
               </div>

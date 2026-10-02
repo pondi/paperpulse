@@ -46,9 +46,9 @@
       </div>
 
       <!-- Contracts List -->
-      <div v-if="filteredContracts.length > 0" class="space-y-4">
+      <div v-if="contracts.length > 0" class="space-y-4">
         <ContractCard
-          v-for="contract in filteredContracts"
+          v-for="contract in contracts"
           :key="contract.id"
           :contract="contract"
           @view="viewContract"
@@ -63,53 +63,35 @@
         </div>
         <p class="text-gray-500 dark:text-gray-400">No contracts found matching your filters.</p>
       </div>
+      <Pagination v-bind="pagination" />
     </div>
   </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import Pagination from '@/Components/Common/Pagination.vue'
 import ContractCard from '@/Components/Entities/ContractCard.vue'
 
 const props = defineProps({
   contracts: {
     type: Array,
     required: true
-  }
+  },
+  filters: Object,
+  pagination: Object,
 })
 
-const filters = ref({
-  type: '',
-  status: '',
-  search: ''
-})
-
-const filteredContracts = computed(() => {
-  let result = props.contracts
-
-  if (filters.value.type) {
-    result = result.filter(c => c.contract_type === filters.value.type)
-  }
-
-  if (filters.value.status) {
-    result = result.filter(c => c.status === filters.value.status)
-  }
-
-  if (filters.value.search) {
-    const search = filters.value.search.toLowerCase()
-    result = result.filter(c =>
-      (c.contract_title && c.contract_title.toLowerCase().includes(search)) ||
-      (c.contract_number && c.contract_number.toLowerCase().includes(search))
-    )
-  }
-
-  return result
-})
+const filters = ref({ ...props.filters })
 
 function applyFilters() {
-  // Filters are applied reactively via computed property
+  router.get(route('contracts.index'), { ...filters.value, page: 1 }, {
+    preserveState: true,
+    preserveScroll: true,
+    replace: true,
+  })
 }
 
 function viewContract(id) {

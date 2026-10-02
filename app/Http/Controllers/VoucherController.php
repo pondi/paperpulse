@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HandlesEntityCrud;
+use App\Http\Requests\EntityIndexRequest;
 use App\Http\Resources\Inertia\VoucherInertiaResource;
 use App\Models\Tag;
 use App\Models\Voucher;
@@ -19,7 +20,7 @@ class VoucherController extends BaseResourceController
 
     protected string $resource = 'Vouchers';
 
-    protected array $indexWith = ['merchant'];
+    protected array $indexWith = ['merchant', 'file'];
 
     protected array $showWith = ['merchant', 'file', 'tags'];
 
@@ -34,14 +35,43 @@ class VoucherController extends BaseResourceController
      */
     public function index(Request $request): Response
     {
-        $vouchers = Voucher::where('user_id', $request->user()->id)
-            ->with($this->indexWith)
-            ->orderBy($this->defaultSort, $this->defaultSortDirection)
-            ->get()
-            ->map(fn (Voucher $voucher) => VoucherInertiaResource::forIndex($voucher)->toArray(request()));
+        $filters = app(EntityIndexRequest::class)->validated();
+        $query = Voucher::where('user_id', $request->user()->id)->with($this->indexWith);
+
+        if ($search = $filters['search'] ?? null) {
+            $query->where(function ($query) use ($search): void {
+                $query->where('code', 'like', "%{$search}%")
+                    ->orWhereHas('merchant', fn ($merchant) => $merchant->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($type = $filters['type'] ?? null) {
+            $query->where('voucher_type', $type);
+        }
+
+        $today = $request->user()->currentDate()->toDateString();
+        match ($filters['status'] ?? null) {
+            'redeemed' => $query->where('is_redeemed', true),
+            'expired' => $query->where('expiry_date', '<', $today),
+            'active' => $query->where('is_redeemed', false)
+                ->where(fn ($query) => $query->whereNull('expiry_date')->orWhere('expiry_date', '>=', $today)),
+            default => null,
+        };
+
+        $vouchers = $query->orderBy($filters['sort'] ?? $this->defaultSort, $filters['sort_direction'] ?? $this->defaultSortDirection)
+            ->orderBy('id')
+            ->paginate($filters['per_page'] ?? $this->perPage)->withQueryString()
+            ->through(fn (Voucher $voucher) => VoucherInertiaResource::forIndex($voucher)->toArray($request));
 
         return Inertia::render('Vouchers/Index', [
-            'vouchers' => $vouchers,
+            'vouchers' => $vouchers->items(),
+            'filters' => $filters,
+            'pagination' => [
+                'links' => $vouchers->linkCollection(),
+                'from' => $vouchers->firstItem(),
+                'to' => $vouchers->lastItem(),
+                'total' => $vouchers->total(),
+            ],
         ]);
     }
 

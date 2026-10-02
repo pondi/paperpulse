@@ -44,9 +44,9 @@
       </div>
 
       <!-- Invoices List -->
-      <div v-if="filteredInvoices.length > 0" class="space-y-4">
+      <div v-if="invoices.length > 0" class="space-y-4">
         <InvoiceCard
-          v-for="invoice in filteredInvoices"
+          v-for="invoice in invoices"
           :key="invoice.id"
           :invoice="invoice"
           @view="viewInvoice"
@@ -61,54 +61,35 @@
         </div>
         <p class="text-gray-500 dark:text-gray-400">No invoices found matching your filters.</p>
       </div>
+      <Pagination v-bind="pagination" />
     </div>
   </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import Pagination from '@/Components/Common/Pagination.vue'
 import InvoiceCard from '@/Components/Entities/InvoiceCard.vue'
 
 const props = defineProps({
   invoices: {
     type: Array,
     required: true
-  }
+  },
+  filters: Object,
+  pagination: Object,
 })
 
-const filters = ref({
-  paymentStatus: '',
-  type: '',
-  search: ''
-})
-
-const filteredInvoices = computed(() => {
-  let result = props.invoices
-
-  if (filters.value.paymentStatus) {
-    result = result.filter(inv => inv.payment_status === filters.value.paymentStatus)
-  }
-
-  if (filters.value.type) {
-    result = result.filter(inv => inv.invoice_type === filters.value.type)
-  }
-
-  if (filters.value.search) {
-    const search = filters.value.search.toLowerCase()
-    result = result.filter(inv =>
-      (inv.invoice_number && inv.invoice_number.toLowerCase().includes(search)) ||
-      (inv.from_name && inv.from_name.toLowerCase().includes(search)) ||
-      (inv.to_name && inv.to_name.toLowerCase().includes(search))
-    )
-  }
-
-  return result
-})
+const filters = ref({ ...props.filters })
 
 function applyFilters() {
-  // Filters are applied reactively via computed property
+  router.get(route('invoices.index'), { ...filters.value, page: 1 }, {
+    preserveState: true,
+    preserveScroll: true,
+    replace: true,
+  })
 }
 
 function viewInvoice(id) {

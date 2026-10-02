@@ -2,7 +2,7 @@
     <div v-if="links.length > 3" class="flex items-center justify-between border-t-2 border-amber-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 sm:px-6">
         <div class="flex flex-1 justify-between sm:hidden">
             <component
-                :is="links[0].url ? 'Link' : 'span'"
+                :is="links[0].url ? Link : 'span'"
                 :href="links[0].url"
                 :class="[
                     'relative inline-flex items-center rounded-md border-2 px-4 py-2 text-sm font-bold transition-all duration-200',
@@ -14,7 +14,7 @@
                 Previous
             </component>
             <component
-                :is="links[links.length - 1].url ? 'Link' : 'span'"
+                :is="links[links.length - 1].url ? Link : 'span'"
                 :href="links[links.length - 1].url"
                 :class="[
                     'relative ml-3 inline-flex items-center rounded-md border-2 px-4 py-2 text-sm font-bold transition-all duration-200',
@@ -43,7 +43,7 @@
                     <component
                         v-for="(link, index) in links"
                         :key="index"
-                        :is="link.url ? 'Link' : 'span'"
+                        :is="link.url ? Link : 'span'"
                         :href="link.url"
                         v-html="sanitizeLabel(link.label)"
                         :class="[

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HandlesEntityCrud;
+use App\Http\Requests\EntityIndexRequest;
 use App\Http\Resources\Inertia\ContractInertiaResource;
 use App\Models\Contract;
 use App\Models\Tag;
@@ -18,6 +19,8 @@ class ContractController extends BaseResourceController
     protected string $model = Contract::class;
 
     protected string $resource = 'Contracts';
+
+    protected array $indexWith = ['file'];
 
     protected array $showWith = ['file', 'tags'];
 
@@ -42,13 +45,35 @@ class ContractController extends BaseResourceController
      */
     public function index(Request $request): Response
     {
-        $contracts = Contract::where('user_id', $request->user()->id)
-            ->orderBy($this->defaultSort, $this->defaultSortDirection)
-            ->get()
-            ->map(fn (Contract $contract) => ContractInertiaResource::forIndex($contract)->toArray(request()));
+        $filters = app(EntityIndexRequest::class)->validated();
+        $query = Contract::where('user_id', $request->user()->id)->with($this->indexWith);
+
+        if ($search = $filters['search'] ?? null) {
+            $this->applySearch($query, $search);
+        }
+
+        if ($value = $filters['status'] ?? null) {
+            $query->where('status', $value);
+        }
+
+        if ($value = $filters['type'] ?? null) {
+            $query->where('contract_type', $value);
+        }
+
+        $contracts = $query->orderBy($filters['sort'] ?? $this->defaultSort, $filters['sort_direction'] ?? $this->defaultSortDirection)
+            ->orderBy('id')
+            ->paginate($filters['per_page'] ?? $this->perPage)->withQueryString()
+            ->through(fn (Contract $contract) => ContractInertiaResource::forIndex($contract)->toArray($request));
 
         return Inertia::render('Contracts/Index', [
-            'contracts' => $contracts,
+            'contracts' => $contracts->items(),
+            'filters' => $filters,
+            'pagination' => [
+                'links' => $contracts->linkCollection(),
+                'from' => $contracts->firstItem(),
+                'to' => $contracts->lastItem(),
+                'total' => $contracts->total(),
+            ],
         ]);
     }
 

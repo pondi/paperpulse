@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HandlesEntityCrud;
+use App\Http\Requests\EntityIndexRequest;
 use App\Http\Resources\Inertia\InvoiceInertiaResource;
 use App\Models\Invoice;
 use App\Models\Tag;
@@ -19,7 +20,7 @@ class InvoiceController extends BaseResourceController
 
     protected string $resource = 'Invoices';
 
-    protected array $indexWith = ['merchant'];
+    protected array $indexWith = ['merchant', 'file'];
 
     protected array $showWith = ['merchant', 'file', 'tags', 'lineItems'];
 
@@ -43,15 +44,35 @@ class InvoiceController extends BaseResourceController
      */
     public function index(Request $request): Response
     {
-        $invoices = Invoice::where('user_id', $request->user()->id)
-            ->with($this->indexWith)
-            ->withCount('lineItems')
-            ->orderBy($this->defaultSort, $this->defaultSortDirection)
-            ->get()
-            ->map(fn (Invoice $invoice) => InvoiceInertiaResource::forIndex($invoice)->toArray(request()));
+        $filters = app(EntityIndexRequest::class)->validated();
+        $query = Invoice::where('user_id', $request->user()->id)->with($this->indexWith)->withCount('lineItems');
+
+        if ($search = $filters['search'] ?? null) {
+            $this->applySearch($query, $search);
+        }
+
+        if ($value = $filters['paymentStatus'] ?? null) {
+            $query->where('payment_status', $value);
+        }
+
+        if ($value = $filters['type'] ?? null) {
+            $query->where('invoice_type', $value);
+        }
+
+        $invoices = $query->orderBy($filters['sort'] ?? $this->defaultSort, $filters['sort_direction'] ?? $this->defaultSortDirection)
+            ->orderBy('id')
+            ->paginate($filters['per_page'] ?? $this->perPage)->withQueryString()
+            ->through(fn (Invoice $invoice) => InvoiceInertiaResource::forIndex($invoice)->toArray($request));
 
         return Inertia::render('Invoices/Index', [
-            'invoices' => $invoices,
+            'invoices' => $invoices->items(),
+            'filters' => $filters,
+            'pagination' => [
+                'links' => $invoices->linkCollection(),
+                'from' => $invoices->firstItem(),
+                'to' => $invoices->lastItem(),
+                'total' => $invoices->total(),
+            ],
         ]);
     }
 

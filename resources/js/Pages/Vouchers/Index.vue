@@ -43,9 +43,9 @@
       </div>
 
       <!-- Vouchers Grid -->
-      <div v-if="filteredVouchers.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-if="vouchers.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <VoucherCard
-          v-for="voucher in filteredVouchers"
+          v-for="voucher in vouchers"
           :key="voucher.id"
           :voucher="voucher"
           @redeem="markAsRedeemed"
@@ -61,66 +61,35 @@
         </div>
         <p class="text-gray-500 dark:text-gray-400">No vouchers found matching your filters.</p>
       </div>
+      <Pagination v-bind="pagination" />
     </div>
   </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useDateFormatter } from '@/Composables/useDateFormatter'
+import { ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import Pagination from '@/Components/Common/Pagination.vue'
 import VoucherCard from '@/Components/Entities/VoucherCard.vue'
 
 const props = defineProps({
   vouchers: {
     type: Array,
     required: true
-  }
+  },
+  filters: Object,
+  pagination: Object,
 })
 
-const filters = ref({
-  type: '',
-  status: '',
-  search: ''
-})
-
-const filteredVouchers = computed(() => {
-  let result = props.vouchers
-
-  if (filters.value.type) {
-    result = result.filter(v => v.voucher_type === filters.value.type)
-  }
-
-  if (filters.value.status === 'active') {
-    result = result.filter(v => !v.is_redeemed && !isExpired(v))
-  } else if (filters.value.status === 'expired') {
-    result = result.filter(v => isExpired(v))
-  } else if (filters.value.status === 'redeemed') {
-    result = result.filter(v => v.is_redeemed)
-  }
-
-  if (filters.value.search) {
-    const search = filters.value.search.toLowerCase()
-    result = result.filter(v =>
-      (v.code && v.code.toLowerCase().includes(search)) ||
-      (v.merchant_name && v.merchant_name.toLowerCase().includes(search))
-    )
-  }
-
-  return result
-})
-
-const { daysUntilDate } = useDateFormatter()
-
-function isExpired(voucher) {
-  const daysRemaining = daysUntilDate(voucher.expiry_date)
-  return daysRemaining !== null && daysRemaining < 0
-}
+const filters = ref({ ...props.filters })
 
 function applyFilters() {
-  // Optionally, you can debounce this or update URL params
-  // For now, the computed property handles filtering reactively
+  router.get(route('vouchers.index'), { ...filters.value, page: 1 }, {
+    preserveState: true,
+    preserveScroll: true,
+    replace: true,
+  })
 }
 
 function viewVoucher(id) {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Receipts;
 
 use App\Http\Controllers\BaseResourceController;
+use App\Http\Requests\EntityIndexRequest;
 use App\Http\Requests\UpdateReceiptRequest;
 use App\Http\Resources\Inertia\ReceiptInertiaResource;
 use App\Models\Merchant;
@@ -92,7 +93,7 @@ class ReceiptController extends BaseResourceController
     public function index(Request $request): Response
     {
         $user = auth()->user();
-        $this->perPage = $user->preference('receipts_per_page', 20);
+        $this->perPage = app(EntityIndexRequest::class)->validated('per_page') ?? min(100, max(1, (int) $user->preference('receipts_per_page', 20)));
         $sortOption = $user->preference('default_sort', 'date_desc');
 
         $query = $this->model::query()->with($this->indexWith);
@@ -112,7 +113,7 @@ class ReceiptController extends BaseResourceController
         // Apply custom sorting based on user preference
         $this->applySortOption($query, $sortOption);
 
-        $receipts = $query->paginate($this->perPage);
+        $receipts = $query->orderBy('receipts.id')->paginate($this->perPage)->withQueryString();
 
         $categories = auth()->user()->categories()
             ->active()

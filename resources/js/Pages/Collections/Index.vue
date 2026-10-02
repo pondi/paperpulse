@@ -23,6 +23,7 @@
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <Breadcrumbs :crumbs="[{ label: 'Collections', href: route('collections.index') }, ...breadcrumbs]" />
+                <Link :href="route('collections.organization.index')" class="mb-4 inline-block text-orange-600 dark:text-orange-400">Review folder recommendations</Link>
                 <p v-if="actionError" role="alert" class="mb-4 text-red-600 dark:text-red-400">{{ actionError }}</p>
                 <!-- Search and Filters -->
                 <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg mb-6">
@@ -180,7 +181,7 @@ import { ref } from 'vue';
 import axios from 'axios';
 import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import FolderLocationPicker from '@/Components/Domain/FolderLocationPicker.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CollectionCard from '@/Components/Domain/CollectionCard.vue';
 import Modal from '@/Components/Common/Modal.vue';

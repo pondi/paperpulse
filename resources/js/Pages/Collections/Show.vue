@@ -19,6 +19,7 @@
                     </h2>
                 </div>
                 <div class="flex items-center gap-x-4">
+                    <Link v-if="isOwner" :href="route('collections.organization.index')" class="text-orange-600 dark:text-orange-400">Review recommendations</Link>
                     <button
                         v-if="isOwner"
                         @click="isEditing = !isEditing"

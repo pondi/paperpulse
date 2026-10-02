@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\TagController;
 use App\Http\Controllers\Api\V1\VoucherController;
 use App\Http\Controllers\Api\V1\WarrantyController;
 use App\Http\Controllers\Files\ExtractionReportController;
+use App\Http\Controllers\OrganizationController;
 use Illuminate\Support\Facades\Route;
 
 // Authentication routes
@@ -29,6 +30,11 @@ Route::prefix('auth')->group(function () {
 
 // Protected API routes
 Route::middleware(['auth:sanctum', 'verified', 'api.rate_limit:200,1'])->group(function () {
+    Route::get('collections/recommendations', [OrganizationController::class, 'index'])->name('api.organization.index');
+    Route::post('collections/recommendations', [OrganizationController::class, 'start'])->name('api.organization.start');
+    Route::post('collections/recommendations/decisions', [OrganizationController::class, 'decide'])->name('api.organization.decide');
+    Route::post('collections/recommendations/{recommendation}/undo', [OrganizationController::class, 'undo'])->name('api.organization.undo');
+    Route::post('collections/recommendation-runs/{run}/retry', [OrganizationController::class, 'retry'])->name('api.organization.retry');
     // File upload & listing (single file upload only)
     Route::get('files', [FileController::class, 'index'])->name('api.files.index');
     Route::get('files/{file}', [FileController::class, 'show'])->name('api.files.show');

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CollectionController;
+use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\PublicCollectionLinkController;
 use App\Models\Collection;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +15,12 @@ Route::bind('collection', function ($value) {
 Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::prefix('collections')->name('collections.')->group(function () {
         // Static routes first
+        Route::get('/recommendations', [OrganizationController::class, 'index'])->name('organization.index');
+        Route::post('/recommendations', [OrganizationController::class, 'start'])->name('organization.start');
+        Route::post('/recommendations/decisions', [OrganizationController::class, 'decide'])->name('organization.decide');
+        Route::post('/recommendations/{recommendation}/undo', [OrganizationController::class, 'undo'])->name('organization.undo');
+        Route::post('/recommendation-runs/{run}/retry', [OrganizationController::class, 'retry'])->name('organization.retry');
+        Route::post('/recommendation-runs/{run}/dismiss', [OrganizationController::class, 'dismiss'])->name('organization.dismiss');
         Route::get('/', [CollectionController::class, 'index'])->name('index');
         Route::get('/folders', [CollectionController::class, 'folders'])->name('folders');
         Route::get('/all', [CollectionController::class, 'all'])->name('all');

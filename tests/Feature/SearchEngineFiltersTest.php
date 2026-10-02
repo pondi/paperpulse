@@ -39,6 +39,9 @@ it('applies inclusive engine date and amount ranges with tenant isolation', func
                 $attributes['receipt_category'] = $category->name;
             }
         }
+        if ($model === Contract::class) {
+            $attributes['contract_title'] = 'Åse Østgårds vei 12';
+        }
         $entities->push($model::factory()->create($attributes));
         if ($entities->count() === 1) {
             $file->collections()->attach($collection);
@@ -56,20 +59,24 @@ it('applies inclusive engine date and amount ranges with tenant isolation', func
         expect($client->waitForTask($task['taskUid'])['status'])->toBe('succeeded');
         $task = $index->addDocuments($entities->map->toSearchableArray()->all());
         expect($client->waitForTask($task['taskUid'])['status'])->toBe('succeeded');
+        if ($model === Contract::class) {
+            $page = app(SearchQueryBuilder::class)->{$method}('Åse Østgårds vei 12', ['limit' => 1, 'page' => 2]);
+            expect($page['results'])->toHaveCount(2)->and($page['total'])->toBe(3);
+        }
         $filters = ['date_from' => '2026-02-01', 'date_to' => '2026-02-28'];
         if ($amount) {
             $filters += ['amount_min' => 10, 'amount_max' => 20];
         }
         $raw = SearchFilterBuilder::apply($model::search('')->where('user_id', $owner->id), $filters)->raw();
         expect(collect($raw['hits'])->pluck('id')->sort()->values()->all())->toBe($entities->take(2)->pluck('id')->sort()->values()->all());
-        $results = app(SearchQueryBuilder::class)->{$method}('', $filters);
-        expect(app(SearchQueryBuilder::class)->{$method}('', ['collection_id' => $collection->id])->pluck('id')->all())->toBe([$entities[0]->id]);
+        $results = app(SearchQueryBuilder::class)->{$method}('', $filters)['results'];
+        expect(app(SearchQueryBuilder::class)->{$method}('', ['collection_id' => $collection->id])['results']->pluck('id')->all())->toBe([$entities[0]->id]);
         if (in_array($model, [Receipt::class, Document::class, Invoice::class], true)) {
-            expect(app(SearchQueryBuilder::class)->{$method}('', ['category' => $label])->pluck('id')->sort()->values()->all())->toBe($entities->take(2)->pluck('id')->sort()->values()->all());
+            expect(app(SearchQueryBuilder::class)->{$method}('', ['category' => $label])['results']->pluck('id')->sort()->values()->all())->toBe($entities->take(2)->pluck('id')->sort()->values()->all());
         }
         expect($results->pluck('id')->sort()->values()->all())->toBe($entities->take(2)->pluck('id')->sort()->values()->all());
         if ($amount) {
-            expect(app(SearchQueryBuilder::class)->{$method}('', ['amount_min' => 20, 'amount_max' => 20])->pluck('id')->all())->toBe([$entities[1]->id]);
+            expect(app(SearchQueryBuilder::class)->{$method}('', ['amount_min' => 20, 'amount_max' => 20])['results']->pluck('id')->all())->toBe([$entities[1]->id]);
         }
     } finally {
         $client->deleteIndex($index->getUid());

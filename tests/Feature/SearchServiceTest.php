@@ -10,6 +10,8 @@ use App\Models\ReturnPolicy;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Models\Warranty;
+use App\Services\Search\SearchFacetService;
+use App\Services\Search\SearchQueryBuilder;
 use App\Services\Search\SearchResultFormatter;
 use App\Services\SearchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -325,3 +327,34 @@ it('api search rejects invalid type filter', function () {
     $response = $this->getJson('/api/v1/search?q=test&type=invalid_type');
     $response->assertStatus(422);
 });
+
+it('merges bounded search pages with stable cross-type ranking and exact counts', function (int $page, array $expected) {
+    $query = 'Åse Østgårds vei 12';
+    $filters = ['limit' => 2, 'page' => $page];
+    $builder = Mockery::mock(SearchQueryBuilder::class);
+    $builder->shouldReceive('searchReceipts')->once()->with($query, $filters)->andReturn([
+        'results' => collect([
+            ['id' => 2, 'type' => 'receipt', '_rankingScore' => 0.8],
+            ['id' => 1, 'type' => 'receipt', '_rankingScore' => 0.95],
+        ]), 'total' => 2,
+    ]);
+    $builder->shouldReceive('searchDocuments')->once()->with($query, $filters)->andReturn([
+        'results' => collect([['id' => 3, 'type' => 'document', '_rankingScore' => 0.95]]), 'total' => 1,
+    ]);
+    foreach (['searchInvoices', 'searchContracts', 'searchVouchers', 'searchWarranties', 'searchReturnPolicies', 'searchBankStatements'] as $method) {
+        $builder->shouldReceive($method)->once()->with($query, $filters)->andReturn(['results' => collect(), 'total' => 0]);
+    }
+    $facets = Mockery::mock(SearchFacetService::class);
+    $facets->shouldReceive('buildFacets')->once()->andReturn([]);
+    $response = (new SearchService($builder, $facets))->search($query, $filters);
+    expect(array_column($response['results'], 'id'))->toBe($expected)
+        ->and($response['pagination'])->toBe(['page' => $page, 'per_page' => 2, 'total' => 3, 'last_page' => 2]);
+})->with([[1, [3, 1]], [2, [2]]]);
+
+it('rejects search input beyond bounded query and page limits', function (array $query, string $error) {
+    $this->getJson('/search?'.http_build_query($query))->assertUnprocessable()->assertJsonValidationErrors($error);
+})->with([
+    [['query' => str_repeat('a', 201)], 'query'],
+    [['query' => 'test', 'page' => 21], 'page'],
+    [['query' => 'test', 'limit' => 51], 'limit'],
+]);

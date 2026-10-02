@@ -147,7 +147,7 @@ return [
         'index-settings' => [
             Receipt::class => [
                 'filterableAttributes' => ['id', 'user_id', 'merchant_id', 'category_id', 'receipt_date', 'total_amount', 'currency', 'vendors', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'document_type'],
-                'sortableAttributes' => ['receipt_date', 'total_amount', 'created_at', 'updated_at'],
+                'sortableAttributes' => ['receipt_date', 'total_amount', 'created_at', 'updated_at', 'id'],
                 // Order by importance: most important fields first for better ranking
                 'searchableAttributes' => [
                     'merchant_name',         // Most important - users search by merchant
@@ -178,7 +178,7 @@ return [
             ],
             Document::class => [
                 'filterableAttributes' => ['id', 'user_id', 'category_id', 'file_type', 'document_type', 'language', 'document_date', 'created_at', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'vendors', 'total_amount'],
-                'sortableAttributes' => ['created_at', 'updated_at', 'title', 'document_date'],
+                'sortableAttributes' => ['created_at', 'updated_at', 'title', 'document_date', 'id'],
                 // Order by importance: most important fields first for better ranking
                 'searchableAttributes' => [
                     'title',              // Most important - document title
@@ -210,7 +210,7 @@ return [
             ],
             Invoice::class => [
                 'filterableAttributes' => ['id', 'user_id', 'invoice_date', 'due_date', 'total_amount', 'payment_status', 'invoice_type', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'document_type', 'vendors'],
-                'sortableAttributes' => ['invoice_date', 'due_date', 'total_amount', 'created_at'],
+                'sortableAttributes' => ['invoice_date', 'due_date', 'total_amount', 'created_at', 'id'],
                 'searchableAttributes' => [
                     'invoice_number',
                     'merchant_name',
@@ -223,7 +223,7 @@ return [
             ],
             Contract::class => [
                 'filterableAttributes' => ['id', 'user_id', 'effective_date', 'expiry_date', 'contract_type', 'status', 'contract_value', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'document_type', 'vendors', 'total_amount'],
-                'sortableAttributes' => ['effective_date', 'expiry_date', 'contract_value', 'created_at'],
+                'sortableAttributes' => ['effective_date', 'expiry_date', 'contract_value', 'created_at', 'id'],
                 'searchableAttributes' => [
                     'contract_title',
                     'contract_number',
@@ -235,7 +235,7 @@ return [
             ],
             Voucher::class => [
                 'filterableAttributes' => ['id', 'user_id', 'expiry_date', 'original_value', 'current_value', 'is_redeemed', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'document_type', 'vendors', 'total_amount'],
-                'sortableAttributes' => ['expiry_date', 'current_value', 'created_at'],
+                'sortableAttributes' => ['expiry_date', 'current_value', 'created_at', 'id'],
                 'searchableAttributes' => [
                     'code',
                     'merchant_name',
@@ -246,7 +246,7 @@ return [
             ],
             Warranty::class => [
                 'filterableAttributes' => ['id', 'user_id', 'warranty_end_date', 'warranty_type', 'product_category', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'document_type', 'vendors', 'total_amount'],
-                'sortableAttributes' => ['warranty_end_date', 'purchase_date', 'created_at'],
+                'sortableAttributes' => ['warranty_end_date', 'purchase_date', 'created_at', 'id'],
                 'searchableAttributes' => [
                     'product_name',
                     'manufacturer',
@@ -258,7 +258,7 @@ return [
             ],
             ReturnPolicy::class => [
                 'filterableAttributes' => ['id', 'user_id', 'return_deadline', 'exchange_deadline', 'is_final_sale', 'refund_method', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'document_type', 'vendors', 'total_amount'],
-                'sortableAttributes' => ['return_deadline', 'exchange_deadline', 'created_at'],
+                'sortableAttributes' => ['return_deadline', 'exchange_deadline', 'created_at', 'id'],
                 'searchableAttributes' => [
                     'merchant_name',
                     'refund_method',
@@ -268,7 +268,7 @@ return [
             ],
             BankStatement::class => [
                 'filterableAttributes' => ['id', 'user_id', 'statement_date', 'statement_period_start', 'statement_period_end', 'opening_balance', 'closing_balance', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'document_type', 'vendors', 'total_amount'],
-                'sortableAttributes' => ['statement_date', 'closing_balance', 'created_at'],
+                'sortableAttributes' => ['statement_date', 'closing_balance', 'created_at', 'id'],
                 'searchableAttributes' => [
                     'bank_name',
                     'account_holder_name',
@@ -279,7 +279,7 @@ return [
             ],
             BankTransaction::class => [
                 'filterableAttributes' => ['id', 'user_id', 'bank_statement_id', 'transaction_type', 'category_group', 'amount', 'transaction_date'],
-                'sortableAttributes' => ['transaction_date', 'amount', 'created_at'],
+                'sortableAttributes' => ['transaction_date', 'amount', 'created_at', 'id'],
                 'searchableAttributes' => [
                     'description',
                     'counterparty_name',

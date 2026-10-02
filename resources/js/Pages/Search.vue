@@ -302,6 +302,12 @@
               </div>
             </div>
 
+            <div v-if="pagination.last_page > 1" class="flex items-center gap-3 mb-4">
+              <button :disabled="searching || currentPage <= 1" @click="changePage(currentPage - 1)" class="text-amber-600 dark:text-amber-400 disabled:opacity-50">Previous</button>
+              <span class="text-sm text-zinc-700 dark:text-zinc-300">Page {{ pagination.page }} of {{ pagination.last_page }}</span>
+              <button :disabled="searching || currentPage >= pagination.last_page" @click="changePage(currentPage + 1)" class="text-amber-600 dark:text-amber-400 disabled:opacity-50">Next</button>
+            </div>
+
             <!-- Results header -->
             <div v-if="results.length > 0 || searching" class="mb-4 flex items-center justify-between">
               <div class="flex items-center gap-4">
@@ -319,7 +325,7 @@
 
                 <div class="text-sm text-zinc-700 dark:text-zinc-300">
                   <span v-if="!searching">
-                    Found <span class="font-semibold">{{ results.length }}</span> result{{ results.length !== 1 ? 's' : '' }}
+                    Found <span class="font-semibold">{{ pagination.total }}</span> result{{ pagination.total !== 1 ? 's' : '' }}
                     <span v-if="searchQuery"> for "<span class="font-semibold">{{ searchQuery }}</span>"</span>
                   </span>
                   <span v-else>Searching...</span>
@@ -473,6 +479,10 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  initialPagination: {
+    type: Object,
+    default: () => ({ page: 1, last_page: 0, total: 0 })
+  },
   initialFacets: {
     type: Object,
     default: () => ({})
@@ -485,6 +495,8 @@ const searching = ref(false);
 const results = ref(props.initialResults || []);
 const facets = ref(props.initialFacets || { total: 0, receipts: 0, documents: 0, invoices: 0, contracts: 0, vouchers: 0, warranties: 0, return_policies: 0, bank_statements: 0 });
 const collections = ref([]);
+const pagination = ref(props.initialPagination);
+const currentPage = ref(props.initialPagination.page);
 
 // Filter state
 const filters = ref({
@@ -561,6 +573,7 @@ const someSelected = computed(() => {
 const performSearch = async () => {
   if (!searchQuery.value.trim() && !hasActiveFilters.value) {
     results.value = [];
+    pagination.value = { page: 1, last_page: 0, total: 0 };
     facets.value = { total: 0, receipts: 0, documents: 0, invoices: 0, contracts: 0, vouchers: 0, warranties: 0, return_policies: 0, bank_statements: 0 };
     return;
   }
@@ -570,6 +583,7 @@ const performSearch = async () => {
   try {
     const params = {
       query: searchQuery.value,
+      page: currentPage.value,
       ...filters.value
     };
 
@@ -583,6 +597,7 @@ const performSearch = async () => {
     const response = await axios.get('/search', { params });
 
     results.value = response.data.results || [];
+    pagination.value = response.data.pagination;
     facets.value = response.data.facets || { total: 0, receipts: 0, documents: 0, invoices: 0, contracts: 0, vouchers: 0, warranties: 0, return_policies: 0, bank_statements: 0 };
   } catch (error) {
     console.error('Search error:', error);
@@ -591,6 +606,12 @@ const performSearch = async () => {
   } finally {
     searching.value = false;
   }
+};
+
+const changePage = (page) => {
+  currentPage.value = page;
+  clearSelection();
+  performSearch();
 };
 
 const clearFilters = () => {
@@ -704,6 +725,7 @@ const executeBulkAction = async () => {
 
 // Watch for filter changes
 watch(filters, () => {
+  currentPage.value = 1;
   if (searchQuery.value.trim() || hasActiveFilters.value) {
     performSearch();
   }
@@ -712,6 +734,7 @@ watch(filters, () => {
 // Debounced search on query change
 let searchTimeout = null;
 watch(searchQuery, (newValue) => {
+  currentPage.value = 1;
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
     performSearch();

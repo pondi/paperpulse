@@ -74,6 +74,7 @@ class SearchFilterBuilder
         $filters = [
             'type' => $request->input('type', 'all'),
             'limit' => $request->input('limit', 20),
+            'page' => $request->input('page', 1),
         ];
 
         foreach (['date_from', 'date_to', 'amount_min', 'amount_max', 'category', 'document_type', 'collection_id', 'vendor', 'vendors'] as $key) {

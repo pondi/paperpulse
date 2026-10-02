@@ -22,11 +22,15 @@ class SearchService
             return [
                 'results' => [],
                 'facets' => SearchFacetService::EMPTY_FACETS,
+                'pagination' => ['page' => 1, 'per_page' => (int) ($filters['limit'] ?? 20), 'total' => 0, 'last_page' => 0],
             ];
         }
 
         $type = $filters['type'] ?? 'all';
         $results = collect();
+        $total = 0;
+        $page = (int) ($filters['page'] ?? 1);
+        $limit = (int) ($filters['limit'] ?? 20);
 
         $typeSearchMap = [
             'receipt' => fn () => $this->queryBuilder->searchReceipts($query, $filters),
@@ -42,26 +46,28 @@ class SearchService
         foreach ($typeSearchMap as $typeKey => $searchFn) {
             if ($type === 'all' || $type === $typeKey) {
                 try {
-                    $results = $results->concat($searchFn());
+                    $response = $searchFn();
+                    $results = $results->concat($response['results']);
+                    $total += $response['total'];
                 } catch (Exception $e) {
                     report($e);
                 }
             }
         }
 
-        // Sort by relevance/date
-        $results = $results->sortByDesc(function ($item) {
-            return $item['score'] ?? 0;
-        });
-
-        // Apply pagination if needed
-        if (isset($filters['limit'])) {
-            $results = $results->take($filters['limit']);
-        }
+        $results = $results->sortBy([
+            fn (array $a, array $b): int => ($b['_rankingScore'] ?? 0) <=> ($a['_rankingScore'] ?? 0),
+            fn (array $a, array $b): int => $a['type'] <=> $b['type'],
+            fn (array $a, array $b): int => $a['id'] <=> $b['id'],
+        ])->slice(($page - 1) * $limit, $limit);
 
         return [
             'results' => $results->values()->all(),
             'facets' => $this->facetService->buildFacets($query, $filters),
+            'pagination' => [
+                'page' => $page, 'per_page' => $limit, 'total' => $total,
+                'last_page' => min(20, (int) ceil($total / $limit)),
+            ],
         ];
     }
 }

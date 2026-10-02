@@ -52,6 +52,7 @@ class SearchController extends BaseApiController
             'query' => $query,
             'filters' => $filters,
             'results' => $results,
+            'pagination' => $searchResults['pagination'] ?? null,
             'facets' => $searchResults['facets'] ?? [
                 'total' => 0, 'receipts' => 0, 'documents' => 0,
                 'invoices' => 0, 'contracts' => 0, 'vouchers' => 0,

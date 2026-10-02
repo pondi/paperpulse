@@ -82,7 +82,7 @@ class SearchFacetService
     public function hasActiveFilters(array $filters): bool
     {
         foreach ($filters as $key => $value) {
-            if ($key === 'limit') {
+            if (in_array($key, ['limit', 'page'], true)) {
                 continue;
             }
 

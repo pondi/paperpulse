@@ -12,11 +12,9 @@ use App\Models\Receipt;
 use App\Models\ReturnPolicy;
 use App\Models\Voucher;
 use App\Models\Warranty;
-use Closure;
-use Illuminate\Support\Collection;
 
 /**
- * Builds and executes Meilisearch queries with filters and multi-word OR logic.
+ * Builds bounded engine searches while preserving the original query.
  */
 class SearchQueryBuilder
 {
@@ -27,94 +25,51 @@ class SearchQueryBuilder
         $this->formatter = $formatter;
     }
 
-    public function searchReceipts(string $query, array $filters): Collection
+    public function searchReceipts(string $query, array $filters): array
     {
-        return $this->multiWordSearch($query, fn (string $q) => $this->executeReceiptSearch($q, $filters));
+        return $this->executeReceiptSearch($query, $filters);
     }
 
-    public function searchDocuments(string $query, array $filters): Collection
+    public function searchDocuments(string $query, array $filters): array
     {
-        return $this->multiWordSearch($query, fn (string $q) => $this->executeDocumentSearch($q, $filters));
+        return $this->executeDocumentSearch($query, $filters);
     }
 
-    public function searchInvoices(string $query, array $filters): Collection
+    public function searchInvoices(string $query, array $filters): array
     {
-        return $this->multiWordSearch($query, fn (string $q) => $this->executeInvoiceSearch($q, $filters));
+        return $this->executeInvoiceSearch($query, $filters);
     }
 
-    public function searchContracts(string $query, array $filters): Collection
+    public function searchContracts(string $query, array $filters): array
     {
-        return $this->multiWordSearch($query, fn (string $q) => $this->executeContractSearch($q, $filters));
+        return $this->executeContractSearch($query, $filters);
     }
 
-    public function searchVouchers(string $query, array $filters): Collection
+    public function searchVouchers(string $query, array $filters): array
     {
-        return $this->multiWordSearch($query, fn (string $q) => $this->executeVoucherSearch($q, $filters));
+        return $this->executeVoucherSearch($query, $filters);
     }
 
-    public function searchWarranties(string $query, array $filters): Collection
+    public function searchWarranties(string $query, array $filters): array
     {
-        return $this->multiWordSearch($query, fn (string $q) => $this->executeWarrantySearch($q, $filters));
+        return $this->executeWarrantySearch($query, $filters);
     }
 
-    public function searchReturnPolicies(string $query, array $filters): Collection
+    public function searchReturnPolicies(string $query, array $filters): array
     {
-        return $this->multiWordSearch($query, fn (string $q) => $this->executeReturnPolicySearch($q, $filters));
+        return $this->executeReturnPolicySearch($query, $filters);
     }
 
-    public function searchBankStatements(string $query, array $filters): Collection
+    public function searchBankStatements(string $query, array $filters): array
     {
-        return $this->multiWordSearch($query, fn (string $q) => $this->executeBankStatementSearch($q, $filters));
+        return $this->executeBankStatementSearch($query, $filters);
     }
 
-    /**
-     * Multi-word OR search: search each word separately and boost results matching more words.
-     */
-    protected function multiWordSearch(string $query, Closure $executeSearch): Collection
-    {
-        $words = array_filter(array_unique(str_word_count($query, 1)));
-
-        if (count($words) <= 1) {
-            return $executeSearch($query);
-        }
-
-        $resultsById = [];
-
-        foreach ($words as $word) {
-            $wordResults = $executeSearch($word);
-            foreach ($wordResults as $result) {
-                $id = $result['id'];
-                if (! isset($resultsById[$id])) {
-                    $result['_matchedWords'] = 1;
-                    $result['_matchedWordsList'] = [$word];
-                    $result['_maxScore'] = $result['_rankingScore'] ?? 0;
-                    $resultsById[$id] = $result;
-                } else {
-                    $resultsById[$id]['_matchedWords']++;
-                    $resultsById[$id]['_matchedWordsList'][] = $word;
-                    $currentScore = $result['_rankingScore'] ?? 0;
-                    if ($currentScore > $resultsById[$id]['_maxScore']) {
-                        $resultsById[$id]['_maxScore'] = $currentScore;
-                    }
-                }
-            }
-        }
-
-        $allResults = collect($resultsById)->map(function ($result) {
-            $result['_boostedScore'] = ($result['_matchedWords'] * 100) + ($result['_maxScore'] * 10);
-
-            return $result;
-        });
-
-        return $allResults->sortByDesc(function ($item) {
-            return ($item['_matchedWords'] * 1000) + ($item['_boostedScore'] ?? 0);
-        })->values();
-    }
-
-    protected function executeReceiptSearch(string $query, array $filters): Collection
+    protected function executeReceiptSearch(string $query, array $filters): array
     {
         $searchQuery = Receipt::search($query)
             ->options(['showRankingScore' => true])
+            ->orderBy('id')
             ->where('user_id', auth()->id());
 
         SearchFilterBuilder::apply($searchQuery, $filters);
@@ -123,15 +78,16 @@ class SearchQueryBuilder
             ->query(function ($builder) {
                 $builder->with(['merchant', 'lineItems', 'file', 'tags']);
             })
-            ->get();
+            ->paginate(($filters['page'] ?? 1) * ($filters['limit'] ?? 20), 'page', 1);
 
-        return $this->formatter->formatReceipts($results);
+        return ['results' => $this->formatter->formatReceipts($results->getCollection()), 'total' => $results->total()];
     }
 
-    protected function executeDocumentSearch(string $query, array $filters): Collection
+    protected function executeDocumentSearch(string $query, array $filters): array
     {
         $searchQuery = Document::search($query)
             ->options(['showRankingScore' => true])
+            ->orderBy('id')
             ->where('user_id', auth()->id());
 
         SearchFilterBuilder::apply($searchQuery, $filters);
@@ -140,15 +96,16 @@ class SearchQueryBuilder
             ->query(function ($builder) {
                 $builder->with(['tags', 'file', 'category']);
             })
-            ->get();
+            ->paginate(($filters['page'] ?? 1) * ($filters['limit'] ?? 20), 'page', 1);
 
-        return $this->formatter->formatDocuments($results);
+        return ['results' => $this->formatter->formatDocuments($results->getCollection()), 'total' => $results->total()];
     }
 
-    protected function executeInvoiceSearch(string $query, array $filters): Collection
+    protected function executeInvoiceSearch(string $query, array $filters): array
     {
         $searchQuery = Invoice::search($query)
             ->options(['showRankingScore' => true])
+            ->orderBy('id')
             ->where('user_id', auth()->id());
 
         SearchFilterBuilder::apply($searchQuery, $filters);
@@ -157,15 +114,16 @@ class SearchQueryBuilder
             ->query(function ($builder) {
                 $builder->with(['merchant', 'lineItems', 'file', 'tags']);
             })
-            ->get();
+            ->paginate(($filters['page'] ?? 1) * ($filters['limit'] ?? 20), 'page', 1);
 
-        return $this->formatter->formatInvoices($results);
+        return ['results' => $this->formatter->formatInvoices($results->getCollection()), 'total' => $results->total()];
     }
 
-    protected function executeContractSearch(string $query, array $filters): Collection
+    protected function executeContractSearch(string $query, array $filters): array
     {
         $searchQuery = Contract::search($query)
             ->options(['showRankingScore' => true])
+            ->orderBy('id')
             ->where('user_id', auth()->id());
 
         SearchFilterBuilder::apply($searchQuery, $filters);
@@ -174,15 +132,16 @@ class SearchQueryBuilder
             ->query(function ($builder) {
                 $builder->with(['file', 'tags']);
             })
-            ->get();
+            ->paginate(($filters['page'] ?? 1) * ($filters['limit'] ?? 20), 'page', 1);
 
-        return $this->formatter->formatContracts($results);
+        return ['results' => $this->formatter->formatContracts($results->getCollection()), 'total' => $results->total()];
     }
 
-    protected function executeVoucherSearch(string $query, array $filters): Collection
+    protected function executeVoucherSearch(string $query, array $filters): array
     {
         $searchQuery = Voucher::search($query)
             ->options(['showRankingScore' => true])
+            ->orderBy('id')
             ->where('user_id', auth()->id());
 
         SearchFilterBuilder::apply($searchQuery, $filters);
@@ -191,15 +150,16 @@ class SearchQueryBuilder
             ->query(function ($builder) {
                 $builder->with(['merchant', 'file', 'tags', 'user.preferences']);
             })
-            ->get();
+            ->paginate(($filters['page'] ?? 1) * ($filters['limit'] ?? 20), 'page', 1);
 
-        return $this->formatter->formatVouchers($results);
+        return ['results' => $this->formatter->formatVouchers($results->getCollection()), 'total' => $results->total()];
     }
 
-    protected function executeWarrantySearch(string $query, array $filters): Collection
+    protected function executeWarrantySearch(string $query, array $filters): array
     {
         $searchQuery = Warranty::search($query)
             ->options(['showRankingScore' => true])
+            ->orderBy('id')
             ->where('user_id', auth()->id());
 
         SearchFilterBuilder::apply($searchQuery, $filters);
@@ -208,15 +168,16 @@ class SearchQueryBuilder
             ->query(function ($builder) {
                 $builder->with(['file', 'tags']);
             })
-            ->get();
+            ->paginate(($filters['page'] ?? 1) * ($filters['limit'] ?? 20), 'page', 1);
 
-        return $this->formatter->formatWarranties($results);
+        return ['results' => $this->formatter->formatWarranties($results->getCollection()), 'total' => $results->total()];
     }
 
-    protected function executeReturnPolicySearch(string $query, array $filters): Collection
+    protected function executeReturnPolicySearch(string $query, array $filters): array
     {
         $searchQuery = ReturnPolicy::search($query)
             ->options(['showRankingScore' => true])
+            ->orderBy('id')
             ->where('user_id', auth()->id());
 
         SearchFilterBuilder::apply($searchQuery, $filters);
@@ -225,15 +186,16 @@ class SearchQueryBuilder
             ->query(function ($builder) {
                 $builder->with(['merchant', 'file', 'tags']);
             })
-            ->get();
+            ->paginate(($filters['page'] ?? 1) * ($filters['limit'] ?? 20), 'page', 1);
 
-        return $this->formatter->formatReturnPolicies($results);
+        return ['results' => $this->formatter->formatReturnPolicies($results->getCollection()), 'total' => $results->total()];
     }
 
-    protected function executeBankStatementSearch(string $query, array $filters): Collection
+    protected function executeBankStatementSearch(string $query, array $filters): array
     {
         $searchQuery = BankStatement::search($query)
             ->options(['showRankingScore' => true])
+            ->orderBy('id')
             ->where('user_id', auth()->id());
 
         SearchFilterBuilder::apply($searchQuery, $filters);
@@ -242,8 +204,8 @@ class SearchQueryBuilder
             ->query(function ($builder) {
                 $builder->with(['file', 'tags']);
             })
-            ->get();
+            ->paginate(($filters['page'] ?? 1) * ($filters['limit'] ?? 20), 'page', 1);
 
-        return $this->formatter->formatBankStatements($results);
+        return ['results' => $this->formatter->formatBankStatements($results->getCollection()), 'total' => $results->total()];
     }
 }

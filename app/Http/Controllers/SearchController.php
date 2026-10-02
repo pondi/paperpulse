@@ -35,6 +35,7 @@ class SearchController extends Controller
         return Inertia::render('Search', [
             'query' => $query,
             'initialResults' => $searchResults['results'] ?? [],
+            'initialPagination' => $searchResults['pagination'],
             'initialFacets' => $searchResults['facets'] ?? [
                 'total' => 0, 'receipts' => 0, 'documents' => 0,
                 'invoices' => 0, 'contracts' => 0, 'vouchers' => 0,

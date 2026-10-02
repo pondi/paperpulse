@@ -19,6 +19,7 @@ class SearchRequest extends FormRequest
             'query' => 'nullable|string|max:200',
             'type' => 'nullable|string|in:all,receipt,document,invoice,contract,voucher,warranty,return_policy,bank_statement',
             'limit' => 'nullable|integer|min:1|max:50',
+            'page' => 'nullable|integer|min:1|max:20',
             'date_from' => 'nullable|date_format:Y-m-d',
             'date_to' => ['nullable', 'date_format:Y-m-d', ...($this->filled('date_from') ? ['after_or_equal:date_from'] : [])],
             'amount_min' => 'nullable|numeric',

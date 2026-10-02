@@ -303,6 +303,7 @@ class PulseDavService
      */
     public function updateFolderTags(User $user, string $folderPath, array $tagIds)
     {
+        $folderPath = PathHelper::normalizeFolderPath($folderPath);
         $folder = PulseDavFile::where('user_id', $user->id)
             ->where('folder_path', $folderPath)
             ->where('is_folder', true)

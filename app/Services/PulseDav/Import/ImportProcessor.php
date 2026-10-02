@@ -6,6 +6,7 @@ use App\Models\PulseDavFile;
 use App\Models\PulseDavImportBatch;
 use App\Models\User;
 use App\Services\PulseDav\ImportService;
+use App\Services\PulseDav\Support\PathHelper;
 use Exception;
 use Illuminate\Support\Facades\Log;
 
@@ -74,8 +75,7 @@ class ImportProcessor
 
     private static function processFolderImport(PulseDavFile $folder, PulseDavImportBatch $batch, array $options): bool
     {
-        $files = PulseDavFile::where('user_id', $folder->user_id)
-            ->where('folder_path', 'like', $folder->folder_path.'%')
+        $files = PathHelper::withinFolder(PulseDavFile::where('user_id', $folder->user_id), $folder->folder_path)
             ->filesOnly()
             ->whereIn('status', ['pending', 'failed'])
             ->get();

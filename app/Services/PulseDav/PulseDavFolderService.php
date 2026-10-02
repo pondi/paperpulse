@@ -81,9 +81,10 @@ class PulseDavFolderService implements PulseDavFolderContract
      */
     public function getFolderContents(User $user, string $folderPath = ''): array
     {
+        $folderPath = PathHelper::normalizeFolderPath($folderPath);
         $prefix = PathHelper::userPrefix($this->incomingPrefix, $user->id);
-        if ($folderPath) {
-            $prefix .= trim($folderPath, '/').'/';
+        if ($folderPath !== '') {
+            $prefix .= $folderPath.'/';
             S3PathResolver::validateOwnedPath($prefix, $user->id);
         }
 
@@ -150,6 +151,7 @@ class PulseDavFolderService implements PulseDavFolderContract
      */
     public function updateFolderTags(User $user, string $folderPath, array $tagIds): PulseDavFile
     {
+        $folderPath = PathHelper::normalizeFolderPath($folderPath);
         $folder = PulseDavFile::where('user_id', $user->id)
             ->where('folder_path', $folderPath)
             ->where('is_folder', true)
@@ -159,7 +161,7 @@ class PulseDavFolderService implements PulseDavFolderContract
             // Create virtual folder entry
             $folder = PulseDavFile::create([
                 'user_id' => $user->id,
-                's3_path' => $this->incomingPrefix.$user->id.'/'.$folderPath.'/',
+                's3_path' => PathHelper::folderS3Path($this->incomingPrefix, $user->id, $folderPath),
                 'filename' => basename($folderPath),
                 'folder_path' => $folderPath,
                 'parent_folder' => dirname($folderPath) !== '.' ? dirname($folderPath) : null,
@@ -195,12 +197,12 @@ class PulseDavFolderService implements PulseDavFolderContract
         $query = PulseDavFile::where('user_id', $user->id);
 
         if ($folderPath !== null) {
+            $folderPath = PathHelper::normalizeFolderPath($folderPath);
             if ($folderPath === '') {
                 // Root level files only
                 $query->whereNull('folder_path');
             } else {
-                // Files in specific folder (including subfolders)
-                $query->where('folder_path', 'like', $folderPath.'%');
+                PathHelper::withinFolder($query, $folderPath);
             }
         }
 
@@ -247,8 +249,7 @@ class PulseDavFolderService implements PulseDavFolderContract
      */
     protected function getFolderFileCount(PulseDavFile $folder): int
     {
-        return PulseDavFile::where('user_id', $folder->user_id)
-            ->where('folder_path', 'like', $folder->folder_path.'%')
+        return PathHelper::withinFolder(PulseDavFile::where('user_id', $folder->user_id), $folder->folder_path)
             ->filesOnly()
             ->count();
     }
@@ -258,6 +259,7 @@ class PulseDavFolderService implements PulseDavFolderContract
      */
     public function createVirtualFolder(User $user, string $folderPath): PulseDavFile
     {
+        $folderPath = PathHelper::normalizeFolderPath($folderPath);
         // Check if folder already exists
         $existingFolder = PulseDavFile::where('user_id', $user->id)
             ->where('folder_path', $folderPath)
@@ -271,7 +273,7 @@ class PulseDavFolderService implements PulseDavFolderContract
         // Create the folder
         $folder = PulseDavFile::create([
             'user_id' => $user->id,
-            's3_path' => $this->incomingPrefix.$user->id.'/'.$folderPath.'/',
+            's3_path' => PathHelper::folderS3Path($this->incomingPrefix, $user->id, $folderPath),
             'filename' => basename($folderPath),
             'folder_path' => $folderPath,
             'parent_folder' => dirname($folderPath) !== '.' ? dirname($folderPath) : null,
@@ -295,15 +297,16 @@ class PulseDavFolderService implements PulseDavFolderContract
      */
     public function deleteFolder(User $user, string $folderPath): int
     {
+        $folderPath = PathHelper::normalizeFolderPath($folderPath);
         $deletedCount = 0;
 
         // Find all files in the folder
-        $files = PulseDavFile::where('user_id', $user->id)
-            ->where('folder_path', 'like', $folderPath.'%')
+        $files = PathHelper::withinFolder(PulseDavFile::where('user_id', $user->id), $folderPath)
             ->get();
 
         foreach ($files as $file) {
             try {
+                S3PathResolver::validateOwnedPath($file->s3_path, $user->id);
                 if (! $file->is_folder && Storage::disk('pulsedav')->exists($file->s3_path)) {
                     Storage::disk('pulsedav')->delete($file->s3_path);
                 }

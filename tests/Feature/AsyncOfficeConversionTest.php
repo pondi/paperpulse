@@ -7,7 +7,7 @@ use App\Jobs\Maintenance\DeleteWorkingFiles;
 use App\Models\FileConversion;
 use App\Models\JobHistory;
 use App\Services\Documents\ConversionService;
-use App\Services\Documents\GotenbergConverter;
+use App\Services\Documents\LocalOfficeConverter;
 use App\Services\Files\FileJobChainDispatcher;
 use App\Services\Jobs\JobMetadataPersistence;
 use App\Services\StorageService;
@@ -35,7 +35,7 @@ function prepareAsyncOfficePipeline(): ProcessFile
 
 beforeEach(function (): void {
     Bus::fake();
-    config(['processing.conversion.driver' => 'external', 'ai.file_processing_provider' => 'gemini']);
+    config(['processing.conversion.driver' => 'local', 'ai.file_processing_provider' => 'gemini']);
 });
 
 it('releases preprocessing before conversion and resumes a durable PDF extraction plan exactly once', function (): void {
@@ -49,7 +49,7 @@ it('releases preprocessing before conversion and resumes a durable PDF extractio
     expect($step)->toBeInstanceOf(ConvertOfficeFile::class)->and($step->queue)->toBe('conversions');
     expect(JobHistory::where('uuid', $first->jobID)->first()->status)->toBe('processing');
     $this->mock(StorageService::class)->shouldReceive('getFile')->once()->andReturn(conversionDocxFixture())->shouldReceive('storeFile')->once()->andReturn($conversion->output_s3_path);
-    $this->mock(GotenbergConverter::class)->shouldReceive('convert')->once()->andReturnUsing(fn ($source, $output) => file_put_contents($output, conversionPdfFixture()));
+    $this->mock(LocalOfficeConverter::class)->shouldReceive('convert')->once()->andReturnUsing(fn ($source, $output) => file_put_contents($output, conversionPdfFixture()));
     Cache::flush();
     $step->handle();
     $step->handle();
@@ -66,7 +66,7 @@ it('retains a retryable conversion failure without continuing unsupported origin
     $conversion = FileConversion::firstOrFail();
     $step = unserialize($first->chained[0]);
     $this->mock(StorageService::class)->shouldReceive('getFile')->once()->andReturn(conversionDocxFixture())->shouldNotReceive('storeFile');
-    $this->mock(GotenbergConverter::class)->shouldReceive('convert')->once()->andThrow(new RuntimeException('Unavailable'));
+    $this->mock(LocalOfficeConverter::class)->shouldReceive('convert')->once()->andThrow(new RuntimeException('Unavailable'));
     expect(fn () => $step->handle())->toThrow(RuntimeException::class, 'Unavailable');
     $step->failed(new RuntimeException('Unavailable'));
     $metadata = JobMetadataPersistence::retrieve($first->jobID);

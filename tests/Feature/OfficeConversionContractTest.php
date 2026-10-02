@@ -4,15 +4,14 @@ use App\Jobs\Files\ConvertOfficeFile;
 use App\Models\FileConversion;
 use App\Services\Documents\ConversionCapabilities;
 use App\Services\Documents\ConversionService;
-use App\Services\Documents\GotenbergConverter;
+use App\Services\Documents\LocalOfficeConverter;
 use App\Services\Files\StoragePathBuilder;
 use App\Services\StorageService;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Http;
 
 beforeEach(function (): void {
     Bus::fake();
-    config()->set('processing.conversion.driver', 'external');
+    config()->set('processing.conversion.driver', 'local');
 });
 
 it('uses a durable owned conversion request with distinct original and archive paths', function (): void {
@@ -23,7 +22,7 @@ it('uses a durable owned conversion request with distinct original and archive p
     $second = $service->queueConversion($file, $file->s3_original_path, $archive);
 
     expect($second->id)->toBe($first->id)->and(FileConversion::count())->toBe(1);
-    expect($first->metadata['driver'])->toBe('external');
+    expect($first->metadata['driver'])->toBe('local');
     expect($first->input_s3_path)->not->toBe($first->output_s3_path);
     Bus::assertDispatched(ConvertOfficeFile::class, 1);
     expect($service->waitForCompletion($first)['success'])->toBeFalse();
@@ -56,7 +55,7 @@ it('keeps original bytes and writes only a verified PDF archive', function (): v
     $storage->shouldReceive('getFile')->once()->with($file->s3_original_path)->andReturn(conversionDocxFixture());
     $storage->shouldReceive('storeFile')->once()->withArgs(fn ($bytes, $owner, $guid, $type, $variant, $extension) => str_starts_with($bytes, '%PDF-')
         && $owner === $file->user_id && $guid === $file->guid && $type === 'document' && $variant === 'archive' && $extension === 'pdf')->andReturn($archive);
-    $this->mock(GotenbergConverter::class)->shouldReceive('convert')->once()->andReturnUsing(function ($source, $destination, $mime): void {
+    $this->mock(LocalOfficeConverter::class)->shouldReceive('convert')->once()->andReturnUsing(function ($source, $destination, $mime): void {
         expect($mime)->toBe(ConversionCapabilities::OFFICE_MIME_TYPES['docx']);
         file_put_contents($destination, conversionPdfFixture());
     });
@@ -72,32 +71,20 @@ it('records retryable driver failures without accepting malformed output or chan
     $archive = StoragePathBuilder::storagePath($file->user_id, $file->guid, 'document', 'archive', 'pdf');
     $conversion = app(ConversionService::class)->queueConversion($file, $file->s3_original_path, $archive);
     $this->mock(StorageService::class)->shouldReceive('getFile')->once()->andReturn(conversionDocxFixture());
-    $this->mock(GotenbergConverter::class)->shouldReceive('convert')->once()->andReturnUsing(fn ($source, $destination) => file_put_contents($destination, '%PDF-broken'));
+    $this->mock(LocalOfficeConverter::class)->shouldReceive('convert')->once()->andReturnUsing(fn ($source, $destination) => file_put_contents($destination, '%PDF-broken'));
     expect(fn () => app(ConversionService::class)->convert($conversion))->toThrow(RuntimeException::class, 'valid nonempty PDF');
     expect($conversion->refresh()->status)->toBe('failed')->and($file->refresh()->s3_archive_path)->toBeNull();
     expect(app(ConversionService::class)->retry($conversion))->toBeTrue();
     expect($conversion->refresh()->retry_count)->toBe(1);
 });
 
-it('submits supported office bytes to the external adapter with bounded HTTP settings', function (): void {
-    $source = tempnam(sys_get_temp_dir(), 'office-http');
-    $output = $source.'.pdf';
-    file_put_contents($source, conversionDocxFixture());
-    Http::fake(function ($request, $options) {
-        expect($options['timeout'])->toBe(120)->and($options['connect_timeout'])->toBe(5);
-
-        return Http::response(conversionPdfFixture(), 200);
-    });
-    try {
-        app(GotenbergConverter::class)->convert($source, $output, ConversionCapabilities::OFFICE_MIME_TYPES['docx']);
-        expect(file_get_contents($output, false, null, 0, 5))->toBe('%PDF-');
-        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/forms/libreoffice/convert'));
-    } finally {
-        unlink($source);
-        if (is_file($output)) {
-            unlink($output);
-        }
-    }
+it('rejects the retired external driver before recording work', function (): void {
+    config()->set('processing.conversion.driver', 'external');
+    $file = createOfficeConversionFile();
+    expect(fn () => app(ConversionService::class)->queueConversion($file, $file->s3_original_path, 'archive.pdf'))
+        ->toThrow(RuntimeException::class, 'Unsupported office conversion driver');
+    expect(FileConversion::count())->toBe(0);
+    Bus::assertNothingDispatched();
 });
 
 it('normalizes configuration and generation failures during queued execution', function (): void {
@@ -119,10 +106,11 @@ it('rechecks durable retry state before dispatching a stale second retry', funct
     $archive = StoragePathBuilder::storagePath($file->user_id, $file->guid, 'document', 'archive', 'pdf');
     $service = app(ConversionService::class);
     $conversion = $service->queueConversion($file, $file->s3_original_path, $archive);
+    $conversion->update(['metadata' => array_merge($conversion->metadata, ['driver' => 'external'])]);
     $conversion->markAsFailed('Temporary failure');
     $stale = $conversion->fresh();
     Bus::fake();
     expect($service->retry($conversion))->toBeTrue()->and($service->retry($stale))->toBeFalse();
-    expect($conversion->refresh()->retry_count)->toBe(1);
+    expect($conversion->refresh()->retry_count)->toBe(1)->and($conversion->metadata['driver'])->toBe('local');
     Bus::assertDispatched(ConvertOfficeFile::class, 1);
 });

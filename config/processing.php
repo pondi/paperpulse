@@ -46,7 +46,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Settings for converting office documents (.docx, .xlsx, etc.) to PDF/A
-    | format using Gotenberg and Redis job queue.
+    | format using isolated local LibreOffice queue jobs.
     |
     */
 
@@ -55,18 +55,13 @@ return [
         | Enable/disable office document conversion
         */
         'enabled' => env('OFFICE_CONVERSION_ENABLED', true),
-        'driver' => env('OFFICE_CONVERSION_DRIVER', 'external'),
+        'driver' => env('OFFICE_CONVERSION_DRIVER', 'local'),
         'max_input_bytes' => 20971520,
         'max_output_bytes' => 104857600,
         'local' => [
             'binary' => env('LIBREOFFICE_BINARY', '/usr/lib/libreoffice/program/soffice.bin'),
             'sandbox' => env('CONVERSION_SANDBOX_BINARY', '/usr/bin/bwrap'),
         ],
-
-        /*
-        | Gotenberg service URL
-        */
-        'service_url' => env('GOTENBERG_URL', 'http://gotenberg:3000'),
 
         /*
         | Conversion timeout in seconds
@@ -78,24 +73,5 @@ return [
         */
         'max_retries' => (int) env('CONVERSION_MAX_RETRIES', 3),
 
-        /*
-        | Polling interval in seconds (how often to check conversion status)
-        */
-        'polling_interval' => (float) env('CONVERSION_POLLING_INTERVAL', 1),
-
-        /*
-        | Redis queue name for pending conversions
-        */
-        'redis_queue' => env('CONVERSION_REDIS_QUEUE', 'conversion:pending'),
-
-        /*
-        | Redis queue name for processing conversions
-        */
-        'redis_processing_queue' => env('CONVERSION_PROCESSING_QUEUE', 'conversion:processing'),
-
-        /*
-        | Redis queue name for failed conversions
-        */
-        'redis_failed_queue' => env('CONVERSION_FAILED_QUEUE', 'conversion:failed'),
     ],
 ];

@@ -178,7 +178,9 @@ class ConversionService
                 return false;
             }
             $locked->incrementRetryCount();
-            $locked->update(['status' => 'pending', 'error_message' => null, 'completed_at' => null]);
+            $locked->update(['status' => 'pending', 'error_message' => null, 'completed_at' => null,
+                'metadata' => array_merge($locked->metadata ?? [], ['driver' => 'local']),
+            ]);
             $payload = $locked->metadata['resume_payload'] ?? null;
             $job = $payload ? unserialize(base64_decode($payload, true), ['allowed_classes' => [ConvertOfficeFile::class]]) : new ConvertOfficeFile($locked->id);
             if (! $job instanceof ConvertOfficeFile) {
@@ -250,7 +252,6 @@ class ConversionService
     {
         return match ($name ?? config('processing.conversion.driver')) {
             'local' => app(LocalOfficeConverter::class),
-            'external' => app(GotenbergConverter::class),
             default => throw new RuntimeException('Unsupported office conversion driver.'),
         };
     }

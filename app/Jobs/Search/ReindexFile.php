@@ -40,7 +40,13 @@ class ReindexFile implements ShouldBeUniqueUntilProcessing, ShouldQueue
             return;
         }
         foreach (Relation::morphMap() as $model) {
-            $model::withoutGlobalScope('user')->where('user_id', $file->user_id)->where('file_id', $file->id)
+            $relations = ['file.collections', 'tags'];
+            foreach (['merchant', 'category', 'lineItems'] as $relation) {
+                if (method_exists($model, $relation)) {
+                    $relations[] = $relation;
+                }
+            }
+            $model::withoutGlobalScope('user')->with($relations)->where('user_id', $file->user_id)->where('file_id', $file->id)
                 ->chunkById(100, static fn ($entities) => $entities->filter->shouldBeSearchable()->searchable());
         }
         SearchFacetService::invalidate($file->user_id);

@@ -1,12 +1,39 @@
 <?php
 
 use App\Console\Commands\ReindexMeilisearch;
+use App\Jobs\Search\ReindexFile;
+use App\Models\Document;
+use App\Models\File;
 use App\Models\Receipt;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
+use Laravel\Scout\EngineManager;
+use Laravel\Scout\Engines\Engine;
 use Laravel\Scout\Searchable;
 use Meilisearch\Client;
 use Meilisearch\Contracts\TasksResults;
 use Meilisearch\Endpoints\Indexes;
+
+it('reindexes multiple documents without lazy loading or foreign owners', function () {
+    $file = File::factory()->create(['status' => 'completed']);
+    $documents = Document::factory()->count(2)->create(['user_id' => $file->user_id, 'file_id' => $file->id]);
+    Document::factory()->create(['file_id' => $file->id, 'user_id' => User::factory()->create()->id]);
+    $engine = Mockery::mock(Engine::class);
+    $engine->shouldReceive('update')->once()->withArgs(function ($models) use ($documents) {
+        expect($models->modelKeys())->toBe($documents->modelKeys());
+        foreach ($models as $document) {
+            expect($document->relationLoaded('file'))->toBeTrue();
+            expect($document->toSearchableArray()['user_id'])->toBe($document->user_id);
+        }
+
+        return true;
+    });
+    $this->mock(EngineManager::class)->shouldReceive('engine')->andReturn($engine);
+    config(['scout.queue' => false]);
+    Model::preventLazyLoading();
+
+    (new ReindexFile($file->id))->handle();
+});
 
 it('imports every configured searchable model and waits for engine results', function () {
     $models = array_keys(config('scout.meilisearch.index-settings'));

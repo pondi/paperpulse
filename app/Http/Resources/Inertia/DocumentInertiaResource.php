@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Inertia;
 
+use App\Services\Files\StoragePathBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -93,8 +94,8 @@ class DocumentInertiaResource extends JsonResource
 
         $extension = $this->file->fileExtension ?? 'pdf';
         $typeFolder = 'documents';
-        $hasArchivePdf = ! empty($this->file->s3_archive_path);
-        $hasPdfVariant = $hasArchivePdf || strtolower($extension) === 'pdf';
+        $pdfVariant = StoragePathBuilder::pdfVariant($this->file);
+        $hasPdfVariant = $pdfVariant !== null;
         $pdfUrl = null;
 
         if ($hasPdfVariant) {
@@ -102,12 +103,12 @@ class DocumentInertiaResource extends JsonResource
                 'guid' => $this->file->guid,
                 'type' => $typeFolder,
                 'extension' => 'pdf',
-                'variant' => $hasArchivePdf ? 'archive' : 'original',
+                'variant' => $pdfVariant,
             ]);
         }
 
         $previewUrl = null;
-        if ($this->file->has_image_preview && $this->file->s3_image_path) {
+        if (StoragePathBuilder::variantPath($this->file, 'preview') !== null) {
             $previewUrl = route('documents.serve', [
                 'guid' => $this->file->guid,
                 'type' => 'preview',
@@ -126,7 +127,7 @@ class DocumentInertiaResource extends JsonResource
             'previewUrl' => $previewUrl,
             'extension' => $extension,
             'size' => $this->file->fileSize,
-            'has_preview' => $this->file->has_image_preview,
+            'has_preview' => StoragePathBuilder::variantPath($this->file, 'preview') !== null,
             'is_pdf' => $hasPdfVariant,
         ];
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Search;
 
 use App\Models\Receipt;
+use App\Services\Files\StoragePathBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -43,11 +44,12 @@ class SearchResultFormatter
                     'guid' => $receipt->file->guid,
                     'filename' => $receipt->file->fileName,
                     'extension' => $receipt->file->fileExtension,
-                    'has_image_preview' => (bool) $receipt->file->has_image_preview,
-                    'has_archive_pdf' => ! empty($receipt->file->s3_archive_path),
+                    'has_image_preview' => StoragePathBuilder::variantPath($receipt->file, 'preview') !== null,
+                    'has_archive_pdf' => StoragePathBuilder::pdfVariant($receipt->file) === 'archive',
+                    'pdf_variant' => StoragePathBuilder::pdfVariant($receipt->file),
                     'url' => route('receipts.showImage', $receipt->id),
-                    'pdfUrl' => $receipt->file->guid && $receipt->file->fileExtension === 'pdf' ? route('receipts.showPdf', $receipt->id) : null,
-                    'previewUrl' => $receipt->file->has_image_preview ? route('receipts.showImage', $receipt->id) : null,
+                    'pdfUrl' => StoragePathBuilder::pdfVariant($receipt->file) !== null ? route('receipts.showPdf', $receipt->id) : null,
+                    'previewUrl' => StoragePathBuilder::variantPath($receipt->file, 'preview') !== null ? route('receipts.showImage', $receipt->id) : null,
                 ] : null,
                 '_rankingScore' => $metadata['_rankingScore'] ?? null,
             ];
@@ -245,20 +247,21 @@ class SearchResultFormatter
         }
 
         $extension = $file->fileExtension ?? 'pdf';
-        $hasArchivePdf = ! empty($file->s3_archive_path);
+        $pdfVariant = StoragePathBuilder::pdfVariant($file);
+        $hasArchivePdf = $pdfVariant === 'archive';
 
         $pdfUrl = null;
-        if ($hasArchivePdf || strtolower($extension) === 'pdf') {
+        if ($pdfVariant !== null) {
             $pdfUrl = route('documents.serve', [
                 'guid' => $file->guid,
                 'type' => 'documents',
                 'extension' => 'pdf',
-                'variant' => $hasArchivePdf ? 'archive' : 'original',
+                'variant' => $pdfVariant,
             ]);
         }
 
         $previewUrl = null;
-        if ($file->has_image_preview && $file->s3_image_path) {
+        if (StoragePathBuilder::variantPath($file, 'preview') !== null) {
             $previewUrl = route('documents.serve', [
                 'guid' => $file->guid,
                 'type' => 'preview',
@@ -271,8 +274,9 @@ class SearchResultFormatter
             'guid' => $file->guid,
             'filename' => $file->fileName,
             'extension' => $extension,
-            'has_image_preview' => (bool) $file->has_image_preview,
+            'has_image_preview' => StoragePathBuilder::variantPath($file, 'preview') !== null,
             'has_archive_pdf' => $hasArchivePdf,
+            'pdf_variant' => $pdfVariant,
             'url' => route('documents.serve', [
                 'guid' => $file->guid,
                 'type' => 'documents',

@@ -11,6 +11,7 @@ use App\Models\Receipt;
 use App\Models\Tag;
 use App\Rules\ExistsForUser;
 use App\Services\DocumentService;
+use App\Services\Files\StoragePathBuilder;
 use App\Services\Receipts\Analysis\DateUpdateNotifier;
 use App\Services\Receipts\ReceiptSortApplier;
 use App\Services\ReceiptService;
@@ -226,7 +227,7 @@ class ReceiptController extends BaseResourceController
         }
 
         // If file has a preview, serve that (always JPG)
-        if ($receipt->file->has_image_preview) {
+        if (StoragePathBuilder::variantPath($receipt->file, 'preview') !== null) {
             return redirect()->route('documents.serve', [
                 'guid' => $receipt->file->guid,
                 'type' => 'preview',
@@ -255,16 +256,14 @@ class ReceiptController extends BaseResourceController
             abort(404);
         }
 
-        $extension = $receipt->file->fileExtension ?? 'jpg';
-
-        if ($extension !== 'pdf') {
-            return redirect()->route('receipts.showImage', $receipt->id);
-        }
+        $variant = StoragePathBuilder::pdfVariant($receipt->file);
+        abort_if($variant === null, 404);
 
         return redirect()->route('documents.serve', [
             'guid' => $receipt->file->guid,
             'type' => 'receipts',
             'extension' => 'pdf',
+            'variant' => $variant,
         ]);
     }
 

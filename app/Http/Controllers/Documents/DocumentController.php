@@ -10,6 +10,7 @@ use App\Models\Invoice;
 use App\Models\Tag;
 use App\Rules\ExistsForUser;
 use App\Services\Files\FileDeletionService;
+use App\Services\Files\StoragePathBuilder;
 use App\Services\StorageService;
 use App\Services\Tags\TagAttachmentService;
 use App\Traits\ShareableController;
@@ -211,45 +212,23 @@ class DocumentController extends BaseResourceController
             default => [],
         };
 
-        // Add file preview information
-        if ($file->has_image_preview && $file->s3_image_path) {
-            $data['file'] = [
-                'id' => $file->id,
-                'url' => route('documents.serve', [
-                    'guid' => $file->guid,
-                    'type' => 'documents',
-                    'extension' => $file->fileExtension ?? 'pdf',
-                ]),
-                'pdfUrl' => $file->fileExtension === 'pdf' || $file->s3_archive_path ? route('documents.serve', [
-                    'guid' => $file->guid,
-                    'type' => 'documents',
-                    'extension' => 'pdf',
-                    'variant' => $file->s3_archive_path ? 'archive' : 'original',
-                ]) : null,
-                'previewUrl' => route('documents.serve', [
-                    'guid' => $file->guid,
-                    'type' => 'preview',
-                    'extension' => 'jpg',
-                ]),
-                'extension' => $file->fileExtension ?? 'pdf',
-                'has_preview' => true,
-                'is_pdf' => $file->fileExtension === 'pdf' || ! empty($file->s3_archive_path),
-            ];
-        } else {
-            $data['file'] = [
-                'id' => $file->id,
-                'url' => route('documents.serve', [
-                    'guid' => $file->guid,
-                    'type' => 'documents',
-                    'extension' => $file->fileExtension ?? 'pdf',
-                ]),
-                'pdfUrl' => null,
-                'previewUrl' => null,
-                'extension' => $file->fileExtension ?? 'pdf',
-                'has_preview' => false,
-                'is_pdf' => $file->fileExtension === 'pdf',
-            ];
-        }
+        $pdfVariant = StoragePathBuilder::pdfVariant($file);
+        $hasPreview = StoragePathBuilder::variantPath($file, 'preview') !== null;
+        $data['file'] = [
+            'id' => $file->id,
+            'url' => route('documents.serve', [
+                'guid' => $file->guid, 'type' => 'documents', 'extension' => $file->fileExtension,
+            ]),
+            'pdfUrl' => $pdfVariant !== null ? route('documents.serve', [
+                'guid' => $file->guid, 'type' => 'documents', 'extension' => 'pdf', 'variant' => $pdfVariant,
+            ]) : null,
+            'previewUrl' => $hasPreview ? route('documents.serve', [
+                'guid' => $file->guid, 'type' => 'preview', 'extension' => 'jpg',
+            ]) : null,
+            'extension' => $file->fileExtension,
+            'has_preview' => $hasPreview,
+            'is_pdf' => $pdfVariant !== null,
+        ];
 
         return $data;
     }

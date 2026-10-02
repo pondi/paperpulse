@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\Inertia;
 
 use App\Models\File;
+use App\Services\Files\StoragePathBuilder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -26,12 +27,14 @@ class PublicCollectionFileResource extends JsonResource
     {
         $extension = $this->fileExtension ?? 'pdf';
         $isImage = in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']);
-        $isPdf = strtolower($extension) === 'pdf' || ! empty($this->s3_archive_path);
+        $pdfVariant = StoragePathBuilder::pdfVariant($this->resource);
+        $isPdf = $pdfVariant !== null;
+        $hasPreview = StoragePathBuilder::variantPath($this->resource, 'preview') !== null;
 
         $serveBaseUrl = route('shared.collections.file', ['token' => $this->token, 'guid' => $this->guid]);
-        $previewUrl = $this->has_image_preview ? $serveBaseUrl.'?variant=preview' : null;
+        $previewUrl = $hasPreview ? $serveBaseUrl.'?variant=preview' : null;
         $viewUrl = $serveBaseUrl.'?variant=original';
-        $pdfUrl = $isPdf ? $serveBaseUrl.'?variant='.(! empty($this->s3_archive_path) ? 'archive' : 'original').'&ext=pdf' : null;
+        $pdfUrl = $isPdf ? $serveBaseUrl.'?variant='.$pdfVariant.'&ext=pdf' : null;
 
         $entityData = $this->buildEntityData();
 
@@ -42,7 +45,7 @@ class PublicCollectionFileResource extends JsonResource
             'entity_title' => $entityData['title'],
             'file_type' => $this->file_type,
             'extension' => $extension,
-            'has_preview' => (bool) $this->has_image_preview,
+            'has_preview' => $hasPreview,
             'is_image' => $isImage,
             'is_pdf' => $isPdf,
             'previewUrl' => $previewUrl,

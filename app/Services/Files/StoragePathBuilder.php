@@ -2,11 +2,32 @@
 
 namespace App\Services\Files;
 
+use App\Models\File;
+
 /**
- * Pure helpers that construct normalized storage paths.
+ * Helpers for canonical paths and recorded file variants.
  */
 class StoragePathBuilder
 {
+    public static function variantPath(File $file, string $variant): ?string
+    {
+        return match ($variant) {
+            'original' => $file->s3_original_path ?: null,
+            'preview' => $file->has_image_preview ? ($file->s3_image_path ?: null) : null,
+            'archive' => $file->s3_archive_path ?: (strtolower((string) $file->fileExtension) === 'pdf' ? ($file->s3_original_path ?: null) : null),
+            default => null,
+        };
+    }
+
+    public static function pdfVariant(File $file): ?string
+    {
+        if ($file->s3_archive_path) {
+            return 'archive';
+        }
+
+        return strtolower((string) $file->fileExtension) === 'pdf' && $file->s3_original_path ? 'original' : null;
+    }
+
     /**
      * Build an incoming bucket path scoped by user and timestamp.
      */

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Inertia;
 
+use App\Services\Files\StoragePathBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -33,11 +34,11 @@ class FileInertiaResource extends JsonResource
 
     public function toArray(Request $request): array
     {
-        $typeFolder = $this->file_type === 'document' ? 'documents' : 'receipts';
+        $typeFolder = $this->file_type === 'receipt' ? 'receipts' : 'documents';
         $extension = $this->fileExtension ?? 'pdf';
 
         $previewUrl = null;
-        if ($this->has_image_preview && $this->s3_image_path) {
+        if (StoragePathBuilder::variantPath($this->resource, 'preview') !== null) {
             $previewUrl = route('documents.serve', [
                 'guid' => $this->guid,
                 'type' => 'preview',
@@ -54,7 +55,7 @@ class FileInertiaResource extends JsonResource
             'uploaded_at' => $this->uploaded_at,
             'extension' => $extension,
             'mime_type' => $this->fileType,
-            'has_preview' => (bool) $this->has_image_preview,
+            'has_preview' => StoragePathBuilder::variantPath($this->resource, 'preview') !== null,
             'previewUrl' => $previewUrl,
             'viewUrl' => route('documents.serve', [
                 'guid' => $this->guid,
@@ -74,8 +75,8 @@ class FileInertiaResource extends JsonResource
         }
 
         if ($this->detailed) {
-            $hasArchivePdf = ! empty($this->s3_archive_path);
-            $hasPdfVariant = $hasArchivePdf || strtolower($extension) === 'pdf';
+            $pdfVariant = StoragePathBuilder::pdfVariant($this->resource);
+            $hasPdfVariant = $pdfVariant !== null;
             $pdfUrl = null;
 
             if ($hasPdfVariant) {
@@ -83,7 +84,7 @@ class FileInertiaResource extends JsonResource
                     'guid' => $this->guid,
                     'type' => $typeFolder,
                     'extension' => 'pdf',
-                    'variant' => $hasArchivePdf ? 'archive' : 'original',
+                    'variant' => $pdfVariant,
                 ]);
             }
 

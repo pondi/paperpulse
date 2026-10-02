@@ -18,6 +18,7 @@ test('collection permissions apply to entity and binary reads and revoke immedia
     $recipient = User::factory()->create();
     $document = Document::factory()->create(['user_id' => $owner->id]);
     $file = $document->file;
+    $file->update(['s3_original_path' => 'assets/shared.pdf']);
     $collection = Collection::factory()->create(['user_id' => $owner->id]);
     $collection->files()->attach($file->id);
     $share = CollectionShare::create(['collection_id' => $collection->id, 'shared_by_user_id' => $owner->id,
@@ -27,7 +28,7 @@ test('collection permissions apply to entity and binary reads and revoke immedia
     expect($recipient->can('view', $file))->toBeTrue();
     expect($recipient->can('update', $document))->toBeFalse();
     expect($recipient->can('delete', $document))->toBeFalse();
-    $this->mock(StorageService::class, fn ($mock) => $mock->shouldReceive('getFileByUserAndGuid')->once()->andReturn('pdf bytes'));
+    $this->mock(StorageService::class, fn ($mock) => $mock->shouldReceive('getFile')->with('assets/shared.pdf')->once()->andReturn('pdf bytes'));
     $url = route('documents.serve', ['guid' => $file->guid, 'type' => 'documents', 'extension' => $file->fileExtension]);
     $this->get($url)->assertOk();
     $share->update(['permission' => 'edit']);

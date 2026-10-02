@@ -8,6 +8,7 @@ use App\Enums\PublicShareAction;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Inertia\PublicCollectionFileResource;
 use App\Models\PublicCollectionLink;
+use App\Services\Files\StoragePathBuilder;
 use App\Services\PublicCollectionSharingService;
 use App\Services\StorageService;
 use App\Support\UploadedContent;
@@ -112,33 +113,16 @@ class PublicCollectionController extends Controller
 
         $storageService = app(StorageService::class);
         $variant = $request->input('variant', 'original');
-        $extension = $file->fileExtension ?? 'pdf';
-
-        $content = null;
-        if ($variant === 'preview' && $file->has_image_preview && $file->s3_image_path) {
-            $content = $storageService->getFile($file->s3_image_path);
-            $extension = 'jpg';
-        } elseif ($variant === 'archive' && ! empty($file->s3_archive_path)) {
-            $content = $storageService->getFile($file->s3_archive_path);
-            $extension = 'pdf';
-        } elseif (! empty($file->s3_original_path)) {
-            $content = $storageService->getFile($file->s3_original_path);
-        }
-
-        if (! $content) {
-            $fileType = $file->file_type === 'receipt' ? 'receipt' : 'document';
-            $content = $storageService->getFileByUserAndGuid(
-                $file->user_id,
-                $guid,
-                $fileType,
-                $variant === 'preview' ? 'preview' : 'original',
-                $extension,
-            );
-        }
-
-        if (! $content) {
+        $path = StoragePathBuilder::variantPath($file, $variant);
+        $content = $path ? $storageService->getFile($path) : null;
+        if ($content === null) {
             abort(404);
         }
+        $extension = match ($variant) {
+            'preview' => 'jpg',
+            'archive' => 'pdf',
+            default => strtolower((string) $file->fileExtension),
+        };
 
         $this->sharingService->logAccess($link, $request, PublicShareAction::DownloadFile, [
             'file_id' => $file->id,

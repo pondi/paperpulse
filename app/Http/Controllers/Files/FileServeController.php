@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Files;
 
 use App\Http\Controllers\Controller;
 use App\Models\File;
+use App\Services\Files\StoragePathBuilder;
 use App\Services\StorageService;
 use App\Support\UploadedContent;
 use Illuminate\Http\Request;
@@ -38,8 +39,6 @@ class FileServeController extends Controller
             return response()->json(['error' => 'File not found'], 404);
         }
 
-        // Determine file type from DB (not from request)
-        $fileType = $file->file_type === 'receipt' ? 'receipt' : 'document';
         $variant = $requestedVariant ?? 'original';
 
         // Check if requesting preview
@@ -51,52 +50,16 @@ class FileServeController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        // Prefer serving from stored S3 paths to avoid issues when a file was mis-typed.
-        $content = null;
-        if ($variant === 'preview' && $file->has_image_preview && $file->s3_image_path) {
-            $content = $storageService->getFile($file->s3_image_path);
-            $extension = 'jpg';
-        } elseif ($variant === 'archive' && ! empty($file->s3_archive_path)) {
-            $content = $storageService->getFile($file->s3_archive_path);
-            $extension = 'pdf';
-        } elseif ($variant === 'original' && ! empty($file->s3_original_path)) {
-            $content = $storageService->getFile($file->s3_original_path);
-            $extension = $file->fileExtension ?? $extension;
+        $path = StoragePathBuilder::variantPath($file, $variant);
+        $content = $path ? $storageService->getFile($path) : null;
+        if ($content === null) {
+            return response()->json(['error' => 'File not found'], 404);
         }
-
-        if (! $content) {
-            // Fallback: compute canonical path from GUID/type/variant/extension
-            $content = $storageService->getFileByUserAndGuid($file->user_id, $guid, $fileType, $variant, $extension);
-        }
-
-        if (! $content) {
-            // If preview was requested but not found, try to fall back to original
-            if ($variant === 'preview' && $file->fileExtension) {
-                Log::info('(FileServeController) [serve] - Preview not found, falling back to original', [
-                    'guid' => $guid,
-                    'original_extension' => $file->fileExtension,
-                ]);
-
-                if (! empty($file->s3_original_path)) {
-                    $content = $storageService->getFile($file->s3_original_path);
-                } else {
-                    $content = $storageService->getFileByUserAndGuid($file->user_id, $guid, $fileType, 'original', $file->fileExtension);
-                }
-                $extension = $file->fileExtension;
-            }
-
-            if (! $content) {
-                Log::error('(FileServeController) [serve] - Document not found', [
-                    'guid' => $guid,
-                    'type' => $type,
-                    'extension' => $extension,
-                    'user_id' => $file->user_id,
-                    'variant' => $variant,
-                ]);
-
-                return response()->json(['error' => 'File not found'], 404);
-            }
-        }
+        $extension = match ($variant) {
+            'preview' => 'jpg',
+            'archive' => 'pdf',
+            default => strtolower((string) $file->fileExtension),
+        };
 
         // Map extension to MIME type
         $mimeTypes = [

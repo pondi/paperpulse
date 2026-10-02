@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Inertia;
 
+use App\Services\Files\StoragePathBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -95,13 +96,13 @@ class ReceiptInertiaResource extends JsonResource
         return [
             'id' => $this->file->id,
             'url' => route('receipts.showImage', $this->id),
-            'pdfUrl' => $this->file->guid && $this->file->fileExtension === 'pdf'
+            'pdfUrl' => StoragePathBuilder::pdfVariant($this->file) !== null
                 ? route('receipts.showPdf', $this->id)
                 : null,
             'extension' => $this->file->fileExtension ?? 'jpg',
             'mime_type' => $this->file->mime_type,
-            'has_preview' => $this->file->has_image_preview,
-            'is_pdf' => strtolower($this->file->fileExtension ?? '') === 'pdf',
+            'has_preview' => StoragePathBuilder::variantPath($this->file, 'preview') !== null,
+            'is_pdf' => StoragePathBuilder::pdfVariant($this->file) !== null,
         ];
     }
 

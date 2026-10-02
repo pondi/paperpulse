@@ -22,8 +22,7 @@ class SearchController extends BaseApiController
             $file = is_array($result['file'] ?? null) ? $result['file'] : null;
             $fileId = $file['id'] ?? null;
             $hasPreview = (bool) ($file['has_image_preview'] ?? false);
-            $hasPdf = (bool) ($file['has_archive_pdf'] ?? false)
-                || strtolower((string) ($file['extension'] ?? '')) === 'pdf';
+            $pdfVariant = $file['pdf_variant'] ?? null;
 
             return [
                 'id' => $result['id'] ?? null,
@@ -44,7 +43,7 @@ class SearchController extends BaseApiController
                 'links' => $fileId ? [
                     'content' => route('api.files.content', ['file' => $fileId]),
                     'preview' => $hasPreview ? route('api.files.content', ['file' => $fileId]).'?variant=preview' : null,
-                    'pdf' => $hasPdf ? route('api.files.content', ['file' => $fileId]).'?variant=archive' : null,
+                    'pdf' => $pdfVariant ? route('api.files.content', ['file' => $fileId]).'?variant='.$pdfVariant : null,
                 ] : null,
             ];
         })->values()->all();

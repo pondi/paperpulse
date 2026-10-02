@@ -43,6 +43,7 @@ it('returns lightweight search results with content links', function () {
                         'extension' => 'pdf',
                         'has_image_preview' => false,
                         'has_archive_pdf' => true,
+                        'pdf_variant' => 'archive',
                     ],
                 ],
                 [

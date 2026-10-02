@@ -53,50 +53,16 @@ class FileContentController extends BaseApiController
      */
     private function resolvePathAndMime(File $file, string $variant): array
     {
-        $fileType = $file->file_type === 'receipt' ? 'receipt' : 'document';
-
-        if ($variant === 'preview') {
-            if ($file->has_image_preview && $file->s3_image_path) {
-                return [$file->s3_image_path, 'jpg', 'image/jpeg'];
-            }
-
-            if ($file->guid) {
-                return [StoragePathBuilder::storagePath($file->user_id, $file->guid, $fileType, 'preview', 'jpg'), 'jpg', 'image/jpeg'];
-            }
-
-            $variant = 'original';
-        }
-
-        if ($variant === 'archive') {
-            if (! empty($file->s3_archive_path)) {
-                return [$file->s3_archive_path, 'pdf', 'application/pdf'];
-            }
-
-            if ($file->guid) {
-                return [StoragePathBuilder::storagePath($file->user_id, $file->guid, $fileType, 'archive', 'pdf'), 'pdf', 'application/pdf'];
-            }
-
-            if (strtolower((string) ($file->fileExtension ?? '')) === 'pdf' && ! empty($file->s3_original_path)) {
-                return [$file->s3_original_path, 'pdf', 'application/pdf'];
-            }
-
-            return [null, 'pdf', 'application/pdf'];
-        }
-
-        $extension = strtolower((string) ($file->fileExtension ?? pathinfo((string) $file->fileName, PATHINFO_EXTENSION) ?? ''));
+        $path = StoragePathBuilder::variantPath($file, $variant);
+        $extension = match ($variant) {
+            'archive' => 'pdf',
+            'preview' => 'jpg',
+            default => strtolower((string) ($file->fileExtension ?: pathinfo((string) $file->fileName, PATHINFO_EXTENSION))),
+        };
         $extension = $extension !== '' ? $extension : 'bin';
+        $contentType = $variant === 'original' && $file->mime_type ? $file->mime_type : $this->mimeForExtension($extension);
 
-        $contentType = $file->mime_type ?: $this->mimeForExtension($extension);
-
-        if (! empty($file->s3_original_path)) {
-            return [$file->s3_original_path, $extension, $contentType];
-        }
-
-        if ($file->guid) {
-            return [StoragePathBuilder::storagePath($file->user_id, $file->guid, $fileType, 'original', $extension), $extension, $contentType];
-        }
-
-        return [null, $extension, $contentType];
+        return [$path, $extension, $contentType];
     }
 
     private function mimeForExtension(string $extension): string

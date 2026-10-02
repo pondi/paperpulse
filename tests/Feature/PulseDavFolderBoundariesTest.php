@@ -1,5 +1,6 @@
 <?php
 
+use App\Contracts\Services\PulseDavImportContract;
 use App\Jobs\PulseDav\ProcessPulseDavFile;
 use App\Models\PulseDavFile;
 use App\Models\User;
@@ -131,4 +132,42 @@ it('cannot delete a foreign object through a forged owned record', function () {
 
     expect($this->service->deleteFolder($this->user, 'A'))->toBe(0)->and($file->fresh()->deleted_at)->toBeNull();
     Storage::disk('pulsedav')->assertExists($foreignPath);
+});
+
+it('imports owned file and folder selections through the bound validated contract', function (bool $isFolder): void {
+    $this->app->instance(PulseDavFolderService::class, $this->service);
+    $path = "scans/incoming/{$this->user->id}/selected/file.pdf";
+    Storage::disk('pulsedav')->put($path, 'PDF');
+    $file = PulseDavFile::create([
+        'user_id' => $this->user->id, 's3_path' => $path, 'filename' => 'file.pdf',
+        'folder_path' => 'selected', 'status' => 'pending', 'size' => 3, 'uploaded_at' => now(),
+    ]);
+    if ($isFolder) {
+        $this->service->createVirtualFolder($this->user, 'selected');
+    }
+
+    $result = app(PulseDavImportContract::class)->importSelections($this->user, [
+        ['s3_path' => $isFolder ? dirname($path).'/' : $path, 'is_folder' => $isFolder],
+    ], ['file_type' => 'document', 'notes' => 'Batch note']);
+
+    expect($result['imported'])->toBe(1)->and($result['skipped'])->toBe(0)
+        ->and($file->fresh()->import_batch_id)->toBe($result['batch_id'])
+        ->and($file->fresh()->file_type)->toBe('document');
+    Bus::assertDispatchedTimes(ProcessPulseDavFile::class, 1);
+})->with([false, true]);
+
+it('rejects foreign and missing selections through the bound import contract', function (): void {
+    $this->app->instance(PulseDavFolderService::class, $this->service);
+    $other = User::factory()->create();
+    $path = "scans/incoming/{$other->id}/foreign.pdf";
+    Storage::disk('pulsedav')->put($path, 'private');
+
+    $result = app(PulseDavImportContract::class)->importSelections($this->user, [
+        ['s3_path' => $path], ['s3_path' => "scans/incoming/{$this->user->id}/missing.pdf"],
+    ]);
+
+    expect($result)->toBe(['batch_id' => null, 'imported' => 0, 'skipped' => 2]);
+    $this->assertDatabaseCount('pulsedav_files', 0);
+    $this->assertDatabaseCount('pulsedav_import_batches', 0);
+    Bus::assertNothingDispatched();
 });

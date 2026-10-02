@@ -10,6 +10,7 @@ use App\Models\Invoice;
 use App\Models\Tag;
 use App\Rules\ExistsForUser;
 use App\Services\Files\FileDeletionService;
+use App\Services\Files\FileUploadConfigService;
 use App\Services\Files\StoragePathBuilder;
 use App\Services\StorageService;
 use App\Services\Tags\TagAttachmentService;
@@ -432,7 +433,7 @@ class DocumentController extends BaseResourceController
      */
     public function upload()
     {
-        return Inertia::render('Documents/Upload');
+        return Inertia::render('Documents/Upload', ['uploadConfig' => app(FileUploadConfigService::class)->getUploadConfig()]);
     }
 
     /**

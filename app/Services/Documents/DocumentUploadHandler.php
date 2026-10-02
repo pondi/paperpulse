@@ -6,7 +6,6 @@ use App\Exceptions\DuplicateFileException;
 use App\Services\FileProcessingService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
 use Throwable;
 
 /**
@@ -21,19 +20,10 @@ class DocumentUploadHandler
     public static function processUploads(iterable $uploadedFiles, string $fileType, int $userId, FileProcessingService $fileProcessingService, array $metadata = []): array
     {
         $outcomes = [];
-        $formats = $fileType === 'document'
-            ? 'jpeg,png,jpg,pdf,tiff,tif,doc,docx,xls,xlsx,ppt,pptx,odt,ods,odp,rtf,txt,html,csv'
-            : 'jpeg,png,jpg,pdf,tiff,tif';
-
         foreach ($uploadedFiles as $index => $uploadedFile) {
             $outcome = ['index' => $index, 'filename' => $uploadedFile->getClientOriginalName()];
             try {
-                $validator = Validator::make(['file' => $uploadedFile], [
-                    'file' => "required|file|mimes:{$formats}|max:102400",
-                ]);
-                $validation = $validator->fails()
-                    ? ['valid' => false, 'error' => $validator->errors()->first('file')]
-                    : DocumentUploadValidator::validate($uploadedFile);
+                $validation = DocumentUploadValidator::validate($uploadedFile, $fileType);
                 if (! $validation['valid']) {
                     $outcomes[] = $outcome + ['status' => 'failed', 'message' => $validation['error']];
 

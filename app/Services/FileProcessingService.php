@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Notifications\DuplicateFileDetected;
 use App\Services\Files\FileJobChainDispatcher;
 use App\Services\Files\FileProcessingRequestService;
+use App\Services\Files\FileUploadConfigService;
 use App\Services\Files\StoragePathBuilder;
 use App\Services\Jobs\JobHistoryCreator;
 use App\Services\Jobs\JobMetadataPersistence;
@@ -291,9 +292,11 @@ class FileProcessingService
                 throw new Exception("File not found in PulseDav bucket: {$incomingPath}");
             }
 
-            // Download file content from incoming bucket
-            $fileContent = $this->fileStorage->getFromS3('pulsedav', $incomingPath);
             $fileSize = $this->fileStorage->getSizeFromS3('pulsedav', $incomingPath);
+            if ($fileSize > app(FileUploadConfigService::class)->getMaxSizeBytes($fileType, pathinfo($incomingPath, PATHINFO_EXTENSION))) {
+                throw new Exception('File exceeds the processing size limit.');
+            }
+            $fileContent = $this->fileStorage->getFromS3('pulsedav', $incomingPath);
 
             // Extract file data
             $fileData = $this->fileMetadata->extractFileDataFromPulseDav($incomingPath, $fileContent, $fileSize);

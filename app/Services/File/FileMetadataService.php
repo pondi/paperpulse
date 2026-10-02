@@ -42,7 +42,7 @@ class FileMetadataService implements FileMetadataContract
         $file->user_id = $userId;
         $file->fileName = $uploadedFile->getClientOriginalName();
         $file->fileExtension = $extension;
-        $file->fileType = $uploadedFile->getClientMimeType();
+        $file->fileType = $uploadedFile->getMimeType();
         $file->fileSize = $uploadedFile->getSize();
         $file->guid = $fileGuid;
         $file->file_hash = $fileHash;
@@ -124,7 +124,7 @@ class FileMetadataService implements FileMetadataContract
         return [
             'fileName' => $uploadedFile->getClientOriginalName(),
             'extension' => $extension,
-            'mimeType' => $uploadedFile->getClientMimeType(),
+            'mimeType' => $uploadedFile->getMimeType(),
             'size' => $uploadedFile->getSize(),
             'content' => $content,
             'source' => $source,

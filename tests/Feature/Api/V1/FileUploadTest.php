@@ -80,7 +80,7 @@ it('uploads an office document and dispatches the document job chain', function 
     Sanctum::actingAs($user);
 
     $upload = UploadedFile::fake()
-        ->createWithContent('report.docx', 'PK fake docx content')
+        ->createWithContent('report.docx', conversionDocxFixture())
         ->mimeType('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
 
     $response = $this->post(route('api.files.store'), [
@@ -103,7 +103,7 @@ it('rejects office document formats when file_type is receipt', function () {
     Sanctum::actingAs($user);
 
     $upload = UploadedFile::fake()
-        ->createWithContent('report.docx', 'PK fake docx content')
+        ->createWithContent('report.docx', conversionDocxFixture())
         ->mimeType('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
 
     $response = $this->withHeader('Accept', 'application/json')
@@ -113,18 +113,18 @@ it('rejects office document formats when file_type is receipt', function () {
         ]);
 
     $response->assertUnprocessable();
-    $response->assertJsonPath('errors.file.0', 'Supported formats for receipt: jpg, jpeg, png, pdf, tiff, tif.');
+    $response->assertJsonPath('errors.file.0', "File type 'docx' is not supported for receipts");
 });
 
 it('returns 409 when uploading a duplicate file for the same user', function () {
     $user = User::factory()->create();
     Sanctum::actingAs($user);
 
-    $content = 'same-bytes-every-time';
+    $content = file_get_contents(createFixturePngPath());
 
     $first = UploadedFile::fake()
-        ->createWithContent('duplicate.jpg', $content)
-        ->mimeType('image/jpeg');
+        ->createWithContent('duplicate.png', $content)
+        ->mimeType('image/png');
 
     $firstResponse = $this->post(route('api.files.store'), [
         'file' => $first,
@@ -137,8 +137,8 @@ it('returns 409 when uploading a duplicate file for the same user', function () 
     expect($firstFile)->not->toBeNull();
 
     $second = UploadedFile::fake()
-        ->createWithContent('duplicate.jpg', $content)
-        ->mimeType('image/jpeg');
+        ->createWithContent('duplicate.png', $content)
+        ->mimeType('image/png');
 
     $secondResponse = $this->post(route('api.files.store'), [
         'file' => $second,

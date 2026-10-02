@@ -96,7 +96,7 @@
                                     multiple 
                                     class="sr-only" 
                                     @change="handleFileSelect"
-                                    :accept="fileType === 'receipt' ? '.pdf,.png,.jpg,.jpeg' : '.pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv'"
+                                    :accept="Object.keys(uploadConfig.capabilities[fileType]).map(extension => '.' + extension).join(',')"
                                 />
 
                                 <!-- Empty State -->
@@ -109,10 +109,7 @@
                                         <p class="pl-1">or drag and drop</p>
                                     </div>
                                     <p class="text-xs leading-5 text-zinc-600 dark:text-zinc-400">
-                                        {{ fileType === 'receipt' 
-                                            ? 'PDF, PNG, JPG up to 10MB' 
-                                            : 'PDF, PNG, JPG, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV up to 50MB' 
-                                        }}
+                                        {{ Object.keys(uploadConfig.capabilities[fileType]).join(', ').toUpperCase() }} up to {{ uploadConfig.maxFileSizeMb[fileType] }}MB
                                     </p>
                                 </div>
 
@@ -160,7 +157,7 @@
                                                 multiple 
                                                 class="sr-only" 
                                                 @change="handleAdditionalFiles"
-                                                :accept="fileType === 'receipt' ? '.pdf,.png,.jpg,.jpeg' : '.pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv'"
+                                                :accept="Object.keys(uploadConfig.capabilities[fileType]).map(extension => '.' + extension).join(',')"
                                             />
                                         </label>
                                     </div>
@@ -268,24 +265,12 @@ interface FileObject {
     type: string;
 }
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB for receipts
-const MAX_DOCUMENT_SIZE = 50 * 1024 * 1024; // 50MB for documents
-
-const RECEIPT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
-const DOCUMENT_TYPES = [
-    'application/pdf', 
-    'image/png', 
-    'image/jpeg', 
-    'image/jpg',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'text/plain',
-    'text/csv'
-];
+const props = defineProps<{
+    uploadConfig: {
+        maxFileSizeMb: Record<'receipt' | 'document', number>;
+        capabilities: Record<'receipt' | 'document', Record<string, { mimeTypes: string[]; maxBytes: number }>>;
+    };
+}>();
 
 interface UploadOutcome {
     index: number;
@@ -322,17 +307,16 @@ function formatFileSize(bytes: number): string {
 }
 
 function validateFile(file: File): boolean {
-    const maxSize = fileType.value === 'receipt' ? MAX_FILE_SIZE : MAX_DOCUMENT_SIZE;
-    const allowedTypes = fileType.value === 'receipt' ? RECEIPT_TYPES : DOCUMENT_TYPES;
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
+    const capability = props.uploadConfig.capabilities[fileType.value][extension];
+    if (!capability) {
+        uploadError.value = `File ${file.name} has an unsupported extension.`;
+        return false;
+    }
+    const maxSize = capability.maxBytes;
 
     if (file.size > maxSize) {
         uploadError.value = `File ${file.name} is too large. Maximum size is ${formatFileSize(maxSize)}`;
-        setTimeout(() => { uploadError.value = null; }, 5000);
-        return false;
-    }
-
-    if (!allowedTypes.includes(file.type)) {
-        uploadError.value = `File ${file.name} has an invalid type. Allowed types are: ${allowedTypes.join(', ')}`;
         setTimeout(() => { uploadError.value = null; }, 5000);
         return false;
     }

@@ -46,6 +46,7 @@ use App\Services\File\FileValidationService;
 use App\Services\FileProcessingService;
 use App\Services\Files\FileJobChainDispatcher;
 use App\Services\Files\FilePreviewManager;
+use App\Services\Files\FileUploadConfigService;
 use App\Services\Files\ImagePreviewStorage;
 use App\Services\OCR\TextractStorageBridge;
 use App\Services\Receipt\ReceiptEnricherService;
@@ -101,7 +102,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(FileValidationService::class, function ($app) {
-            return new FileValidationService;
+            return new FileValidationService($app->make(FileUploadConfigService::class));
         });
 
         $this->app->singleton(FileJobChainDispatcher::class, function ($app) {

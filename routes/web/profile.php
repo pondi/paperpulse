@@ -18,6 +18,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::prefix('preferences')->name('preferences.')->group(function () {
         Route::get('/', [PreferencesController::class, 'index'])->name('index');
         Route::patch('/', [PreferencesController::class, 'update'])->name('update');
+        Route::patch('/organization', [PreferencesController::class, 'organization'])->name('organization');
         Route::post('/reset', [PreferencesController::class, 'reset'])->name('reset');
     });
 

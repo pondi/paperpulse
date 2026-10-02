@@ -31,7 +31,7 @@ class FolderOrganizationService
         return $file->getConnection()->transaction(function () use ($file): File {
             User::query()->lockForUpdate()->findOrFail($file->user_id);
             $locked = File::withoutGlobalScope('user')->where('user_id', $file->user_id)->lockForUpdate()->findOrFail($file->id);
-            if (! $this->enabled($locked->user_id) || $locked->placement_source === 'manual') {
+            if (! $this->enabled($locked->user_id) || app(OrganizationFeedbackService::class)->protectedFile($locked)) {
                 return $locked;
             }
             $summary = $locked->organization_summary;
@@ -45,7 +45,9 @@ class FolderOrganizationService
             if ((! is_int($confidence) && ! is_float($confidence)) || ! is_finite((float) $confidence) || $confidence < 0.8 || $confidence > 1 || $role === 'other' || (bool) $property === (bool) $employer) {
                 return $this->review($locked);
             }
-            $root = $this->tree->ensureFolder($locked->user_id, $property ? 'Building' : 'Work', type: 'group_root', source: 'system');
+            $rules = app(OrganizationFeedbackService::class)->rules($locked->user_id);
+            $rootName = $property ? ($rules['building_root'] ?? 'Building') : ($rules['work_root'] ?? 'Work');
+            $root = $this->tree->ensureFolder($locked->user_id, $rootName, type: 'group_root', source: 'system');
             if ($root->is_archived) {
                 return $this->review($locked);
             }
@@ -55,7 +57,7 @@ class FolderOrganizationService
             if ($group->is_archived) {
                 return $this->review($locked);
             }
-            $target = $this->tree->ensureFolder($locked->user_id, ucfirst($role), $group->id, 'document_role', 'system');
+            $target = $this->tree->ensureFolder($locked->user_id, $rules['role_labels'][$role] ?? ucfirst($role), $group->id, 'document_role', 'system');
             if ($target->is_archived || $this->tree->hasSharing($target)) {
                 return $this->review($locked);
             }

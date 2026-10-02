@@ -9,6 +9,29 @@
     </template>
 
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+      <section class="flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800 dark:text-zinc-100">
+        <h2 class="text-lg font-medium">Organization choices</h2>
+        <p>Saved labels and aliases guide folder placement. Pinned folders and manual placements stay fixed. Declined suggestions remain suppressed until their evidence changes.</p>
+        <form class="flex flex-col gap-4" @submit.prevent="saveOrganization">
+          <label class="flex flex-col gap-2">Building folder name<input v-model="organization.naming_rules.building_root" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
+          <label class="flex flex-col gap-2">Work folder name<input v-model="organization.naming_rules.work_root" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
+          <div v-for="role in ['contracts', 'invoices', 'receipts', 'payslips', 'letters', 'other']" :key="role">
+            <label class="flex flex-col gap-2">{{ role }} folder name<input :value="organization.naming_rules.role_labels[role] ?? role[0].toUpperCase() + role.slice(1)" @input="organization.naming_rules.role_labels[role] = $event.target.value" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
+          </div>
+          <div v-for="(alias, index) in organization.aliases" :key="alias.id ?? index" class="flex flex-wrap items-center gap-3">
+            <label>Kind<select v-model="alias.kind" class="rounded dark:bg-zinc-700"><option value="property">Property address</option><option value="employer">Company</option></select></label>
+            <label v-if="!alias.id">Recognize<input v-model="alias.alias" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
+            <label>Use this label<input v-model="alias.canonical_name" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
+            <SecondaryButton type="button" @click="removeAlias(index)">Remove alias</SecondaryButton>
+          </div>
+          <p v-for="(message, field) in organization.errors" :key="field" role="alert" class="text-red-600 dark:text-red-400">{{ message }}</p>
+          <div class="flex flex-wrap gap-3">
+            <SecondaryButton type="button" :disabled="organization.aliases.length >= 100" @click="organization.aliases.push({ kind: 'property', alias: '', canonical_name: '' })">Add alias</SecondaryButton>
+            <PrimaryButton :disabled="organization.processing">Save organization choices</PrimaryButton>
+            <SecondaryButton type="button" @click="resetOrganization">Reset labels, aliases and declined suggestions</SecondaryButton>
+          </div>
+        </form>
+      </section>
       <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
         <section>
           <header>
@@ -522,6 +545,31 @@ const props = defineProps({
   categories: Array,
   options: Object,
   timezones: Array,
+  organizationAliases: Array,
+});
+
+const organization = useForm({
+  naming_rules: {
+    building_root: props.preferences.organization_naming_rules?.building_root ?? 'Building',
+    work_root: props.preferences.organization_naming_rules?.work_root ?? 'Work',
+    role_labels: props.preferences.organization_naming_rules?.role_labels ?? {},
+  },
+  aliases: props.organizationAliases.map(alias => ({ ...alias, alias: null })),
+  removed_alias_ids: [],
+});
+const saveOrganization = () => organization.patch(route('preferences.organization'), { preserveScroll: true });
+const removeAlias = index => {
+  const alias = organization.aliases[index];
+  if (alias.id) organization.removed_alias_ids.push(alias.id);
+  organization.aliases.splice(index, 1);
+};
+const resetOrganization = () => router.patch(route('preferences.organization'), { reset: true }, {
+  preserveScroll: true,
+  onSuccess: () => {
+    organization.aliases = [];
+    organization.removed_alias_ids = [];
+    organization.naming_rules = { building_root: 'Building', work_root: 'Work', role_labels: {} };
+  },
 });
 
 const page = usePage();

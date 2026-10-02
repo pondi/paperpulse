@@ -31,7 +31,7 @@ class OrganizationInputObserver
             $tracker->record($model);
         } elseif ($model instanceof OrganizationAlias && ($model->wasChanged(['kind', 'alias_key', 'canonical_name']))) {
             $tracker->record($model);
-        } elseif ($model instanceof UserPreference && ($model->wasChanged('auto_organize_documents'))) {
+        } elseif ($model instanceof UserPreference && ($model->wasChanged(['auto_organize_documents', 'organization_naming_rules', 'organization_feedback_reset_at']))) {
             $tracker->record($model);
         }
     }

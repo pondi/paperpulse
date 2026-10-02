@@ -141,6 +141,7 @@
                         ></textarea>
                     </div>
 
+                    <label class="flex items-center gap-2 text-zinc-900 dark:text-zinc-100"><input v-model="form.is_pinned" type="checkbox" />Keep this folder fixed during automatic organization</label>
                     <FolderLocationPicker v-model="form.parent_id" :exclude-id="editingCollection?.id" />
                     <p v-if="form.errors.parent_id" class="text-sm text-red-600 dark:text-red-400">{{ form.errors.parent_id }}</p>
                     <p class="text-sm text-zinc-500 dark:text-zinc-400">Moving a folder keeps its existing sharing permissions. Subfolders must be shared separately.</p>
@@ -209,6 +210,7 @@ const editingCollection = ref(null);
 
 const form = useForm({
     parent_id: props.filters.parent_id ?? null,
+    is_pinned: false,
     name: '',
     description: '',
     icon: 'folder',
@@ -246,6 +248,7 @@ const openCreateModal = () => {
 const editCollection = (collection) => {
     editingCollection.value = collection;
     form.parent_id = collection.parent_id;
+    form.is_pinned = collection.is_pinned;
     form.name = collection.name;
     form.description = collection.description || '';
     form.icon = collection.icon;

@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\OrganizationPreferencesRequest;
 use App\Http\Requests\UpdatePreferencesRequest;
+use App\Models\OrganizationAlias;
 use App\Models\UserPreference;
+use App\Services\OrganizationFeedbackService;
 use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\App;
@@ -22,6 +25,7 @@ class PreferencesController extends Controller
 
         return Inertia::render('Preferences/Index', [
             'preferences' => $preferences,
+            'organizationAliases' => OrganizationAlias::query()->where('user_id', $user->id)->orderBy('id')->limit(100)->get(['id', 'kind', 'canonical_name']),
             'categories' => $categories,
             'options' => UserPreference::getOptions(),
             'timezones' => $this->getTimezones(),
@@ -56,6 +60,13 @@ class PreferencesController extends Controller
         }
 
         return redirect()->back()->with('success', 'Preferences updated successfully.');
+    }
+
+    public function organization(OrganizationPreferencesRequest $request, OrganizationFeedbackService $feedback): RedirectResponse
+    {
+        $feedback->save($request->user()->id, $request->validated());
+
+        return back()->with('success', 'Organization choices saved.');
     }
 
     /**

@@ -9,6 +9,8 @@ class UserPreference extends Model
 {
     use HasFactory;
 
+    protected $dateFormat = 'Y-m-d H:i:s.u';
+
     protected $fillable = [
         'user_id',
         'language',
@@ -17,6 +19,8 @@ class UserPreference extends Model
         'currency',
         'auto_categorize',
         'auto_organize_documents',
+        'organization_naming_rules',
+        'organization_feedback_reset_at',
         'extract_line_items',
         'default_category_id',
         'notify_processing_complete',
@@ -47,6 +51,8 @@ class UserPreference extends Model
     protected $casts = [
         'auto_categorize' => 'boolean',
         'auto_organize_documents' => 'boolean',
+        'organization_naming_rules' => 'array',
+        'organization_feedback_reset_at' => 'datetime',
         'extract_line_items' => 'boolean',
         'notify_processing_complete' => 'boolean',
         'notify_processing_failed' => 'boolean',

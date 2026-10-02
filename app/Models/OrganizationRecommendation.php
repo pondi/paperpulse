@@ -10,6 +10,8 @@ class OrganizationRecommendation extends Model
 {
     use BelongsToUser;
 
+    protected $dateFormat = 'Y-m-d H:i:s.u';
+
     protected $guarded = ['id'];
 
     protected function casts(): array

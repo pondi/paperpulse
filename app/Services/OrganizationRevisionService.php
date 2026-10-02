@@ -114,7 +114,9 @@ class OrganizationRevisionService
             hash_update($hash, json_encode(['alias', $alias->kind, $alias->alias_key, $alias->canonical_name], JSON_THROW_ON_ERROR));
         }
 
-        hash_update($hash, json_encode(['automatic', UserPreference::query()->where('user_id', $userId)->first()?->auto_organize_documents ?? true], JSON_THROW_ON_ERROR));
+        $preference = UserPreference::query()->where('user_id', $userId)->first();
+        hash_update($hash, json_encode(['automatic', $preference?->auto_organize_documents ?? true,
+            $preference?->organization_naming_rules, $preference?->organization_feedback_reset_at?->toIso8601String()], JSON_THROW_ON_ERROR));
 
         return hash_final($hash);
     }

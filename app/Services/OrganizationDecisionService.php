@@ -67,8 +67,12 @@ class OrganizationDecisionService
                 $this->conflict();
             }
         }
+        $source = $folders[$operation['folder_id'] ?? 0] ?? null;
+        if ($source && in_array($type, ['rename', 'merge'], true) && $source->organization_source === 'manual') {
+            $this->conflict();
+        }
         foreach ($files as $file) {
-            if ($file->placement_source === 'manual') {
+            if (app(OrganizationFeedbackService::class)->protectedFile($file)) {
                 $this->conflict();
             }
         }

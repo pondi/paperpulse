@@ -36,6 +36,11 @@ class ProcessBatchItem implements ShouldQueue
                 if ($item->status !== 'queued') {
                     return;
                 }
+                if ($batchJob->fresh()->status === 'cancelled') {
+                    $item->update(['status' => 'cancelled', 'processed_at' => now()]);
+
+                    return;
+                }
                 $startTime = microtime(true);
                 try {
                     $result = $this->processIndividualItem($item, $batchJob);
@@ -101,12 +106,13 @@ class ProcessBatchItem implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
+        $cancelled = BatchJob::withoutGlobalScope('user')->findOrFail($this->batchJobId)->status === 'cancelled';
         BatchItem::where('batch_job_id', $this->batchJobId)
             ->whereIn('id', $this->itemIds)
             ->where('status', 'queued')
             ->update([
-                'status' => 'failed',
-                'error_message' => $exception->getMessage(),
+                'status' => $cancelled ? 'cancelled' : 'failed',
+                'error_message' => $cancelled ? null : $exception->getMessage(),
                 'processed_at' => now(),
             ]);
 

@@ -37,7 +37,7 @@ class BatchItem extends Model
 
     public function isComplete(): bool
     {
-        return in_array($this->status, ['completed', 'failed']);
+        return in_array($this->status, ['completed', 'failed', 'cancelled']);
     }
 
     public function isSuccessful(): bool

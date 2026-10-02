@@ -10,7 +10,6 @@ use App\Models\User;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -124,6 +123,7 @@ class BatchProcessingService
             ])->orderBy('item_index')->pluck('id')->all();
 
             ProcessBatchItem::dispatch($batchJob->id, $itemIds)
+                ->afterCommit()
                 ->delay(now()->addSeconds($delay))
                 ->onQueue($this->getQueueForBatch($batchJob, $options));
 
@@ -150,7 +150,7 @@ class BatchProcessingService
                 'failed_items' => $totals->failed_count,
                 'actual_cost' => $totals->total_cost,
             ];
-            if ($totals->processed_count >= $batchJob->total_items) {
+            if ($batchJob->status !== 'cancelled' && $totals->processed_count >= $batchJob->total_items) {
                 $attributes['status'] = $totals->failed_count > 0 ? 'completed_with_errors' : 'completed';
                 $attributes['completed_at'] = $batchJob->completed_at ?? now();
             }
@@ -182,6 +182,7 @@ class BatchProcessingService
             'total_items' => $batchJob->total_items,
             'processed_items' => $batchJob->processed_items,
             'failed_items' => $batchJob->failed_items,
+            'cancelled_items' => $batchJob->items()->where('status', 'cancelled')->count(),
             'estimated_cost' => $batchJob->estimated_cost,
             'actual_cost' => $batchJob->actual_cost,
             'started_at' => $batchJob->started_at,
@@ -198,33 +199,19 @@ class BatchProcessingService
     public function cancelBatch(int $batchJobId, ?User $user = null): bool
     {
         try {
-            $query = BatchJob::where('id', $batchJobId);
+            return (new BatchJob)->getConnection()->transaction(function () use ($batchJobId, $user): bool {
+                $query = BatchJob::query()->whereKey($batchJobId);
+                if ($user) {
+                    $query->where('user_id', $user->id);
+                }
+                $batchJob = $query->lockForUpdate()->firstOrFail();
+                if (! $batchJob->isRunning()) {
+                    return false;
+                }
+                $batchJob->update(['status' => 'cancelled', 'completed_at' => now()]);
 
-            if ($user) {
-                $query->where('user_id', $user->id);
-            }
-
-            $batchJob = $query->firstOrFail();
-
-            if (in_array($batchJob->status, ['completed', 'cancelled'])) {
-                return false; // Cannot cancel completed or already cancelled batches
-            }
-
-            // Cancel queued jobs
-            $this->cancelQueuedJobs($batchJob);
-
-            $batchJob->update([
-                'status' => 'cancelled',
-                'completed_at' => now(),
-            ]);
-
-            Log::info('[BatchProcessingService] Batch cancelled', [
-                'batch_id' => $batchJobId,
-                'processed_items' => $batchJob->processed_items,
-                'total_items' => $batchJob->total_items,
-            ]);
-
-            return true;
+                return true;
+            });
 
         } catch (Exception $e) {
             Log::error('[BatchProcessingService] Failed to cancel batch', [
@@ -294,14 +281,5 @@ class BatchProcessingService
 
         // Conservative default without batch API
         return $baseDelay * 2;
-    }
-
-    protected function cancelQueuedJobs(BatchJob $batchJob): void
-    {
-        // This would cancel queued jobs - implementation depends on queue driver
-        // For Redis/Database queue, you might delete jobs from the queue tables
-        Log::info('[BatchProcessingService] Cancelling queued jobs for batch', [
-            'batch_id' => $batchJob->id,
-        ]);
     }
 }

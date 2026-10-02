@@ -23,6 +23,30 @@ beforeEach(function () {
     };
 });
 
+it('keeps root folder predicates within the owner and file filters', function (?string $rootPath): void {
+    $other = User::factory()->create();
+    $ownedIds = [];
+    foreach ([$this->user, $other] as $owner) {
+        foreach ([null, '', 'nested'] as $index => $parentFolder) {
+            foreach ([false, true] as $isFolder) {
+                $file = PulseDavFile::create([
+                    'user_id' => $owner->id,
+                    's3_path' => "scans/incoming/{$owner->id}/{$index}-".(int) $isFolder,
+                    'filename' => 'entry', 'parent_folder' => $parentFolder,
+                    'is_folder' => $isFolder, 'status' => $isFolder ? 'folder' : 'pending',
+                    'size' => 0, 'uploaded_at' => now(),
+                ]);
+                if ($owner->is($this->user) && ! $isFolder && $parentFolder !== 'nested') {
+                    $ownedIds[] = $file->id;
+                }
+            }
+        }
+    }
+
+    expect(PulseDavFile::forUser($this->user->id)->filesOnly()->inFolder($rootPath)->pluck('id')->all())
+        ->toBe($ownedIds);
+})->with([null, '', '/']);
+
 it('counts imports and deletes only the exact owned folder and descendants', function (string $folderPath, string $siblingPath) {
     $other = User::factory()->create();
     $folder = PulseDavFile::create([

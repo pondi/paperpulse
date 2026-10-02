@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -189,11 +190,12 @@ class PulseDavFile extends Model
     /**
      * Scope to files/folders within a specific folder
      */
-    public function scopeInFolder($query, $folderPath)
+    public function scopeInFolder(Builder $query, ?string $folderPath): Builder
     {
         if (empty($folderPath) || $folderPath === '/') {
-            // Root folder - items with no parent folder
-            return $query->whereNull('parent_folder')->orWhere('parent_folder', '');
+            return $query->where(function (Builder $query): void {
+                $query->whereNull('parent_folder')->orWhere('parent_folder', '');
+            });
         }
 
         return $query->where('parent_folder', $folderPath);

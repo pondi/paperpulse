@@ -55,7 +55,7 @@ class NotifyExpiringWarranties extends Command
                         continue;
                     }
 
-                    $notifyInApp = $user->preference('notify_warranty_expiring', true);
+                    $notifyInApp = $user->preference('notify_warranty_expiring', false);
                     $notifyEmail = $user->preference('email_notify_warranty_expiring', false);
 
                     if (! $notifyInApp && ! $notifyEmail) {

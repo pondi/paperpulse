@@ -153,6 +153,7 @@
             </h2>
             <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               {{ __('notification_preferences_description') }}
+              {{ __('expiry_reminder_window') }}
             </p>
           </header>
 
@@ -208,6 +209,30 @@
                     class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
+
+                <div class="flex items-center justify-between">
+                  <label for="notify_voucher_expiring" class="text-sm text-zinc-700 dark:text-zinc-300">
+                    {{ __('notify_voucher_expiring') }}
+                  </label>
+                  <input
+                    id="notify_voucher_expiring"
+                    v-model="form.notify_voucher_expiring"
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <label for="notify_warranty_expiring" class="text-sm text-zinc-700 dark:text-zinc-300">
+                    {{ __('notify_warranty_expiring') }}
+                  </label>
+                  <input
+                    id="notify_warranty_expiring"
+                    v-model="form.notify_warranty_expiring"
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                  />
+                </div>
               </div>
             </div>
 
@@ -258,6 +283,30 @@
                   <input
                     id="email_notify_scanner_import"
                     v-model="form.email_notify_scanner_import"
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <label for="email_notify_voucher_expiring" class="text-sm text-zinc-700 dark:text-zinc-300">
+                    {{ __('email_notify_voucher_expiring') }}
+                  </label>
+                  <input
+                    id="email_notify_voucher_expiring"
+                    v-model="form.email_notify_voucher_expiring"
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <label for="email_notify_warranty_expiring" class="text-sm text-zinc-700 dark:text-zinc-300">
+                    {{ __('email_notify_warranty_expiring') }}
+                  </label>
+                  <input
+                    id="email_notify_warranty_expiring"
+                    v-model="form.email_notify_warranty_expiring"
                     type="checkbox"
                     class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
@@ -478,6 +527,11 @@ const form = useForm({
   notify_bulk_complete: props.preferences.notify_bulk_complete ?? true,
   notify_scanner_import: props.preferences.notify_scanner_import ?? true,
   notify_weekly_summary_ready: props.preferences.notify_weekly_summary_ready ?? true,
+  notify_voucher_expiring: props.preferences.notify_voucher_expiring ?? false,
+  notify_warranty_expiring: props.preferences.notify_warranty_expiring ?? false,
+  email_notify_voucher_expiring: props.preferences.email_notify_voucher_expiring ?? false,
+  email_notify_warranty_expiring: props.preferences.email_notify_warranty_expiring ?? false,
+
   email_notify_processing_complete: props.preferences.email_notify_processing_complete ?? false,
   email_notify_processing_failed: props.preferences.email_notify_processing_failed ?? true,
   email_notify_bulk_complete: props.preferences.email_notify_bulk_complete ?? false,

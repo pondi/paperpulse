@@ -16,7 +16,7 @@ use Symfony\Component\Process\Process;
 it('uses inclusive local calendar dates for model UI search and reminders', function (int $offset, bool $expired, bool $expiring) {
     $this->travelTo(Carbon::parse('2026-10-02 22:30:00', 'UTC'));
     $user = User::factory()->create();
-    $user->preferences()->create(['timezone' => 'Europe/Oslo']);
+    $user->preferences()->create(['timezone' => 'Europe/Oslo', 'notify_voucher_expiring' => true, 'notify_warranty_expiring' => true]);
     $date = $user->currentDate()->addDays($offset)->toDateString();
     $voucher = Voucher::factory()->create(['user_id' => $user->id, 'expiry_date' => $date, 'is_redeemed' => false]);
     $warranty = Warranty::factory()->create(['user_id' => $user->id, 'warranty_end_date' => $date]);

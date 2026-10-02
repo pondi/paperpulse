@@ -55,3 +55,9 @@ Schedule::command('public-links:cleanup')->dailyAt('06:00')
 
 Schedule::command('files:recover-processing')->everyMinute()
     ->name('recover-file-processing-requests')->withoutOverlapping();
+
+Schedule::command('notify:expiring-vouchers --days=30')->dailyAt('08:00')->timezone('UTC')
+    ->name('notify-expiring-vouchers')->withoutOverlapping();
+
+Schedule::command('notify:expiring-warranties --days=30')->dailyAt('08:00')->timezone('UTC')
+    ->name('notify-expiring-warranties')->withoutOverlapping();

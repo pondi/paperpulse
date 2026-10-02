@@ -56,7 +56,7 @@ class NotifyExpiringVouchers extends Command
                         continue;
                     }
 
-                    $notifyInApp = $user->preference('notify_voucher_expiring', true);
+                    $notifyInApp = $user->preference('notify_voucher_expiring', false);
                     $notifyEmail = $user->preference('email_notify_voucher_expiring', false);
 
                     if (! $notifyInApp && ! $notifyEmail) {

@@ -30,7 +30,7 @@ class VoucherExpiringNotification extends TemplatedNotification
     {
         $channels = [];
 
-        if ($notifiable->preference('notify_voucher_expiring', true)) {
+        if ($notifiable->preference('notify_voucher_expiring', false)) {
             $channels[] = 'database';
             $channels[] = 'broadcast';
         }

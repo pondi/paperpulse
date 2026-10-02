@@ -160,6 +160,10 @@
           <div class="mt-6 space-y-6">
             <div class="space-y-4">
               <h3 class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ __('in_app_notifications') }}</h3>
+              <div class="flex items-center justify-between">
+                <label for="notify_weekly_summary_ready" class="text-sm text-zinc-700 dark:text-zinc-300">{{ __('notify_weekly_summary_ready') }}</label>
+                <input id="notify_weekly_summary_ready" v-model="form.notify_weekly_summary_ready" type="checkbox" class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500" />
+              </div>
               
               <div class="space-y-3">
                 <div class="flex items-center justify-between">
@@ -313,18 +317,18 @@
                 </div>
 
                 <div class="flex items-center justify-between">
-                  <label for="email_weekly_summary" class="text-sm text-zinc-700 dark:text-zinc-300">
-                    {{ __('email_weekly_summary') }}
+                  <label for="email_notify_weekly_summary" class="text-sm text-zinc-700 dark:text-zinc-300">
+                    {{ __('email_notify_weekly_summary') }}
                   </label>
                   <input
-                    id="email_weekly_summary"
-                    v-model="form.email_weekly_summary"
+                    id="email_notify_weekly_summary"
+                    v-model="form.email_notify_weekly_summary"
                     type="checkbox"
                     class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
-                <div v-if="form.email_weekly_summary">
+                <div v-if="form.email_notify_weekly_summary || form.notify_weekly_summary_ready">
                   <InputLabel for="weekly_summary_day" :value="__('weekly_summary_day')" />
                   <select
                     id="weekly_summary_day"
@@ -550,7 +554,6 @@ const form = useForm({
   email_notify_bulk_complete: props.preferences.email_notify_bulk_complete ?? false,
   email_notify_scanner_import: props.preferences.email_notify_scanner_import ?? false,
   email_notify_weekly_summary: props.preferences.email_notify_weekly_summary ?? false,
-  email_weekly_summary: props.preferences.email_weekly_summary ?? false,
   weekly_summary_day: props.preferences.weekly_summary_day || 'monday',
   receipt_list_view: props.preferences.receipt_list_view || 'grid',
   receipts_per_page: props.preferences.receipts_per_page || 20,

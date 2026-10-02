@@ -3,13 +3,9 @@
 namespace App\Jobs\Notifications;
 
 use App\Jobs\BaseJob;
-use App\Models\Receipt;
 use App\Models\User;
-use App\Notifications\WeeklySummary;
-use App\Services\MonetarySummaryService;
-use Exception;
+use App\Models\WeeklySummaryDelivery;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class SendWeeklySummary extends BaseJob
@@ -18,73 +14,28 @@ class SendWeeklySummary extends BaseJob
     {
         parent::__construct(Str::uuid());
         $this->jobName = 'Send Weekly Summary';
+        $this->onConnection('database');
     }
 
-    /**
-     * Execute the job's logic.
-     */
     protected function handleJob(): void
     {
-        Log::info('Starting weekly summary generation');
-
-        $today = Carbon::now();
-        $dayOfWeek = strtolower($today->englishDayOfWeek);
-
-        // Find users who want weekly summaries on this day
-        $usersForSummary = User::whereHas('preferences', function ($query) use ($dayOfWeek) {
-            $query->where('email_weekly_summary', true)
-                ->where('weekly_summary_day', $dayOfWeek);
-        })->with('preferences')->get();
-
-        Log::info('Found users for weekly summary', [
-            'count' => $usersForSummary->count(),
-            'day' => $dayOfWeek,
-        ]);
-
-        foreach ($usersForSummary as $user) {
-            try {
-                // Calculate date range for the past week
-                $startDate = $today->copy()->subWeek()->startOfDay();
-                $endDate = $today->copy()->endOfDay();
-
-                // Get receipts from the past week
-                $receipts = Receipt::where('user_id', $user->id)
-                    ->whereBetween('receipt_date', [$startDate, $endDate])
-                    ->with(['merchant', 'category'])
-                    ->get();
-
-                $totals = app(MonetarySummaryService::class)->aggregate($receipts, ['total' => 'total_amount'], 'receipt_date', $user->preference('currency', 'NOK'));
-
-                // Calculate summary statistics
-                $summaryData = [
-                    'user' => $user,
-                    'week_start' => $startDate,
-                    'week_end' => $endDate,
-                    'total_receipts' => $receipts->count(),
-                    'total_amount' => $totals['amounts']['total'],
-                    'currency' => $user->preference('currency', 'NOK'),
-                    'categories' => $receipts->groupBy('category.name')->map->count(),
-                    'merchants' => $receipts->groupBy('merchant.name')->map->count(),
-                    'average_amount' => $totals['amounts']['total'] === null ? null : ($receipts->count() > 0 ? $totals['amounts']['total'] / $receipts->count() : 0),
-                ];
-
-                // Send notification
-                $user->notify(new WeeklySummary($summaryData));
-
-                Log::info('Weekly summary sent', [
-                    'user_id' => $user->id,
-                    'receipts_count' => $summaryData['total_receipts'],
-                    'total_amount' => $summaryData['total_amount'],
-                ]);
-
-            } catch (Exception $e) {
-                Log::error('Failed to send weekly summary', [
-                    'user_id' => $user->id,
-                    'error' => $e->getMessage(),
-                ]);
+        User::query()->with('preferences')->chunkById(100, function ($users): void {
+            foreach ($users as $user) {
+                $today = Carbon::now($user->formattingPreferences()['timezone']);
+                if (strtolower($today->englishDayOfWeek) !== $user->preference('weekly_summary_day', 'monday') || $today->hour < 9
+                    || (! $user->preference('notify_weekly_summary_ready', true) && ! $user->preference('email_notify_weekly_summary', false))) {
+                    continue;
+                }
+                $user->getConnection()->transaction(function () use ($user, $today): void {
+                    User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+                    $delivery = WeeklySummaryDelivery::query()->firstOrCreate([
+                        'user_id' => $user->id, 'period_start' => $today->copy()->subWeek()->toDateString(), 'period_end' => $today->toDateString(),
+                    ]);
+                    if ($delivery->wasRecentlyCreated) {
+                        SendUserWeeklySummary::dispatch($delivery->id)->beforeCommit();
+                    }
+                });
             }
-        }
-
-        Log::info('Completed weekly summary generation');
+        });
     }
 }

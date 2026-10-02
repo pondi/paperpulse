@@ -221,7 +221,7 @@ return [
     'email_bulk_complete' => 'Email when bulk operation completes',
     'email_scanner_import' => 'Email when scanner imports files',
     'email_duplicate_detected' => 'Email when duplicate file is detected',
-    'email_weekly_summary' => 'Weekly summary email',
+    'email_notify_weekly_summary' => 'Weekly summary email',
     'weekly_summary_day' => 'Weekly summary day',
     'mark_all_read' => 'Mark all read',
     'clear_all' => 'Clear all',

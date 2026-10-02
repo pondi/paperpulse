@@ -28,8 +28,8 @@ Schedule::job(new CleanupRetainedFiles)->dailyAt('03:00')
     ->name('cleanup-retained-files')
     ->withoutOverlapping();
 
-// Schedule weekly summary emails daily at 9am (will check if it's the right day for each user)
-Schedule::job(new SendWeeklySummary)->dailyAt('09:00')
+// Check each user's local reporting day and time.
+Schedule::job(new SendWeeklySummary)->hourly()
     ->name('send-weekly-summaries')
     ->withoutOverlapping();
 

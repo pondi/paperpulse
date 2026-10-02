@@ -42,7 +42,6 @@ class UpdatePreferencesRequest extends FormRequest
             'email_notify_bulk_complete' => 'boolean',
             'email_notify_scanner_import' => 'boolean',
             'email_notify_weekly_summary' => 'boolean',
-            'email_weekly_summary' => 'boolean',
             'weekly_summary_day' => 'required|string|in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
 
             'receipt_list_view' => 'required|string|in:grid,list',

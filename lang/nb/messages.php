@@ -221,7 +221,7 @@ return [
     'email_bulk_complete' => 'E-post når masseoperasjon fullføres',
     'email_scanner_import' => 'E-post når skanner importerer filer',
     'email_duplicate_detected' => 'E-post når duplikatfil oppdages',
-    'email_weekly_summary' => 'Ukentlig sammendrag på e-post',
+    'email_notify_weekly_summary' => 'Ukentlig sammendrag på e-post',
     'weekly_summary_day' => 'Dag for ukentlig sammendrag',
     'mark_all_read' => 'Merk alle som lest',
     'clear_all' => 'Fjern alle',

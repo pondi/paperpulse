@@ -59,7 +59,7 @@ class EmailService
             Log::error('Failed to send email', [
                 'template' => $templateKey,
                 'to' => $to,
-                'error' => $e->getMessage(),
+                'exception' => $e::class,
             ]);
 
             return false;

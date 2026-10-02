@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\HtmlString;
+use InvalidArgumentException;
 
 class EmailTemplate extends Model
 {
@@ -41,7 +43,7 @@ class EmailTemplate extends Model
     public function render(array $variables = []): array
     {
         $subject = $this->renderString($this->subject, $variables);
-        $body = $this->renderString($this->body, $variables);
+        $body = $this->renderString($this->body, $variables, true);
 
         return [
             'subject' => $subject,
@@ -50,18 +52,37 @@ class EmailTemplate extends Model
     }
 
     /**
-     * Render a string with variables
+     * Only explicitly typed, generated summary/expiry fragments may contain HTML.
+     * Substituted URL attributes must resolve to absolute HTTP(S) URLs.
      */
-    protected function renderString(string $template, array $variables = []): string
+    protected function renderString(string $template, array $variables = [], bool $html = false): string
     {
-        $rendered = $template;
+        $replacements = [];
+        $plainReplacements = [];
 
         foreach ($variables as $key => $value) {
-            $placeholder = "{{ $key }}";
-            $rendered = str_replace($placeholder, (string) $value, $rendered);
+            $text = (string) $value;
+            $plainReplacements["{{ $key }}"] = $text;
+            $trustedHtml = $value instanceof HtmlString && in_array($key, ['categories_summary', 'merchants_summary', 'expires_info'], true);
+            $replacements["{{ $key }}"] = $html && ! $trustedHtml ? e($text) : $text;
         }
 
-        return $rendered;
+        if ($html) {
+            preg_match_all('/\b(?:href|src)\s*=\s*([\'"])(.*?)\1/is', $template, $attributes, PREG_SET_ORDER);
+            foreach ($attributes as $attribute) {
+                if (! str_contains($attribute[2], '{{ ')) {
+                    continue;
+                }
+                $url = html_entity_decode(strtr($attribute[2], $plainReplacements), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                if (! filter_var($url, FILTER_VALIDATE_URL) || ! in_array(strtolower((string) parse_url($url, PHP_URL_SCHEME)), ['http', 'https'], true)) {
+                    throw new InvalidArgumentException('Invalid email template URL');
+                }
+            }
+        }
+
+        $rendered = strtr($template, $replacements);
+
+        return $html ? $rendered : preg_replace('/[\r\n]+/', ' ', strip_tags($rendered));
     }
 
     /**
@@ -100,7 +121,7 @@ class EmailTemplate extends Model
     /**
      * Boot method to clear cache on save/delete
      */
-    protected static function boot()
+    protected static function boot(): void
     {
         parent::boot();
 

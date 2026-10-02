@@ -164,8 +164,7 @@ abstract class BaseMail extends Mailable implements ShouldQueue
     {
         Log::error('Email sending failed', [
             'template' => $this->templateKey,
-            'variables' => $this->templateVariables,
-            'error' => $exception->getMessage(),
+            'exception' => $exception::class,
         ]);
     }
 }

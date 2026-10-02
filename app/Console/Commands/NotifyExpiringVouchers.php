@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\NotificationHistory;
 use App\Models\Voucher;
-use App\Notifications\VoucherExpiringNotification;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -65,39 +64,16 @@ class NotifyExpiringVouchers extends Command
                         continue;
                     }
 
-                    $alreadyNotified = NotificationHistory::where('user_id', $user->id)
-                        ->where('notification_type', 'voucher_expiring')
-                        ->where('entity_type', 'voucher')
-                        ->where('entity_id', $voucher->id)
-                        ->exists();
-
-                    if ($alreadyNotified) {
-                        $skipped++;
-
-                        continue;
-                    }
-
                     $daysRemaining = (int) $baseDate->diffInDays(Carbon::parse($expiryDateString, $baseDate->getTimezone()));
-
-                    $user->notify(new VoucherExpiringNotification($voucher, $daysRemaining));
-
-                    NotificationHistory::create([
-                        'user_id' => $user->id,
-                        'notification_type' => 'voucher_expiring',
-                        'entity_type' => 'voucher',
-                        'entity_id' => $voucher->id,
-                        'notified_at' => now(),
-                        'meta' => [
-                            'expiry_date' => $expiryDate?->toDateString(),
-                            'days_remaining' => $daysRemaining,
-                        ],
-                    ]);
-
-                    $notified++;
+                    if (NotificationHistory::queueReminder($user, 'voucher', $voucher->id, $expiryDateString, $days, $daysRemaining)) {
+                        $notified++;
+                    } else {
+                        $skipped++;
+                    }
                 }
             });
 
-        $this->info("Sent {$notified} voucher expiring notifications.");
+        $this->info("Queued {$notified} voucher expiring notifications.");
 
         if ($skipped > 0) {
             $this->info("Skipped {$skipped} vouchers (preferences, missing user, or already notified).");

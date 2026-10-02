@@ -73,9 +73,11 @@ it('uses the selected channels and local expiry window for opted in users', func
     $this->artisan('notify:expiring-vouchers')->assertSuccessful();
     $this->artisan('notify:expiring-warranties')->assertSuccessful();
     Notification::assertSentTo($user, VoucherExpiringNotification::class,
-        fn ($notification, $actualChannels) => $actualChannels === $channels && $notification->toArray($user)['days_remaining'] === 0);
+        fn ($notification, $actualChannels) => count($actualChannels) === 1 && in_array($actualChannels[0], $channels, true) && $notification->toArray($user)['days_remaining'] === 0);
     Notification::assertSentTo($user, WarrantyEndingNotification::class,
-        fn ($notification, $actualChannels) => $actualChannels === $channels && $notification->toArray($user)['days_remaining'] === 0);
+        fn ($notification, $actualChannels) => count($actualChannels) === 1 && in_array($actualChannels[0], $channels, true) && $notification->toArray($user)['days_remaining'] === 0);
+    Notification::assertSentToTimes($user, VoucherExpiringNotification::class, count($channels));
+    Notification::assertSentToTimes($user, WarrantyEndingNotification::class, count($channels));
     expect((new VoucherExpiringNotification($voucher, 0))->via($user))->toBe($channels)
         ->and((new WarrantyEndingNotification($warranty, 0))->via($user))->toBe($channels);
 })->with([
@@ -105,7 +107,7 @@ it('delivers an opted in reminder through a database queue worker', function () 
     config(['queue.default' => 'database', 'cache.default' => 'database']);
     $this->artisan('notify:expiring-vouchers')->assertSuccessful();
     $this->assertDatabaseCount('notifications', 0);
-    $this->assertDatabaseCount('jobs', 2);
+    $this->assertDatabaseCount('jobs', 1);
     $this->artisan('queue:work', ['connection' => 'database', '--once' => true, '--sleep' => 0])->assertSuccessful();
     expect($user->notifications()->first()->data['type'])->toBe('voucher_expiring');
 });

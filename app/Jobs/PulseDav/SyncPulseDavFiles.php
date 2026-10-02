@@ -37,7 +37,7 @@ class SyncPulseDavFiles implements ShouldQueue
     {
         Log::info('Starting PulseDav file sync for all users');
 
-        User::query()->where(fn ($query) => $query->whereHas('pulseDavFiles')->orWhereHas('receipts'))->chunkById(100, function ($users) use ($pulseDavService): void {
+        User::query()->with('preferences')->chunkById(100, function ($users) use ($pulseDavService): void {
             foreach ($users as $user) {
                 try {
                     $synced = $pulseDavService->syncS3Files($user);

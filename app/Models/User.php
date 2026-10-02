@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Files\AccountDeletionService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -14,6 +15,20 @@ class User extends Authenticatable implements MustVerifyEmail
     use HasApiTokens;
     use HasFactory;
     use Notifiable;
+
+    protected static function booted(): void
+    {
+        static::deleting(fn (self $user) => app(AccountDeletionService::class)->prepare($user));
+    }
+
+    public function delete(): ?bool
+    {
+        return $this->getConnection()->transaction(function (): ?bool {
+            static::query()->whereKey($this->getKey())->lockForUpdate()->firstOrFail();
+
+            return parent::delete();
+        });
+    }
 
     /**
      * The attributes that are mass assignable.

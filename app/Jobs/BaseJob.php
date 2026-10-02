@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\File;
 use App\Models\JobHistory;
+use App\Models\User;
 use App\Services\Jobs\JobMetadataPersistence;
 use App\Services\Jobs\JobParentStatusCalculator;
 use Illuminate\Bus\Queueable;
@@ -121,6 +122,30 @@ abstract class BaseJob implements ShouldQueue
      */
     final public function handle(): void
     {
+        $metadata = $this->getMetadata();
+        $ownerId = $metadata['userId'] ?? ($this->pulseDavFile->user_id ?? null);
+        if ($ownerId !== null) {
+            (new User)->getConnection()->transaction(function () use ($ownerId): void {
+                if (! User::query()->whereKey($ownerId)->sharedLock()->first()) {
+                    $this->delete();
+
+                    return;
+                }
+                $this->execute();
+            });
+
+            return;
+        }
+        $this->execute();
+    }
+
+    protected function execute(): void
+    {
+        if (JobHistory::query()->whereIn('uuid', [$this->uuid, $this->jobID])->where('status', 'cancelled')->exists()) {
+            $this->delete();
+
+            return;
+        }
         if (empty($this->jobID)) {
             Log::error('JobID is empty in handle', [
                 'class' => static::class,
@@ -334,6 +359,11 @@ abstract class BaseJob implements ShouldQueue
      */
     public function failed(Throwable $exception): void
     {
+        $ownerId = $this->getMetadata()['userId'] ?? null;
+        if (($ownerId !== null && ! User::query()->whereKey($ownerId)->exists())
+            || JobHistory::query()->where('uuid', $this->jobID)->where('status', 'cancelled')->exists()) {
+            return;
+        }
         // Prevent double-handling of failures
         if ($this->failureHandled) {
             return;

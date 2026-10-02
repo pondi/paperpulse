@@ -7,6 +7,7 @@ use App\Models\FileCleanupManifest;
 use App\Services\StorageService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
 
@@ -45,7 +46,10 @@ class FileCleanupService
                     }
                     try {
                         if (! $this->hasLiveReference($object['path'])) {
-                            if (! $this->storage->deleteFile($object['path'])) {
+                            $deleted = isset($object['disk'])
+                                ? (! Storage::disk($object['disk'])->exists($object['path']) || Storage::disk($object['disk'])->delete($object['path']))
+                                : $this->storage->deleteFile($object['path']);
+                            if (! $deleted) {
                                 throw new RuntimeException('Storage refused deletion: '.$object['path']);
                             }
                             $objectsDeleted++;

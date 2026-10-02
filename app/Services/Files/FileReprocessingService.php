@@ -4,6 +4,7 @@ namespace App\Services\Files;
 
 use App\Models\File;
 use App\Models\FileShare;
+use App\Models\JobHistory;
 use App\Services\Jobs\JobHistoryCreator;
 use App\Services\Jobs\JobMetadataPersistence;
 use App\Services\StorageService;
@@ -254,7 +255,10 @@ class FileReprocessingService
      */
     protected function prepareReprocessingMetadata(File $file, string $jobId, string $jobName): array
     {
-        return [
+        $previousMetadata = JobHistory::query()->where('file_id', $file->id)
+            ->whereNull('parent_uuid')->latest('id')->value('metadata') ?? [];
+
+        return array_intersect_key($previousMetadata, array_flip(['processingProvider', 'pipeline'])) + [
             'fileId' => $file->id,
             'fileGuid' => $file->guid,
             'fileName' => $file->fileName,

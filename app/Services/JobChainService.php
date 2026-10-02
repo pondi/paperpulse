@@ -2,260 +2,115 @@
 
 namespace App\Services;
 
+use App\Jobs\BankStatements\ProcessCsvImport;
+use App\Jobs\BaseJob;
 use App\Jobs\Documents\AnalyzeDocument;
 use App\Jobs\Documents\ProcessDocument;
+use App\Jobs\Files\ConvertOfficeFile;
 use App\Jobs\Files\ProcessFile;
+use App\Jobs\Files\ProcessFileGemini;
 use App\Jobs\Maintenance\DeleteWorkingFiles;
+use App\Jobs\PulseDav\UpdatePulseDavFileStatus;
 use App\Jobs\Receipts\MatchMerchant;
 use App\Jobs\Receipts\ProcessReceipt;
 use App\Jobs\System\ApplyTags;
 use App\Models\File;
+use App\Models\FileConversion;
 use App\Models\JobHistory;
-use App\Models\Receipt;
-use App\Services\Jobs\JobMetadataPersistence;
-use Exception;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
+use Throwable;
 
 class JobChainService
 {
-    /**
-     * Restart a failed job chain from the point of failure
-     */
     public function restartJobChain(string $jobId): array
     {
         try {
-            Log::info('Starting job chain restart', ['job_id' => $jobId]);
-
-            // Get the parent job and all its tasks
-            $parentJob = JobHistory::where('uuid', $jobId)->first();
-            if (! $parentJob) {
-                throw new Exception("Job chain not found: {$jobId}");
+            $parent = JobHistory::query()->where('uuid', $jobId)->whereNull('parent_uuid')->first();
+            if (! $parent) {
+                throw new RuntimeException("Job chain not found: {$jobId}");
             }
 
-            $tasks = $parentJob->tasks()->orderBy('order_in_chain')->get();
-
-            // Find the first failed task or the last incomplete task
-            $restartPoint = $this->findRestartPoint($tasks);
-
-            if (! $restartPoint) {
-                throw new Exception('No restart point found - all tasks may already be completed');
+            $metadata = $parent->metadata ?? [];
+            $plan = $metadata['plannedSteps'] ?? [];
+            if (! isset($metadata['fileId'], $metadata['userId'], $metadata['pipeline'], $metadata['processingGeneration']) || ! $plan) {
+                throw new RuntimeException('Job chain is missing durable source or pipeline context.');
+            }
+            if (! in_array($metadata['pipeline'], ['gemini', 'textract+openai', 'ocr-only', 'csv'], true)) {
+                throw new RuntimeException('Unsupported processing pipeline.');
+            }
+            $file = File::withoutGlobalScope('user')->where('user_id', $metadata['userId'])->find($metadata['fileId']);
+            if (! $file || (int) $parent->file_id !== (int) $file->id || ($file->meta['processing_generation'] ?? null) !== $metadata['processingGeneration']) {
+                throw new RuntimeException('Job chain source is missing, foreign or superseded.');
             }
 
-            // Get file metadata from cache or rebuild it
-            $fileMetadata = $this->getOrRebuildFileMetadata($jobId, $parentJob);
-            if (! $fileMetadata) {
-                throw new Exception('Could not retrieve file metadata for job chain restart');
+            $tasks = $parent->tasks()->get()->keyBy('uuid');
+            $restartIndex = collect($plan)->search(fn (array $step): bool => $tasks->get($step['uuid'])?->status === 'failed');
+            if ($restartIndex === false) {
+                $restartIndex = collect($plan)->search(fn (array $step): bool => $tasks->get($step['uuid'])?->status !== 'completed');
+            }
+            if ($restartIndex === false) {
+                throw new RuntimeException('No restart point found - all tasks are completed.');
             }
 
-            // Build the job chain from the restart point
-            $newJobChain = $this->buildJobChainFromRestartPoint($restartPoint, $fileMetadata, $jobId);
-
-            if (empty($newJobChain)) {
-                throw new Exception('No jobs to restart');
+            $remaining = array_slice($plan, $restartIndex);
+            $jobs = [];
+            foreach ($remaining as $step) {
+                $job = $this->restoreStep($step, $jobId, $metadata, $file);
+                $job->uuid = $step['uuid'];
+                $job->onQueue($tasks->get($step['uuid'])?->queue ?? $parent->queue);
+                $jobs[] = $job;
             }
 
-            // Dispatch the new job chain
-            $queue = $fileMetadata['fileType'] === 'receipt' ? 'receipts' : 'documents';
-            Bus::chain($newJobChain)->onQueue($queue)->dispatch();
-
-            Log::info('Job chain restarted successfully', [
-                'job_id' => $jobId,
-                'restart_point' => $restartPoint['name'],
-                'jobs_count' => count($newJobChain),
+            $parent->tasks()->whereIn('uuid', array_column($remaining, 'uuid'))->where('status', '!=', 'completed')->update([
+                'status' => 'pending', 'progress' => 0, 'exception' => null, 'started_at' => null, 'finished_at' => null,
             ]);
+            $parent->update(['status' => 'pending', 'exception' => null, 'finished_at' => null]);
+            Bus::chain($jobs)->dispatch();
 
             return [
                 'success' => true,
-                'message' => "Job chain restarted from {$restartPoint['name']}",
-                'restart_point' => $restartPoint['name'],
-                'jobs_count' => count($newJobChain),
+                'message' => 'Job chain restarted from '.class_basename($remaining[0]['class']),
+                'restart_point' => class_basename($remaining[0]['class']),
+                'jobs_count' => count($jobs),
             ];
+        } catch (Throwable $exception) {
+            Log::error('Job chain restart failed', ['job_id' => $jobId, 'error' => $exception->getMessage()]);
 
-        } catch (Exception $e) {
-            Log::error('Job chain restart failed', [
-                'job_id' => $jobId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return [
-                'success' => false,
-                'message' => $e->getMessage(),
-            ];
+            return ['success' => false, 'message' => $exception->getMessage()];
         }
     }
 
-    /**
-     * Find the point from which to restart the job chain
-     */
-    protected function findRestartPoint($tasks): ?array
+    private function restoreStep(array $step, string $jobId, array $metadata, File $file): BaseJob
     {
-        foreach ($tasks as $task) {
-            if ($task->status === 'failed') {
-                return [
-                    'name' => $task->name,
-                    'order' => $task->order_in_chain,
-                    'uuid' => $task->uuid,
-                ];
-            }
-        }
-
-        // If no failed task, find the first incomplete task
-        foreach ($tasks as $task) {
-            if ($task->status !== 'completed') {
-                return [
-                    'name' => $task->name,
-                    'order' => $task->order_in_chain,
-                    'uuid' => $task->uuid,
-                ];
-            }
-        }
-
-        return null;
+        return match ($step['class']) {
+            ProcessFile::class => new ProcessFile($jobId),
+            ProcessFileGemini::class => new ProcessFileGemini($jobId),
+            ProcessReceipt::class => new ProcessReceipt($jobId),
+            MatchMerchant::class => new MatchMerchant($jobId),
+            ProcessDocument::class => new ProcessDocument($jobId),
+            AnalyzeDocument::class => new AnalyzeDocument($jobId),
+            ProcessCsvImport::class => new ProcessCsvImport($jobId, $file->id),
+            ApplyTags::class => new ApplyTags($jobId, $file, $metadata['metadata']['tagIds']),
+            DeleteWorkingFiles::class => new DeleteWorkingFiles($jobId),
+            UpdatePulseDavFileStatus::class => new UpdatePulseDavFileStatus($jobId, $file->id, $metadata['metadata']['pulseDavFileId'], $metadata['fileType']),
+            ConvertOfficeFile::class => $this->restoreConversion($step, $jobId, $file),
+            default => throw new RuntimeException('Unsupported job in the stored pipeline.'),
+        };
     }
 
-    /**
-     * Get file metadata from cache or database
-     */
-    protected function getOrRebuildFileMetadata(string $jobId, JobHistory $parentJob): ?array
+    private function restoreConversion(array $step, string $jobId, File $file): ConvertOfficeFile
     {
-        // Use the persistence service to get metadata
-        $metadata = JobMetadataPersistence::retrieve($jobId);
-
-        if ($metadata) {
-            return $metadata;
+        $conversions = FileConversion::query()->where('file_id', $file->id)->where('metadata->chain_id', $jobId)->get();
+        $conversion = $conversions->sole();
+        $job = unserialize(base64_decode($conversion->metadata['resume_payload'], true), ['allowed_classes' => [ConvertOfficeFile::class]]);
+        if (! $job instanceof ConvertOfficeFile || $job->uuid !== $step['uuid'] || $job->jobID !== $jobId) {
+            throw new RuntimeException('Conversion resume context does not match the stored pipeline.');
         }
+        $job->chained = [];
 
-        Log::info('File metadata not found, attempting to rebuild', ['job_id' => $jobId]);
-
-        // Try to rebuild from database as fallback for legacy jobs
-        return $this->rebuildFileMetadata($jobId, $parentJob);
-    }
-
-    /**
-     * Rebuild file metadata from database records
-     */
-    protected function rebuildFileMetadata(string $jobId, JobHistory $parentJob): ?array
-    {
-        try {
-            // Multiple strategies to find the file
-            $file = null;
-
-            // Strategy 1: Try to find by exact job_id in metadata (if stored)
-            if ($parentJob->metadata && isset($parentJob->metadata['file_id'])) {
-                $file = File::find($parentJob->metadata['file_id']);
-            }
-
-            // Strategy 2: Search by parent job timestamp and user
-            if (! $file) {
-                // Get user_id from the first task if available
-                $firstTask = $parentJob->tasks()->orderBy('order_in_chain')->first();
-                $userId = null;
-                if ($firstTask && $firstTask->metadata && isset($firstTask->metadata['user_id'])) {
-                    $userId = $firstTask->metadata['user_id'];
-                }
-
-                // Find files created around the same time
-                $query = File::whereBetween('created_at', [
-                    $parentJob->created_at->subSeconds(30),
-                    $parentJob->created_at->addMinutes(2),
-                ]);
-
-                if ($userId) {
-                    $query->where('user_id', $userId);
-                }
-
-                $file = $query->orderBy('created_at', 'desc')->first();
-            }
-
-            // Strategy 3: Try to find via receipt relationship
-            if (! $file) {
-                $receipt = Receipt::whereBetween('created_at', [
-                    $parentJob->created_at,
-                    $parentJob->created_at->addMinutes(5),
-                ])->first();
-
-                if ($receipt) {
-                    $file = $receipt->file;
-                }
-            }
-
-            // Strategy 4: Find the most recent file that matches the time window
-            if (! $file) {
-                $file = File::whereBetween('created_at', [
-                    $parentJob->created_at->subMinutes(10),
-                    $parentJob->created_at->addMinutes(10),
-                ])->orderBy('created_at', 'desc')->first();
-            }
-
-            if (! $file) {
-                Log::warning('Could not find file for job chain restart', ['job_id' => $jobId]);
-
-                return null;
-            }
-
-            // Rebuild the metadata
-            // Try to preserve original tag IDs from parent job metadata
-            $originalMetadata = $parentJob->metadata['metadata'] ?? [];
-            $tagIds = $originalMetadata['tagIds'] ?? [];
-
-            $metadata = [
-                'fileId' => $file->id,
-                'fileGuid' => $file->guid,
-                'fileName' => $file->fileName,
-                'filePath' => storage_path('app/uploads/'.$file->guid.'.'.$file->fileExtension),
-                'fileExtension' => $file->fileExtension,
-                'fileSize' => $file->fileSize,
-                'fileType' => $file->file_type,
-                'userId' => $file->user_id,
-                's3OriginalPath' => $file->s3_original_path,
-                'jobName' => $parentJob->name ?? 'Restarted Job',
-                'metadata' => array_merge($file->meta ?? [], [
-                    'tagIds' => $tagIds,
-                    'source' => $originalMetadata['source'] ?? 'upload',
-                ]),
-            ];
-
-            // Cache the rebuilt metadata
-            JobMetadataPersistence::store($jobId, $metadata);
-
-            Log::info('File metadata rebuilt successfully', [
-                'job_id' => $jobId,
-                'file_id' => $file->id,
-                'file_guid' => $file->guid,
-            ]);
-
-            return $metadata;
-
-        } catch (Exception $e) {
-            Log::error('Failed to rebuild file metadata', [
-                'job_id' => $jobId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return null;
-        }
-    }
-
-    /**
-     * Build a new job chain starting from the restart point
-     */
-    protected function buildJobChainFromRestartPoint(array $restartPoint, array $fileMetadata, string $jobId): array
-    {
-        $fileType = $fileMetadata['fileType'];
-        $queue = $fileType === 'receipt' ? 'receipts' : 'documents';
-
-        // Normalize job name for comparison (handle both with and without spaces)
-        $jobName = str_replace(' ', '', $restartPoint['name']);
-
-        $jobs = $this->buildCoreRestartJobs($jobName, $fileType, $queue, $jobId);
-
-        $this->appendTagJobs($jobs, $fileMetadata, $queue, $jobId);
-        $this->appendCleanupJob($jobs, $queue, $jobId);
-
-        return $jobs;
+        return $job;
     }
 
     /**
@@ -313,98 +168,5 @@ class JobChainService
         }
 
         return $results;
-    }
-
-    /**
-     * Build the primary job sequence for a restarted chain.
-     */
-    protected function buildCoreRestartJobs(string $jobName, string $fileType, string $queue, string $jobId): array
-    {
-        $jobs = [];
-
-        switch ($jobName) {
-            case 'ProcessFile':
-                $jobs[] = (new ProcessFile($jobId))->onQueue($queue);
-
-                if ($fileType === 'receipt') {
-                    $jobs[] = (new ProcessReceipt($jobId))->onQueue($queue);
-                    $jobs[] = (new MatchMerchant($jobId))->onQueue($queue);
-                } else {
-                    $jobs[] = (new ProcessDocument($jobId))->onQueue($queue);
-                    $jobs[] = (new AnalyzeDocument($jobId))->onQueue($queue);
-                }
-                break;
-
-            case 'ProcessReceipt':
-                if ($fileType === 'receipt') {
-                    $jobs[] = (new ProcessReceipt($jobId))->onQueue($queue);
-                    $jobs[] = (new MatchMerchant($jobId))->onQueue($queue);
-                }
-                break;
-
-            case 'ProcessDocument':
-                if ($fileType === 'document') {
-                    $jobs[] = (new ProcessDocument($jobId))->onQueue($queue);
-                    $jobs[] = (new AnalyzeDocument($jobId))->onQueue($queue);
-                }
-                break;
-
-            case 'MatchMerchant':
-                if ($fileType === 'receipt') {
-                    $receiptData = Cache::get("job.{$jobId}.receiptMetaData");
-                    if ($receiptData) {
-                        $jobs[] = (new MatchMerchant(
-                            $jobId,
-                            $receiptData['receiptId'],
-                            $receiptData['merchantName'] ?? '',
-                            $receiptData['merchantAddress'] ?? '',
-                            $receiptData['merchantVatID'] ?? ''
-                        ))->onQueue($queue);
-                    } else {
-                        Log::warning('Cannot restart MatchMerchant without receipt data', ['job_id' => $jobId]);
-                    }
-                }
-                break;
-
-            case 'AnalyzeDocument':
-                if ($fileType === 'document') {
-                    $jobs[] = (new AnalyzeDocument($jobId))->onQueue($queue);
-                }
-                break;
-
-            case 'ApplyTags':
-                // Tags will be re-applied at the end of the chain
-                break;
-        }
-
-        return $jobs;
-    }
-
-    /**
-     * Append tag application job when needed.
-     */
-    protected function appendTagJobs(array &$jobs, array $fileMetadata, string $queue, string $jobId): void
-    {
-        $tagIds = $fileMetadata['metadata']['tagIds'] ?? [];
-        if (empty($tagIds) || ! isset($fileMetadata['fileId'])) {
-            return;
-        }
-
-        $file = File::find($fileMetadata['fileId']);
-        if ($file) {
-            $jobs[] = (new ApplyTags($jobId, $file, $tagIds))->onQueue($queue);
-        }
-    }
-
-    /**
-     * Always append cleanup job at the end of a rebuilt chain.
-     */
-    protected function appendCleanupJob(array &$jobs, string $queue, string $jobId): void
-    {
-        if (empty($jobs)) {
-            return;
-        }
-
-        $jobs[] = (new DeleteWorkingFiles($jobId))->onQueue($queue);
     }
 }

@@ -180,7 +180,7 @@ const loadOpenCV = () => {
     return;
   }
   const script = document.createElement('script');
-  script.src = '/vendor/opencv.js?v=2';
+  script.src = '/vendor/opencv.js?v=3';
   script.async = true;
   script.onload = () => {
     if (window.cv && window.cv.getBuildInformation) {

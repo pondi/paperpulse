@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use Symfony\Component\Process\Process;
 
 it('includes content-security-policy header on web responses', function () {
     $user = User::factory()->create();
@@ -87,4 +88,73 @@ it('includes bunny fonts in style-src and font-src', function () {
 
     expect($csp)
         ->toContain('fonts.bunny.net');
+});
+
+it('permits the configured production websocket and wasm without JavaScript eval', function (string $scheme, string $websocket) {
+    app()->detectEnvironment(fn () => 'production');
+    config([
+        'broadcasting.connections.reverb.key' => 'public-key',
+        'broadcasting.connections.reverb.options.host' => 'notifications.example.com',
+        'broadcasting.connections.reverb.options.port' => 8443,
+        'broadcasting.connections.reverb.options.scheme' => $scheme,
+    ]);
+    $user = User::factory()->create();
+    $response = $this->actingAs($user)->get(route('scanner'));
+    $csp = $response->headers->get('Content-Security-Policy');
+
+    expect($csp)->toContain($websocket.'://notifications.example.com:8443')
+        ->toContain("'wasm-unsafe-eval'")
+        ->not->toContain("'unsafe-eval'", 'localhost', 'wss://*', 'ws://*');
+})->with([['https', 'wss'], ['http', 'ws']]);
+
+it('does not permit unconfigured production websocket origins', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['broadcasting.connections.reverb.key' => null]);
+    $response = $this->actingAs(User::factory()->create())->get(route('scanner'));
+
+    expect($response->headers->get('Content-Security-Policy'))->not->toContain('wss://', 'ws://');
+});
+
+it('starts the shipped scanner runtime with dynamic JavaScript disabled', function () {
+    $script = <<<'JS'
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const context = vm.createContext({
+    module: { exports: {} }, require, process, __dirname: process.cwd() + '/public/vendor',
+    setTimeout, clearTimeout, console, Buffer,
+}, { codeGeneration: { strings: false, wasm: true } });
+vm.runInContext(fs.readFileSync('public/vendor/opencv.js', 'utf8'), context);
+const cv = context.module.exports;
+let initialized = false;
+process.on('exit', () => assert.equal(initialized, true));
+cv.onRuntimeInitialized = () => {
+    initialized = true;
+    const source = cv.Mat.ones(8, 8, cv.CV_8UC4);
+    const gray = new cv.Mat();
+    try {
+        cv.cvtColor(source, gray, cv.COLOR_RGBA2GRAY);
+        assert.equal(gray.rows, 8);
+        assert.equal(gray.cols, 8);
+        const points = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, 7, 0, 7, 7, 0, 7]);
+        const transform = cv.getPerspectiveTransform(points, points);
+        const output = new cv.Mat();
+        try {
+            cv.warpPerspective(source, output, transform, new cv.Size(8, 8));
+            assert.equal(output.rows, 8);
+        } finally {
+            points.delete();
+            transform.delete();
+            output.delete();
+        }
+    } finally {
+        source.delete();
+        gray.delete();
+    }
+};
+JS;
+    $process = new Process(['node', '-e', $script], base_path());
+    $process->setTimeout(30)->run();
+
+    expect($process->isSuccessful())->toBeTrue(substr($process->getErrorOutput(), -1500));
 });

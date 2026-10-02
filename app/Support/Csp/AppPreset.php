@@ -16,7 +16,7 @@ class AppPreset implements Preset
     {
         $policy
             ->add(Directive::DEFAULT, Keyword::SELF)
-            ->add(Directive::SCRIPT, Keyword::SELF)
+            ->add(Directive::SCRIPT, [Keyword::SELF, Keyword::UNSAFE_WEB_ASSEMBLY_EXECUTION])
             ->addNonce(Directive::SCRIPT)
             ->add(Directive::STYLE, Keyword::SELF)
             ->add(Directive::STYLE_ATTR, Keyword::UNSAFE_INLINE)
@@ -30,6 +30,12 @@ class AppPreset implements Preset
             ->add(Directive::FORM_ACTION, Keyword::SELF)
             ->add(Directive::FRAME_ANCESTORS, Keyword::SELF)
             ->add(Directive::UPGRADE_INSECURE_REQUESTS, Value::NO_VALUE);
+
+        if (config('broadcasting.connections.reverb.key')) {
+            $options = config('broadcasting.connections.reverb.options');
+            $scheme = $options['scheme'] === 'https' ? 'wss' : 'ws';
+            $policy->add(Directive::CONNECT, $scheme.'://'.$options['host'].':'.$options['port']);
+        }
 
         if (app()->environment('local')) {
             $this->configureLocalEnvironment($policy);

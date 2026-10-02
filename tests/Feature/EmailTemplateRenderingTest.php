@@ -2,7 +2,6 @@
 
 use App\Mail\TemplatedMail;
 use App\Models\EmailTemplate;
-use App\Services\EmailService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\HtmlString;
 
@@ -65,7 +64,7 @@ it('uses the same safe rendering in previews and mail and redacts failure variab
         'subject' => 'Hello {{ user_name }}', 'body' => '<p>{{ user_name }}</p>',
     ]);
     $variables = ['user_name' => '<script>secret</script>'];
-    $preview = app(EmailService::class)->previewTemplate('safe_test', $variables);
+    $preview = EmailTemplate::getByKey('safe_test')->render($variables);
     $mail = new TemplatedMail('safe_test', $variables);
 
     expect($preview['body'])->toBe('<p>&lt;script&gt;secret&lt;/script&gt;</p>')

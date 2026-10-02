@@ -53,7 +53,7 @@
                             </p>
                         </div>
                         <div class="text-right">
-                            <p v-if="voucher.current_value" class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                            <p v-if="voucher.current_value !== null" class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                                 {{ formatCurrency(voucher.current_value, voucher.currency) }}
                             </p>
                             <p class="text-xs text-amber-700 dark:text-amber-300">

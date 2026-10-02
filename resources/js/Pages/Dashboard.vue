@@ -1,15 +1,14 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import ExpiringVouchersWidget from '@/Components/Widgets/ExpiringVouchersWidget.vue';
+import EndingWarrantiesWidget from '@/Components/Widgets/EndingWarrantiesWidget.vue';
 import { useTranslations } from '@/Composables/useTranslations';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 const props = defineProps({
-    receipts: {
-        type: Array,
-        default: () => []
-    },
+    expiringVouchers: { type: Object, required: true },
+    endingWarranties: { type: Object, required: true },
     totalAmount: {
         type: Number,
         default: 0
@@ -66,9 +65,14 @@ const { formatDate, formatCurrency } = useDateFormatter();
                     <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-200 sm:rounded-lg p-6 border-l-4 border-amber-500 dark:border-amber-400">
                         <div class="text-sm font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider mb-2">{{ __('average_receipt_amount') }}</div>
                         <div class="text-3xl font-black text-zinc-900 dark:text-zinc-100">
-                            {{ formatCurrency(receiptCount ? totalAmount / receiptCount : 0) }}
+                            {{ formatCurrency(totalAmount === null ? null : (receiptCount ? totalAmount / receiptCount : 0)) }}
                         </div>
                     </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
+                    <ExpiringVouchersWidget :items="expiringVouchers.items" :total-count="expiringVouchers.total" />
+                    <EndingWarrantiesWidget :items="endingWarranties.items" :total-count="endingWarranties.total" />
                 </div>
 
                 <!-- Recent Receipts -->

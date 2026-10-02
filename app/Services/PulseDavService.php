@@ -2,11 +2,10 @@
 
 namespace App\Services;
 
-use App\Jobs\PulseDav\ProcessPulseDavFile;
 use App\Models\PulseDavFile;
 use App\Models\User;
+use App\Services\PulseDav\ImportService;
 use App\Services\PulseDav\PulseDavFolderService;
-use App\Services\PulseDav\ScannerImportNotifier;
 use App\Services\PulseDav\SelectionImportService;
 use App\Services\PulseDav\Support\FolderHierarchyBuilder;
 use App\Services\PulseDav\Support\PathHelper;
@@ -67,9 +66,6 @@ class PulseDavService
                 $synced++;
             }
         }
-
-        // Notify if preference allows
-        ScannerImportNotifier::maybeNotify($user, $synced);
 
         return $synced;
     }
@@ -150,13 +146,7 @@ class PulseDavService
 
         $queued = 0;
         foreach ($files as $file) {
-            // Update file type before processing
-            $file->update(['file_type' => $fileType]);
-
-            // Dispatch job to process this file
-            ProcessPulseDavFile::dispatch($file);
-            $file->markAsProcessing();
-            $queued++;
+            $queued += (int) ImportService::importFile($file, null, $fileType);
         }
 
         return $queued;

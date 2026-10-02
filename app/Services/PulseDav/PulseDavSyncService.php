@@ -5,7 +5,6 @@ namespace App\Services\PulseDav;
 use App\Contracts\Services\PulseDavSyncContract;
 use App\Models\PulseDavFile;
 use App\Models\User;
-use App\Notifications\ScannerFilesImported;
 use App\Services\PulseDav\Support\PathHelper;
 use App\Services\PulseDav\Support\S3ListService;
 use Exception;
@@ -62,20 +61,6 @@ class PulseDavSyncService implements PulseDavSyncContract
                     'file_type' => config('paperpulse.default_pulsedav_type', 'receipt'),
                 ]);
                 $synced++;
-            }
-        }
-
-        // Send notification if files were synced
-        if ($synced > 0 && $user->preferences) {
-            if ($user->preferences->notify_scanner_import) {
-                try {
-                    $user->notify(new ScannerFilesImported($synced));
-                } catch (Exception $e) {
-                    Log::warning('[PulseDavSync] Failed to send scanner import notification', [
-                        'user_id' => $user->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
             }
         }
 

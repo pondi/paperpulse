@@ -3,7 +3,6 @@
 namespace App\Services\PulseDav;
 
 use App\Contracts\Services\PulseDavFileContract;
-use App\Jobs\PulseDav\ProcessPulseDavFile;
 use App\Models\PulseDavFile;
 use App\Models\User;
 use Exception;
@@ -90,13 +89,7 @@ class PulseDavFileService implements PulseDavFileContract
 
         $queued = 0;
         foreach ($files as $file) {
-            // Update file type before processing
-            $file->update(['file_type' => $fileType]);
-
-            // Dispatch job to process this file
-            ProcessPulseDavFile::dispatch($file);
-            $file->markAsProcessing();
-            $queued++;
+            $queued += (int) ImportService::importFile($file, null, $fileType);
 
             Log::info('[PulseDavFile] File queued for processing', [
                 'file_id' => $file->id,

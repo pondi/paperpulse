@@ -31,10 +31,14 @@ class PulseDavFile extends Model
         'is_folder',
         'folder_tag_ids',
         'import_batch_id',
+        'file_id',
+        'job_id',
+        'claim_until',
     ];
 
     protected $casts = [
         'uploaded_at' => 'datetime',
+        'claim_until' => 'datetime',
         'processed_at' => 'datetime',
         'deleted_at' => 'datetime',
         'is_folder' => 'boolean',

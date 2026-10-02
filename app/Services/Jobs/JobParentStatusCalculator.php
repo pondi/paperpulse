@@ -4,6 +4,7 @@ namespace App\Services\Jobs;
 
 use App\Models\JobHistory;
 use App\Services\BulkUpload\BulkUploadService;
+use App\Services\PulseDav\ImportService;
 
 class JobParentStatusCalculator
 {
@@ -48,5 +49,6 @@ class JobParentStatusCalculator
             'finished_at' => in_array($status, ['completed', 'failed'], true) ? now() : null,
         ]);
         app(BulkUploadService::class)->reconcileJob($parentUuid);
+        ImportService::reconcileJob($parentUuid);
     }
 }

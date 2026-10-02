@@ -98,8 +98,9 @@ it('counts imports and deletes only the exact owned folder and descendants', fun
     expect($this->service->getFolderStats($this->user, '/'.$folderPath.'/')['total_files'])->toBe(2)
         ->and($this->service->getUserFolders($this->user)[0]['file_count'])->toBe(2);
     $result = SelectionImportService::importSelected($this->user, [['s3_path' => $folder->s3_path]]);
-    expect($result['imported'])->toBe(1);
+    expect($result['imported'])->toBe(2);
     Bus::assertDispatchedTimes(ProcessPulseDavFile::class, 2);
+    expect($this->service->getFolderStats($this->user, $folderPath)['pending_files'])->toBe(2);
     expect($files[2]->fresh()->status)->toBe('pending')->and($files[3]->fresh()->status)->toBe('pending');
 
     expect($this->service->deleteFolder($this->user, '/'.$folderPath.'/'))->toBe(3);

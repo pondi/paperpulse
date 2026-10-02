@@ -209,8 +209,8 @@ class PulseDavFolderService implements PulseDavFolderContract
 
         $stats = [
             'total_files' => $query->clone()->filesOnly()->count(),
-            'pending_files' => $query->clone()->filesOnly()->where('status', 'pending')->count(),
-            'processing_files' => $query->clone()->filesOnly()->where('status', 'processing')->count(),
+            'pending_files' => $query->clone()->filesOnly()->whereIn('status', ['pending', 'queued'])->count(),
+            'processing_files' => $query->clone()->filesOnly()->whereIn('status', ['processing', 'handed_off'])->count(),
             'completed_files' => $query->clone()->filesOnly()->where('status', 'completed')->count(),
             'failed_files' => $query->clone()->filesOnly()->where('status', 'failed')->count(),
             'total_folders' => $query->clone()->foldersOnly()->count(),

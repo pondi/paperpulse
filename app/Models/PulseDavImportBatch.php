@@ -17,10 +17,14 @@ class PulseDavImportBatch extends Model
         'file_count',
         'tag_ids',
         'notes',
+        'completed_count',
+        'failed_count',
+        'notified_at',
     ];
 
     protected $casts = [
         'imported_at' => 'datetime',
+        'notified_at' => 'datetime',
         'tag_ids' => 'array',
         'file_count' => 'integer',
     ];

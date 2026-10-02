@@ -857,6 +857,8 @@ const formatDate = (dateString) => {
 const getStatusClass = (status) => {
     const classes = {
         pending: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200',
+        queued: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200',
+        handed_off: 'bg-amber-100 dark:bg-orange-900/50 text-amber-800 dark:text-amber-200',
         processing: 'bg-amber-100 dark:bg-orange-900/50 text-amber-800 dark:text-amber-200',
         completed: 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200',
         failed: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200',

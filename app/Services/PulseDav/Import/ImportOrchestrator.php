@@ -40,25 +40,26 @@ class ImportOrchestrator
             'notes' => $options['notes'] ?? null,
         ]);
 
-        $imported = 0;
-        foreach ($validated['valid'] as $selection) {
-            if (ImportProcessor::processItem($selection, $user, $batch, $options)) {
-                $imported++;
+        $acceptedSelections = $batch->getConnection()->transaction(function () use ($validated, $user, $batch, $options): int {
+            $accepted = 0;
+            foreach ($validated['valid'] as $selection) {
+                $accepted += (int) ImportProcessor::processItem($selection, $user, $batch, $options);
             }
-        }
 
-        $batch->update(['file_count' => $imported]);
+            return $accepted;
+        });
+        $imported = $batch->fresh()->file_count;
 
         Log::info('[ImportOrchestrator] Import completed', [
             'batch_id' => $batch->id,
             'imported' => $imported,
-            'skipped' => count($selections) - $imported,
+            'skipped' => count($selections) - $acceptedSelections,
         ]);
 
         return [
             'batch_id' => $batch->id,
             'imported' => $imported,
-            'skipped' => count($selections) - $imported,
+            'skipped' => count($selections) - $acceptedSelections,
         ];
     }
 }

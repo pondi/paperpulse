@@ -65,3 +65,5 @@ Artisan::command('files:cleanup-working', function (FileStorageService $storage)
     $this->info('Removed '.$storage->cleanupOldWorkingFiles().' working files.');
 })->purpose('Clean abandoned and terminal job working directories');
 Schedule::command('files:cleanup-working')->dailyAt('02:00')->name('cleanup-working-files')->withoutOverlapping();
+
+Schedule::command('pulsedav:reconcile-imports')->everyFiveMinutes()->name('reconcile-scanner-imports')->withoutOverlapping();

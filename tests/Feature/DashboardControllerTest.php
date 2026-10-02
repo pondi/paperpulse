@@ -4,12 +4,31 @@ declare(strict_types=1);
 
 use App\Models\Merchant;
 use App\Models\Receipt;
+use App\Models\Tag;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 beforeEach(fn () => $this->withoutVite());
+
+it('serializes multiple tagged receipts without lazy loading', function () {
+    $user = User::factory()->create();
+    $receipts = Receipt::factory()->count(3)->create([
+        'user_id' => $user->id, 'currency' => 'NOK', 'total_amount' => 10,
+    ]);
+    $tag = Tag::factory()->create(['user_id' => $user->id]);
+    foreach ($receipts as $receipt) {
+        $receipt->file->tags()->attach($tag);
+    }
+    Model::preventLazyLoading();
+
+    $this->actingAs($user)->get(route('dashboard'))->assertOk()
+        ->assertInertia(fn ($page) => $page->has('recentReceipts', 3)
+            ->where('totalAmount', 30)
+            ->where('recentReceipts.0.currency', 'NOK'));
+});
 
 it('requires authentication', function () {
     $this->get(route('dashboard'))

@@ -55,12 +55,14 @@ class BulkUploadSession extends Model
         'default_note',
         'expires_at',
         'completed_at',
+        'cleanup_pending',
     ];
 
     protected function casts(): array
     {
         return [
             'status' => BulkUploadSessionStatus::class,
+            'cleanup_pending' => 'boolean',
             'default_collection_ids' => 'array',
             'default_tag_ids' => 'array',
             'total_files' => 'integer',

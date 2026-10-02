@@ -9,6 +9,7 @@ use App\Enums\BulkUploadSessionStatus;
 use App\Models\BulkUploadFile;
 use App\Models\BulkUploadSession;
 use App\Models\File;
+use App\Models\FileProcessingRequest;
 use App\Models\JobHistory;
 use App\Services\File\FileValidationService;
 use App\Services\FileProcessingService;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * Orchestrates bulk upload sessions: creation, file tracking,
@@ -166,6 +168,7 @@ class BulkUploadService
             if ($session->status === BulkUploadSessionStatus::Pending) {
                 $session->update(['status' => BulkUploadSessionStatus::Uploading]);
             }
+            $session->update(['cleanup_pending' => true]);
             $session->extendExpiry();
 
             return $presigned;
@@ -279,6 +282,36 @@ class BulkUploadService
                 }
             }
             $session->refreshCounts();
+        });
+    }
+
+    public function cleanupSession(BulkUploadSession $session): bool
+    {
+        return $session->getConnection()->transaction(function () use ($session): bool {
+            $session = BulkUploadSession::withoutGlobalScope('user')->lockForUpdate()->findOrFail($session->id);
+            if (! $session->cleanup_pending || $session->isActive()) {
+                return false;
+            }
+            $lastGrant = $session->files()->withoutGlobalScope('user')->max('presigned_expires_at');
+            if ($lastGrant !== null && now()->lt($lastGrant)) {
+                return false;
+            }
+            if (! in_array($session->status, [BulkUploadSessionStatus::Cancelled, BulkUploadSessionStatus::Completed, BulkUploadSessionStatus::Failed], true)) {
+                $session->update(['status' => BulkUploadSessionStatus::Cancelled]);
+            }
+            $session->files()->withoutGlobalScope('user')->whereNull('file_id')->where('status', '!=', BulkUploadFileStatus::Duplicate)->update(['status' => BulkUploadFileStatus::Skipped]);
+            $protected = $session->files()->withoutGlobalScope('user')->whereIn('job_id', FileProcessingRequest::query()->where('state', 'upload_pending')->select('job_id'))->pluck('s3_key')->all();
+            $prefix = rtrim(config('filesystems.uplink_prefix', 'uplink-incoming/'), '/').'/'.$session->user_id.'/'.$session->uuid.'/';
+            $disk = Storage::disk('uplink');
+            foreach ($disk->getDriver()->listContents($prefix, true) as $object) {
+                if ($object->isFile() && ! in_array($object->path(), $protected, true) && ! $disk->delete($object->path())) {
+                    throw new RuntimeException('Bulk source deletion was not acknowledged.');
+                }
+            }
+            $session->update(['cleanup_pending' => $protected !== []]);
+            $session->checkCompletion();
+
+            return ! $session->cleanup_pending;
         });
     }
 

@@ -11,6 +11,7 @@ use App\Services\Workers\WorkerFileManager;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Smalot\PdfParser\Parser;
 
 /**
  * Coordinates OCR extraction for files and caches results.
@@ -246,11 +247,6 @@ class TextExtractionService
             'file_guid' => $fileGuid,
         ]);
     }
-
-    /**
-     * Format error messages with user-friendly information
-     */
-    // Error formatting moved to OcrErrorFormatter
 
     /**
      * Get available OCR providers and their capabilities.

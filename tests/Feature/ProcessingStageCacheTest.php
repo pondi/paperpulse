@@ -120,3 +120,22 @@ it('bounds OpenAI fallback calls after a truncated first response', function () 
     expect($result['success'])->toBeFalse()->and(ProcessingUsageBudget::usage($user->id, 'fallback')['calls'])->toBe(1)
         ->and(ProcessingUsageBudget::usage($user->id, 'fallback')['stages']['extraction']['output_tokens'])->toBe(10);
 });
+
+it('uses local PDF text for low confidence OCR and retains OCR text for invalid PDFs', function (bool $validPdf) {
+    OCRServiceFactory::clearCache();
+    config(['ai.ocr.provider' => 'textract', 'ai.ocr.options.min_confidence' => 0.8]);
+    $path = sys_get_temp_dir().'/'.uniqid('ocr_fallback_', true).'.pdf';
+    file_put_contents($path, $validPdf ? conversionPdfFixture() : 'invalid PDF');
+    $this->mock(TextractProvider::class, function ($mock): void {
+        $mock->shouldReceive('getProviderName')->andReturn('textract');
+        $mock->shouldReceive('extractText')->once()->andReturn(OCRResult::success('Uncertain OCR', 'textract', confidence: 0.2));
+    });
+
+    try {
+        $text = app(TextExtractionService::class)->extract($path, 'document', 'fallback-test');
+        expect(trim($text))->toBe($validPdf ? 'Converted invoice' : 'Uncertain OCR');
+    } finally {
+        unlink($path);
+        OCRServiceFactory::clearCache();
+    }
+})->with([true, false]);

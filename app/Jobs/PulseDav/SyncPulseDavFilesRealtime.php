@@ -10,6 +10,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
@@ -17,57 +18,51 @@ class SyncPulseDavFilesRealtime implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $timeout = 1200;
+
+    public function __construct()
+    {
+        $this->onConnection('database');
+    }
+
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping('scanner-sync'))->shared()->dontRelease()->expireAfter($this->timeout + 60)];
+    }
+
     /**
      * Execute the job for users with real-time sync enabled.
      */
-    public function handle(PulseDavService $pulseDavService)
+    public function handle(PulseDavService $pulseDavService): void
     {
-        // Only sync for users who have enabled real-time sync
-        $users = User::whereHas('preferences', function ($query) {
-            $query->where('pulsedav_realtime_sync', true);
-        })->get();
+        User::whereHas('preferences', fn ($query) => $query->where('pulsedav_realtime_sync', true))
+            ->chunkById(100, function ($users) use ($pulseDavService): void {
+                foreach ($users as $user) {
+                    try {
+                        $synced = $pulseDavService->syncS3Files($user);
 
-        if ($users->isEmpty()) {
-            return;
-        }
+                        if ($synced > 0) {
+                            Log::info('Real-time sync found new files', [
+                                'user_id' => $user->id,
+                                'synced_count' => $synced,
+                            ]);
 
-        Log::info('Starting real-time PulseDav file sync', [
-            'user_count' => $users->count(),
-        ]);
-
-        foreach ($users as $user) {
-            try {
-                $synced = $pulseDavService->syncS3Files($user);
-
-                if ($synced > 0) {
-                    Log::info('Real-time sync found new files', [
-                        'user_id' => $user->id,
-                        'synced_count' => $synced,
-                    ]);
-
-                    // Auto-process scanner uploads if user preference is enabled
-                    if ($user->preference('auto_process_scanner_uploads', false)) {
-                        $unprocessedFiles = $user->pulseDavFiles()
-                            ->where('status', 'pending')
-                            ->get();
-
-                        foreach ($unprocessedFiles as $file) {
-                            ImportService::importFile($file, null, $file->file_type);
+                            // Auto-process scanner uploads if user preference is enabled
+                            if ($user->preference('auto_process_scanner_uploads', false)) {
+                                $user->pulseDavFiles()->where('status', 'pending')->chunkById(100, function ($files): void {
+                                    foreach ($files as $file) {
+                                        ImportService::importFile($file, null, $file->file_type);
+                                    }
+                                });
+                            }
                         }
-
-                        Log::info('Auto-processing queued for real-time scanner files', [
+                    } catch (Exception $e) {
+                        Log::error('Failed real-time sync for user', [
                             'user_id' => $user->id,
-                            'files_queued' => $unprocessedFiles->count(),
+                            'error' => $e->getMessage(),
                         ]);
                     }
-
                 }
-            } catch (Exception $e) {
-                Log::error('Failed real-time sync for user', [
-                    'user_id' => $user->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
+            });
     }
 }

@@ -6,6 +6,7 @@ use App\Jobs\BaseJob;
 use App\Models\File;
 use App\Models\User;
 use App\Services\Files\FileDeletionService;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Str;
 
 class CleanupRetainedFiles extends BaseJob
@@ -14,6 +15,12 @@ class CleanupRetainedFiles extends BaseJob
     {
         parent::__construct(Str::uuid());
         $this->jobName = 'Cleanup Retained Files';
+        $this->onConnection('database');
+    }
+
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping('retention-cleanup'))->shared()->dontRelease()->expireAfter($this->timeout + 60), ...parent::middleware()];
     }
 
     protected function handleJob(): void

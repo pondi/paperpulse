@@ -156,6 +156,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useDateFormatter } from '@/Composables/useDateFormatter'
 import { Link, router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue'
@@ -185,24 +186,10 @@ const isPaymentPlan = computed(() => {
   return props.voucher.voucher_type === 'payment_plan'
 })
 
-const isExpired = computed(() => {
-  return props.voucher.expiry_date && new Date(props.voucher.expiry_date) < new Date()
-})
-
-const isExpiringSoon = computed(() => {
-  if (!props.voucher.expiry_date) return false
-  const daysUntil = Math.ceil(
-    (new Date(props.voucher.expiry_date) - new Date()) / (1000 * 60 * 60 * 24)
-  )
-  return daysUntil <= 30 && daysUntil > 0
-})
-
-const daysUntilExpiry = computed(() => {
-  if (!props.voucher.expiry_date) return 0
-  return Math.ceil(
-    (new Date(props.voucher.expiry_date) - new Date()) / (1000 * 60 * 60 * 24)
-  )
-})
+const { formatDate, formatDateTime, daysUntilDate } = useDateFormatter()
+const daysUntilExpiry = computed(() => daysUntilDate(props.voucher.expiry_date))
+const isExpired = computed(() => daysUntilExpiry.value !== null && daysUntilExpiry.value < 0)
+const isExpiringSoon = computed(() => !props.voucher.is_redeemed && daysUntilExpiry.value !== null && daysUntilExpiry.value >= 0 && daysUntilExpiry.value <= 30)
 
 const statusLabel = computed(() => {
   if (props.voucher.is_redeemed) return 'Redeemed'
@@ -221,14 +208,6 @@ function formatCurrency(amount) {
     style: 'currency',
     currency: props.voucher.currency || 'NOK'
   }).format(amount)
-}
-
-function formatDate(date) {
-  return new Date(date).toLocaleDateString('no-NO')
-}
-
-function formatDateTime(dateTime) {
-  return new Date(dateTime).toLocaleString('no-NO')
 }
 
 function markAsRedeemed() {

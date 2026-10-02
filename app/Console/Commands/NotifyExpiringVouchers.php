@@ -6,6 +6,7 @@ use App\Models\NotificationHistory;
 use App\Models\Voucher;
 use App\Notifications\VoucherExpiringNotification;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 
 class NotifyExpiringVouchers extends Command
 {
@@ -13,7 +14,7 @@ class NotifyExpiringVouchers extends Command
 
     protected $description = 'Send notifications for vouchers expiring soon';
 
-    public function handle()
+    public function handle(): int
     {
         $days = (int) $this->option('days');
 
@@ -23,25 +24,33 @@ class NotifyExpiringVouchers extends Command
             return Command::FAILURE;
         }
 
-        $now = now();
-        $today = $now->toDateString();
-        $endDate = $now->copy()->addDays($days)->toDateString();
-        $baseDate = $now->copy()->startOfDay();
+        $today = Carbon::today('UTC');
+        $firstDate = $today->copy()->subDay()->toDateString();
+        $lastDate = $today->copy()->addDays($days + 1)->toDateString();
 
         $notified = 0;
         $skipped = 0;
 
-        Voucher::with(['user', 'merchant'])
+        Voucher::with(['user.preferences', 'merchant'])
             ->whereNotNull('expiry_date')
-            ->whereDate('expiry_date', '>=', $today)
-            ->whereDate('expiry_date', '<=', $endDate)
+            ->whereDate('expiry_date', '>=', $firstDate)
+            ->whereDate('expiry_date', '<=', $lastDate)
             ->where('is_redeemed', false)
-            ->orderBy('expiry_date')
-            ->chunkById(100, function ($vouchers) use ($baseDate, &$notified, &$skipped) {
+            ->chunkById(100, function ($vouchers) use ($days, &$notified, &$skipped) {
                 /** @var Voucher $voucher */
                 foreach ($vouchers as $voucher) {
                     $user = $voucher->user;
                     if (! $user) {
+                        $skipped++;
+
+                        continue;
+                    }
+
+                    $baseDate = $user->currentDate();
+                    $expiryDate = $voucher->expiry_date;
+                    $expiryDateString = $expiryDate->toDateString();
+                    if ($expiryDateString < $baseDate->toDateString()
+                        || $expiryDateString > $baseDate->copy()->addDays($days)->toDateString()) {
                         $skipped++;
 
                         continue;
@@ -68,10 +77,7 @@ class NotifyExpiringVouchers extends Command
                         continue;
                     }
 
-                    $expiryDate = $voucher->expiry_date;
-                    $daysRemaining = $expiryDate
-                        ? $baseDate->diffInDays($expiryDate->copy()->startOfDay())
-                        : 0;
+                    $daysRemaining = (int) $baseDate->diffInDays(Carbon::parse($expiryDateString, $baseDate->getTimezone()));
 
                     $user->notify(new VoucherExpiringNotification($voucher, $daysRemaining));
 

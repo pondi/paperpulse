@@ -3,6 +3,20 @@
  * Handles timezone conversion and user-friendly date display.
  */
 
+export function daysUntilCalendarDate(date: string | null | undefined, timezone: string, instant: Date = new Date()): number | null {
+    if (!date) return null;
+
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(instant);
+    const year = Number(parts.find(part => part.type === 'year')?.value);
+    const month = Number(parts.find(part => part.type === 'month')?.value);
+    const day = Number(parts.find(part => part.type === 'day')?.value);
+    const [expiryYear, expiryMonth, expiryDay] = date.slice(0, 10).split('-').map(Number);
+
+    return (Date.UTC(expiryYear, expiryMonth - 1, expiryDay) - Date.UTC(year, month - 1, day)) / 86400000;
+}
+
 /**
  * Get user's configured timezone or browser default
  * Note: User timezone configuration is planned for future implementation

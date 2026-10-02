@@ -6,6 +6,7 @@ use App\Models\NotificationHistory;
 use App\Models\Warranty;
 use App\Notifications\WarrantyEndingNotification;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 
 class NotifyExpiringWarranties extends Command
 {
@@ -13,7 +14,7 @@ class NotifyExpiringWarranties extends Command
 
     protected $description = 'Send notifications for warranties ending soon';
 
-    public function handle()
+    public function handle(): int
     {
         $days = (int) $this->option('days');
 
@@ -23,24 +24,32 @@ class NotifyExpiringWarranties extends Command
             return Command::FAILURE;
         }
 
-        $now = now();
-        $today = $now->toDateString();
-        $endDate = $now->copy()->addDays($days)->toDateString();
-        $baseDate = $now->copy()->startOfDay();
+        $today = Carbon::today('UTC');
+        $firstDate = $today->copy()->subDay()->toDateString();
+        $lastDate = $today->copy()->addDays($days + 1)->toDateString();
 
         $notified = 0;
         $skipped = 0;
 
-        Warranty::with('user')
+        Warranty::with('user.preferences')
             ->whereNotNull('warranty_end_date')
-            ->whereDate('warranty_end_date', '>=', $today)
-            ->whereDate('warranty_end_date', '<=', $endDate)
-            ->orderBy('warranty_end_date')
-            ->chunkById(100, function ($warranties) use ($baseDate, &$notified, &$skipped) {
+            ->whereDate('warranty_end_date', '>=', $firstDate)
+            ->whereDate('warranty_end_date', '<=', $lastDate)
+            ->chunkById(100, function ($warranties) use ($days, &$notified, &$skipped) {
                 /** @var Warranty $warranty */
                 foreach ($warranties as $warranty) {
                     $user = $warranty->user;
                     if (! $user) {
+                        $skipped++;
+
+                        continue;
+                    }
+
+                    $baseDate = $user->currentDate();
+                    $endDateValue = $warranty->warranty_end_date;
+                    $expiryDateString = $endDateValue->toDateString();
+                    if ($expiryDateString < $baseDate->toDateString()
+                        || $expiryDateString > $baseDate->copy()->addDays($days)->toDateString()) {
                         $skipped++;
 
                         continue;
@@ -67,10 +76,7 @@ class NotifyExpiringWarranties extends Command
                         continue;
                     }
 
-                    $endDateValue = $warranty->warranty_end_date;
-                    $daysRemaining = $endDateValue
-                        ? $baseDate->diffInDays($endDateValue->copy()->startOfDay())
-                        : 0;
+                    $daysRemaining = (int) $baseDate->diffInDays(Carbon::parse($expiryDateString, $baseDate->getTimezone()));
 
                     $user->notify(new WarrantyEndingNotification($warranty, $daysRemaining));
 

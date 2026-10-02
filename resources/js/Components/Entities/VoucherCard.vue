@@ -81,6 +81,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 const props = defineProps({
   voucher: {
@@ -114,31 +115,15 @@ const isPaymentPlan = computed(() => {
   return props.voucher.voucher_type === 'payment_plan';
 });
 
-const isExpired = computed(() => {
-  if (!props.voucher.expiry_date) return false;
-  return new Date(props.voucher.expiry_date) < new Date();
-});
-
-const isExpiringSoon = computed(() => {
-  if (!props.voucher.expiry_date) return false;
-  const daysUntilExpiry = Math.ceil(
-    (new Date(props.voucher.expiry_date) - new Date()) / (1000 * 60 * 60 * 24)
-  );
-  return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
-});
+const { formatDate, daysUntilDate } = useDateFormatter();
+const daysRemaining = computed(() => daysUntilDate(props.voucher.expiry_date));
+const isExpired = computed(() => daysRemaining.value !== null && daysRemaining.value < 0);
+const isExpiringSoon = computed(() => !props.voucher.is_redeemed && daysRemaining.value !== null && daysRemaining.value >= 0 && daysRemaining.value <= 30);
 
 const formatCurrency = (amount, currency = 'NOK') => {
   return new Intl.NumberFormat('no-NO', {
     style: 'currency',
     currency: currency
   }).format(amount);
-};
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('no-NO', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
 };
 </script>

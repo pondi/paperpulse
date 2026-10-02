@@ -179,21 +179,22 @@ class AnalyticsController extends Controller
             ->when($startDate, fn ($q) => $q->whereBetween('effective_date', [$startDate, $endDate]))
             ->sum('contract_value');
 
-        // Expiring within next 30 days
+        $expiryStart = auth()->user()->currentDate();
+        $expiryWindow = [$expiryStart->toDateString(), $expiryStart->copy()->addDays(30)->toDateString()];
         $expiringVouchers = Voucher::where('user_id', $userId)
             ->where('is_redeemed', false)
             ->whereNotNull('expiry_date')
-            ->whereBetween('expiry_date', [now(), now()->addDays(30)])
+            ->whereBetween('expiry_date', $expiryWindow)
             ->count();
 
         $expiringWarranties = Warranty::where('user_id', $userId)
             ->whereNotNull('warranty_end_date')
-            ->whereBetween('warranty_end_date', [now(), now()->addDays(30)])
+            ->whereBetween('warranty_end_date', $expiryWindow)
             ->count();
 
         $expiringContracts = Contract::where('user_id', $userId)
             ->whereNotNull('expiry_date')
-            ->whereBetween('expiry_date', [now(), now()->addDays(30)])
+            ->whereBetween('expiry_date', $expiryWindow)
             ->count();
 
         // Combined monthly spending trend (receipts + invoices)

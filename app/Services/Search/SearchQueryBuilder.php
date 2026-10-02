@@ -272,7 +272,7 @@ class SearchQueryBuilder
 
         $results = $searchQuery
             ->query(function ($builder) use ($filters) {
-                $builder->with(['merchant', 'file', 'tags']);
+                $builder->with(['merchant', 'file', 'tags', 'user.preferences']);
 
                 if (isset($filters['collection_id']) && $filters['collection_id']) {
                     $builder->whereHas('file.collections', function ($q) use ($filters) {

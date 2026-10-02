@@ -67,6 +67,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useDateFormatter } from '@/Composables/useDateFormatter'
 import { router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import VoucherCard from '@/Components/Entities/VoucherCard.vue'
@@ -110,8 +111,11 @@ const filteredVouchers = computed(() => {
   return result
 })
 
+const { daysUntilDate } = useDateFormatter()
+
 function isExpired(voucher) {
-  return voucher.expiry_date && new Date(voucher.expiry_date) < new Date()
+  const daysRemaining = daysUntilDate(voucher.expiry_date)
+  return daysRemaining !== null && daysRemaining < 0
 }
 
 function applyFilters() {

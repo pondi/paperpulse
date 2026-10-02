@@ -157,6 +157,8 @@ class SearchResultFormatter
                 'total' => $voucher->current_value ? number_format((float) $voucher->current_value, 2).' '.($voucher->currency ?? '') : null,
                 'voucher_type' => $voucher->voucher_type,
                 'is_redeemed' => $voucher->is_redeemed,
+                'is_expired' => $voucher->isExpired(),
+                'is_expiring_soon' => $voucher->isExpiringSoon(),
                 'tags' => $voucher->tags ? $voucher->tags->pluck('name')->all() : [],
                 'file' => $this->buildEntityFileInfo($voucher->file),
                 '_rankingScore' => $metadata['_rankingScore'] ?? null,

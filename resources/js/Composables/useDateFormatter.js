@@ -1,4 +1,5 @@
 import { usePage } from '@inertiajs/vue3';
+import { daysUntilCalendarDate } from '@/utils/datetime';
 
 export function useDateFormatter() {
     const page = usePage();
@@ -10,12 +11,11 @@ export function useDateFormatter() {
         const timezone = user?.preferences?.timezone || user?.timezone || 'UTC';
         const dateFormat = user?.preferences?.date_format || 'Y-m-d';
         
-        // Convert date string to Date object
         const dateObj = new Date(date);
         
         // Create Intl.DateTimeFormat options based on user's date format preference
         let options = {
-            timeZone: timezone,
+            timeZone: /^\d{4}-\d{2}-\d{2}$/.test(date) && !includeTime ? 'UTC' : timezone,
         };
         
         // Map PHP date formats to Intl.DateTimeFormat options
@@ -132,6 +132,7 @@ export function useDateFormatter() {
     return {
         formatDate,
         formatDateTime,
-        formatCurrency
+        formatCurrency,
+        daysUntilDate: (date) => daysUntilCalendarDate(date, page.props.auth?.user?.preferences?.timezone || 'UTC'),
     };
 }

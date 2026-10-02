@@ -9,6 +9,7 @@ use App\Traits\ExtractableEntity as ExtractableEntityTrait;
 use App\Traits\InvalidatesSearchFacets;
 use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,7 +26,7 @@ use Laravel\Scout\Searchable;
  * @property-read User $user
  * @property-read Merchant|null $merchant
  * @property-read File|null $file
- * @property-read \Illuminate\Database\Eloquent\Collection<int, Tag> $tags
+ * @property-read Collection<int, Tag> $tags
  */
 class Voucher extends Model implements Taggable
 {
@@ -66,7 +67,7 @@ class Voucher extends Model implements Taggable
     protected $casts = [
         'voucher_data' => 'array',
         'issue_date' => 'date',
-        'expiry_date' => 'date',
+        'expiry_date' => 'date:Y-m-d',
         'first_payment_date' => 'date',
         'final_payment_date' => 'date',
         'redeemed_at' => 'datetime',
@@ -99,14 +100,21 @@ class Voucher extends Model implements Taggable
 
     public function isExpired(): bool
     {
-        return $this->expiry_date && $this->expiry_date->isPast();
+        return $this->expiry_date !== null
+            && $this->expiry_date->toDateString() < $this->user->currentDate()->toDateString();
     }
 
     public function isExpiringSoon(): bool
     {
-        return $this->expiry_date
-            && $this->expiry_date->isFuture()
-            && $this->expiry_date->diffInDays() <= 30;
+        if ($this->expiry_date === null || $this->is_redeemed) {
+            return false;
+        }
+
+        $today = $this->user->currentDate();
+        $expiryDate = $this->expiry_date->toDateString();
+
+        return $expiryDate >= $today->toDateString()
+            && $expiryDate <= $today->addDays(30)->toDateString();
     }
 
     public function toSearchableArray(): array
@@ -124,7 +132,6 @@ class Voucher extends Model implements Taggable
             'current_value' => $this->current_value,
             'currency' => $this->currency,
             'is_redeemed' => $this->is_redeemed,
-            'is_expired' => $this->isExpired(),
             'tags' => $this->tags?->pluck('name')->toArray() ?? [],
         ];
     }

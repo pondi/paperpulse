@@ -234,7 +234,7 @@ return [
                 'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
             ],
             Voucher::class => [
-                'filterableAttributes' => ['id', 'user_id', 'expiry_date', 'original_value', 'current_value', 'is_redeemed', 'is_expired'],
+                'filterableAttributes' => ['id', 'user_id', 'expiry_date', 'original_value', 'current_value', 'is_redeemed'],
                 'sortableAttributes' => ['expiry_date', 'current_value', 'created_at'],
                 'searchableAttributes' => [
                     'code',

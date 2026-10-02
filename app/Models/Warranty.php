@@ -9,6 +9,7 @@ use App\Traits\ExtractableEntity as ExtractableEntityTrait;
 use App\Traits\InvalidatesSearchFacets;
 use App\Traits\ShareableModel;
 use App\Traits\TaggableModel;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,7 +23,7 @@ use Laravel\Scout\Searchable;
  * @property Carbon|null $warranty_end_date
  * @property-read User $user
  * @property-read File|null $file
- * @property-read \Illuminate\Database\Eloquent\Collection<int, Tag> $tags
+ * @property-read Collection<int, Tag> $tags
  */
 class Warranty extends Model implements Taggable
 {
@@ -65,7 +66,7 @@ class Warranty extends Model implements Taggable
         'warranty_data' => 'array',
         'purchase_date' => 'date',
         'warranty_start_date' => 'date',
-        'warranty_end_date' => 'date',
+        'warranty_end_date' => 'date:Y-m-d',
         'deleted_reason' => DeletedReason::class,
     ];
 

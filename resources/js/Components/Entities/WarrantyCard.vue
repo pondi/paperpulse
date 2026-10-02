@@ -59,6 +59,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 const props = defineProps({
   warranty: {
@@ -73,21 +74,10 @@ const props = defineProps({
 
 defineEmits(['view']);
 
-const isExpired = computed(() => {
-  if (!props.warranty.warranty_end_date) return false;
-  return new Date(props.warranty.warranty_end_date) < new Date();
-});
-
-const isExpiringSoon = computed(() => {
-  return daysRemaining.value <= 90 && daysRemaining.value > 0;
-});
-
-const daysRemaining = computed(() => {
-  if (!props.warranty.warranty_end_date) return 0;
-  return Math.ceil(
-    (new Date(props.warranty.warranty_end_date) - new Date()) / (1000 * 60 * 60 * 24)
-  );
-});
+const { formatDate, daysUntilDate } = useDateFormatter();
+const daysRemaining = computed(() => daysUntilDate(props.warranty.warranty_end_date));
+const isExpired = computed(() => daysRemaining.value !== null && daysRemaining.value < 0);
+const isExpiringSoon = computed(() => daysRemaining.value !== null && daysRemaining.value >= 0 && daysRemaining.value <= 30);
 
 const statusLabel = computed(() => {
   if (isExpired.value) return 'Expired';
@@ -100,12 +90,4 @@ const statusClass = computed(() => {
   if (isExpiringSoon.value) return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300';
   return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
 });
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('no-NO', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-};
 </script>

@@ -65,6 +65,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 const props = defineProps({
   returnPolicy: {
@@ -78,6 +79,7 @@ const props = defineProps({
 });
 
 defineEmits(['view']);
+const { formatDate } = useDateFormatter();
 
 const refundMethodLabel = computed(() => {
   const labels = {
@@ -94,13 +96,5 @@ const formatCurrency = (amount) => {
     style: 'currency',
     currency: 'NOK'
   }).format(amount);
-};
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('no-NO', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
 };
 </script>

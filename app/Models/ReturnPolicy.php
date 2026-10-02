@@ -46,8 +46,8 @@ class ReturnPolicy extends Model implements Taggable
 
     protected $casts = [
         'policy_data' => 'array',
-        'return_deadline' => 'date',
-        'exchange_deadline' => 'date',
+        'return_deadline' => 'date:Y-m-d',
+        'exchange_deadline' => 'date:Y-m-d',
         'is_final_sale' => 'boolean',
         'requires_receipt' => 'boolean',
         'requires_original_packaging' => 'boolean',

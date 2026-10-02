@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Services\LogoService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -40,29 +39,6 @@ class Logo extends Model
     public static function generateHash(string $logoData): string
     {
         return hash('sha256', $logoData);
-    }
-
-    /**
-     * Find an existing logo by its hash.
-     */
-    public static function findByHash(string $hash): ?static
-    {
-        return static::where('hash', $hash)->first();
-    }
-
-    /**
-     * Create or retrieve a logo by its binary data and mime type, considering entity name matches.
-     */
-    public static function findOrCreateFromData(
-        string $logoData,
-        string $mimeType,
-        string $entityType,
-        string $entityName,
-    ): static {
-        /** @var LogoService $service */
-        $service = app(LogoService::class);
-
-        return $service->findOrCreateLogo($logoData, $mimeType, $entityType, $entityName);
     }
 
     /**

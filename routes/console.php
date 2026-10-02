@@ -57,3 +57,5 @@ Schedule::command('notify:expiring-warranties --days=30')->dailyAt('08:00')->tim
     ->name('notify-expiring-warranties')->withoutOverlapping();
 
 Schedule::command('bulk:reconcile')->everyFiveMinutes()->name('reconcile-bulk-uploads')->withoutOverlapping();
+
+Schedule::command('conversions:retry-failed --limit=100')->everyFiveMinutes()->name('recover-office-conversions')->withoutOverlapping();

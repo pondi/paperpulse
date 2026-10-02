@@ -18,6 +18,7 @@ class ConvertOfficeFile extends BaseJob
     public function __construct(public int $conversionId, ?string $chainId = null)
     {
         parent::__construct($chainId ?? 'office-conversion-'.$conversionId);
+        $this->onConnection('database')->onQueue('conversions');
     }
 
     protected function handleJob(): void

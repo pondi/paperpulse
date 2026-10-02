@@ -122,3 +122,31 @@ it('rechecks the handoff age after locking a request selected by a concurrent re
     expect($conversion->refresh()->retry_count)->toBe(1);
     Bus::assertNothingDispatched();
 });
+
+it('keeps slow conversion on the database queue and releases the preprocessing worker', function (): void {
+    $first = prepareAsyncOfficePipeline();
+    $this->mock(TextExtractionService::class)->shouldNotReceive('extract');
+    $started = microtime(true);
+    $first->handle();
+    expect(microtime(true) - $started)->toBeLessThan(1.0);
+    $conversion = FileConversion::firstOrFail();
+    $step = unserialize($first->chained[0]);
+    expect($step->connection)->toBe('database');
+    $queueId = app('queue')->connection($step->connection)->push($step, queue: $step->queue);
+    $payload = $conversion->getConnection()->table('jobs')->where('id', $queueId)->first();
+    expect($payload->queue)->toBe('conversions');
+    $this->travel(2)->minutes();
+    expect($conversion->refresh()->status)->toBe('pending');
+    Bus::assertNotDispatched(ProcessFileGemini::class);
+    $this->mock(StorageService::class)->shouldReceive('getFile')->once()->andReturn(conversionDocxFixture())
+        ->shouldReceive('storeFile')->once()->andReturn($conversion->output_s3_path);
+    $this->mock(LocalOfficeConverter::class)->shouldReceive('convert')->once()->andReturnUsing(function ($source, $output): void {
+        $this->travel(2)->minutes();
+        file_put_contents($output, conversionPdfFixture());
+    });
+    $step->handle();
+    $step->handle();
+    $step->dispatchNextJobInChain();
+    Bus::assertDispatched(ProcessFileGemini::class, 1);
+    expect(JobMetadataPersistence::retrieve($first->jobID)['fileExtension'])->toBe('pdf');
+});

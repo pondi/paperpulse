@@ -163,15 +163,19 @@ class Receipt extends Model implements Taggable
      */
     public function toSearchableArray()
     {
+        $this->loadMissing('file.collections');
+
         $this->load(['merchant', 'lineItems.vendor', 'tags', 'file.collections']);
 
         $array = [
             // Ensure search engine can filter by user
             'user_id' => $this->user_id,
             'id' => $this->id,
-            'receipt_date' => $this->receipt_date,
-            'tax_amount' => $this->tax_amount,
-            'total_amount' => $this->total_amount,
+            'category_id' => $this->category_id,
+            'collection_ids' => $this->file?->collections->modelKeys() ?? [],
+            'receipt_date' => $this->receipt_date ? (int) $this->receipt_date->format('Ymd') : null,
+            'tax_amount' => $this->tax_amount === null ? null : (float) $this->tax_amount,
+            'total_amount' => $this->total_amount === null ? null : (float) $this->total_amount,
             'currency' => $this->currency,
             'receipt_category' => $this->receipt_category,
             'receipt_description' => $this->receipt_description,

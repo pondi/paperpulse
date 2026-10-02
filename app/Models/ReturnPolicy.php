@@ -88,13 +88,16 @@ class ReturnPolicy extends Model implements Taggable
 
     public function toSearchableArray(): array
     {
+        $this->loadMissing('file.collections');
+
         $this->loadMissing(['merchant', 'tags']);
 
         return [
             'user_id' => $this->user_id,
             'id' => $this->id,
+            'collection_ids' => $this->file?->collections->modelKeys() ?? [],
             'merchant_name' => $this->merchant?->name,
-            'return_deadline' => $this->return_deadline?->format('Y-m-d'),
+            'return_deadline' => $this->return_deadline ? (int) $this->return_deadline->format('Ymd') : null,
             'exchange_deadline' => $this->exchange_deadline?->format('Y-m-d'),
             'refund_method' => $this->refund_method,
             'is_final_sale' => $this->is_final_sale,

@@ -59,25 +59,8 @@ class SearchFacetService
             'bank_statements' => BankStatement::search($query)->where('user_id', $userId),
         ];
 
-        $dateFieldMap = [
-            'receipts' => 'receipt_date',
-            'documents' => 'created_at',
-            'invoices' => 'invoice_date',
-            'contracts' => 'effective_date',
-            'vouchers' => 'expiry_date',
-            'warranties' => 'warranty_end_date',
-            'return_policies' => 'return_deadline',
-            'bank_statements' => 'statement_date',
-        ];
-
-        foreach ($queries as $type => $searchQuery) {
-            $dateField = $dateFieldMap[$type];
-            if (isset($filters['date_from'])) {
-                $searchQuery->where($dateField, '>=', $filters['date_from']);
-            }
-            if (isset($filters['date_to'])) {
-                $searchQuery->where($dateField, '<=', $filters['date_to']);
-            }
+        foreach ($queries as $searchQuery) {
+            SearchFilterBuilder::apply($searchQuery, $filters);
         }
 
         $counts = [];

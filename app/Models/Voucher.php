@@ -119,17 +119,20 @@ class Voucher extends Model implements Taggable
 
     public function toSearchableArray(): array
     {
+        $this->loadMissing('file.collections');
+
         $this->loadMissing(['merchant', 'tags']);
 
         return [
             'user_id' => $this->user_id,
             'id' => $this->id,
+            'collection_ids' => $this->file?->collections->modelKeys() ?? [],
             'voucher_type' => $this->voucher_type,
             'code' => $this->code,
             'merchant_name' => $this->merchant?->name,
-            'expiry_date' => $this->expiry_date?->format('Y-m-d'),
-            'original_value' => $this->original_value,
-            'current_value' => $this->current_value,
+            'expiry_date' => $this->expiry_date ? (int) $this->expiry_date->format('Ymd') : null,
+            'original_value' => $this->original_value === null ? null : (float) $this->original_value,
+            'current_value' => $this->current_value === null ? null : (float) $this->current_value,
             'currency' => $this->currency,
             'is_redeemed' => $this->is_redeemed,
             'tags' => $this->tags?->pluck('name')->toArray() ?? [],

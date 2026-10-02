@@ -97,16 +97,19 @@ class Warranty extends Model implements Taggable
 
     public function toSearchableArray(): array
     {
+        $this->loadMissing('file.collections');
+
         $this->loadMissing(['tags']);
 
         return [
             'user_id' => $this->user_id,
             'id' => $this->id,
+            'collection_ids' => $this->file?->collections->modelKeys() ?? [],
             'product_name' => $this->product_name,
             'product_category' => $this->product_category,
             'manufacturer' => $this->manufacturer,
             'warranty_type' => $this->warranty_type,
-            'warranty_end_date' => $this->warranty_end_date?->format('Y-m-d'),
+            'warranty_end_date' => $this->warranty_end_date ? (int) $this->warranty_end_date->format('Ymd') : null,
             'receipt_id' => $this->receipt_id,
             'invoice_id' => $this->invoice_id,
             'tags' => $this->tags?->pluck('name')->toArray() ?? [],

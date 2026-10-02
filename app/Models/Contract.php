@@ -80,18 +80,21 @@ class Contract extends Model implements Taggable
 
     public function toSearchableArray(): array
     {
+        $this->loadMissing('file.collections');
+
         $this->loadMissing(['tags']);
 
         return [
             'user_id' => $this->user_id,
             'id' => $this->id,
+            'collection_ids' => $this->file?->collections->modelKeys() ?? [],
             'contract_number' => $this->contract_number,
             'contract_title' => $this->contract_title,
             'contract_type' => $this->contract_type,
             'status' => $this->status,
-            'effective_date' => $this->effective_date?->format('Y-m-d'),
+            'effective_date' => $this->effective_date ? (int) $this->effective_date->format('Ymd') : null,
             'expiry_date' => $this->expiry_date?->format('Y-m-d'),
-            'contract_value' => $this->contract_value,
+            'contract_value' => $this->contract_value === null ? null : (float) $this->contract_value,
             'currency' => $this->currency,
             'tags' => $this->tags?->pluck('name')->toArray() ?? [],
         ];

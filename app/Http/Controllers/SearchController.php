@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Api\V1\SearchRequest;
 use App\Services\Search\SearchFilterBuilder;
 use App\Services\SearchService;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class SearchController extends Controller
@@ -16,7 +16,7 @@ class SearchController extends Controller
         $this->searchService = $searchService;
     }
 
-    public function search(Request $request)
+    public function search(SearchRequest $request)
     {
         $isInertiaRequest = $request->header('X-Inertia');
         $query = $request->input('query', '');

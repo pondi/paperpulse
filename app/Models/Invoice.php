@@ -111,16 +111,20 @@ class Invoice extends Model implements Taggable
 
     public function toSearchableArray(): array
     {
+        $this->loadMissing('file.collections');
+
         $this->loadMissing(['merchant', 'category', 'tags', 'lineItems']);
 
         return [
             'user_id' => $this->user_id,
             'id' => $this->id,
+            'category_id' => $this->category_id,
+            'collection_ids' => $this->file?->collections->modelKeys() ?? [],
             'invoice_number' => $this->invoice_number,
             'invoice_type' => $this->invoice_type,
-            'invoice_date' => $this->invoice_date?->format('Y-m-d'),
+            'invoice_date' => $this->invoice_date ? (int) $this->invoice_date->format('Ymd') : null,
             'due_date' => $this->due_date?->format('Y-m-d'),
-            'total_amount' => $this->total_amount,
+            'total_amount' => $this->total_amount === null ? null : (float) $this->total_amount,
             'payment_status' => $this->payment_status,
             'merchant_name' => $this->merchant?->name,
             'category_name' => $this->category?->name,

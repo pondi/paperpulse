@@ -166,6 +166,8 @@ class Document extends Model implements Taggable
      */
     public function toSearchableArray()
     {
+        $this->loadMissing('file.collections');
+
         // Load relationships if not already loaded
         if (! $this->relationLoaded('category')) {
             $this->load('category');
@@ -184,6 +186,8 @@ class Document extends Model implements Taggable
             // Ensure search engine can filter by user
             'user_id' => $this->user_id,
             'id' => $this->id,
+            'category_id' => $this->category_id,
+            'collection_ids' => $this->file?->collections->modelKeys() ?? [],
             'title' => $this->title,
             'description' => $this->description,
             'note' => $this->note,
@@ -192,7 +196,7 @@ class Document extends Model implements Taggable
             'extracted_text' => $this->extracted_text,
             'entities' => $this->entities,
             'language' => $this->language,
-            'document_date' => $this->document_date?->format('Y-m-d'),
+            'document_date' => $this->document_date ? (int) $this->document_date->format('Ymd') : null,
             'category_name' => $this->category?->name,
             'tags' => $this->tags?->pluck('name')->toArray() ?? [],
             'collections' => $this->file?->collections?->pluck('name')->toArray() ?? [],

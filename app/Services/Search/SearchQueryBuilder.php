@@ -117,41 +117,11 @@ class SearchQueryBuilder
             ->options(['showRankingScore' => true])
             ->where('user_id', auth()->id());
 
-        if (isset($filters['date_from'])) {
-            $searchQuery->where('receipt_date', '>=', $filters['date_from']);
-        }
-        if (isset($filters['date_to'])) {
-            $searchQuery->where('receipt_date', '<=', $filters['date_to']);
-        }
-        if (isset($filters['amount_min'])) {
-            $searchQuery->where('total_amount', '>=', $filters['amount_min']);
-        }
-        if (isset($filters['amount_max'])) {
-            $searchQuery->where('total_amount', '<=', $filters['amount_max']);
-        }
-        if (isset($filters['category'])) {
-            $searchQuery->where('receipt_category', $filters['category']);
-        }
-        if (isset($filters['vendor']) && is_string($filters['vendor']) && $filters['vendor'] !== '') {
-            $searchQuery->where('vendors', $filters['vendor']);
-        }
-        if (isset($filters['vendors']) && is_array($filters['vendors']) && ! empty($filters['vendors'])) {
-            foreach ($filters['vendors'] as $v) {
-                if (is_string($v) && $v !== '') {
-                    $searchQuery->where('vendors', $v);
-                }
-            }
-        }
+        SearchFilterBuilder::apply($searchQuery, $filters);
 
         $results = $searchQuery
-            ->query(function ($builder) use ($filters) {
+            ->query(function ($builder) {
                 $builder->with(['merchant', 'lineItems', 'file', 'tags']);
-
-                if (isset($filters['collection_id']) && $filters['collection_id']) {
-                    $builder->whereHas('file.collections', function ($q) use ($filters) {
-                        $q->where('collections.id', $filters['collection_id']);
-                    });
-                }
             })
             ->get();
 
@@ -164,31 +134,11 @@ class SearchQueryBuilder
             ->options(['showRankingScore' => true])
             ->where('user_id', auth()->id());
 
-        if (isset($filters['date_from'])) {
-            $searchQuery->where('created_at', '>=', $filters['date_from']);
-        }
-        if (isset($filters['date_to'])) {
-            $searchQuery->where('created_at', '<=', $filters['date_to']);
-        }
-        if (isset($filters['document_type'])) {
-            $searchQuery->where('document_type', $filters['document_type']);
-        }
+        SearchFilterBuilder::apply($searchQuery, $filters);
 
         $results = $searchQuery
-            ->query(function ($builder) use ($filters) {
-                $builder->with(['tags', 'file']);
-
-                if (isset($filters['tags']) && is_array($filters['tags'])) {
-                    $builder->whereHas('tags', function ($q) use ($filters) {
-                        $q->whereIn('name', $filters['tags']);
-                    });
-                }
-
-                if (isset($filters['collection_id']) && $filters['collection_id']) {
-                    $builder->whereHas('file.collections', function ($q) use ($filters) {
-                        $q->where('collections.id', $filters['collection_id']);
-                    });
-                }
+            ->query(function ($builder) {
+                $builder->with(['tags', 'file', 'category']);
             })
             ->get();
 
@@ -201,28 +151,11 @@ class SearchQueryBuilder
             ->options(['showRankingScore' => true])
             ->where('user_id', auth()->id());
 
-        if (isset($filters['date_from'])) {
-            $searchQuery->where('invoice_date', '>=', $filters['date_from']);
-        }
-        if (isset($filters['date_to'])) {
-            $searchQuery->where('invoice_date', '<=', $filters['date_to']);
-        }
-        if (isset($filters['amount_min'])) {
-            $searchQuery->where('total_amount', '>=', $filters['amount_min']);
-        }
-        if (isset($filters['amount_max'])) {
-            $searchQuery->where('total_amount', '<=', $filters['amount_max']);
-        }
+        SearchFilterBuilder::apply($searchQuery, $filters);
 
         $results = $searchQuery
-            ->query(function ($builder) use ($filters) {
+            ->query(function ($builder) {
                 $builder->with(['merchant', 'lineItems', 'file', 'tags']);
-
-                if (isset($filters['collection_id']) && $filters['collection_id']) {
-                    $builder->whereHas('file.collections', function ($q) use ($filters) {
-                        $q->where('collections.id', $filters['collection_id']);
-                    });
-                }
             })
             ->get();
 
@@ -235,22 +168,11 @@ class SearchQueryBuilder
             ->options(['showRankingScore' => true])
             ->where('user_id', auth()->id());
 
-        if (isset($filters['date_from'])) {
-            $searchQuery->where('effective_date', '>=', $filters['date_from']);
-        }
-        if (isset($filters['date_to'])) {
-            $searchQuery->where('effective_date', '<=', $filters['date_to']);
-        }
+        SearchFilterBuilder::apply($searchQuery, $filters);
 
         $results = $searchQuery
-            ->query(function ($builder) use ($filters) {
+            ->query(function ($builder) {
                 $builder->with(['file', 'tags']);
-
-                if (isset($filters['collection_id']) && $filters['collection_id']) {
-                    $builder->whereHas('file.collections', function ($q) use ($filters) {
-                        $q->where('collections.id', $filters['collection_id']);
-                    });
-                }
             })
             ->get();
 
@@ -263,22 +185,11 @@ class SearchQueryBuilder
             ->options(['showRankingScore' => true])
             ->where('user_id', auth()->id());
 
-        if (isset($filters['date_from'])) {
-            $searchQuery->where('expiry_date', '>=', $filters['date_from']);
-        }
-        if (isset($filters['date_to'])) {
-            $searchQuery->where('expiry_date', '<=', $filters['date_to']);
-        }
+        SearchFilterBuilder::apply($searchQuery, $filters);
 
         $results = $searchQuery
-            ->query(function ($builder) use ($filters) {
+            ->query(function ($builder) {
                 $builder->with(['merchant', 'file', 'tags', 'user.preferences']);
-
-                if (isset($filters['collection_id']) && $filters['collection_id']) {
-                    $builder->whereHas('file.collections', function ($q) use ($filters) {
-                        $q->where('collections.id', $filters['collection_id']);
-                    });
-                }
             })
             ->get();
 
@@ -291,22 +202,11 @@ class SearchQueryBuilder
             ->options(['showRankingScore' => true])
             ->where('user_id', auth()->id());
 
-        if (isset($filters['date_from'])) {
-            $searchQuery->where('warranty_end_date', '>=', $filters['date_from']);
-        }
-        if (isset($filters['date_to'])) {
-            $searchQuery->where('warranty_end_date', '<=', $filters['date_to']);
-        }
+        SearchFilterBuilder::apply($searchQuery, $filters);
 
         $results = $searchQuery
-            ->query(function ($builder) use ($filters) {
+            ->query(function ($builder) {
                 $builder->with(['file', 'tags']);
-
-                if (isset($filters['collection_id']) && $filters['collection_id']) {
-                    $builder->whereHas('file.collections', function ($q) use ($filters) {
-                        $q->where('collections.id', $filters['collection_id']);
-                    });
-                }
             })
             ->get();
 
@@ -319,22 +219,11 @@ class SearchQueryBuilder
             ->options(['showRankingScore' => true])
             ->where('user_id', auth()->id());
 
-        if (isset($filters['date_from'])) {
-            $searchQuery->where('return_deadline', '>=', $filters['date_from']);
-        }
-        if (isset($filters['date_to'])) {
-            $searchQuery->where('return_deadline', '<=', $filters['date_to']);
-        }
+        SearchFilterBuilder::apply($searchQuery, $filters);
 
         $results = $searchQuery
-            ->query(function ($builder) use ($filters) {
+            ->query(function ($builder) {
                 $builder->with(['merchant', 'file', 'tags']);
-
-                if (isset($filters['collection_id']) && $filters['collection_id']) {
-                    $builder->whereHas('file.collections', function ($q) use ($filters) {
-                        $q->where('collections.id', $filters['collection_id']);
-                    });
-                }
             })
             ->get();
 
@@ -347,22 +236,11 @@ class SearchQueryBuilder
             ->options(['showRankingScore' => true])
             ->where('user_id', auth()->id());
 
-        if (isset($filters['date_from'])) {
-            $searchQuery->where('statement_date', '>=', $filters['date_from']);
-        }
-        if (isset($filters['date_to'])) {
-            $searchQuery->where('statement_date', '<=', $filters['date_to']);
-        }
+        SearchFilterBuilder::apply($searchQuery, $filters);
 
         $results = $searchQuery
-            ->query(function ($builder) use ($filters) {
+            ->query(function ($builder) {
                 $builder->with(['file', 'tags']);
-
-                if (isset($filters['collection_id']) && $filters['collection_id']) {
-                    $builder->whereHas('file.collections', function ($q) use ($filters) {
-                        $q->where('collections.id', $filters['collection_id']);
-                    });
-                }
             })
             ->get();
 

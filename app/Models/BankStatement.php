@@ -83,19 +83,22 @@ class BankStatement extends Model implements Taggable
 
     public function toSearchableArray(): array
     {
+        $this->loadMissing('file.collections');
+
         $this->loadMissing(['tags']);
 
         return [
             'user_id' => $this->user_id,
             'id' => $this->id,
+            'collection_ids' => $this->file?->collections->modelKeys() ?? [],
             'bank_name' => $this->bank_name,
             'account_holder_name' => $this->account_holder_name,
             'account_number' => $this->account_number,
-            'statement_date' => $this->statement_date?->format('Y-m-d'),
+            'statement_date' => $this->statement_date ? (int) $this->statement_date->format('Ymd') : null,
             'statement_period_start' => $this->statement_period_start?->format('Y-m-d'),
             'statement_period_end' => $this->statement_period_end?->format('Y-m-d'),
-            'opening_balance' => $this->opening_balance,
-            'closing_balance' => $this->closing_balance,
+            'opening_balance' => $this->opening_balance === null ? null : (float) $this->opening_balance,
+            'closing_balance' => $this->closing_balance === null ? null : (float) $this->closing_balance,
             'currency' => $this->currency,
             'transaction_count' => $this->transaction_count,
             'tags' => $this->tags?->pluck('name')->toArray() ?? [],

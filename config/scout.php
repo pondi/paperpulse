@@ -146,7 +146,7 @@ return [
         'key' => env('MEILISEARCH_KEY'),
         'index-settings' => [
             Receipt::class => [
-                'filterableAttributes' => ['id', 'user_id', 'merchant_id', 'category_id', 'receipt_date', 'total_amount', 'currency', 'vendors'],
+                'filterableAttributes' => ['id', 'user_id', 'merchant_id', 'category_id', 'receipt_date', 'total_amount', 'currency', 'vendors', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'document_type'],
                 'sortableAttributes' => ['receipt_date', 'total_amount', 'created_at', 'updated_at'],
                 // Order by importance: most important fields first for better ranking
                 'searchableAttributes' => [
@@ -177,7 +177,7 @@ return [
                 ],
             ],
             Document::class => [
-                'filterableAttributes' => ['id', 'user_id', 'category_id', 'file_type', 'document_type', 'language', 'document_date'],
+                'filterableAttributes' => ['id', 'user_id', 'category_id', 'file_type', 'document_type', 'language', 'document_date', 'created_at', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'vendors', 'total_amount'],
                 'sortableAttributes' => ['created_at', 'updated_at', 'title', 'document_date'],
                 // Order by importance: most important fields first for better ranking
                 'searchableAttributes' => [
@@ -209,7 +209,7 @@ return [
                 ],
             ],
             Invoice::class => [
-                'filterableAttributes' => ['id', 'user_id', 'invoice_date', 'due_date', 'total_amount', 'payment_status', 'invoice_type'],
+                'filterableAttributes' => ['id', 'user_id', 'invoice_date', 'due_date', 'total_amount', 'payment_status', 'invoice_type', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'document_type', 'vendors'],
                 'sortableAttributes' => ['invoice_date', 'due_date', 'total_amount', 'created_at'],
                 'searchableAttributes' => [
                     'invoice_number',
@@ -222,7 +222,7 @@ return [
                 'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
             ],
             Contract::class => [
-                'filterableAttributes' => ['id', 'user_id', 'effective_date', 'expiry_date', 'contract_type', 'status', 'contract_value'],
+                'filterableAttributes' => ['id', 'user_id', 'effective_date', 'expiry_date', 'contract_type', 'status', 'contract_value', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'document_type', 'vendors', 'total_amount'],
                 'sortableAttributes' => ['effective_date', 'expiry_date', 'contract_value', 'created_at'],
                 'searchableAttributes' => [
                     'contract_title',
@@ -234,7 +234,7 @@ return [
                 'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
             ],
             Voucher::class => [
-                'filterableAttributes' => ['id', 'user_id', 'expiry_date', 'original_value', 'current_value', 'is_redeemed'],
+                'filterableAttributes' => ['id', 'user_id', 'expiry_date', 'original_value', 'current_value', 'is_redeemed', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'document_type', 'vendors', 'total_amount'],
                 'sortableAttributes' => ['expiry_date', 'current_value', 'created_at'],
                 'searchableAttributes' => [
                     'code',
@@ -245,7 +245,7 @@ return [
                 'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
             ],
             Warranty::class => [
-                'filterableAttributes' => ['id', 'user_id', 'warranty_end_date', 'warranty_type', 'product_category'],
+                'filterableAttributes' => ['id', 'user_id', 'warranty_end_date', 'warranty_type', 'product_category', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'document_type', 'vendors', 'total_amount'],
                 'sortableAttributes' => ['warranty_end_date', 'purchase_date', 'created_at'],
                 'searchableAttributes' => [
                     'product_name',
@@ -257,7 +257,7 @@ return [
                 'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
             ],
             ReturnPolicy::class => [
-                'filterableAttributes' => ['id', 'user_id', 'return_deadline', 'exchange_deadline', 'is_final_sale', 'refund_method'],
+                'filterableAttributes' => ['id', 'user_id', 'return_deadline', 'exchange_deadline', 'is_final_sale', 'refund_method', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'document_type', 'vendors', 'total_amount'],
                 'sortableAttributes' => ['return_deadline', 'exchange_deadline', 'created_at'],
                 'searchableAttributes' => [
                     'merchant_name',
@@ -267,7 +267,7 @@ return [
                 'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
             ],
             BankStatement::class => [
-                'filterableAttributes' => ['id', 'user_id', 'statement_date', 'statement_period_start', 'statement_period_end', 'opening_balance', 'closing_balance'],
+                'filterableAttributes' => ['id', 'user_id', 'statement_date', 'statement_period_start', 'statement_period_end', 'opening_balance', 'closing_balance', 'collection_ids', 'tags', 'category_name', 'receipt_category', 'document_type', 'vendors', 'total_amount'],
                 'sortableAttributes' => ['statement_date', 'closing_balance', 'created_at'],
                 'searchableAttributes' => [
                     'bank_name',

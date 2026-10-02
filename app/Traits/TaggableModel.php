@@ -4,7 +4,6 @@ namespace App\Traits;
 
 use App\Models\File;
 use App\Models\Tag;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
@@ -15,43 +14,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  */
 trait TaggableModel
 {
-    /**
-     * Get the tags for this model (through the file relationship).
-     * Returns an empty collection if no file is associated.
-     */
     public function tags(): BelongsToMany
     {
-        // If this model has a file, proxy to its tags
-        if ($this->file_id && $this->relationLoaded('file') && $this->file) {
-            return $this->file->tags();
-        }
-
-        // If file exists but not loaded, load it first
-        if ($this->file_id) {
-            $file = File::find($this->file_id);
-            if ($file) {
-                return $file->tags();
-            }
-        }
-
-        // Return an empty relationship if no file
-        // This creates a query that will return empty results
-        return $this->belongsToMany(Tag::class, 'file_tags', 'file_id', 'tag_id')
-            ->whereRaw('1 = 0'); // Always returns empty
+        return $this->belongsToMany(Tag::class, 'file_tags', 'file_id', 'tag_id', 'file_id')
+            ->withTimestamps();
     }
 
-    /**
-     * Get tag names as an array.
-     */
     public function getTagNames(): array
     {
-        if (! $this->file_id) {
-            return [];
-        }
-
-        $file = $this->relationLoaded('file') ? $this->file : File::find($this->file_id);
-
-        return $file?->getTagNames() ?? [];
+        return $this->tags->pluck('name')->all();
     }
 
     /**
@@ -123,7 +94,7 @@ trait TaggableModel
             return null;
         }
 
-        return $this->relationLoaded('file') ? $this->file : File::find($this->file_id);
+        return $this->file;
     }
 
     /**

@@ -90,6 +90,11 @@ class Receipt extends Model implements Taggable
         'deleted_reason' => DeletedReason::class,
     ];
 
+    public function getTagsAttribute(): Collection
+    {
+        return $this->getRelationValue('tags');
+    }
+
     /**
      * Get the note from the associated file.
      * Notes are stored on File to survive entity deletion/recreation during reprocessing.

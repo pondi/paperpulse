@@ -169,6 +169,7 @@ class PulseDavFolderService implements PulseDavFolderContract
                 'is_folder' => true,
                 'status' => 'folder',
                 'size' => 0,
+                'uploaded_at' => now(),
             ]);
 
             Log::info('[PulseDavFolder] Created virtual folder entry', [
@@ -281,6 +282,7 @@ class PulseDavFolderService implements PulseDavFolderContract
             'is_folder' => true,
             'status' => 'folder',
             'size' => 0,
+            'uploaded_at' => now(),
         ]);
 
         Log::info('[PulseDavFolder] Created virtual folder', [

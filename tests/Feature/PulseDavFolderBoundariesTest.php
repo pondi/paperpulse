@@ -5,6 +5,7 @@ use App\Models\PulseDavFile;
 use App\Models\User;
 use App\Services\PulseDav\PulseDavFolderService;
 use App\Services\PulseDav\SelectionImportService;
+use App\Services\PulseDavService;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -46,6 +47,35 @@ it('keeps root folder predicates within the owner and file filters', function (?
     expect(PulseDavFile::forUser($this->user->id)->filesOnly()->inFolder($rootPath)->pluck('id')->all())
         ->toBe($ownedIds);
 })->with([null, '', '/']);
+
+it('timestamps virtual folders and preserves them when reused', function (): void {
+    $this->freezeSecond();
+    $folder = $this->service->createVirtualFolder($this->user, 'virtual/child');
+    expect($folder->fresh()->uploaded_at->equalTo(now()))->toBeTrue()
+        ->and($folder->parent_folder)->toBe('virtual');
+
+    $this->travel(1)->day();
+    expect($this->service->createVirtualFolder($this->user, 'virtual/child')->id)->toBe($folder->id)
+        ->and($folder->fresh()->uploaded_at->equalTo(now()->subDay()))->toBeTrue();
+});
+
+it('timestamps a missing folder when tags are saved through either service', function (bool $useFacade): void {
+    $this->freezeSecond();
+    $service = $useFacade ? new class extends PulseDavService
+    {
+        public function __construct()
+        {
+            $this->incomingPrefix = 'scans/incoming/';
+        }
+    } : $this->service;
+
+    $folder = $service->updateFolderTags($this->user, 'tagged/child', []);
+    expect($folder->fresh()->uploaded_at->equalTo(now()))->toBeTrue()
+        ->and($folder->s3_path)->toBe("scans/incoming/{$this->user->id}/tagged/child/")
+        ->and($folder->folder_tag_ids)->toBe([]);
+    expect($service->updateFolderTags($this->user, 'tagged/child', [1])->id)->toBe($folder->id)
+        ->and($folder->fresh()->folder_tag_ids)->toBe([1]);
+})->with([false, true]);
 
 it('counts imports and deletes only the exact owned folder and descendants', function (string $folderPath, string $siblingPath) {
     $other = User::factory()->create();

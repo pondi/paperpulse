@@ -321,6 +321,7 @@ class PulseDavService
                 'is_folder' => true,
                 'status' => 'folder',
                 'size' => 0,
+                'uploaded_at' => now(),
             ]);
         }
 

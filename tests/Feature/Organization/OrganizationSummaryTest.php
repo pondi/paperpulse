@@ -12,10 +12,14 @@ use App\Services\AI\Providers\GeminiProvider;
 use App\Services\EntityFactory;
 use App\Services\FileOrganizationSummaryService;
 use App\Services\OrganizationSummaryNormalizer;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 
-beforeEach(fn () => Http::preventStrayRequests());
+beforeEach(function (): void {
+    Http::preventStrayRequests();
+    Bus::fake();
+});
 
 test('existing extraction produces a bounded primary summary with exactly one provider request', function () {
     $owner = User::factory()->create();
@@ -32,6 +36,8 @@ test('existing extraction produces a bounded primary summary with exactly one pr
         ['type' => 'document', 'data' => $result['data']],
         ['type' => 'document', 'data' => ['title' => 'Supplemental document']],
     ]], $file);
+    expect($file->fresh()->organization_summary)->toBeNull();
+    app(FileOrganizationSummaryService::class)->capture($file, $file->primaryEntity->entity);
     $summary = $file->fresh()->organization_summary;
     expect(mb_strlen($summary['title']))->toBe(120)
         ->and($summary['version'])->toBe(1)->and($summary['property_address'])->toBe('12 Birch Road')
@@ -52,6 +58,7 @@ test('contract employer evidence survives normalization and generic factory pers
             'role' => 'contracts', 'confidence' => 0.93],
     ]);
     app(EntityFactory::class)->createEntitiesFromParsedData(['entities' => [['type' => 'contract', 'data' => $data]]], $file);
+    app(FileOrganizationSummaryService::class)->capture($file, $file->primaryEntity->entity);
     expect($file->fresh()->organization_summary)->toMatchArray([
         'employer' => ['name' => 'Example AS', 'registration' => '123456789'],
         'role' => 'contracts', 'confidence' => 0.93,

@@ -2,11 +2,13 @@
 
 namespace App\Jobs;
 
+use App\Events\FileExtractionCompleted;
 use App\Jobs\BankStatements\ProcessCsvImport;
 use App\Jobs\Documents\AnalyzeDocument;
 use App\Jobs\Files\ProcessFileGemini;
 use App\Jobs\Receipts\ProcessReceipt;
 use App\Models\File;
+use App\Models\FileOrganizationRequest;
 use App\Models\JobHistory;
 use App\Models\User;
 use App\Services\File\FileStorageService;
@@ -147,6 +149,14 @@ abstract class BaseJob implements ShouldQueue
                 $this->execute();
                 if ($replace && ! app(FileEntityCleanupService::class)->hasEntities($file)) {
                     throw new RuntimeException('Replacement extraction produced no entities.');
+                }
+                if ($this->commitsExtraction() && JobHistory::query()->where('uuid', $this->uuid)->where('status', 'completed')->exists()
+                    && $file->primaryEntity()->where('user_id', $file->user_id)->exists()) {
+                    $generation = $metadata['processingGeneration'];
+                    FileOrganizationRequest::query()->firstOrCreate([
+                        'file_id' => $file->id, 'generation' => $generation,
+                    ], ['user_id' => $file->user_id]);
+                    FileExtractionCompleted::dispatch($file->user_id, $file->id, $generation);
                 }
             });
 

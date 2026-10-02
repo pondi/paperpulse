@@ -229,10 +229,6 @@ class EntityFactory
             ],
             'extracted_at' => now(),
         ]);
-        if ($isPrimary) {
-            app(FileOrganizationSummaryService::class)->capture($file, $model);
-        }
-
     }
 
     /**

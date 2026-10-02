@@ -67,3 +67,5 @@ Artisan::command('files:cleanup-working', function (FileStorageService $storage)
 Schedule::command('files:cleanup-working')->dailyAt('02:00')->name('cleanup-working-files')->withoutOverlapping();
 
 Schedule::command('pulsedav:reconcile-imports')->everyFiveMinutes()->name('reconcile-scanner-imports')->withoutOverlapping();
+
+Schedule::command('organization:recover-placements')->everyFiveMinutes()->name('recover-file-organization')->withoutOverlapping();

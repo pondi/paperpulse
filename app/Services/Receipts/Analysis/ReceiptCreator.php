@@ -3,6 +3,7 @@
 namespace App\Services\Receipts\Analysis;
 
 use App\Contracts\Services\ReceiptParserContract;
+use App\Models\ExtractableEntity;
 use App\Models\Receipt;
 use Carbon\Carbon;
 
@@ -32,8 +33,12 @@ class ReceiptCreator
             $payload['receipt_data'] = json_encode($receiptData);
         }
 
-        // Create the receipt
         $receipt = Receipt::create($payload);
+        ExtractableEntity::create([
+            'file_id' => $receipt->file_id, 'user_id' => $receipt->user_id,
+            'entity_type' => 'receipt', 'entity_id' => $receipt->id, 'is_primary' => true,
+            'extraction_provider' => 'textract_openai', 'extracted_at' => now(),
+        ]);
 
         // Mark for date update if extraction failed
         if ($dateExtractionFailed) {

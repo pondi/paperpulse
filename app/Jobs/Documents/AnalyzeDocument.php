@@ -68,6 +68,10 @@ class AnalyzeDocument extends BaseJob
                 ]);
             } else {
                 $document = Document::where('user_id', $metadata['userId'])->where('file_id', $fileId)->firstOrFail();
+                ExtractableEntity::firstOrCreate([
+                    'user_id' => $metadata['userId'], 'file_id' => $fileId,
+                    'entity_type' => 'document', 'entity_id' => $document->id,
+                ], ['is_primary' => true, 'extraction_provider' => 'textract_openai', 'extracted_at' => now()]);
             }
 
             $this->updateProgress(25);
@@ -110,6 +114,7 @@ class AnalyzeDocument extends BaseJob
                     'category_id' => $categoryId ?? $document->category_id,
                     'metadata' => array_merge($document->metadata ?? [], [
                         'ai_analysis' => $analysis,
+                        'organization_evidence' => $analysis['organization'] ?? [],
                         'analyzed_at' => now()->toIso8601String(),
                     ]),
                 ]);

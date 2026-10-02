@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreBatchRequest;
 use App\Services\BatchProcessingService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class BatchProcessingController extends Controller
 {
@@ -22,32 +23,14 @@ class BatchProcessingController extends Controller
     /**
      * Start a new batch processing job
      */
-    public function create(Request $request): JsonResponse
+    public function create(StoreBatchRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'items' => 'required|array|min:1|max:1000',
-            'items.*.source' => 'required|string',
-            'items.*.type' => 'sometimes|string',
-            'items.*.options' => 'sometimes|array',
-            'type' => 'required|in:receipt,document',
-            'options' => 'sometimes|array',
-            'options.quality' => 'sometimes|in:basic,standard,high,premium',
-            'options.budget' => 'sometimes|in:economy,standard,premium,unlimited',
-            'options.batch_size' => 'sometimes|integer|min:1|max:100',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
+        $validated = $request->validated();
         try {
             $user = Auth::user();
-            $items = $request->input('items');
-            $type = $request->input('type');
-            $options = $request->input('options', []);
+            $items = $validated['items'];
+            $type = $validated['type'];
+            $options = $validated['options'] ?? [];
 
             $batchJob = $this->batchService->processBatch($items, $user, $type, $options);
 
@@ -61,6 +44,8 @@ class BatchProcessingController extends Controller
                 ],
             ]);
 
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (Exception $e) {
             Log::error('Failed to create batch job', ['exception' => $e]);
 

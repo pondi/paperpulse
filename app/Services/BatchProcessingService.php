@@ -2,18 +2,20 @@
 
 namespace App\Services;
 
+use App\Http\Requests\StoreBatchRequest;
 use App\Jobs\Files\ProcessBatchItem;
 use App\Models\BatchJob;
+use App\Models\File;
 use App\Models\User;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class BatchProcessingService
 {
-    public function __construct() {}
-
     /**
      * Process multiple documents in batch
      */
@@ -23,6 +25,18 @@ class BatchProcessingService
         string $type = 'document',
         array $options = []
     ): BatchJob {
+        Validator::make(compact('items', 'type', 'options'), (new StoreBatchRequest)->rules())->validate();
+        $ownedFileIds = File::withoutGlobalScope('user')->where('user_id', $user->id)
+            ->where('file_type', $type)->whereIn('id', array_column($items, 'file_id'))->pluck('id');
+        $errors = [];
+        foreach ($items as $index => $item) {
+            if (! $ownedFileIds->contains($item['file_id']) || ($item['type'] ?? $type) !== $type) {
+                $errors["items.{$index}.file_id"] = 'Select an owned file matching the batch type.';
+            }
+        }
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
         try {
             DB::beginTransaction();
 
@@ -92,7 +106,7 @@ class BatchProcessingService
                 $batchItems[] = [
                     'batch_job_id' => $batchJob->id,
                     'item_index' => $chunkIndex * $batchConfig['batch_size'] + $itemIndex,
-                    'source' => $item['source'],
+                    'source' => (string) $item['file_id'],
                     'type' => $item['type'] ?? $batchJob->type,
                     'options' => json_encode(array_merge($options, $item['options'] ?? [])),
                     'status' => 'queued',

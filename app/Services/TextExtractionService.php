@@ -7,8 +7,10 @@ use App\Services\AI\Shared\ProcessingStageCache;
 use App\Services\OCR\ExtractionCache;
 use App\Services\OCR\OcrErrorFormatter;
 use App\Services\OCR\OCRServiceFactory;
+use App\Services\Workers\WorkerFileManager;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Coordinates OCR extraction for files and caches results.
@@ -24,6 +26,28 @@ class TextExtractionService
     public function __construct(StorageService $storageService)
     {
         $this->storageService = $storageService;
+    }
+
+    public function extractFromFile(int $fileId, int $userId, string $fileType): string
+    {
+        if (! in_array($fileType, ['receipt', 'document'], true)) {
+            throw new Exception('Unsupported batch file type.');
+        }
+        $file = File::withoutGlobalScope('user')->where('user_id', $userId)
+            ->where('file_type', $fileType)->findOrFail($fileId);
+        $path = $file->s3_archive_path ?? $file->s3_original_path;
+        $extension = $file->s3_archive_path ? 'pdf' : strtolower($file->fileExtension);
+        if (! $path || ! in_array($extension, OCRServiceFactory::create()->getSupportedExtensions(), true)) {
+            throw new Exception('The stored file has no supported extraction source. Office files must finish conversion first.');
+        }
+
+        return app(WorkerFileManager::class)->processWithCleanup(
+            $path,
+            $file->guid.'-batch-'.Str::uuid(),
+            $extension,
+            fn (string $localPath): string => $this->extract($localPath, $fileType, $file->guid),
+            'BatchExtraction',
+        );
     }
 
     /**

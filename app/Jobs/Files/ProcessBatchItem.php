@@ -4,7 +4,7 @@ namespace App\Jobs\Files;
 
 use App\Models\BatchItem;
 use App\Models\BatchJob;
-use App\Services\AI\AIServiceFactory;
+use App\Services\AI\AIService;
 use App\Services\BatchProcessingService;
 use App\Services\TextExtractionService;
 use Exception;
@@ -138,17 +138,14 @@ class ProcessBatchItem implements ShouldQueue
     protected function processIndividualItem(BatchItem $item, BatchJob $batchJob): array
     {
         $textService = app(TextExtractionService::class);
-        $options = $item->options;
-
-        // Extract text
-        $text = $textService->extractFromSource($item->source, $options);
+        $text = $textService->extractFromFile((int) $item->source, $batchJob->user_id, $item->type);
 
         if (empty(trim($text))) {
             throw new Exception('No text could be extracted from source');
         }
 
         // Analyze based on type
-        return match ($batchJob->type) {
+        return match ($item->type) {
             'receipt' => $this->processReceiptItem($text, $item, $batchJob),
             'document' => $this->processDocumentItem($text, $item, $batchJob),
             default => throw new Exception("Unknown batch type: {$batchJob->type}")
@@ -157,7 +154,7 @@ class ProcessBatchItem implements ShouldQueue
 
     protected function processReceiptItem(string $text, BatchItem $item, BatchJob $batchJob): array
     {
-        $aiService = AIServiceFactory::create();
+        $aiService = app(AIService::class);
         $result = $aiService->analyzeReceipt($text, $item->options);
 
         if (! $result['success']) {
@@ -169,7 +166,7 @@ class ProcessBatchItem implements ShouldQueue
 
     protected function processDocumentItem(string $text, BatchItem $item, BatchJob $batchJob): array
     {
-        $aiService = AIServiceFactory::create();
+        $aiService = app(AIService::class);
         $result = $aiService->analyzeDocument($text, $item->options);
 
         if (! $result['success']) {

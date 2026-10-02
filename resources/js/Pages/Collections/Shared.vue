@@ -112,6 +112,8 @@
 </template>
 
 <script setup>
+import { useDateFormatter } from '@/Composables/useDateFormatter';
+const { formatDate } = useDateFormatter();
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
@@ -147,14 +149,7 @@ const getPermissionClass = (permission) => {
     return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
 };
 
-const formatDate = (date) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
-};
+
 
 const viewCollection = (collection) => {
     router.visit(route('collections.show', collection.id));

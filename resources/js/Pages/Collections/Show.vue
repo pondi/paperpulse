@@ -184,6 +184,8 @@
 </template>
 
 <script setup>
+import { useDateFormatter } from '@/Composables/useDateFormatter';
+const { formatDate } = useDateFormatter();
 import { ref, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -290,14 +292,7 @@ const getFileType = (file) => {
 
 const getFileUrl = (file) => route('files.show', file.id);
 
-const formatDate = (date) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
-};
+
 
 const removeFile = (fileId) => {
     if (confirm('Remove this file from the collection?')) {

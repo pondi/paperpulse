@@ -1,3 +1,5 @@
+import { usePage } from '@inertiajs/vue3';
+
 /**
  * Date and time formatting utilities for the application.
  * Handles timezone conversion and user-friendly date display.
@@ -17,60 +19,52 @@ export function daysUntilCalendarDate(date: string | null | undefined, timezone:
     return (Date.UTC(expiryYear, expiryMonth - 1, expiryDay) - Date.UTC(year, month - 1, day)) / 86400000;
 }
 
-/**
- * Get user's configured timezone or browser default
- * Note: User timezone configuration is planned for future implementation
- */
-function getUserConfiguredTimezone(): string {
-    // For now, use browser's timezone which automatically matches user's system
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+export function formattingPreferences(): { language: string; timezone: string; date_format: string; currency: string } {
+    return usePage().props.auth?.user?.preferences || { language: 'en', timezone: 'UTC', date_format: 'Y-m-d', currency: 'NOK' };
 }
 
-/**
- * Format an ISO 8601 datetime string to user's local time
- * @param datetime - ISO 8601 datetime string (e.g., "2024-01-15T10:30:00Z")
- * @param format - Display format: 'full', 'date', 'time', 'relative'
- * @returns Formatted datetime string in user's local timezone
- */
+export function formatPreferredDate(value: string | null | undefined, includeTime = false): string {
+    if (!value) return '';
+    const prefs = formattingPreferences();
+    const calendar = !includeTime || /^\d{4}-\d{2}-\d{2}$/.test(value);
+    const date = new Date(calendar ? value.slice(0, 10) + 'T00:00:00Z' : value);
+    if (Number.isNaN(date.getTime())) return '';
+    const locale = prefs.language === 'nb' ? 'nb-NO' : 'en-US';
+    const timeZone = calendar ? 'UTC' : prefs.timezone;
+    const formatter = new Intl.DateTimeFormat(locale, { timeZone, year: 'numeric', month: prefs.date_format.includes('F') ? 'long' : '2-digit', day: '2-digit' });
+    const parts = formatter.formatToParts(date);
+    const part = (type: string) => parts.find(p => p.type === type)?.value || '';
+    const year = part('year'), month = part('month'), day = part('day');
+    const formats: Record<string, string> = {
+        'Y-m-d': `${year}-${month}-${day}`,
+        'd/m/Y': `${day}/${month}/${year}`,
+        'm/d/Y': `${month}/${day}/${year}`,
+        'd.m.Y': `${day}.${month}.${year}`,
+        'F j, Y': `${month} ${Number(day)}, ${year}`,
+        'j F Y': `${Number(day)} ${month} ${year}`,
+    };
+    const formatted = formats[prefs.date_format];
+    return calendar ? formatted : `${formatted} ${new Intl.DateTimeFormat(locale, { timeZone, hour: '2-digit', minute: '2-digit' }).format(date)}`;
+}
+
+export function formatCurrency(amount: number | string | null | undefined, currency: string | null = null): string {
+    if (amount === null || amount === undefined) return 'Conversion unavailable';
+    const prefs = formattingPreferences();
+    const code = currency ?? prefs.currency;
+    const locale = prefs.language === 'nb' ? 'nb-NO' : 'en-US';
+    if (!/^[A-Z]{3}$/.test(code)) return `${Number(amount).toFixed(2)} ${code}`;
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: code }).format(Number(amount));
+}
+
 export function formatDateTime(datetime: string | null | undefined, format: 'full' | 'date' | 'time' | 'relative' = 'full'): string {
     if (!datetime) return '-';
-    
     const date = new Date(datetime);
-    
-    // Check if date is valid
-    if (isNaN(date.getTime())) return '-';
-    
-    const locale = navigator.language || 'en-US';
-    
-    switch (format) {
-        case 'date':
-            return date.toLocaleDateString(locale, {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-            
-        case 'time':
-            return date.toLocaleTimeString(locale, {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-            
-        case 'relative':
-            return getRelativeTime(date);
-            
-        case 'full':
-        default:
-            return date.toLocaleString(locale, {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-    }
+    if (Number.isNaN(date.getTime())) return '-';
+    const prefs = formattingPreferences();
+    const locale = prefs.language === 'nb' ? 'nb-NO' : 'en-US';
+    if (format === 'relative') return getRelativeTime(date);
+    if (format === 'time') return new Intl.DateTimeFormat(locale, { timeZone: prefs.timezone, hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(date);
+    return formatPreferredDate(datetime, format !== 'date');
 }
 
 /**
@@ -100,24 +94,13 @@ export function formatDuration(seconds: number | null | undefined): string {
  * @returns Relative time string
  */
 function getRelativeTime(date: Date): string {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffSecs = Math.floor(diffMs / 1000);
-    const diffMins = Math.floor(diffSecs / 60);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-    
-    if (Math.abs(diffSecs) < 60) {
-        return diffSecs < 0 ? `in ${Math.abs(diffSecs)} seconds` : `${diffSecs} seconds ago`;
-    } else if (Math.abs(diffMins) < 60) {
-        return diffMins < 0 ? `in ${Math.abs(diffMins)} minutes` : `${diffMins} minutes ago`;
-    } else if (Math.abs(diffHours) < 24) {
-        return diffHours < 0 ? `in ${Math.abs(diffHours)} hours` : `${diffHours} hours ago`;
-    } else if (Math.abs(diffDays) < 30) {
-        return diffDays < 0 ? `in ${Math.abs(diffDays)} days` : `${diffDays} days ago`;
-    } else {
-        return date.toLocaleDateString();
-    }
+    const seconds = (date.getTime() - Date.now()) / 1000;
+    const prefs = formattingPreferences();
+    const formatter = new Intl.RelativeTimeFormat(prefs.language === 'nb' ? 'nb-NO' : 'en-US');
+    const [unit, divisor]: [Intl.RelativeTimeFormatUnit, number] = Math.abs(seconds) < 60 ? ['second', 1]
+        : Math.abs(seconds) < 3600 ? ['minute', 60]
+        : Math.abs(seconds) < 86400 ? ['hour', 3600] : ['day', 86400];
+    return formatter.format(Math.round(seconds / divisor), unit);
 }
 
 /**
@@ -125,10 +108,7 @@ function getRelativeTime(date: Date): string {
  * @returns Timezone abbreviation (e.g., "PST", "EST", "UTC")
  */
 export function getUserTimezone(): string {
-    const date = new Date();
-    const timezoneName = date.toLocaleTimeString('en-US', { 
-        timeZoneName: 'short' 
-    }).split(' ').pop() || 'Local';
-    
-    return timezoneName;
+    const prefs = formattingPreferences();
+    const parts = new Intl.DateTimeFormat(prefs.language === 'nb' ? 'nb-NO' : 'en-US', { timeZone: prefs.timezone, timeZoneName: 'short' }).formatToParts(new Date());
+    return parts.find(part => part.type === 'timeZoneName')?.value || prefs.timezone;
 }

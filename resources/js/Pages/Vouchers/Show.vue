@@ -186,7 +186,7 @@ const isPaymentPlan = computed(() => {
   return props.voucher.voucher_type === 'payment_plan'
 })
 
-const { formatDate, formatDateTime, daysUntilDate } = useDateFormatter()
+const { formatDate, formatDateTime, daysUntilDate, formatCurrency: formatOriginalCurrency } = useDateFormatter()
 const daysUntilExpiry = computed(() => daysUntilDate(props.voucher.expiry_date))
 const isExpired = computed(() => daysUntilExpiry.value !== null && daysUntilExpiry.value < 0)
 const isExpiringSoon = computed(() => !props.voucher.is_redeemed && daysUntilExpiry.value !== null && daysUntilExpiry.value >= 0 && daysUntilExpiry.value <= 30)
@@ -203,12 +203,7 @@ const statusClass = computed(() => {
   return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
 })
 
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('no-NO', {
-    style: 'currency',
-    currency: props.voucher.currency || 'NOK'
-  }).format(amount)
-}
+const formatCurrency = amount => formatOriginalCurrency(amount, props.voucher.currency);
 
 function markAsRedeemed() {
   if (confirm('Are you sure you want to mark this voucher as redeemed?')) {

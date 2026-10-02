@@ -148,6 +148,8 @@
 </template>
 
 <script setup>
+import { useDateFormatter } from '@/Composables/useDateFormatter';
+const { formatDateTime } = useDateFormatter();
 import { Head, Link } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import VoucherCard from '@/Components/Entities/VoucherCard.vue';
@@ -222,14 +224,5 @@ const getStatusClass = (status) => {
   return classes[status] || 'bg-zinc-100 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-300';
 };
 
-const formatDateTime = (dateTime) => {
-  if (!dateTime) return '';
-  return new Date(dateTime).toLocaleString('no-NO', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
+
 </script>

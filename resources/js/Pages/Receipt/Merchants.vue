@@ -71,7 +71,7 @@
                                 <div class="flex justify-between gap-x-4 py-3">
                                     <dt class="font-bold text-xs uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Last Receipt</dt>
                                     <dd class="font-medium text-zinc-900 dark:text-zinc-100">
-                                        <time :datetime="merchant.lastInvoice.dateTime">{{ merchant.lastInvoice.date }}</time>
+                                        <time :datetime="merchant.lastInvoice.dateTime">{{ formatDate(merchant.lastInvoice.dateTime) }}</time>
                                     </dd>
                                 </div>
                                 <div class="flex justify-between gap-x-4 py-3">
@@ -216,7 +216,7 @@
 </template>
 
 <script setup>
-import Pagination from '@/Components/Pagination.vue';
+import Pagination from '@/Components/Common/Pagination.vue';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -224,7 +224,7 @@ import { Menu, MenuButton, MenuItem, MenuItems, Dialog, DialogPanel, DialogTitle
 import { EllipsisHorizontalIcon, PhotoIcon, XMarkIcon } from '@heroicons/vue/20/solid'
 import { ref } from 'vue'
 
-const { formatCurrency } = useDateFormatter();
+const { formatCurrency, formatDate } = useDateFormatter();
 
 defineProps({
     merchants: {

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useDateFormatter } from '@/Composables/useDateFormatter';
+const { formatDate, formatCurrency: formatOriginalCurrency } = useDateFormatter();
+const formatCurrency = (amount: number) => formatOriginalCurrency(amount, props.invoice.currency);
 import { ref, computed, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -140,22 +143,6 @@ const paymentStatusClass = computed(() => {
     };
     return classes[props.invoice.payment_status] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300';
 });
-
-const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('no-NO', {
-        style: 'currency',
-        currency: props.invoice.currency || 'NOK'
-    }).format(amount);
-};
-
-const formatDate = (date: string | null | undefined) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-    });
-};
 
 const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';

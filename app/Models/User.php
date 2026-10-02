@@ -135,9 +135,25 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->getPreference($key, $default);
     }
 
+    /** @return array{language: string, timezone: string, date_format: string, currency: string} */
+    public function formattingPreferences(): array
+    {
+        $options = UserPreference::getOptions();
+        $defaults = UserPreference::defaultPreferences();
+        $preferences = [];
+        foreach (['language' => 'languages', 'date_format' => 'date_formats', 'currency' => 'currencies'] as $field => $option) {
+            $value = $this->preference($field, $defaults[$field]);
+            $preferences[$field] = array_key_exists($value, $options[$option]) ? $value : $defaults[$field];
+        }
+        $timezone = $this->preference('timezone', 'UTC');
+        $preferences['timezone'] = in_array($timezone, timezone_identifiers_list(), true) ? $timezone : 'UTC';
+
+        return $preferences;
+    }
+
     public function currentDate(): Carbon
     {
-        return Carbon::today($this->preference('timezone', 'UTC'));
+        return Carbon::today($this->formattingPreferences()['timezone']);
     }
 
     /**

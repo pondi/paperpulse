@@ -113,16 +113,7 @@ watch(
     }
 );
 
-const formatDate = (iso: string | null) => {
-    if (!iso) return '';
-    return new Date(iso).toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
-};
+
 
 const restart = (fileId: number) => {
     router.post(route('files.reprocess', fileId), {}, { preserveScroll: true });

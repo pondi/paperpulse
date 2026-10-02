@@ -38,13 +38,7 @@ class HandleInertiaRequests extends Middleware
                     'email' => $request->user()->email,
                     'email_verified_at' => $request->user()->email_verified_at,
                     'is_admin' => $request->user()->isAdmin(),
-                    'timezone' => $request->user()->timezone ?? 'UTC',
-                    'preferences' => $request->user()->preferences ? [
-                        'language' => $request->user()->preferences->language,
-                        'timezone' => $request->user()->preferences->timezone,
-                        'date_format' => $request->user()->preferences->date_format,
-                        'currency' => $request->user()->preferences->currency,
-                    ] : null,
+                    'preferences' => $request->user()->formattingPreferences(),
                 ] : null,
             ],
             'language' => [

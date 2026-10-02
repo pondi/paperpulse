@@ -34,7 +34,7 @@
                                 <div class="flex justify-between gap-x-4 py-3">
                                     <dt class="font-bold text-xs uppercase tracking-wider text-zinc-600 dark:text-zinc-400">{{ __('last_item') }}</dt>
                                     <dd class="font-medium text-zinc-900 dark:text-zinc-100">
-                                        <time :datetime="vendor.stats.dateTime">{{ vendor.stats.date }}</time>
+                                        <time :datetime="vendor.stats.dateTime">{{ formatDate(vendor.stats.dateTime) }}</time>
                                     </dd>
                                 </div>
                                 <div class="flex justify-between gap-x-4 py-3">
@@ -78,7 +78,7 @@
 </template>
 
 <script setup>
-import Pagination from '@/Components/Pagination.vue';
+import Pagination from '@/Components/Common/Pagination.vue';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
@@ -100,7 +100,7 @@ const __ = (key) => {
   return value || key.split('.').pop();
 };
 
-const { formatCurrency } = useDateFormatter();
+const { formatCurrency, formatDate } = useDateFormatter();
 
 defineProps({
     vendors: {

@@ -120,7 +120,7 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const { formatDate: formatDateLocalized, formatCurrency: formatCurrencyLocalized } = useDateFormatter();
+const { formatDate: formatDateLocalized, formatCurrency: formatCurrencyLocalized, formatDate, formatCurrency } = useDateFormatter();
 
 const selectedDocuments = ref<number[]>([]);
 const showDeleteModal = ref(false);
@@ -153,13 +153,7 @@ const formatFileSize = (bytes: number) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
-};
+
 
 const toggleAll = () => {
     if (allSelected.value) {
@@ -283,10 +277,7 @@ const getEntityTypeBadge = (entityType?: string) => {
     }
 };
 
-const formatCurrency = (amount?: number, currency?: string) => {
-    if (amount == null) return null;
-    return formatCurrencyLocalized(amount, currency);
-};
+
 </script>
 
 <template>

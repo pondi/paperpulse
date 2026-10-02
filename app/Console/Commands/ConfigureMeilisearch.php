@@ -3,6 +3,9 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Meilisearch\Client;
+use RuntimeException;
+use Throwable;
 
 class ConfigureMeilisearch extends Command
 {
@@ -23,21 +26,29 @@ class ConfigureMeilisearch extends Command
     /**
      * Execute the console command.
      */
-    public function handle(): int
+    public function handle(Client $client): int
     {
-        $this->info('Configuring Meilisearch indices via scout:sync-index-settings...');
-        $this->newLine();
+        try {
+            foreach (config('scout.meilisearch.index-settings') as $model => $settings) {
+                $instance = new $model;
+                if (config('scout.soft_delete')) {
+                    $settings['filterableAttributes'][] = '__soft_deleted';
+                }
+                $task = $client->index($instance->indexableAs())->updateSettings($settings);
+                $result = $client->waitForTask($task['taskUid'], 60000);
+                if ($result['status'] !== 'succeeded') {
+                    throw new RuntimeException('Index settings failed: '.($result['error']['message'] ?? $result['status']));
+                }
+            }
 
-        $exitCode = $this->call('scout:sync-index-settings');
-
-        if ($exitCode === Command::SUCCESS) {
-            $this->newLine();
             $this->info('Meilisearch indices configured successfully!');
-            $this->newLine();
-            $this->warn('Now you should re-import your data:');
-            $this->line('  php artisan scout:reindex-all');
-        }
+            $this->line('Re-import your data with: php artisan scout:reindex-all');
 
-        return $exitCode;
+            return self::SUCCESS;
+        } catch (Throwable $exception) {
+            $this->error($exception->getMessage());
+
+            return self::FAILURE;
+        }
     }
 }

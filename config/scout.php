@@ -1,5 +1,16 @@
 <?php
 
+use App\Models\BankStatement;
+use App\Models\BankTransaction;
+use App\Models\Contract;
+use App\Models\Document;
+use App\Models\Invoice;
+use App\Models\LineItem;
+use App\Models\Receipt;
+use App\Models\ReturnPolicy;
+use App\Models\Voucher;
+use App\Models\Warranty;
+
 return [
 
     /*
@@ -134,7 +145,7 @@ return [
         'host' => env('MEILISEARCH_HOST', 'http://localhost:7700'),
         'key' => env('MEILISEARCH_KEY'),
         'index-settings' => [
-            'receipts' => [
+            Receipt::class => [
                 'filterableAttributes' => ['id', 'user_id', 'merchant_id', 'category_id', 'receipt_date', 'total_amount', 'currency', 'vendors'],
                 'sortableAttributes' => ['receipt_date', 'total_amount', 'created_at', 'updated_at'],
                 // Order by importance: most important fields first for better ranking
@@ -165,7 +176,7 @@ return [
                     ],
                 ],
             ],
-            'documents' => [
+            Document::class => [
                 'filterableAttributes' => ['id', 'user_id', 'category_id', 'file_type', 'document_type', 'language', 'document_date'],
                 'sortableAttributes' => ['created_at', 'updated_at', 'title', 'document_date'],
                 // Order by importance: most important fields first for better ranking
@@ -197,7 +208,7 @@ return [
                     ],
                 ],
             ],
-            'invoices' => [
+            Invoice::class => [
                 'filterableAttributes' => ['id', 'user_id', 'invoice_date', 'due_date', 'total_amount', 'payment_status', 'invoice_type'],
                 'sortableAttributes' => ['invoice_date', 'due_date', 'total_amount', 'created_at'],
                 'searchableAttributes' => [
@@ -210,7 +221,7 @@ return [
                 ],
                 'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
             ],
-            'contracts' => [
+            Contract::class => [
                 'filterableAttributes' => ['id', 'user_id', 'effective_date', 'expiry_date', 'contract_type', 'status', 'contract_value'],
                 'sortableAttributes' => ['effective_date', 'expiry_date', 'contract_value', 'created_at'],
                 'searchableAttributes' => [
@@ -222,7 +233,7 @@ return [
                 ],
                 'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
             ],
-            'vouchers' => [
+            Voucher::class => [
                 'filterableAttributes' => ['id', 'user_id', 'expiry_date', 'original_value', 'current_value', 'is_redeemed', 'is_expired'],
                 'sortableAttributes' => ['expiry_date', 'current_value', 'created_at'],
                 'searchableAttributes' => [
@@ -233,7 +244,7 @@ return [
                 ],
                 'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
             ],
-            'warranties' => [
+            Warranty::class => [
                 'filterableAttributes' => ['id', 'user_id', 'warranty_end_date', 'warranty_type', 'product_category'],
                 'sortableAttributes' => ['warranty_end_date', 'purchase_date', 'created_at'],
                 'searchableAttributes' => [
@@ -245,7 +256,7 @@ return [
                 ],
                 'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
             ],
-            'return_policies' => [
+            ReturnPolicy::class => [
                 'filterableAttributes' => ['id', 'user_id', 'return_deadline', 'exchange_deadline', 'is_final_sale', 'refund_method'],
                 'sortableAttributes' => ['return_deadline', 'exchange_deadline', 'created_at'],
                 'searchableAttributes' => [
@@ -255,7 +266,7 @@ return [
                 ],
                 'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
             ],
-            'bank_statements' => [
+            BankStatement::class => [
                 'filterableAttributes' => ['id', 'user_id', 'statement_date', 'statement_period_start', 'statement_period_end', 'opening_balance', 'closing_balance'],
                 'sortableAttributes' => ['statement_date', 'closing_balance', 'created_at'],
                 'searchableAttributes' => [
@@ -266,7 +277,7 @@ return [
                 ],
                 'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
             ],
-            'bank_transactions' => [
+            BankTransaction::class => [
                 'filterableAttributes' => ['id', 'user_id', 'bank_statement_id', 'transaction_type', 'category_group', 'amount', 'transaction_date'],
                 'sortableAttributes' => ['transaction_date', 'amount', 'created_at'],
                 'searchableAttributes' => [
@@ -278,7 +289,7 @@ return [
                 ],
                 'rankingRules' => ['words', 'typo', 'proximity', 'attribute', 'exactness', 'sort'],
             ],
-            'line_items' => [
+            LineItem::class => [
                 'filterableAttributes' => ['id', 'receipt_id', 'user_id'],
                 'searchableAttributes' => ['description', 'sku'],
             ],

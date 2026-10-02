@@ -6,6 +6,7 @@ use App\Enums\DeletedReason;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Scout\Searchable;
 
@@ -37,12 +38,20 @@ class LineItem extends Model
     /**
      * Get the receipt that owns the line item.
      */
-    public function receipt()
+    public function receipt(): BelongsTo
     {
         return $this->belongsTo(Receipt::class);
     }
 
-    public function vendor()
+    public function toSearchableArray(): array
+    {
+        return array_merge($this->toArray(), [
+            'user_id' => $this->receipt()->withoutGlobalScope('user')->value('user_id'),
+            'description' => $this->text,
+        ]);
+    }
+
+    public function vendor(): BelongsTo
     {
         return $this->belongsTo(Vendor::class);
     }

@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\Merchant;
 use App\Models\User;
 use App\Services\EntityFactory;
+use App\Services\Factories\InvoiceFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -311,3 +312,24 @@ it('creates bank statement from already-flat data', function () {
     expect($statement->bank_name)->toBe('DNB');
     expect($statement->account_number)->toBe('1234 56 78901');
 });
+
+it('preserves invoice defaults and explicit zero extraction values', function (array $data) {
+    $file = File::factory()->create();
+    $invoice = app(InvoiceFactory::class)->create($data, $file)->fresh();
+
+    expect($invoice->currency)->toBe('NOK')
+        ->and($invoice->invoice_type)->toBe('invoice')
+        ->and($invoice->invoice_number)->toBe('INV-DEFAULTS');
+
+    foreach (['subtotal', 'tax_amount', 'discount_amount', 'shipping_amount', 'total_amount', 'amount_paid', 'amount_due'] as $field) {
+        expect((float) $invoice->$field)->toBe(0.0);
+    }
+})->with([
+    'omitted fields' => [['invoice_number' => 'INV-DEFAULTS']],
+    'nested zero wins over flat value' => [[
+        'invoice_info' => ['invoice_number' => 'INV-DEFAULTS'],
+        'totals' => ['total_amount' => 0, 'amount_due' => 0],
+        'total_amount' => 100,
+        'amount_due' => 100,
+    ]],
+]);

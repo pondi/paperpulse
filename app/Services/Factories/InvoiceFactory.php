@@ -98,11 +98,12 @@ class InvoiceFactory extends BaseEntityFactory
         $invoiceInfo = $data['invoice_info'] ?? [];
         $totals = $data['totals'] ?? [];
         $payment = $data['payment'] ?? [];
+        $defaults = $this->defaults();
 
         return array_merge($data, [
             'merchant_id' => $data['merchant_id'] ?? $this->resolveMerchantId($data, $file),
             'invoice_number' => $invoiceInfo['invoice_number'] ?? $data['invoice_number'] ?? null,
-            'invoice_type' => $invoiceInfo['invoice_type'] ?? $data['invoice_type'] ?? null,
+            'invoice_type' => $invoiceInfo['invoice_type'] ?? $data['invoice_type'] ?? $defaults['invoice_type'],
             'from_name' => $vendor['name'] ?? $data['from_name'] ?? null,
             'from_address' => $vendor['address'] ?? $data['from_address'] ?? null,
             'from_vat_number' => $vendor['vat_number'] ?? $data['from_vat_number'] ?? null,
@@ -116,14 +117,14 @@ class InvoiceFactory extends BaseEntityFactory
             'invoice_date' => $invoiceInfo['invoice_date'] ?? $data['invoice_date'] ?? null,
             'due_date' => $invoiceInfo['due_date'] ?? $data['due_date'] ?? null,
             'delivery_date' => $invoiceInfo['delivery_date'] ?? $data['delivery_date'] ?? null,
-            'subtotal' => $totals['subtotal'] ?? $data['subtotal'] ?? null,
-            'tax_amount' => $totals['tax_amount'] ?? $data['tax_amount'] ?? null,
-            'discount_amount' => $totals['discount_amount'] ?? $data['discount_amount'] ?? null,
-            'shipping_amount' => $totals['shipping_amount'] ?? $data['shipping_amount'] ?? null,
-            'total_amount' => $totals['total_amount'] ?? $data['total_amount'] ?? null,
-            'amount_paid' => $totals['amount_paid'] ?? $data['amount_paid'] ?? null,
-            'amount_due' => $totals['amount_due'] ?? $data['amount_due'] ?? null,
-            'currency' => $payment['currency'] ?? $data['currency'] ?? null,
+            'subtotal' => $totals['subtotal'] ?? $data['subtotal'] ?? $defaults['subtotal'],
+            'tax_amount' => $totals['tax_amount'] ?? $data['tax_amount'] ?? $defaults['tax_amount'],
+            'discount_amount' => $totals['discount_amount'] ?? $data['discount_amount'] ?? $defaults['discount_amount'],
+            'shipping_amount' => $totals['shipping_amount'] ?? $data['shipping_amount'] ?? $defaults['shipping_amount'],
+            'total_amount' => $totals['total_amount'] ?? $data['total_amount'] ?? $defaults['total_amount'],
+            'amount_paid' => $totals['amount_paid'] ?? $data['amount_paid'] ?? $defaults['amount_paid'],
+            'amount_due' => $totals['amount_due'] ?? $data['amount_due'] ?? $defaults['amount_due'],
+            'currency' => $payment['currency'] ?? $data['currency'] ?? $defaults['currency'],
             'payment_method' => $payment['method'] ?? $data['payment_method'] ?? null,
             'payment_status' => $payment['status'] ?? $data['payment_status'] ?? null,
             'payment_terms' => $payment['terms'] ?? $data['payment_terms'] ?? null,

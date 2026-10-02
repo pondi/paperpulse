@@ -71,7 +71,7 @@ it('includes line items in bulk CSV export', function () {
     expect($content)->toContain('Qty: 2');
 });
 
-it('does not include other users receipts in bulk CSV export', function () {
+it('rejects other users receipts in bulk CSV export', function () {
     $user = User::factory()->create();
     $other = User::factory()->create();
 
@@ -85,15 +85,12 @@ it('does not include other users receipts in bulk CSV export', function () {
         'receipt_description' => 'secret-receipt',
     ]);
 
-    $response = $this->actingAs($user)
-        ->post(route('bulk.receipts.export.csv'), [
+    $this->actingAs($user)
+        ->postJson(route('bulk.receipts.export.csv'), [
             'receipt_ids' => [$ownReceipt->id, $otherReceipt->id],
         ])
-        ->assertOk();
-
-    $content = $response->streamedContent();
-    expect($content)->toContain('my-receipt');
-    expect($content)->not->toContain('secret-receipt');
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('receipt_ids.1');
 });
 
 it('does not hardcode currency in CSV export', function () {

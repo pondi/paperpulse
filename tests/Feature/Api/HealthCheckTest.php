@@ -1,12 +1,16 @@
 <?php
 
-use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\Redis;
+use App\Services\ReadinessCheck;
 
 beforeEach(function (): void {
-    Redis::shouldReceive('connection')->with('health')->andReturnSelf();
-    Redis::shouldReceive('ping')->andReturn(true);
-    Queue::shouldReceive('size')->with('default')->andReturn(0);
+    $this->mock(ReadinessCheck::class)->shouldReceive('check')->once()->andReturn([
+        'status' => 'ok',
+        'components' => [
+            'database' => ['status' => 'ok', 'latency_ms' => 0],
+            'redis' => ['status' => 'ok'],
+            'queue' => ['status' => 'ok'],
+        ],
+    ]);
 });
 
 describe('health check', function () {

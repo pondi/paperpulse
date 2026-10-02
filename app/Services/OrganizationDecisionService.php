@@ -84,6 +84,9 @@ class OrganizationDecisionService
             }
             $created = $this->tree->ensureFolder($owner->id, $operation['name'], $parentId, source: 'recommendation');
             $folders[$created->id] = $created;
+            foreach ($operation['file_ids'] as $id) {
+                $files[$id] = $this->tree->place($files[$id], $created, 'recommendation');
+            }
         } elseif ($type === 'rename') {
             $folder = $folders[$operation['folder_id']];
             $folders[$folder->id] = $this->tree->update($folder, ['name' => $operation['name'], 'parent_id' => $operation['parent_id'] ?? $folder->parent_id]);
@@ -131,17 +134,12 @@ class OrganizationDecisionService
             }
             [$folders, $files] = $this->matchingState($owner, $recommendation->after_state);
             $before = $recommendation->before_state;
-            $this->revisions->withoutTracking(function () use ($folders, $files, $before): void {
+            $this->revisions->withoutTracking(function () use ($folders, $files, $before, $recommendation): void {
                 foreach ($folders as $id => $folder) {
                     if ($this->tree->hasSharing($folder)) {
                         $this->conflict();
                     }
                     if (! isset($before['folders'][$id])) {
-                        if ($folder->files()->withoutGlobalScope('user')->exists() || $folder->children()->withoutGlobalScope('user')->exists()) {
-                            $this->conflict();
-                        }
-                        $this->tree->deleteLeaf($folder);
-
                         continue;
                     }
                     if ($folder->trashed()) {
@@ -150,6 +148,10 @@ class OrganizationDecisionService
                     $this->tree->update($folder, ['name' => $before['folders'][$id]['name'], 'parent_id' => $before['folders'][$id]['parent_id']]);
                 }
                 foreach ($files as $id => $file) {
+                    if (! in_array($recommendation->operation['type'], ['create', 'move', 'merge'], true)
+                        || ! in_array($id, $recommendation->operation['file_ids'], true)) {
+                        continue;
+                    }
                     $previous = $before['files'][$id];
                     if ($previous['primary_folder_id']) {
                         $folder = Collection::withoutGlobalScope('user')->where('user_id', $file->user_id)->findOrFail($previous['primary_folder_id']);
@@ -161,6 +163,14 @@ class OrganizationDecisionService
                         $file->update(['primary_folder_id' => null, 'placement_source' => $previous['placement_source'], 'placement_version' => $file->placement_version + 1]);
                     }
                     $file->collections()->sync($previous['memberships']);
+                }
+                foreach ($folders as $id => $folder) {
+                    if (! isset($before['folders'][$id])) {
+                        if ($folder->files()->withoutGlobalScope('user')->exists() || $folder->children()->withoutGlobalScope('user')->exists()) {
+                            $this->conflict();
+                        }
+                        $this->tree->deleteLeaf($folder);
+                    }
                 }
             });
             $recommendation->update(['undone_at' => now()]);

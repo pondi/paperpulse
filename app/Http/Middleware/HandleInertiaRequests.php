@@ -56,6 +56,7 @@ class HandleInertiaRequests extends Middleware
                 'warning' => $request->session()->get('warning'),
                 'info' => $request->session()->get('info'),
                 'publicLink' => $request->session()->get('publicLink'),
+                'upload_results' => $request->session()->get('upload_results'),
             ],
             'reverb' => [
                 'key' => config('broadcasting.connections.reverb.key'),

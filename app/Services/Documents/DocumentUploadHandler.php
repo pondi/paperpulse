@@ -6,6 +6,8 @@ use App\Exceptions\DuplicateFileException;
 use App\Services\FileProcessingService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Throwable;
 
 /**
  * Validates and dispatches a set of uploaded files for processing.
@@ -13,58 +15,46 @@ use Illuminate\Support\Facades\Log;
 class DocumentUploadHandler
 {
     /**
-     * Validate and process uploaded files via FileProcessingService.
-     *
-     * @param  iterable  $uploadedFiles  Iterable of UploadedFile
-     * @param  string  $fileType  'receipt' or 'document'
-     * @return array{processed:array,errors:array,duplicates:array}
+     * @param  iterable<int, UploadedFile>  $uploadedFiles
+     * @return list<array{index: int, filename: string, status: string, message: string}>
      */
     public static function processUploads(iterable $uploadedFiles, string $fileType, int $userId, FileProcessingService $fileProcessingService, array $metadata = []): array
     {
-        $processed = [];
-        $errors = [];
-        $duplicates = [];
+        $outcomes = [];
+        $formats = $fileType === 'document'
+            ? 'jpeg,png,jpg,pdf,tiff,tif,doc,docx,xls,xlsx,ppt,pptx,odt,ods,odp,rtf,txt,html,csv'
+            : 'jpeg,png,jpg,pdf,tiff,tif';
 
-        foreach ($uploadedFiles as $uploadedFile) {
-            if (! ($uploadedFile instanceof UploadedFile)) {
-                continue;
-            }
-
-            $validation = DocumentUploadValidator::validate($uploadedFile);
-            if (! $validation['valid']) {
-                $filename = $uploadedFile->getClientOriginalName();
-                $errors[$filename] = $validation['error'];
-                Log::error('File validation failed', [
-                    'filename' => $filename,
-                    'error' => $validation['error'],
-                ]);
-
-                continue;
-            }
-
+        foreach ($uploadedFiles as $index => $uploadedFile) {
+            $outcome = ['index' => $index, 'filename' => $uploadedFile->getClientOriginalName()];
             try {
-                $processed[] = $fileProcessingService->processUpload($uploadedFile, $fileType, $userId, $metadata);
-            } catch (DuplicateFileException $e) {
-                // Duplicate files are not errors - they're skipped
-                $filename = $uploadedFile->getClientOriginalName();
-                Log::info('Duplicate file skipped during upload', [
-                    'filename' => $filename,
-                    'file_hash' => $e->getFileHash(),
-                    'existing_file_id' => $e->getExistingFile()->id,
+                $validator = Validator::make(['file' => $uploadedFile], [
+                    'file' => "required|file|mimes:{$formats}|max:102400",
                 ]);
+                $validation = $validator->fails()
+                    ? ['valid' => false, 'error' => $validator->errors()->first('file')]
+                    : DocumentUploadValidator::validate($uploadedFile);
+                if (! $validation['valid']) {
+                    $outcomes[] = $outcome + ['status' => 'failed', 'message' => $validation['error']];
 
-                // Add to duplicates array for user notification
-                $duplicates[$filename] = [
-                    'message' => 'Already exists as "'.$e->getExistingFile()->fileName.'"',
-                    'existing_file' => $e->getExistingFile(),
+                    continue;
+                }
+
+                $fileProcessingService->processUpload($uploadedFile, $fileType, $userId, $metadata);
+                $outcomes[] = $outcome + ['status' => 'accepted', 'message' => 'Accepted for processing.'];
+            } catch (DuplicateFileException $exception) {
+                $outcomes[] = $outcome + [
+                    'status' => 'duplicate',
+                    'message' => 'Already exists as "'.$exception->getExistingFile()->fileName.'"',
                 ];
+            } catch (Throwable $exception) {
+                Log::error('File upload failed', [
+                    'index' => $index, 'user_id' => $userId, 'error' => $exception->getMessage(),
+                ]);
+                $outcomes[] = $outcome + ['status' => 'failed', 'message' => 'Failed to upload file. Please try again.'];
             }
         }
 
-        return [
-            'processed' => $processed,
-            'errors' => $errors,
-            'duplicates' => $duplicates,
-        ];
+        return $outcomes;
     }
 }

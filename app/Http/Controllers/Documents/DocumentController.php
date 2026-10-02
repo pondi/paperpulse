@@ -9,8 +9,6 @@ use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Tag;
 use App\Rules\ExistsForUser;
-use App\Services\Documents\DocumentUploadHandler;
-use App\Services\FileProcessingService;
 use App\Services\Files\FileDeletionService;
 use App\Services\StorageService;
 use App\Services\Tags\TagAttachmentService;
@@ -506,55 +504,5 @@ class DocumentController extends BaseResourceController
             'documents' => $documents,
             'filters' => $request->only(['search']),
         ]);
-    }
-
-    /**
-     * Store uploaded documents.
-     */
-    public function store(Request $request)
-    {
-        $fileType = $request->input('file_type', 'document');
-
-        $request->validate([
-            'files' => 'required',
-            'files.*' => 'required|file|mimes:jpeg,png,jpg,pdf,tiff,tif|max:102400', // 100MB
-            'file_type' => 'required|in:receipt,document',
-            'note' => 'nullable|string|max:1000',
-        ]);
-
-        try {
-            $fileProcessingService = app(FileProcessingService::class);
-            $uploadedFiles = $request->file('files');
-            if (! is_array($uploadedFiles)) {
-                $uploadedFiles = [$uploadedFiles];
-            }
-
-            $result = DocumentUploadHandler::processUploads(
-                $uploadedFiles,
-                $fileType,
-                auth()->id(),
-                $fileProcessingService,
-                [
-                    'note' => $request->input('note'),
-                ]
-            );
-
-            if (! empty($result['errors'])) {
-                $firstError = reset($result['errors']);
-                $firstFile = array_key_first($result['errors']);
-
-                return back()->with('error', 'File validation failed for "'.$firstFile.'": '.$firstError);
-            }
-
-            return redirect()->route($fileType === 'document' ? 'documents.index' : 'receipts.index')
-                ->with('success', count($result['processed']).' file(s) uploaded successfully');
-        } catch (Exception $e) {
-            Log::error('Failed to upload document', [
-                'error' => $e->getMessage(),
-                'file_type' => $fileType,
-            ]);
-
-            return back()->with('error', 'Failed to upload file. Please try again.');
-        }
     }
 }

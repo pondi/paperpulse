@@ -39,9 +39,9 @@ test('upload receipt image and verify it appears on files page', function () {
         $browser->click('button[type="submit"]')
             ->pause(2000);
 
-        // Should redirect to receipts index with flash message
-        $browser->waitForText('uploaded successfully', 15)
-            ->assertSee('uploaded successfully');
+        // Accepted uploads remain on the upload page with individual results.
+        $browser->waitForText('Accepted for processing.', 15)
+            ->assertSee('Accepted for processing.');
 
         // Navigate to files-processing to check the file status
         $browser->visit('/files-processing')
@@ -71,9 +71,9 @@ test('upload receipt PDF and verify it appears on files page', function () {
         $browser->click('button[type="submit"]')
             ->pause(2000);
 
-        // Should redirect with success flash
-        $browser->waitForText('uploaded successfully', 15)
-            ->assertSee('uploaded successfully');
+        // Show the accepted upload result.
+        $browser->waitForText('Accepted for processing.', 15)
+            ->assertSee('Accepted for processing.');
 
         // Verify file appears on files-processing page
         $browser->visit('/files-processing')
@@ -96,7 +96,7 @@ test('uploaded file eventually reaches completed or failed status', function () 
             ->pause(1000)
             ->click('button[type="submit"]')
             ->pause(2000)
-            ->waitForText('uploaded successfully', 15);
+            ->waitForText('Accepted for processing.', 15);
 
         // Poll the files-processing page until the file finishes processing
         // Timeout after 120 seconds (processing can take a while with real services)
@@ -159,8 +159,8 @@ test('upload document type file', function () {
             ->pause(2000);
 
         // Should redirect to documents index with success flash
-        $browser->waitForText('uploaded successfully', 15)
-            ->assertSee('uploaded successfully');
+        $browser->waitForText('Accepted for processing.', 15)
+            ->assertSee('Accepted for processing.');
     });
 })->group('processing');
 
@@ -193,7 +193,7 @@ test('completed receipt appears on receipts index', function () {
             ->pause(1000)
             ->click('button[type="submit"]')
             ->pause(2000)
-            ->waitForText('uploaded successfully', 15);
+            ->waitForText('Accepted for processing.', 15);
 
         // Wait for processing to complete (poll files-processing page)
         $maxAttempts = 24;

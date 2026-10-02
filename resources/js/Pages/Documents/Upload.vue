@@ -8,20 +8,17 @@
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <!-- Success Alert -->
-                <div class="rounded-md bg-green-50 p-4 mb-4" v-if="uploadSuccess">
-                    <div class="flex">
-                        <CheckCircleIcon class="h-5 w-5 text-green-400" aria-hidden="true" />
-                        <div class="ml-3">
-                            <p class="text-sm font-medium text-green-800">File uploaded successfully</p>
-                        </div>
-                        <button type="button"
-                            class="ml-auto -mx-1.5 -my-1.5 rounded-md bg-green-50 p-1.5 text-green-500 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2"
-                            @click="uploadSuccess = false">
-                            <span class="sr-only">Dismiss</span>
-                            <XMarkIcon class="h-5 w-5" aria-hidden="true" />
-                        </button>
-                    </div>
+                <div v-if="uploadResults.length" class="mb-4 flex flex-col gap-4" role="status">
+                    <section v-for="status in ['accepted', 'duplicate', 'failed']" :key="status">
+                        <template v-if="uploadResults.some(result => result.status === status)">
+                            <h3 class="font-semibold text-zinc-900 dark:text-zinc-100">{{ outcomeLabels[status] }}</h3>
+                            <ul class="flex flex-col gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                                <li v-for="result in uploadResults.filter(result => result.status === status)" :key="result.index">
+                                    {{ result.filename }}: {{ result.message }}
+                                </li>
+                            </ul>
+                        </template>
+                    </section>
                 </div>
 
                 <!-- Error Alert -->
@@ -260,7 +257,7 @@ import CollectionSelector from '@/Components/Domain/CollectionSelector.vue';
 import TagSelector from '@/Components/Domain/TagSelector.vue';
 import { Head } from '@inertiajs/vue3';
 import { useForm } from '@inertiajs/vue3';
-import { CheckCircleIcon, XMarkIcon, PhotoIcon, DocumentIcon, ReceiptRefundIcon } from '@heroicons/vue/20/solid'
+import { XMarkIcon, PhotoIcon, DocumentIcon, ReceiptRefundIcon } from '@heroicons/vue/20/solid'
 import { ref, watch } from 'vue';
 
 interface FileObject {
@@ -290,7 +287,19 @@ const DOCUMENT_TYPES = [
     'text/csv'
 ];
 
-const uploadSuccess = ref(false);
+interface UploadOutcome {
+    index: number;
+    filename: string;
+    status: 'accepted' | 'duplicate' | 'failed';
+    message: string;
+}
+
+const uploadResults = ref<UploadOutcome[]>([]);
+const outcomeLabels: Record<string, string> = {
+    accepted: 'Accepted',
+    duplicate: 'Duplicates',
+    failed: 'Failed — retry these files',
+};
 const uploadError = ref<string | null>(null);
 const fileUpload = ref<HTMLFormElement | null>(null);
 const fileType = ref<'receipt' | 'document'>('receipt'); // Default to receipt
@@ -396,18 +405,16 @@ watch(fileType, () => {
     resetFiles();
 });
 
-// File type is tracked separately from the form
-// The form is created dynamically in the submit function
-
-async function submit() {
+function submit() {
     if (!selectedFiles.value.length) return;
     
+    uploadError.value = null;
     isUploading.value = true;
     uploadProgress.value = 0;
     
-    // Create a new form with proper file array structure
+    const submittedFiles = [...selectedFiles.value];
     const uploadForm = useForm({
-        files: selectedFiles.value.map(f => f.file),
+        files: submittedFiles.map(f => f.file),
         file_type: fileType.value,
         note: note.value || null,
         collection_ids: collectionIds.value.length > 0 ? collectionIds.value : null,
@@ -415,19 +422,24 @@ async function submit() {
     });
     
     try {
-        await uploadForm.post('/documents/store', {
+        uploadForm.post(route('documents.store'), {
             preserveScroll: true,
-            onSuccess: () => {
-                resetFiles();
-                note.value = '';
-                collectionIds.value = [];
-                tagIds.value = [];
-                uploadSuccess.value = true;
-                isUploading.value = false;
+            onSuccess: (page) => {
+                uploadResults.value = page.props.flash.upload_results;
+                const failedIndexes = new Set(uploadResults.value
+                    .filter(result => result.status === 'failed')
+                    .map(result => result.index));
+                selectedFiles.value = submittedFiles.filter((file, index) => {
+                    if (failedIndexes.has(index)) return true;
+                    if (file.preview) URL.revokeObjectURL(file.preview);
+                    return false;
+                });
+                if (selectedFiles.value.length === 0) {
+                    note.value = '';
+                    collectionIds.value = [];
+                    tagIds.value = [];
+                }
                 uploadProgress.value = 0;
-                setTimeout(() => {
-                    uploadSuccess.value = false;
-                }, 5000);
             },
             onError: (errors) => {
                 uploadError.value = Object.values(errors)[0] as string;

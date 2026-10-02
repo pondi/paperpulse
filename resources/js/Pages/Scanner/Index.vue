@@ -544,10 +544,14 @@ const processAndUpload = async () => {
     // 4. Upload
     router.post(route('documents.store'), formData, {
       forceFormData: true,
-      onSuccess: () => {
-         note.value = '';
-         collectionIds.value = [];
-         tagIds.value = [];
+      onSuccess: (page) => {
+        processing.value = false;
+        const outcome = page.props.flash.upload_results[0];
+        if (outcome.status === 'failed') {
+          error.value = outcome.message;
+          return;
+        }
+        router.visit(route(mode.value === 'document' ? 'documents.index' : 'receipts.index'));
       },
       onError: (errors) => {
         processing.value = false;

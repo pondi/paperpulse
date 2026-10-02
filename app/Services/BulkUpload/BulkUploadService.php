@@ -9,7 +9,9 @@ use App\Enums\BulkUploadSessionStatus;
 use App\Models\BulkUploadFile;
 use App\Models\BulkUploadSession;
 use App\Models\File;
+use App\Services\File\FileValidationService;
 use App\Services\FileProcessingService;
+use App\Services\Files\FileUploadConfigService;
 use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -147,86 +149,36 @@ class BulkUploadService
      */
     public function presignFiles(BulkUploadSession $session, array $fileUuids): array
     {
-        $this->ensureSessionActive($session);
-
-        $files = $session->files()
-            ->whereIn('uuid', $fileUuids)
-            ->get();
-
-        $presigned = [];
-
-        /** @var BulkUploadFile $file */
-        foreach ($files as $file) {
-            if (! $file->status->canPresign()) {
-                Log::warning('[BulkUpload] File cannot be presigned', [
-                    'file_uuid' => $file->uuid,
-                    'status' => $file->status->value,
-                ]);
-
-                continue;
+        return $session->getConnection()->transaction(function () use ($session, $fileUuids): array {
+            $session = BulkUploadSession::withoutGlobalScope('user')->where('user_id', $session->user_id)->lockForUpdate()->findOrFail($session->id);
+            $this->ensureSessionActive($session);
+            $presigned = [];
+            foreach ($session->files()->withoutGlobalScope('user')->where('user_id', $session->user_id)->whereIn('uuid', $fileUuids)->lockForUpdate()->get() as $file) {
+                if (! $file->status->canPresign() || $file->file_id !== null) {
+                    continue;
+                }
+                $result = $this->presignService->generatePutUrl($file->s3_key, $file->mime_type);
+                $file->update(['status' => BulkUploadFileStatus::Presigned, 'presigned_expires_at' => $result['expires_at'], 'error_message' => null]);
+                $presigned[] = ['uuid' => $file->uuid, 'url' => $result['url'], 'expires_at' => $result['expires_at']->toIso8601String(), 'headers' => $result['headers']];
             }
+            if ($session->status === BulkUploadSessionStatus::Pending) {
+                $session->update(['status' => BulkUploadSessionStatus::Uploading]);
+            }
+            $session->extendExpiry();
 
-            $result = $this->presignService->generatePutUrl(
-                $file->s3_key,
-                $file->mime_type,
-            );
-
-            $file->update([
-                'status' => BulkUploadFileStatus::Presigned,
-                'presigned_expires_at' => $result['expires_at'],
-            ]);
-
-            $presigned[] = [
-                'uuid' => $file->uuid,
-                'url' => $result['url'],
-                'expires_at' => $result['expires_at']->toIso8601String(),
-                'headers' => $result['headers'],
-            ];
-        }
-
-        // Update session status on first presign activity
-        if ($session->status === BulkUploadSessionStatus::Pending) {
-            $session->update(['status' => BulkUploadSessionStatus::Uploading]);
-        }
-
-        // Extend session expiry on activity
-        $session->extendExpiry();
-
-        return $presigned;
+            return $presigned;
+        });
     }
 
-    /**
-     * Generate a fresh presigned URL for a single file (retry/expired).
-     *
-     * @return array{uuid: string, url: string, expires_at: string, headers: array}
-     */
+    /** @return array{uuid: string, url: string, expires_at: string, headers: array} */
     public function presignSingleFile(BulkUploadSession $session, BulkUploadFile $file): array
     {
-        $this->ensureSessionActive($session);
-
-        if (! $file->status->canPresign()) {
-            throw new Exception("File {$file->uuid} cannot be presigned in status {$file->status->value}");
+        $result = $this->presignFiles($session, [$file->uuid]);
+        if ($result === []) {
+            throw new Exception('File cannot be presigned in its current state.');
         }
 
-        $result = $this->presignService->generatePutUrl(
-            $file->s3_key,
-            $file->mime_type,
-        );
-
-        $file->update([
-            'status' => BulkUploadFileStatus::Presigned,
-            'presigned_expires_at' => $result['expires_at'],
-            'error_message' => null,
-        ]);
-
-        $session->extendExpiry();
-
-        return [
-            'uuid' => $file->uuid,
-            'url' => $result['url'],
-            'expires_at' => $result['expires_at']->toIso8601String(),
-            'headers' => $result['headers'],
-        ];
+        return $result[0];
     }
 
     /**
@@ -239,174 +191,93 @@ class BulkUploadService
      */
     public function confirmFile(BulkUploadSession $session, BulkUploadFile $bulkFile): array
     {
-        $this->ensureSessionActive($session);
-
-        // Idempotent: if already confirmed and processed, return existing data
-        if ($bulkFile->file_id !== null && $bulkFile->status === BulkUploadFileStatus::Completed) {
-            $file = File::withoutGlobalScopes()->find($bulkFile->file_id);
-
-            return [
-                'file_id' => $bulkFile->file_id,
-                'file_guid' => $file->guid ?? '',
-                'job_id' => $bulkFile->job_id ?? '',
-            ];
-        }
-
-        // Also idempotent for processing state
-        if ($bulkFile->file_id !== null && in_array($bulkFile->status, [
-            BulkUploadFileStatus::Processing,
-            BulkUploadFileStatus::Confirming,
-        ])) {
-            $file = File::withoutGlobalScopes()->find($bulkFile->file_id);
-
-            return [
-                'file_id' => $bulkFile->file_id,
-                'file_guid' => $file->guid ?? '',
-                'job_id' => $bulkFile->job_id ?? '',
-            ];
-        }
-
-        if (! $bulkFile->status->canConfirm()) {
-            throw new Exception("File {$bulkFile->uuid} cannot be confirmed in status {$bulkFile->status->value}");
-        }
-
-        $bulkFile->update(['status' => BulkUploadFileStatus::Confirming]);
-
         try {
-            $disk = Storage::disk('uplink');
-            if (! $disk->exists($bulkFile->s3_key)) {
-                throw new Exception("File not found in S3 at {$bulkFile->s3_key}");
-            }
+            $result = $session->getConnection()->transaction(function () use ($session, $bulkFile): array {
+                $session = BulkUploadSession::withoutGlobalScope('user')->where('user_id', $session->user_id)->lockForUpdate()->findOrFail($session->id);
+                $bulkFile = $session->files()->withoutGlobalScope('user')->where('user_id', $session->user_id)->lockForUpdate()->findOrFail($bulkFile->id);
+                if ($bulkFile->file_id !== null && $bulkFile->job_id !== null) {
+                    $file = File::withoutGlobalScope('user')->withTrashed()->where('user_id', $session->user_id)->findOrFail($bulkFile->file_id);
 
-            $fileContent = $disk->get($bulkFile->s3_key);
-            $actualHash = hash('sha256', $fileContent);
-
-            // Verify hash matches what client declared
-            if ($actualHash !== $bulkFile->file_hash) {
-                throw new Exception(
-                    "Hash mismatch: expected {$bulkFile->file_hash}, got {$actualHash}"
-                );
-            }
-
-            $fileData = [
-                'content' => $fileContent,
-                'fileName' => $bulkFile->original_filename,
-                'extension' => $bulkFile->file_extension,
-                'size' => strlen($fileContent),
-                'mimeType' => $bulkFile->mime_type,
-                'source' => 'uplink',
-            ];
-
-            $metadata = [
-                'source' => 'uplink',
-                'collection_ids' => $bulkFile->getEffectiveCollectionIds(),
-                'tag_ids' => $bulkFile->getEffectiveTagIds(),
-                'note' => $bulkFile->getEffectiveNote(),
-                'bulkUploadSessionId' => $session->uuid,
-                'bulkUploadFileId' => $bulkFile->uuid,
-            ];
-
-            $result = $this->fileProcessingService->processFile(
-                $fileData,
-                $bulkFile->getEffectiveFileType(),
-                $session->user_id,
-                $metadata,
-            );
-
-            $bulkFile->update([
-                'status' => BulkUploadFileStatus::Processing,
-                'file_id' => $result['fileId'],
-                'job_id' => $result['jobId'],
-                'error_message' => null,
-            ]);
-
-            // Clean up from uplink-incoming after successful handoff
-            try {
-                $disk->delete($bulkFile->s3_key);
-            } catch (Exception $e) {
-                Log::warning('[BulkUpload] Failed to clean up uplink-incoming file', [
-                    's3_key' => $bulkFile->s3_key,
-                    'error' => $e->getMessage(),
+                    return ['file_id' => $file->id, 'file_guid' => $file->guid, 'job_id' => $bulkFile->job_id];
+                }
+                $this->ensureSessionActive($session);
+                if (! $bulkFile->status->canConfirm()) {
+                    throw new Exception('File cannot be confirmed in its current state.');
+                }
+                $bulkFile->update(['status' => BulkUploadFileStatus::Confirming]);
+                $disk = Storage::disk('uplink');
+                $maximum = app(FileUploadConfigService::class)->getMaxSizeBytes($bulkFile->getEffectiveFileType(), $bulkFile->file_extension);
+                $size = $disk->size($bulkFile->s3_key);
+                if ($size > $maximum || $size !== $bulkFile->file_size) {
+                    throw new Exception('Uploaded object exceeds the processing limit or differs from its declared size.');
+                }
+                $stream = $disk->readStream($bulkFile->s3_key);
+                if (! is_resource($stream)) {
+                    throw new Exception('Uploaded object could not be read.');
+                }
+                try {
+                    $content = stream_get_contents($stream, $maximum + 1);
+                } finally {
+                    fclose($stream);
+                }
+                if ($content === false || strlen($content) !== $size || ! hash_equals($bulkFile->file_hash, hash('sha256', $content))) {
+                    throw new Exception('Uploaded object size or checksum does not match its manifest.');
+                }
+                $fileData = [
+                    'content' => $content, 'fileName' => $bulkFile->original_filename,
+                    'extension' => $bulkFile->file_extension, 'size' => $size,
+                    'mimeType' => $bulkFile->mime_type, 'source' => 'uplink',
+                ];
+                $validation = app(FileValidationService::class)->validateFileData($fileData, $bulkFile->getEffectiveFileType());
+                if (! $validation['valid']) {
+                    throw new Exception(implode(', ', $validation['errors']));
+                }
+                $processed = $this->fileProcessingService->processFile($fileData, $bulkFile->getEffectiveFileType(), $session->user_id, [
+                    'source' => 'uplink', 'collection_ids' => $bulkFile->getEffectiveCollectionIds(),
+                    'tag_ids' => $bulkFile->getEffectiveTagIds(), 'note' => $bulkFile->getEffectiveNote(),
+                    'bulkUploadSessionId' => $session->uuid, 'bulkUploadFileId' => $bulkFile->uuid,
                 ]);
-            }
+                $bulkFile->update(['status' => BulkUploadFileStatus::Processing, 'file_id' => $processed['fileId'], 'job_id' => $processed['jobId'], 'error_message' => null]);
+                $session->refreshCounts();
+                $session->extendExpiry();
 
-            $session->refreshCounts();
-            $session->extendExpiry();
-
-            Log::info('[BulkUpload] File confirmed and processing started', [
-                'session_uuid' => $session->uuid,
-                'file_uuid' => $bulkFile->uuid,
-                'file_id' => $result['fileId'],
-                'job_id' => $result['jobId'],
-            ]);
-
-            return [
-                'file_id' => $result['fileId'],
-                'file_guid' => $result['fileGuid'],
-                'job_id' => $result['jobId'],
-            ];
-        } catch (Exception $e) {
-            $bulkFile->update([
-                'status' => BulkUploadFileStatus::Failed,
-                'error_message' => $e->getMessage(),
-            ]);
-
-            $session->refreshCounts();
-
-            Log::error('[BulkUpload] File confirmation failed', [
-                'session_uuid' => $session->uuid,
-                'file_uuid' => $bulkFile->uuid,
-                'error' => $e->getMessage(),
-            ]);
-
-            throw $e;
+                return ['file_id' => $processed['fileId'], 'file_guid' => $processed['fileGuid'], 'job_id' => $processed['jobId']];
+            });
+        } catch (Exception $exception) {
+            $session->getConnection()->transaction(function () use ($session, $bulkFile, $exception): void {
+                $session = BulkUploadSession::withoutGlobalScope('user')->where('user_id', $session->user_id)->lockForUpdate()->findOrFail($session->id);
+                $session->files()->withoutGlobalScope('user')->whereKey($bulkFile->id)->whereNull('file_id')
+                    ->whereIn('status', [BulkUploadFileStatus::Presigned, BulkUploadFileStatus::Uploading, BulkUploadFileStatus::Uploaded, BulkUploadFileStatus::Confirming, BulkUploadFileStatus::Failed])
+                    ->update(['status' => BulkUploadFileStatus::Failed, 'error_message' => $exception->getMessage()]);
+                $session->refreshCounts();
+            });
+            throw $exception;
         }
+        try {
+            Storage::disk('uplink')->delete($bulkFile->s3_key);
+        } catch (Exception $exception) {
+            Log::warning('Bulk source cleanup failed', ['file_uuid' => $bulkFile->uuid, 'error' => $exception->getMessage()]);
+        }
+
+        return $result;
     }
 
-    /**
-     * Cancel a session and clean up unprocessed S3 files.
-     */
     public function cancelSession(BulkUploadSession $session): void
     {
-        if (! $session->isActive()) {
-            throw new Exception('Session is not active and cannot be cancelled');
-        }
-
-        $session->update(['status' => BulkUploadSessionStatus::Cancelled]);
-
-        // Clean up unprocessed files from S3
-        $pendingFiles = $session->files()
-            ->whereNotIn('status', [
-                BulkUploadFileStatus::Completed,
-                BulkUploadFileStatus::Processing,
-                BulkUploadFileStatus::Duplicate,
-            ])
-            ->get();
-
-        $disk = Storage::disk('uplink');
-
-        /** @var BulkUploadFile $file */
-        foreach ($pendingFiles as $file) {
-            try {
-                if ($file->s3_key && $disk->exists($file->s3_key)) {
-                    $disk->delete($file->s3_key);
+        $session->getConnection()->transaction(function () use ($session): void {
+            $session = BulkUploadSession::withoutGlobalScope('user')->where('user_id', $session->user_id)->lockForUpdate()->findOrFail($session->id);
+            $this->ensureSessionActive($session);
+            $session->update(['status' => BulkUploadSessionStatus::Cancelled]);
+            foreach ($session->files()->withoutGlobalScope('user')->whereNull('file_id')->where('status', '!=', BulkUploadFileStatus::Duplicate)->lockForUpdate()->get() as $file) {
+                $file->update(['status' => BulkUploadFileStatus::Skipped]);
+                try {
+                    Storage::disk('uplink')->delete($file->s3_key);
+                } catch (Exception $exception) {
+                    Log::warning('Bulk cancellation cleanup failed', ['file_uuid' => $file->uuid, 'error' => $exception->getMessage()]);
                 }
-            } catch (Exception $e) {
-                Log::warning('[BulkUpload] Failed to clean up file during cancellation', [
-                    's3_key' => $file->s3_key,
-                    'error' => $e->getMessage(),
-                ]);
             }
-
-            $file->update(['status' => BulkUploadFileStatus::Skipped]);
-        }
-
-        $session->refreshCounts();
-
-        Log::info('[BulkUpload] Session cancelled', [
-            'session_uuid' => $session->uuid,
-            'cleaned_files' => $pendingFiles->count(),
-        ]);
+            $session->refreshCounts();
+        });
     }
 
     /**

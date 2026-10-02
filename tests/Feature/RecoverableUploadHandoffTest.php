@@ -131,3 +131,32 @@ it('deferred upload performs storage and handoff only after the outer transactio
     expect($request->fresh()->state)->toBe('dispatched');
     Storage::disk('paperpulse')->assertExists($request->original_path);
 });
+
+it('recovers an expired handoff claim once and retains the accepted original', function (): void {
+    $dispatcher = Mockery::mock(FileJobChainDispatcher::class);
+    $dispatcher->shouldReceive('dispatch')->once()->andThrow(new RuntimeException('Worker stopped'));
+    $this->app->instance(FileJobChainDispatcher::class, $dispatcher);
+    $result = app(FileProcessingService::class)->processFile($this->data, 'document', $this->owner->id);
+    $request = FileProcessingRequest::first();
+    $workingPath = $request->working_path;
+    expect(is_file($workingPath))->toBeTrue();
+    Storage::disk('paperpulse')->assertExists($request->original_path);
+
+    $request->update([
+        'state' => 'dispatching', 'claim_token' => 'expired-worker', 'claimed_at' => now()->subMinutes(11),
+    ]);
+    $dispatcher = Mockery::mock(FileJobChainDispatcher::class);
+    $dispatcher->shouldReceive('dispatch')->once()->with($result['jobId'], 'document');
+    $this->app->instance(FileJobChainDispatcher::class, $dispatcher);
+    $this->app->forgetInstance(FileProcessingRequestService::class);
+
+    expect(app(FileProcessingRequestService::class)->recover())->toBe(1)
+        ->and(app(FileProcessingRequestService::class)->recover())->toBe(0)
+        ->and($request->fresh()->state)->toBe('dispatched')
+        ->and($request->fresh()->attempts)->toBe(2)
+        ->and($request->fresh()->working_path)->toBeNull()
+        ->and(is_file($workingPath))->toBeFalse();
+    Storage::disk('paperpulse')->assertExists($request->original_path);
+    $this->assertDatabaseCount('file_processing_requests', 1);
+    $this->assertDatabaseCount('files', 1);
+});

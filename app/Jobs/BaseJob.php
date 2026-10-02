@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\File;
 use App\Models\JobHistory;
 use App\Models\User;
+use App\Services\File\FileStorageService;
 use App\Services\Jobs\JobMetadataPersistence;
 use App\Services\Jobs\JobParentStatusCalculator;
 use Illuminate\Bus\Queueable;
@@ -410,6 +411,8 @@ abstract class BaseJob implements ShouldQueue
                 'error' => $metadataError->getMessage(),
             ]);
         }
+
+        app(FileStorageService::class)->cleanupJob($this->jobID);
 
         Log::error('Job failed', [
             'class' => static::class,

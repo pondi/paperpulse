@@ -6,6 +6,7 @@ use App\Services\File\FileStorageService;
 use App\Services\StorageService;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Manages file lifecycle for worker jobs in distributed environments.
@@ -50,10 +51,11 @@ class WorkerFileManager
         string $s3Path,
         string $fileGuid,
         string $extension,
-        ?string $localPath = null
+        ?string $localPath = null,
+        ?string $jobId = null
     ): string {
         // Check if local file already exists and is valid
-        if ($localPath && file_exists($localPath) && filesize($localPath) > 0) {
+        if ($localPath && ($jobId === null || dirname($localPath) === Storage::disk('local')->path('uploads/'.$jobId)) && file_exists($localPath) && filesize($localPath) > 0) {
             Log::debug('[WorkerFileManager] Using existing local file', [
                 'file_guid' => $fileGuid,
                 'local_path' => $localPath,
@@ -80,7 +82,7 @@ class WorkerFileManager
             // Store locally for processing
             $localPath = $this->fileStorageService->storeWorkingContent(
                 $fileContent,
-                $fileGuid,
+                $jobId ?? $fileGuid,
                 $extension
             );
 

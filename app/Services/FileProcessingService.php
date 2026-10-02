@@ -153,7 +153,7 @@ class FileProcessingService
             // Store working file locally (temporary)
             $workingPath = $this->fileStorage->storeWorkingContent(
                 $fileData['content'],
-                $fileGuid,
+                $jobId,
                 $fileData['extension']
             );
 

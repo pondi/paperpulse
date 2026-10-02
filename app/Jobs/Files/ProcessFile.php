@@ -144,7 +144,8 @@ class ProcessFile extends BaseJob
                     $localFilePath = $workerFileManager->ensureLocalFile(
                         $s3PathToUse,
                         $metadata['fileGuid'],
-                        $extensionToUse
+                        $extensionToUse,
+                        jobId: $this->jobID
                     );
 
                     Log::debug("[ProcessFile] [{$jobName}] File downloaded for text extraction", [

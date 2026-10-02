@@ -264,7 +264,8 @@ class ProcessReceipt extends BaseJob
             $metadata['s3ArchivePath'] ?? $metadata['s3OriginalPath'],
             $metadata['fileGuid'],
             $metadata['fileExtension'],
-            $metadata['filePath'] ?? null
+            $metadata['filePath'] ?? null,
+            $this->jobID
         );
 
         Log::debug('[ProcessReceipt] File available for processing', [

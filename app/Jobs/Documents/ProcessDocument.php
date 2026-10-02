@@ -184,7 +184,8 @@ class ProcessDocument extends BaseJob
             $s3PathToUse,
             $metadata['fileGuid'],
             $extensionToUse,
-            $metadata['filePath'] ?? null
+            $metadata['filePath'] ?? null,
+            $this->jobID
         );
 
         Log::debug("[ProcessDocument] [{$jobName}] File available for processing", [

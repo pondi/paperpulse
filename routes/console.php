@@ -4,6 +4,7 @@ use App\Jobs\Maintenance\CleanupRetainedFiles;
 use App\Jobs\Notifications\SendWeeklySummary;
 use App\Jobs\PulseDav\SyncPulseDavFiles;
 use App\Jobs\PulseDav\SyncPulseDavFilesRealtime;
+use App\Services\File\FileStorageService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -59,3 +60,8 @@ Schedule::command('notify:expiring-warranties --days=30')->dailyAt('08:00')->tim
 Schedule::command('bulk:reconcile')->everyFiveMinutes()->name('reconcile-bulk-uploads')->withoutOverlapping();
 
 Schedule::command('conversions:retry-failed --limit=100')->everyFiveMinutes()->name('recover-office-conversions')->withoutOverlapping();
+
+Artisan::command('files:cleanup-working', function (FileStorageService $storage): void {
+    $this->info('Removed '.$storage->cleanupOldWorkingFiles().' working files.');
+})->purpose('Clean abandoned and terminal job working directories');
+Schedule::command('files:cleanup-working')->dailyAt('02:00')->name('cleanup-working-files')->withoutOverlapping();

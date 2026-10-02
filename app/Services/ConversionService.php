@@ -65,7 +65,7 @@ class ConversionService
                 return false; // Changed to false to indicate actual failure
             }
 
-            $outputPath = storage_path('app/uploads/'.$fileGUID.'.jpg');
+            $outputPath = dirname($storedFilePath).'/preview.jpg';
 
             // Ensure output directory exists
             $outputDir = dirname($outputPath);
@@ -132,7 +132,7 @@ class ConversionService
             ]);
 
             // Clean up temporary file if it exists
-            $outputPath = storage_path('app/uploads/'.$fileGUID.'.jpg');
+            $outputPath = dirname($storedFilePath).'/preview.jpg';
             if (file_exists($outputPath)) {
                 unlink($outputPath);
             }

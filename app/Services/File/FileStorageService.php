@@ -3,10 +3,13 @@
 namespace App\Services\File;
 
 use App\Contracts\Services\FileStorageContract;
+use App\Models\FileProcessingRequest;
+use App\Models\JobHistory;
 use App\Services\S3StorageService;
 use App\Services\StorageService;
 use Exception;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File as LocalFiles;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -25,26 +28,7 @@ class FileStorageService implements FileStorageContract
      */
     public function storeWorkingFile(UploadedFile $uploadedFile, string $fileGuid): string
     {
-        try {
-            $fileName = $fileGuid.'.'.$uploadedFile->getClientOriginalExtension();
-            $storedFile = $uploadedFile->storeAs('uploads', $fileName, 'local');
-            if ($storedFile === false) {
-                throw new Exception('Failed to store the working upload');
-            }
-
-            Log::debug('[FileStorageService] Working file stored', [
-                'file_path' => $storedFile,
-                'file_guid' => $fileGuid,
-            ]);
-
-            return Storage::disk('local')->path($storedFile);
-        } catch (Exception $e) {
-            Log::error('[FileStorageService] Working file storage failed', [
-                'error' => $e->getMessage(),
-                'file_guid' => $fileGuid,
-            ]);
-            throw $e;
-        }
+        return $this->storeWorkingContent($uploadedFile->getContent(), $fileGuid, $uploadedFile->getClientOriginalExtension());
     }
 
     /**
@@ -53,13 +37,15 @@ class FileStorageService implements FileStorageContract
     public function storeWorkingContent(string $content, string $fileGuid, string $extension): string
     {
         try {
-            $fileName = $fileGuid.'.'.$extension;
-            $path = 'uploads/'.$fileName;
+            $directory = Storage::disk('local')->path('uploads/'.$fileGuid);
+            LocalFiles::ensureDirectoryExists($directory, 0700);
+            $path = 'uploads/'.$fileGuid.'/source.'.strtolower($extension);
 
             if (! Storage::disk('local')->put($path, $content)) {
                 throw new Exception('Failed to write the working file');
             }
 
+            chmod(Storage::disk('local')->path($path), 0600);
             Log::debug('[FileStorageService] Working content stored', [
                 'file_path' => $path,
                 'file_guid' => $fileGuid,
@@ -176,36 +162,42 @@ class FileStorageService implements FileStorageContract
      */
     public function cleanupOldWorkingFiles(int $hoursOld = 24): int
     {
-        try {
-            $uploadsPath = Storage::disk('local')->path('uploads');
-            if (! is_dir($uploadsPath)) {
-                return 0;
+        $disk = Storage::disk('local');
+        $active = JobHistory::query()->whereNull('parent_uuid')->whereIn('status', ['pending', 'queued', 'processing', 'retrying'])->get(['uuid', 'metadata']);
+        $activeIds = $active->pluck('uuid')->merge(FileProcessingRequest::query()->whereIn('state', ['upload_pending', 'pending', 'dispatching'])->pluck('job_id'))->flip();
+        $activeGuids = $active->pluck('metadata.fileGuid')->filter()->flip();
+        $cutoff = time() - $hoursOld * 3600;
+        $count = 0;
+        foreach ($disk->directories('uploads') as $directory) {
+            if ($activeIds->has(basename($directory))) {
+                continue;
             }
+            $files = $disk->allFiles($directory);
+            if (collect($files)->every(fn (string $path): bool => $disk->lastModified($path) < $cutoff) && $disk->deleteDirectory($directory)) {
+                $count += count($files);
+            }
+        }
+        foreach ($disk->files('uploads') as $path) {
+            if (! $activeGuids->has(pathinfo($path, PATHINFO_FILENAME)) && $disk->lastModified($path) < $cutoff && $disk->delete($path)) {
+                $count++;
+            }
+        }
 
-            $files = glob($uploadsPath.'/*');
-            $cutoffTime = time() - ($hoursOld * 3600);
-            $deletedCount = 0;
+        return $count;
+    }
 
-            foreach ($files as $file) {
-                if (is_file($file) && filemtime($file) < $cutoffTime) {
-                    unlink($file);
-                    $deletedCount++;
+    public function cleanupJob(string $jobId): void
+    {
+        $disk = Storage::disk('local');
+        $disk->deleteDirectory('uploads/'.$jobId);
+        $guid = JobHistory::query()->where('uuid', $jobId)->value('metadata')['fileGuid'] ?? null;
+        if ($guid !== null && ! JobHistory::query()->whereNull('parent_uuid')->where('uuid', '!=', $jobId)
+            ->where('metadata->fileGuid', $guid)->whereIn('status', ['pending', 'queued', 'processing', 'retrying'])->exists()) {
+            foreach ($disk->files('uploads') as $path) {
+                if (pathinfo($path, PATHINFO_FILENAME) === $guid) {
+                    $disk->delete($path);
                 }
             }
-
-            Log::info('[FileStorageService] Cleanup completed', [
-                'deleted_files' => $deletedCount,
-                'hours_old' => $hoursOld,
-            ]);
-
-            return $deletedCount;
-        } catch (Exception $e) {
-            Log::error('[FileStorageService] Cleanup failed', [
-                'error' => $e->getMessage(),
-                'hours_old' => $hoursOld,
-            ]);
-
-            return 0;
         }
     }
 }

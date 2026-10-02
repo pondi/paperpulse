@@ -1,87 +1,49 @@
 /**
- * PaperPulse Scanner Service Worker
- *
- * Simple caching strategy for quick access to scanner assets.
- * Network-first approach since the app requires online connectivity.
+ * Cache public scanner assets without storing authenticated pages or uploads.
  */
-
-const CACHE_NAME = 'paperpulse-scanner-v1';
+const CACHE_NAME = 'paperpulse-scanner-v2';
 const ASSETS_TO_CACHE = [
-  '/scanner',
-  '/vendor/opencv.js',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/vendor/opencv.js?v=2'
 ];
 
-// Install: Pre-cache essential assets
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => {
-      self.skipWaiting();
-    })
-  );
+  event.waitUntil(self.skipWaiting());
 });
 
-// Activate: Clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name.startsWith('paperpulse-scanner-') && name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      );
-    }).then(() => {
-      self.clients.claim();
+    caches.keys().then((names) => Promise.all(
+      names.filter((name) => name.startsWith('paperpulse-scanner-') && name !== CACHE_NAME)
+        .map((name) => caches.delete(name))
+    )).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  if (event.request.mode === 'navigate' && url.pathname === '/scanner') {
+    event.respondWith(fetch(event.request).catch(() => new Response(
+      '<!doctype html><html lang="en"><title>Scanner offline</title><p>Connect to the internet to use the scanner.</p></html>',
+      { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+    )));
+    return;
+  }
+
+  if (event.request.mode === 'navigate' || !ASSETS_TO_CACHE.includes(url.pathname + url.search)) return;
+
+  event.respondWith(
+    fetch(new Request(event.request, { credentials: 'omit' })).then(async (response) => {
+      if (response.ok && !response.redirected && !response.headers.get('Content-Type')?.includes('text/html')) {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(event.request, response.clone());
+      }
+      return response;
+    }).catch(async () => {
+      const cache = await caches.open(CACHE_NAME);
+      return await cache.match(event.request) || Response.error();
     })
   );
 });
-
-// Fetch: Network-first strategy with cache fallback
-self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') {
-    return;
-  }
-
-  // Skip API and auth requests
-  const url = new URL(event.request.url);
-  if (url.pathname.startsWith('/api/') ||
-      url.pathname.startsWith('/auth/') ||
-      url.pathname.startsWith('/sanctum/')) {
-    return;
-  }
-
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Cache successful responses for scanner-related assets
-        if (response.ok && shouldCache(event.request)) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        // Fallback to cache if network fails
-        return caches.match(event.request);
-      })
-  );
-});
-
-// Determine if a request should be cached
-function shouldCache(request) {
-  const url = new URL(request.url);
-
-  // Cache scanner page and static assets
-  if (url.pathname === '/scanner') return true;
-  if (url.pathname.startsWith('/vendor/')) return true;
-  if (url.pathname.startsWith('/icons/')) return true;
-  if (url.pathname.startsWith('/build/')) return true;
-
-  return false;
-}

@@ -59,7 +59,7 @@
                           <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
                             <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-white dark:bg-zinc-800 py-2 shadow-xl ring-1 ring-zinc-900/5 dark:ring-zinc-700 focus:outline-none">
                               <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
-                                <Link :href="item.href" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-amber-100 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100' : 'text-zinc-700 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-700 dark:hover:text-zinc-100', 'block px-3 py-1 text-sm/6 transition-all duration-200', item.method ? 'w-full text-left' : '']">
+                                <Link :href="item.href" @click="item.name === 'logout' && clearScannerCache()" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-amber-100 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100' : 'text-zinc-700 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-700 dark:hover:text-zinc-100', 'block px-3 py-1 text-sm/6 transition-all duration-200', item.method ? 'w-full text-left' : '']">
                                   {{ __(item.name.toLowerCase()) }}
                                 </Link>
                               </MenuItem>
@@ -120,7 +120,7 @@
                   <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
                     <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-white dark:bg-zinc-800 py-2 shadow-xl ring-1 ring-zinc-900/5 dark:ring-zinc-700 focus:outline-none">
                       <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
-                        <Link :href="item.href" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-amber-100 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100' : 'text-zinc-700 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-700 dark:hover:text-zinc-100', 'block px-3 py-1 text-sm/6 transition-all duration-200', item.method ? 'w-full text-left' : '']">
+                        <Link :href="item.href" @click="item.name === 'logout' && clearScannerCache()" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-amber-100 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100' : 'text-zinc-700 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-700 dark:hover:text-zinc-100', 'block px-3 py-1 text-sm/6 transition-all duration-200', item.method ? 'w-full text-left' : '']">
                           {{ __(item.name.toLowerCase()) }}
                         </Link>
                       </MenuItem>
@@ -179,6 +179,7 @@
                       <Link
                         :href="item.href"
                         :method="item.method"
+                        @click="item.name === 'logout' && clearScannerCache()"
                         :as="item.method ? 'button' : 'a'"
                         :class="[active ? 'bg-amber-50 dark:bg-zinc-700' : '', 'block px-3 py-1 text-sm text-zinc-900 dark:text-zinc-100 transition-all duration-200', item.method ? 'w-full text-left' : '']"
                       >
@@ -336,6 +337,13 @@ const navigation = navigationItems.filter(item => {
   }
   return true;
 });
+
+const clearScannerCache = async () => {
+  if ('caches' in window) {
+    const names = await caches.keys();
+    await Promise.all(names.filter(name => name.startsWith('paperpulse-scanner-')).map(name => caches.delete(name)));
+  }
+};
 
 const userNavigation = [
   { name: 'profile', href: route('profile.edit') },

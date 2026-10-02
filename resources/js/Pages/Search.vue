@@ -348,6 +348,11 @@
               </div>
             </div>
 
+            <div v-if="searchError" role="alert" class="flex items-center gap-3 mb-4 rounded-lg border border-amber-300 dark:border-amber-700 p-4 text-zinc-900 dark:text-zinc-200">
+              <p>{{ searchError }}</p>
+              <button @click="performSearch" :disabled="searching" class="text-amber-600 dark:text-amber-400 disabled:opacity-50">Retry</button>
+            </div>
+
             <!-- Results grid -->
             <div v-if="results.length > 0" class="space-y-3">
               <SearchResultCard
@@ -363,7 +368,7 @@
             </div>
 
             <!-- Empty state -->
-            <div v-else-if="!searching && searchQuery" class="text-center py-12">
+            <div v-else-if="!searching && !searchError && (searchQuery || hasActiveFilters)" class="text-center py-12">
               <MagnifyingGlassIcon class="mx-auto h-12 w-12 text-zinc-400" />
               <h3 class="mt-2 text-sm font-semibold text-zinc-900 dark:text-white">No results found</h3>
               <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -372,7 +377,7 @@
             </div>
 
             <!-- Initial state -->
-            <div v-else-if="!searching && !searchQuery" class="text-center py-12">
+            <div v-else-if="!searching && !searchError && !searchQuery" class="text-center py-12">
               <MagnifyingGlassIcon class="mx-auto h-12 w-12 text-zinc-400" />
               <h3 class="mt-2 text-sm font-semibold text-zinc-900 dark:text-white">Start searching</h3>
               <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -460,7 +465,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import SearchResultCard from '@/Components/Search/SearchResultCard.vue';
@@ -479,6 +484,10 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  initialSearchStatus: {
+    type: String,
+    default: 'available'
+  },
   initialPagination: {
     type: Object,
     default: () => ({ page: 1, last_page: 0, total: 0 })
@@ -492,6 +501,13 @@ const props = defineProps({
 // Search state
 const searchQuery = ref(props.query || '');
 const searching = ref(false);
+const searchMessages = {
+  partial: 'Some search results are unavailable. Retry to search all your documents.',
+  unavailable: 'Search is unavailable. Please retry.'
+};
+const searchError = ref(searchMessages[props.initialSearchStatus] || '');
+let requestSequence = 0;
+let searchController = null;
 const results = ref(props.initialResults || []);
 const facets = ref(props.initialFacets || { total: 0, receipts: 0, documents: 0, invoices: 0, contracts: 0, vouchers: 0, warranties: 0, return_policies: 0, bank_statements: 0 });
 const collections = ref([]);
@@ -570,15 +586,27 @@ const someSelected = computed(() => {
 });
 
 // Methods
+const emptyFacets = { total: 0, receipts: 0, documents: 0, invoices: 0, contracts: 0, vouchers: 0, warranties: 0, return_policies: 0, bank_statements: 0 };
+
+const invalidateSearch = () => {
+  requestSequence++;
+  searchController?.abort();
+  results.value = [];
+  facets.value = emptyFacets;
+  pagination.value = { page: currentPage.value, last_page: 0, total: 0 };
+  searchError.value = '';
+  searching.value = Boolean(searchQuery.value.trim() || hasActiveFilters.value);
+  clearSelection();
+};
+
 const performSearch = async () => {
-  if (!searchQuery.value.trim() && !hasActiveFilters.value) {
-    results.value = [];
-    pagination.value = { page: 1, last_page: 0, total: 0 };
-    facets.value = { total: 0, receipts: 0, documents: 0, invoices: 0, contracts: 0, vouchers: 0, warranties: 0, return_policies: 0, bank_statements: 0 };
+  clearTimeout(searchTimeout);
+  invalidateSearch();
+  const requestId = requestSequence;
+  if (!searching.value) {
     return;
   }
-
-  searching.value = true;
+  searchController = new AbortController();
 
   try {
     const params = {
@@ -586,25 +614,31 @@ const performSearch = async () => {
       page: currentPage.value,
       ...filters.value
     };
-
-    // Remove empty filters
     Object.keys(params).forEach(key => {
       if (params[key] === '' || params[key] === null || params[key] === undefined) {
         delete params[key];
       }
     });
 
-    const response = await axios.get('/search', { params });
-
-    results.value = response.data.results || [];
+    const response = await axios.get('/search', { params, signal: searchController.signal });
+    if (requestId !== requestSequence) {
+      return;
+    }
+    results.value = response.data.results;
     pagination.value = response.data.pagination;
-    facets.value = response.data.facets || { total: 0, receipts: 0, documents: 0, invoices: 0, contracts: 0, vouchers: 0, warranties: 0, return_policies: 0, bank_statements: 0 };
+    facets.value = response.data.facets || emptyFacets;
+    searchError.value = searchMessages[response.data.search_status] || '';
   } catch (error) {
-    console.error('Search error:', error);
-    results.value = [];
-    facets.value = { total: 0, receipts: 0, documents: 0, invoices: 0, contracts: 0, vouchers: 0, warranties: 0, return_policies: 0, bank_statements: 0 };
+    if (requestId !== requestSequence) {
+      return;
+    }
+    searchError.value = error.response?.status === 422
+      ? 'Check your search filters and try again.'
+      : searchMessages.unavailable;
   } finally {
-    searching.value = false;
+    if (requestId === requestSequence) {
+      searching.value = false;
+    }
   }
 };
 
@@ -624,7 +658,6 @@ const clearFilters = () => {
     category: '',
     collection_id: ''
   };
-  performSearch();
 };
 
 const openPreview = (item) => {
@@ -726,19 +759,24 @@ const executeBulkAction = async () => {
 // Watch for filter changes
 watch(filters, () => {
   currentPage.value = 1;
-  if (searchQuery.value.trim() || hasActiveFilters.value) {
-    performSearch();
-  }
+  performSearch();
 }, { deep: true });
 
 // Debounced search on query change
 let searchTimeout = null;
-watch(searchQuery, (newValue) => {
+watch(searchQuery, () => {
   currentPage.value = 1;
+  invalidateSearch();
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
     performSearch();
   }, 300);
+});
+
+onBeforeUnmount(() => {
+  clearTimeout(searchTimeout);
+  requestSequence++;
+  searchController?.abort();
 });
 
 // Load collections on mount

@@ -34,6 +34,7 @@ class SearchController extends Controller
         // Return Inertia page for direct page loads
         return Inertia::render('Search', [
             'query' => $query,
+            'initialSearchStatus' => $searchResults['search_status'],
             'initialResults' => $searchResults['results'] ?? [],
             'initialPagination' => $searchResults['pagination'],
             'initialFacets' => $searchResults['facets'] ?? [

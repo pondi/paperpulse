@@ -50,9 +50,11 @@ class SearchController extends BaseApiController
 
         return $this->success([
             'query' => $query,
+            'search_status' => $searchResults['search_status'],
+            'unavailable_types' => $searchResults['unavailable_types'],
             'filters' => $filters,
             'results' => $results,
-            'pagination' => $searchResults['pagination'] ?? null,
+            'pagination' => $searchResults['pagination'],
             'facets' => $searchResults['facets'] ?? [
                 'total' => 0, 'receipts' => 0, 'documents' => 0,
                 'invoices' => 0, 'contracts' => 0, 'vouchers' => 0,

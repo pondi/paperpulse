@@ -12,7 +12,6 @@ use App\Models\Receipt;
 use App\Models\ReturnPolicy;
 use App\Models\Voucher;
 use App\Models\Warranty;
-use Exception;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -67,11 +66,7 @@ class SearchFacetService
         $total = 0;
 
         foreach ($queries as $type => $searchQuery) {
-            try {
-                $count = $searchQuery->raw()['estimatedTotalHits'] ?? 0;
-            } catch (Exception $e) {
-                $count = 0;
-            }
+            $count = $searchQuery->raw()['estimatedTotalHits'] ?? 0;
             $counts[$type] = $count;
             $total += $count;
         }

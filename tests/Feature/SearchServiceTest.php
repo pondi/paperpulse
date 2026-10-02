@@ -358,3 +358,28 @@ it('rejects search input beyond bounded query and page limits', function (array 
     [['query' => 'test', 'page' => 21], 'page'],
     [['query' => 'test', 'limit' => 51], 'limit'],
 ]);
+
+it('reports unavailable indexes and preserves successful partial results', function (string $type, string $status) {
+    $builder = Mockery::mock(SearchQueryBuilder::class);
+    $builder->shouldReceive('searchReceipts')->once()->andThrow(new RuntimeException('Index unavailable'));
+    if ($type === 'all') {
+        $builder->shouldReceive('searchDocuments')->once()->andReturn(['results' => collect([['id' => 1, 'type' => 'document', '_rankingScore' => 1]]), 'total' => 1]);
+        foreach (['searchInvoices', 'searchContracts', 'searchVouchers', 'searchWarranties', 'searchReturnPolicies', 'searchBankStatements'] as $method) {
+            $builder->shouldReceive($method)->once()->andReturn(['results' => collect(), 'total' => 0]);
+        }
+    }
+    $facets = Mockery::mock(SearchFacetService::class);
+    $facets->shouldReceive('buildFacets')->once()->andThrow(new RuntimeException('Facet index unavailable'));
+    $response = (new SearchService($builder, $facets))->search('test', ['type' => $type]);
+    expect($response['search_status'])->toBe($status)->and($response['unavailable_types'])->toBe(['receipt'])
+        ->and($response['facets'])->toBeNull()->and($response['results'])->toHaveCount($type === 'all' ? 1 : 0);
+})->with([['receipt', 'unavailable'], ['all', 'partial']]);
+
+it('retries facet failures without caching an empty success', function () {
+    $facets = Mockery::mock(SearchFacetService::class)->makePartial()->shouldAllowMockingProtectedMethods();
+    $facets->shouldReceive('computeFacets')->once()->ordered()->andThrow(new RuntimeException('Index unavailable'));
+    $facets->shouldReceive('computeFacets')->once()->ordered()->andReturn(['total' => 1, 'receipts' => 1]);
+    expect(fn () => $facets->buildFacets('retry facets', []))->toThrow(RuntimeException::class)
+        ->and($facets->buildFacets('retry facets', []))->toBe(['total' => 1, 'receipts' => 1])
+        ->and($facets->buildFacets('retry facets', []))->toBe(['total' => 1, 'receipts' => 1]);
+});

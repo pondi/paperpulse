@@ -29,6 +29,9 @@ it('returns lightweight search results with content links', function () {
     $mock->shouldReceive('search')
         ->once()
         ->andReturn([
+            'search_status' => 'available',
+            'unavailable_types' => [],
+            'pagination' => ['page' => 1, 'per_page' => 20, 'total' => 2, 'last_page' => 1],
             'results' => [
                 [
                     'id' => 123,
@@ -120,3 +123,12 @@ it('does not allow streaming file content for non-owners', function () {
     $this->getJson('/api/v1/files/'.$file->id.'/content')
         ->assertStatus(404);
 });
+
+it('exposes unavailable search state through both controllers', function (string $url, string $statusPath) {
+    $this->actingAs(User::factory()->create());
+    $this->mock(SearchService::class)->shouldReceive('search')->once()->andReturn([
+        'results' => [], 'facets' => null, 'search_status' => 'unavailable', 'unavailable_types' => ['receipt'],
+        'pagination' => ['page' => 1, 'per_page' => 20, 'total' => 0, 'last_page' => 0],
+    ]);
+    $this->getJson($url.'?query=test')->assertOk()->assertJsonPath($statusPath, 'unavailable');
+})->with([['/search', 'search_status'], ['/api/v1/search', 'data.search_status']]);

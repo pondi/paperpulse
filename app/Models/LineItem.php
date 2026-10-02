@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DeletedReason;
+use App\Jobs\Search\ReindexFile;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -28,6 +29,19 @@ class LineItem extends Model
     use HasFactory;
     use Searchable;
     use SoftDeletes;
+
+    protected static function booted(): void
+    {
+        $reindex = function (self $item): void {
+            $fileId = $item->receipt()->withoutGlobalScope('user')->value('file_id');
+            if ($fileId) {
+                ReindexFile::forFile($fileId);
+            }
+        };
+        static::saved($reindex);
+        static::deleted($reindex);
+        static::restored($reindex);
+    }
 
     protected $fillable = ['receipt_id', 'vendor_id', 'text', 'sku', 'qty', 'price', 'total'];
 

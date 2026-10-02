@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DeletedReason;
+use App\Jobs\Search\ReindexFile;
 use App\Traits\BelongsToUser;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -63,6 +64,7 @@ class Tag extends Model
     public function files(): BelongsToMany
     {
         return $this->belongsToMany(File::class, 'file_tags')
+            ->using(SearchableFilePivot::class)
             ->withTimestamps();
     }
 
@@ -182,9 +184,22 @@ class Tag extends Model
         return $colors[array_rand($colors)];
     }
 
-    /**
-     * Boot the model.
-     */
+    protected static function booted(): void
+    {
+        $reindex = function (self $model): void {
+            foreach ($model->files()->withoutGlobalScope('user')->where('files.user_id', $model->user_id)->cursor() as $file) {
+                ReindexFile::forFile($file->id);
+            }
+        };
+        static::updated(function (self $model) use ($reindex): void {
+            if ($model->wasChanged('name')) {
+                $reindex($model);
+            }
+        });
+        static::deleted($reindex);
+        static::restored($reindex);
+    }
+
     protected static function boot()
     {
         parent::boot();

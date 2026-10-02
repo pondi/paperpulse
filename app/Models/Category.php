@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DeletedReason;
+use App\Jobs\Search\ReindexFile;
 use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +15,20 @@ class Category extends Model
     use BelongsToUser;
     use HasFactory;
     use SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::updated(function (self $category): void {
+            if (! $category->wasChanged('name')) {
+                return;
+            }
+            $category->receipts()->where('user_id', $category->user_id)->update(['receipt_category' => $category->name]);
+            foreach ([Receipt::class, Document::class, Invoice::class] as $model) {
+                $model::withoutGlobalScope('user')->where('user_id', $category->user_id)->where('category_id', $category->id)
+                    ->select('file_id')->distinct()->cursor()->each(fn ($entity) => ReindexFile::forFile($entity->file_id));
+            }
+        });
+    }
 
     protected $fillable = [
         'user_id',

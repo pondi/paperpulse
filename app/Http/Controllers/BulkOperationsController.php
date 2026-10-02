@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\BulkReceiptIdsRequest;
+use App\Jobs\Search\ReindexFile;
 use App\Models\Category;
 use App\Models\Receipt;
 use App\Notifications\BulkOperationCompleted;
@@ -71,22 +72,23 @@ class BulkOperationsController extends Controller
             return redirect()->back()->with('error', 'Please select a category.');
         }
 
-        $data = [];
-        if ($validated['category_id'] ?? null) {
-            // Verify user owns the category
-            $category = Category::find($validated['category_id']);
+        $category = isset($validated['category_id'])
+            ? Category::findOrFail($validated['category_id'])
+            : Category::where('user_id', auth()->id())->where('name', $validated['category'])->first();
+        if ($category) {
             $this->authorize('update', $category);
-            $data['category_id'] = $validated['category_id'];
         }
+        $data = ['category_id' => $category?->id, 'receipt_category' => $category?->name ?? $validated['category']];
+        $updatedCount = (new Receipt)->getConnection()->transaction(function () use ($validated, $data): int {
+            $receipts = Receipt::whereIn('id', $validated['receipt_ids'])->where('user_id', auth()->id());
+            $fileIds = (clone $receipts)->distinct()->pluck('file_id');
+            $count = $receipts->update($data);
+            foreach ($fileIds as $fileId) {
+                ReindexFile::forFile($fileId);
+            }
 
-        if ($validated['category'] ?? null) {
-            $data['receipt_category'] = $validated['category'];
-        }
-
-        // Only update receipts owned by the user
-        $updatedCount = Receipt::whereIn('id', $validated['receipt_ids'])
-            ->where('user_id', auth()->id())
-            ->update($data);
+            return $count;
+        });
 
         // Send notification
         $user = auth()->user();

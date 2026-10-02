@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Models\File;
+use App\Models\SearchableFilePivot;
 use App\Models\Tag;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -17,6 +18,7 @@ trait TaggableModel
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class, 'file_tags', 'file_id', 'tag_id', 'file_id')
+            ->using(SearchableFilePivot::class)
             ->withTimestamps();
     }
 

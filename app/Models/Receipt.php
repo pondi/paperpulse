@@ -58,6 +58,16 @@ class Receipt extends Model implements Taggable
 
     protected static function booted(): void
     {
+        static::saving(function (self $receipt): void {
+            if ($receipt->isDirty('category_id')) {
+                $receipt->receipt_category = Category::withoutGlobalScope('user')->where('user_id', $receipt->user_id)
+                    ->whereKey($receipt->category_id)->value('name');
+            } elseif ($receipt->isDirty('receipt_category')) {
+                $receipt->category_id = Category::withoutGlobalScope('user')->where('user_id', $receipt->user_id)
+                    ->where('name', $receipt->receipt_category)->value('id');
+            }
+        });
+
         $flushDashboard = function (self $receipt): void {
             Cache::forget("dashboard_stats:{$receipt->user_id}");
         };

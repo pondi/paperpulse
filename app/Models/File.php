@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DeletedReason;
+use App\Jobs\Search\ReindexFile;
 use App\Traits\BelongsToUser;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -35,6 +36,15 @@ class File extends Model
     use BelongsToUser;
     use HasFactory;
     use SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::updated(function (self $file): void {
+            if ($file->wasChanged('note')) {
+                ReindexFile::forFile($file->id);
+            }
+        });
+    }
 
     protected $fillable = [
         'user_id',
@@ -132,6 +142,7 @@ class File extends Model
     public function collections(): BelongsToMany
     {
         return $this->belongsToMany(Collection::class)
+            ->using(SearchableFilePivot::class)
             ->withTimestamps();
     }
 
@@ -141,6 +152,7 @@ class File extends Model
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class, 'file_tags')
+            ->using(SearchableFilePivot::class)
             ->withTimestamps();
     }
 

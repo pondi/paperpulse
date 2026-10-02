@@ -6,6 +6,8 @@ use App\Contracts\Services\PulseDavSyncContract;
 use App\Models\PulseDavFile;
 use App\Models\User;
 use App\Notifications\ScannerFilesImported;
+use App\Services\PulseDav\Support\PathHelper;
+use App\Services\PulseDav\Support\S3ListService;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -30,40 +32,9 @@ class PulseDavSyncService implements PulseDavSyncContract
      */
     public function listUserFiles(User $user): array
     {
-        $prefix = $this->incomingPrefix.$user->id.'/';
-
-        try {
-            $objects = $this->s3Client->listObjectsV2([
-                'Bucket' => $this->bucket,
-                'Prefix' => $prefix,
-            ]);
-
-            $files = [];
-            if (isset($objects['Contents'])) {
-                foreach ($objects['Contents'] as $object) {
-                    // Skip directories
-                    if (substr($object['Key'], -1) === '/') {
-                        continue;
-                    }
-
-                    $files[] = [
-                        's3_path' => $object['Key'],
-                        'filename' => basename($object['Key']),
-                        'size' => $object['Size'],
-                        'uploaded_at' => $object['LastModified'],
-                    ];
-                }
-            }
-
-            return $files;
-        } catch (Exception $e) {
-            Log::error('[PulseDavSync] Failed to list S3 files', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return [];
-        }
+        return array_values(iterator_to_array(S3ListService::files(
+            $this->s3Client, $this->bucket, PathHelper::userPrefix($this->incomingPrefix, $user->id), $user->id,
+        )));
     }
 
     /**
@@ -71,7 +42,7 @@ class PulseDavSyncService implements PulseDavSyncContract
      */
     public function syncS3Files(User $user): int
     {
-        $s3Files = $this->listUserFiles($user);
+        $s3Files = S3ListService::files($this->s3Client, $this->bucket, PathHelper::userPrefix($this->incomingPrefix, $user->id), $user->id);
         $synced = 0;
 
         foreach ($s3Files as $fileData) {
@@ -116,75 +87,9 @@ class PulseDavSyncService implements PulseDavSyncContract
      */
     public function listUserFilesWithFolders(User $user): array
     {
-        $prefix = $this->incomingPrefix.$user->id.'/';
-
-        try {
-            $objects = $this->s3Client->listObjectsV2([
-                'Bucket' => $this->bucket,
-                'Prefix' => $prefix,
-            ]);
-
-            $items = [];
-            $folders = [];
-
-            if (isset($objects['Contents'])) {
-                foreach ($objects['Contents'] as $object) {
-                    $key = $object['Key'];
-                    $relativePath = str_replace($prefix, '', $key);
-
-                    // Skip empty paths
-                    if (empty($relativePath)) {
-                        continue;
-                    }
-
-                    // Parse folder structure
-                    $parts = explode('/', $relativePath);
-                    $currentPath = '';
-
-                    // Create folder entries
-                    for ($i = 0; $i < count($parts) - 1; $i++) {
-                        $currentPath .= ($i > 0 ? '/' : '').$parts[$i];
-                        $parentPath = $i > 0 ? implode('/', array_slice($parts, 0, $i)) : null;
-
-                        if (! isset($folders[$currentPath])) {
-                            $folders[$currentPath] = [
-                                's3_path' => $prefix.$currentPath.'/',
-                                'filename' => $parts[$i],
-                                'folder_path' => $currentPath,
-                                'parent_folder' => $parentPath,
-                                'depth' => $i,
-                                'is_folder' => true,
-                                'size' => 0,
-                                'uploaded_at' => null,
-                            ];
-                        }
-                    }
-
-                    // Add file entry
-                    $folderPath = count($parts) > 1 ? implode('/', array_slice($parts, 0, -1)) : null;
-                    $items[] = [
-                        's3_path' => $object['Key'],
-                        'filename' => basename($object['Key']),
-                        'folder_path' => $folderPath,
-                        'parent_folder' => $folderPath ? basename($folderPath) : null,
-                        'depth' => count($parts) - 1,
-                        'is_folder' => false,
-                        'size' => $object['Size'],
-                        'uploaded_at' => $object['LastModified'],
-                    ];
-                }
-            }
-
-            // Merge folders and files
-            return array_merge(array_values($folders), $items);
-        } catch (Exception $e) {
-            Log::error('[PulseDavSync] Failed to list S3 files with folders', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return [];
-        }
+        return array_values(iterator_to_array(S3ListService::files(
+            $this->s3Client, $this->bucket, PathHelper::userPrefix($this->incomingPrefix, $user->id), $user->id, true,
+        )));
     }
 
     /**
@@ -196,16 +101,11 @@ class PulseDavSyncService implements PulseDavSyncContract
             'user_id' => $user->id,
         ]);
 
-        $items = $this->listUserFilesWithFolders($user);
-
-        Log::info('[PulseDavSync] Found items in S3', [
-            'total_items' => count($items),
-            'sample_items' => array_slice($items, 0, 5),
-        ]);
+        $items = S3ListService::files($this->s3Client, $this->bucket, PathHelper::userPrefix($this->incomingPrefix, $user->id), $user->id, true);
 
         $synced = 0;
         $skipped = 0;
-        $userPrefix = $this->incomingPrefix.$user->id.'/';
+        $userPrefix = PathHelper::userPrefix($this->incomingPrefix, $user->id);
 
         foreach ($items as $itemData) {
             // Extract folder info
@@ -260,7 +160,7 @@ class PulseDavSyncService implements PulseDavSyncContract
         Log::info('[PulseDavSync] Sync completed', [
             'synced' => $synced,
             'skipped' => $skipped,
-            'total_items' => count($items),
+            'total_items' => $synced + $skipped,
         ]);
 
         return $synced;

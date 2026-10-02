@@ -5,6 +5,9 @@ namespace App\Services\PulseDav;
 use App\Contracts\Services\PulseDavFolderContract;
 use App\Models\PulseDavFile;
 use App\Models\User;
+use App\Services\PulseDav\Import\S3PathResolver;
+use App\Services\PulseDav\Support\PathHelper;
+use App\Services\PulseDav\Support\S3ListService;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -78,54 +81,50 @@ class PulseDavFolderService implements PulseDavFolderContract
      */
     public function getFolderContents(User $user, string $folderPath = ''): array
     {
-        $prefix = $this->incomingPrefix.$user->id.'/';
+        $prefix = PathHelper::userPrefix($this->incomingPrefix, $user->id);
         if ($folderPath) {
-            $prefix .= $folderPath.'/';
+            $prefix .= trim($folderPath, '/').'/';
+            S3PathResolver::validateOwnedPath($prefix, $user->id);
         }
 
         try {
-            // Use delimiter to get immediate children only
-            $objects = $this->s3Client->listObjectsV2([
-                'Bucket' => $this->bucket,
-                'Prefix' => $prefix,
-                'Delimiter' => '/',
-            ]);
-
             $items = [];
+            foreach (S3ListService::pages($this->s3Client, $this->bucket, $prefix, $user->id, '/') as $objects) {
+                // Add folders (CommonPrefixes)
+                if (isset($objects['CommonPrefixes'])) {
+                    foreach ($objects['CommonPrefixes'] as $prefixItem) {
+                        $folderName = rtrim(substr($prefixItem['Prefix'], strlen($prefix)), '/');
 
-            // Add folders (CommonPrefixes)
-            if (isset($objects['CommonPrefixes'])) {
-                foreach ($objects['CommonPrefixes'] as $prefixItem) {
-                    $folderName = rtrim(str_replace($prefix, '', $prefixItem['Prefix']), '/');
-
-                    $items[] = [
-                        'name' => $folderName,
-                        's3_path' => $prefixItem['Prefix'],
-                        'path' => $prefixItem['Prefix'],
-                        'is_folder' => true,
-                        'size' => 0,
-                        'uploaded_at' => null,
-                    ];
-                }
-            }
-
-            // Add files
-            if (isset($objects['Contents'])) {
-                foreach ($objects['Contents'] as $object) {
-                    // Skip the folder itself
-                    if ($object['Key'] === $prefix) {
-                        continue;
+                        $items[] = [
+                            'name' => $folderName,
+                            's3_path' => $prefixItem['Prefix'],
+                            'path' => $prefixItem['Prefix'],
+                            'is_folder' => true,
+                            'size' => 0,
+                            'uploaded_at' => null,
+                        ];
                     }
-
-                    $items[] = [
-                        'name' => basename($object['Key']),
-                        's3_path' => $object['Key'],
-                        'path' => $object['Key'],
-                        'is_folder' => false,
-                        'size' => $object['Size'],
-                        'uploaded_at' => $object['LastModified'],
-                    ];
                 }
+
+                // Add files
+                if (isset($objects['Contents'])) {
+                    foreach ($objects['Contents'] as $object) {
+                        // Skip the folder itself
+                        if ($object['Key'] === $prefix) {
+                            continue;
+                        }
+
+                        $items[] = [
+                            'name' => basename($object['Key']),
+                            's3_path' => $object['Key'],
+                            'path' => $object['Key'],
+                            'is_folder' => false,
+                            'size' => $object['Size'],
+                            'uploaded_at' => $object['LastModified'],
+                        ];
+                    }
+                }
+
             }
 
             Log::debug('[PulseDavFolder] Retrieved folder contents', [
@@ -142,7 +141,7 @@ class PulseDavFolderService implements PulseDavFolderContract
                 'error' => $e->getMessage(),
             ]);
 
-            return [];
+            throw $e;
         }
     }
 

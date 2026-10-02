@@ -2,91 +2,92 @@
 
 namespace App\Services\PulseDav\Support;
 
-use Exception;
-use Illuminate\Support\Facades\Log;
+use App\Models\PulseDavFile;
+use App\Services\PulseDav\Import\S3PathResolver;
+use Aws\S3\S3Client;
+use Generator;
+use UnexpectedValueException;
 
 class S3ListService
 {
-    public static function listUserFiles($s3Client, string $bucket, string $prefix): array
+    public static function pages(S3Client $s3Client, string $bucket, string $prefix, int $userId, ?string $delimiter = null): Generator
     {
-        try {
-            $objects = $s3Client->listObjectsV2(['Bucket' => $bucket, 'Prefix' => $prefix]);
-            $files = [];
-            if (isset($objects['Contents'])) {
-                foreach ($objects['Contents'] as $object) {
-                    if (substr($object['Key'], -1) === '/') {
-                        continue;
-                    }
-                    $files[] = [
-                        's3_path' => $object['Key'],
-                        'filename' => basename($object['Key']),
-                        'size' => $object['Size'],
-                        'uploaded_at' => $object['LastModified'],
-                    ];
+        $parameters = ['Bucket' => $bucket, 'Prefix' => $prefix];
+        if ($delimiter !== null) {
+            $parameters['Delimiter'] = $delimiter;
+        }
+
+        do {
+            $page = $s3Client->listObjectsV2($parameters);
+            foreach (array_merge($page['Contents'] ?? [], $page['CommonPrefixes'] ?? []) as $object) {
+                $path = $object['Key'] ?? $object['Prefix'];
+                if (! str_starts_with($path, $prefix)) {
+                    throw new UnexpectedValueException('Scanner listing returned a path outside the requested prefix.');
+                }
+                if ($path !== $prefix) {
+                    S3PathResolver::validateOwnedPath($path, $userId);
                 }
             }
 
-            return $files;
-        } catch (Exception $e) {
-            Log::error('Failed to list S3 files', ['prefix' => $prefix, 'error' => $e->getMessage()]);
+            yield $page;
 
-            return [];
-        }
+            if (! ($page['IsTruncated'] ?? false)) {
+                return;
+            }
+            $token = $page['NextContinuationToken'] ?? null;
+            if (! is_string($token) || $token === '' || $token === ($parameters['ContinuationToken'] ?? null)) {
+                throw new UnexpectedValueException('Scanner listing did not provide a valid continuation token.');
+            }
+            $parameters['ContinuationToken'] = $token;
+        } while (true);
     }
 
-    public static function listUserFilesWithFolders($s3Client, string $bucket, string $prefix): array
+    public static function files(S3Client $s3Client, string $bucket, string $prefix, int $userId, bool $withFolders = false): Generator
     {
-        try {
-            $objects = $s3Client->listObjectsV2(['Bucket' => $bucket, 'Prefix' => $prefix]);
-            $items = [];
+        foreach (self::pages($s3Client, $bucket, $prefix, $userId) as $page) {
             $folders = [];
-
-            if (isset($objects['Contents'])) {
-                foreach ($objects['Contents'] as $object) {
-                    $key = $object['Key'];
-                    $relativePath = str_replace($prefix, '', $key);
-                    if ($relativePath === '') {
-                        continue;
-                    }
-
-                    $parts = explode('/', $relativePath);
-                    $currentPath = '';
+            foreach ($page['Contents'] ?? [] as $object) {
+                $key = $object['Key'];
+                if ($key === $prefix) {
+                    continue;
+                }
+                $isFolder = str_ends_with($key, '/');
+                if ($withFolders) {
+                    $parts = explode('/', substr($key, strlen($prefix)));
                     for ($i = 0; $i < count($parts) - 1; $i++) {
-                        $currentPath .= ($i > 0 ? '/' : '').$parts[$i];
-                        $parentPath = $i > 0 ? implode('/', array_slice($parts, 0, $i)) : null;
-                        if (! isset($folders[$currentPath])) {
-                            $folders[$currentPath] = [
-                                's3_path' => $prefix.$currentPath.'/',
+                        $folderPath = implode('/', array_slice($parts, 0, $i + 1));
+                        if (! isset($folders[$folderPath])) {
+                            $folders[$folderPath] = true;
+                            yield $prefix.$folderPath.'/' => array_merge([
+                                's3_path' => $prefix.$folderPath.'/',
                                 'filename' => $parts[$i],
-                                'folder_path' => $currentPath,
-                                'parent_folder' => $parentPath,
-                                'depth' => $i,
                                 'is_folder' => true,
                                 'size' => 0,
                                 'uploaded_at' => null,
-                            ];
+                            ], PulseDavFile::extractFolderInfo($prefix.$folderPath.'/', $prefix));
                         }
                     }
-
+                }
+                if ($isFolder) {
+                    continue;
+                }
+                $file = [
+                    's3_path' => $key,
+                    'filename' => basename($key),
+                    'size' => $object['Size'],
+                    'uploaded_at' => $object['LastModified'],
+                ];
+                if ($withFolders) {
                     $folderPath = count($parts) > 1 ? implode('/', array_slice($parts, 0, -1)) : null;
-                    $items[] = [
-                        's3_path' => $object['Key'],
-                        'filename' => basename($object['Key']),
+                    $file = array_merge($file, [
+                        'is_folder' => false,
                         'folder_path' => $folderPath,
                         'parent_folder' => $folderPath ? basename($folderPath) : null,
                         'depth' => count($parts) - 1,
-                        'is_folder' => false,
-                        'size' => $object['Size'],
-                        'uploaded_at' => $object['LastModified'],
-                    ];
+                    ]);
                 }
+                yield $key => $file;
             }
-
-            return array_merge(array_values($folders), $items);
-        } catch (Exception $e) {
-            Log::error('Failed to list S3 files with folders', ['prefix' => $prefix, 'error' => $e->getMessage()]);
-
-            return [];
         }
     }
 }

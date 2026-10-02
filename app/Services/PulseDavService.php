@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Jobs\PulseDav\ProcessPulseDavFile;
 use App\Models\PulseDavFile;
 use App\Models\User;
+use App\Services\PulseDav\PulseDavFolderService;
 use App\Services\PulseDav\ScannerImportNotifier;
 use App\Services\PulseDav\SelectionImportService;
 use App\Services\PulseDav\Support\FolderHierarchyBuilder;
@@ -32,11 +33,11 @@ class PulseDavService
     /**
      * List all PulseDav files for a specific user from S3
      */
-    public function listUserFiles(User $user)
+    public function listUserFiles(User $user): array
     {
         $prefix = PathHelper::userPrefix($this->incomingPrefix, $user->id);
 
-        return S3ListService::listUserFiles($this->s3Client, $this->bucket, $prefix);
+        return array_values(iterator_to_array(S3ListService::files($this->s3Client, $this->bucket, $prefix, $user->id)));
     }
 
     /**
@@ -44,7 +45,7 @@ class PulseDavService
      */
     public function syncS3Files(User $user)
     {
-        $s3Files = $this->listUserFiles($user);
+        $s3Files = S3ListService::files($this->s3Client, $this->bucket, PathHelper::userPrefix($this->incomingPrefix, $user->id), $user->id);
         $synced = 0;
 
         foreach ($s3Files as $fileData) {
@@ -187,11 +188,11 @@ class PulseDavService
     /**
      * List all PulseDav files and folders for a specific user from S3
      */
-    public function listUserFilesWithFolders(User $user)
+    public function listUserFilesWithFolders(User $user): array
     {
         $prefix = PathHelper::userPrefix($this->incomingPrefix, $user->id);
 
-        return S3ListService::listUserFilesWithFolders($this->s3Client, $this->bucket, $prefix);
+        return array_values(iterator_to_array(S3ListService::files($this->s3Client, $this->bucket, $prefix, $user->id, true)));
     }
 
     /**
@@ -205,69 +206,9 @@ class PulseDavService
     /**
      * Get folder contents for a specific path
      */
-    public function getFolderContents(User $user, string $folderPath = '')
+    public function getFolderContents(User $user, string $folderPath = ''): array
     {
-        $prefix = $this->incomingPrefix.$user->id.'/';
-        if ($folderPath) {
-            $prefix .= $folderPath.'/';
-        }
-
-        try {
-            // Use delimiter to get immediate children only
-            $objects = $this->s3Client->listObjectsV2([
-                'Bucket' => $this->bucket,
-                'Prefix' => $prefix,
-                'Delimiter' => '/',
-            ]);
-
-            $items = [];
-
-            // Add folders (CommonPrefixes)
-            if (isset($objects['CommonPrefixes'])) {
-                foreach ($objects['CommonPrefixes'] as $prefix) {
-                    $folderName = rtrim(str_replace($prefix, '', $prefix['Prefix']), '/');
-                    $folderName = basename($folderName);
-
-                    $items[] = [
-                        'name' => $folderName,
-                        's3_path' => $prefix['Prefix'],
-                        'path' => $prefix['Prefix'], // Keep for backward compatibility
-                        'is_folder' => true,
-                        'size' => 0,
-                        'uploaded_at' => null,
-                    ];
-                }
-            }
-
-            // Add files
-            if (isset($objects['Contents'])) {
-                foreach ($objects['Contents'] as $object) {
-                    // Skip the folder itself
-                    if ($object['Key'] === $prefix) {
-                        continue;
-                    }
-
-                    $items[] = [
-                        'name' => basename($object['Key']),
-                        's3_path' => $object['Key'],
-                        'path' => $object['Key'], // Keep for backward compatibility
-                        'is_folder' => false,
-                        'size' => $object['Size'],
-                        'uploaded_at' => $object['LastModified'],
-                    ];
-                }
-            }
-
-            return $items;
-        } catch (Exception $e) {
-            Log::error('Failed to get folder contents', [
-                'user_id' => $user->id,
-                'folder_path' => $folderPath,
-                'error' => $e->getMessage(),
-            ]);
-
-            return [];
-        }
+        return app(PulseDavFolderService::class)->getFolderContents($user, $folderPath);
     }
 
     /**
@@ -279,16 +220,11 @@ class PulseDavService
             'user_id' => $user->id,
         ]);
 
-        $items = $this->listUserFilesWithFolders($user);
-
-        Log::info('[PulseDavService] Found items in S3', [
-            'total_items' => count($items),
-            'sample_items' => array_slice($items, 0, 5), // Log first 5 items
-        ]);
+        $items = S3ListService::files($this->s3Client, $this->bucket, PathHelper::userPrefix($this->incomingPrefix, $user->id), $user->id, true);
 
         $synced = 0;
         $skipped = 0;
-        $userPrefix = $this->incomingPrefix.$user->id.'/';
+        $userPrefix = PathHelper::userPrefix($this->incomingPrefix, $user->id);
 
         foreach ($items as $itemData) {
             // Extract folder info
@@ -343,7 +279,7 @@ class PulseDavService
         Log::info('[PulseDavService] Sync completed', [
             'synced' => $synced,
             'skipped' => $skipped,
-            'total_items' => count($items),
+            'total_items' => $synced + $skipped,
         ]);
 
         return $synced;

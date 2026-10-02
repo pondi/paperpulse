@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'organization' => [
+        'chunk_size' => 25,
+        'max_calls' => 16,
+        'max_tokens' => 262144,
+        'max_prompt_bytes' => 16000,
+    ],
     /*
     |--------------------------------------------------------------------------
     | Default AI Provider

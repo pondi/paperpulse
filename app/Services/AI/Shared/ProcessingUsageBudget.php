@@ -9,10 +9,10 @@ class ProcessingUsageBudget
 {
     private static ?array $context = null;
 
-    public static function run(int $userId, string $runId, string $stage, callable $operation): mixed
+    public static function run(int $userId, string $runId, string $stage, callable $operation, array $limits = []): mixed
     {
         $previous = self::$context;
-        self::$context = ['user' => $userId, 'run' => $runId, 'stage' => $stage];
+        self::$context = ['user' => $userId, 'run' => $runId, 'stage' => $stage, 'limits' => $limits];
         try {
             return $operation();
         } finally {
@@ -36,9 +36,9 @@ class ProcessingUsageBudget
             $runCounter = ProcessingUsageCounter::query()->whereKey($runCounter->id)->lockForUpdate()->firstOrFail();
             $run = $runCounter->usage;
             $user = $daily->usage;
-            if ($run['calls'] >= (int) config('ai.limits.max_calls_per_run', 10)
+            if ($run['calls'] >= (int) ($context['limits']['calls'] ?? config('ai.limits.max_calls_per_run', 10))
                 || $user['calls'] >= (int) config('ai.limits.max_calls_per_user_day', 100)
-                || (int) config('ai.limits.max_tokens_per_run', 200000) < $run['reserved_tokens'] + $tokens
+                || (int) ($context['limits']['tokens'] ?? config('ai.limits.max_tokens_per_run', 200000)) < $run['reserved_tokens'] + $tokens
                 || (int) config('ai.limits.max_tokens_per_user_day', 2000000) < $user['reserved_tokens'] + $tokens) {
                 throw new AIResponseException('Processing usage budget exceeded');
             }

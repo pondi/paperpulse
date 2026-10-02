@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\Organization\GenerateOrganizationRecommendations;
 use App\Models\OrganizationRun;
 use App\Models\User;
 use App\Models\UserPreference;
@@ -33,8 +34,11 @@ class OrganizationRunService
                 return null;
             }
 
-            return OrganizationRun::query()->create(['user_id' => $userId, 'active_user_id' => $userId,
+            $run = OrganizationRun::query()->create(['user_id' => $userId, 'active_user_id' => $userId,
                 'input_revision' => $snapshot['revision'], 'input_fingerprint' => $snapshot['fingerprint']]);
+            GenerateOrganizationRecommendations::dispatch($userId, $run->id)->afterCommit();
+
+            return $run;
         });
     }
 

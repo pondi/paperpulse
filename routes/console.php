@@ -69,3 +69,5 @@ Schedule::command('files:cleanup-working')->dailyAt('02:00')->name('cleanup-work
 Schedule::command('pulsedav:reconcile-imports')->everyFiveMinutes()->name('reconcile-scanner-imports')->withoutOverlapping();
 
 Schedule::command('organization:recover-placements')->everyFiveMinutes()->name('recover-file-organization')->withoutOverlapping();
+
+Schedule::command('organization:plan')->everyFiveMinutes()->name('plan-organization')->withoutOverlapping();

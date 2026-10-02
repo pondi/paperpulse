@@ -136,7 +136,7 @@ class OrganizationPlanner
         }
 
         return $folder->only(['name', 'parent_id', 'is_pinned', 'is_archived', 'organization_source', 'identity_key'])
-            + ['members_hash' => hash_final($hash),
+            + ['deleted' => $folder->trashed(), 'members_hash' => hash_final($hash), 'members_count' => $members->count(),
                 'shared' => app(FolderTreeService::class)->hasSharing($folder)];
     }
 

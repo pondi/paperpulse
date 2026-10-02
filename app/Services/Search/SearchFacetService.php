@@ -13,9 +13,11 @@ use App\Models\ReturnPolicy;
 use App\Models\Voucher;
 use App\Models\Warranty;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 /**
- * Computes facet counts and aggregations for search results.
+ * Counts each content type using all content filters. Type and pagination
+ * select displayed results, so they do not restrict the type-tab counts.
  */
 class SearchFacetService
 {
@@ -38,11 +40,19 @@ class SearchFacetService
         }
 
         $userId = auth()->id();
-        $cacheKey = "search_facets:{$userId}:".md5($query.serialize($filters));
+        unset($filters['type'], $filters['page'], $filters['limit']);
+        ksort($filters);
+        $version = Cache::rememberForever("search_facets:{$userId}:version", static fn () => (string) Str::uuid());
+        $cacheKey = "search_facets:{$userId}:{$version}:".md5($query.serialize($filters));
 
-        return Cache::tags(["search_facets:{$userId}"])->remember($cacheKey, 60, function () use ($query, $filters, $userId) {
+        return Cache::remember($cacheKey, 60, function () use ($query, $filters, $userId) {
             return $this->computeFacets($query, $filters, $userId);
         });
+    }
+
+    public static function invalidate(int $userId): void
+    {
+        Cache::forever("search_facets:{$userId}:version", (string) Str::uuid());
     }
 
     protected function computeFacets(string $query, array $filters, int $userId): array
@@ -66,7 +76,8 @@ class SearchFacetService
         $total = 0;
 
         foreach ($queries as $type => $searchQuery) {
-            $count = $searchQuery->raw()['estimatedTotalHits'] ?? 0;
+            $searchQuery->options(['hitsPerPage' => 1, 'page' => 1, 'attributesToRetrieve' => ['id']]);
+            $count = $searchQuery->model->searchableUsing()->getTotalCount($searchQuery->raw());
             $counts[$type] = $count;
             $total += $count;
         }

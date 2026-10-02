@@ -3,7 +3,7 @@
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 
-return [
+$databaseConfiguration = [
 
     /*
     |--------------------------------------------------------------------------
@@ -232,3 +232,7 @@ return [
     ],
 
 ];
+
+$databaseConfiguration['connections']['pgsql_locks'] = $databaseConfiguration['connections']['pgsql'];
+
+return $databaseConfiguration;

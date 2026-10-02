@@ -42,7 +42,7 @@ return [
             'driver' => 'database',
             'table' => env('DB_CACHE_TABLE', 'cache'),
             'connection' => env('DB_CACHE_CONNECTION', null),
-            'lock_connection' => env('DB_CACHE_LOCK_CONNECTION', null),
+            'lock_connection' => env('DB_CACHE_LOCK_CONNECTION', env('DB_CONNECTION', 'sqlite') === 'pgsql' ? 'pgsql_locks' : null),
         ],
 
         'file' => [

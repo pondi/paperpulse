@@ -3,11 +3,11 @@
 namespace App\Jobs\Search;
 
 use App\Models\File;
+use App\Services\Search\SearchFacetService;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Cache;
 
 class ReindexFile implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
@@ -24,7 +24,13 @@ class ReindexFile implements ShouldBeUniqueUntilProcessing, ShouldQueue
 
     public static function forFile(int $fileId): void
     {
-        (new File)->getConnection()->afterCommit(static fn () => self::dispatch($fileId));
+        (new File)->getConnection()->afterCommit(static function () use ($fileId): void {
+            $userId = File::withoutGlobalScope('user')->whereKey($fileId)->value('user_id');
+            if ($userId) {
+                SearchFacetService::invalidate($userId);
+                self::dispatch($fileId);
+            }
+        });
     }
 
     public function handle(): void
@@ -37,6 +43,6 @@ class ReindexFile implements ShouldBeUniqueUntilProcessing, ShouldQueue
             $model::withoutGlobalScope('user')->where('user_id', $file->user_id)->where('file_id', $file->id)
                 ->chunkById(100, static fn ($entities) => $entities->filter->shouldBeSearchable()->searchable());
         }
-        Cache::tags(['search_facets:'.$file->user_id])->flush();
+        SearchFacetService::invalidate($file->user_id);
     }
 }

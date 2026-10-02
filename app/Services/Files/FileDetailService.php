@@ -2,8 +2,17 @@
 
 namespace App\Services\Files;
 
+use App\Models\BankStatement;
+use App\Models\Contract;
+use App\Models\Document;
 use App\Models\File;
+use App\Models\Invoice;
+use App\Models\Receipt;
+use App\Models\Voucher;
+use App\Models\Warranty;
+use App\Support\AuthorizedEntityRelations;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
  * File Detail Service
@@ -37,18 +46,29 @@ class FileDetailService
         $file->load([
             'primaryEntity.entity' => function ($morphTo) {
                 $morphTo->morphWith([
-                    \App\Models\Receipt::class => ['merchant', 'category', 'tags', 'lineItems'],
-                    \App\Models\Document::class => ['category', 'tags'],
-                    \App\Models\Invoice::class => ['lineItems'],
-                    \App\Models\Contract::class => [],
-                    \App\Models\Voucher::class => [],
-                    \App\Models\Warranty::class => [],
-                    \App\Models\BankStatement::class => ['transactions'],
+                    Receipt::class => ['merchant', 'category', 'tags', 'lineItems'],
+                    Document::class => ['category', 'tags'],
+                    Invoice::class => ['lineItems'],
+                    Contract::class => [],
+                    Voucher::class => [],
+                    Warranty::class => [],
+                    BankStatement::class => ['transactions'],
                 ]);
             },
         ]);
 
         return $file;
+    }
+
+    public function loadExtractedEntities(File $file): File
+    {
+        return $file->load([
+            'extractableEntities' => fn ($query) => $query->where('user_id', $file->user_id)->orderByDesc('is_primary')->orderBy('id'),
+            'extractableEntities.entity' => function (MorphTo $relation) use ($file): void {
+                AuthorizedEntityRelations::load($relation);
+                $relation->withoutGlobalScope('user')->where('user_id', $file->user_id)->where('file_id', $file->id);
+            },
+        ]);
     }
 
     /**

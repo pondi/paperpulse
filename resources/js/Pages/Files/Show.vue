@@ -1,11 +1,10 @@
 <template>
-  <Head title="File Details" />
-
   <AuthenticatedLayout>
+    <Head title="File Details" />
     <template #header>
       <div class="flex justify-between items-center">
         <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
-          {{ file.original_name }}
+          {{ file.name }}
         </h2>
         <Link
           :href="route('files.index')"
@@ -97,11 +96,13 @@
               <!-- Dynamic Entity Card -->
               <component
                 :is="getEntityComponent(extraction.entity_type)"
-                v-if="extraction.entity"
+                v-if="extraction.entity && getEntityComponent(extraction.entity_type)"
                 :="getEntityProps(extraction.entity_type, extraction.entity)"
-                @view="viewEntity(extraction.entity_type, $event)"
-                @redeem="redeemVoucher"
+                :show-actions="false"
               />
+              <Link v-if="getEntityUrl(extraction)" :href="getEntityUrl(extraction)" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View {{ formatEntityType(extraction.entity_type) }} details →
+              </Link>
             </div>
           </div>
         </div>
@@ -148,7 +149,7 @@
 </template>
 
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import VoucherCard from '@/Components/Entities/VoucherCard.vue';
 import WarrantyCard from '@/Components/Entities/WarrantyCard.vue';
@@ -200,29 +201,16 @@ const getEntityProps = (entityType, entity) => {
   return propsMap[entityType] || {};
 };
 
-const viewEntity = (entityType, entityId) => {
-  const routeMap = {
-    'voucher': 'vouchers.show',
-    'warranty': 'warranties.show',
-    'return_policy': 'return-policies.show',
-    'invoice': 'invoices.show',
-    'contract': 'contracts.show',
-    'bank_statement': 'bank-statements.show',
+const getEntityUrl = (extraction) => {
+  const routes = {
+    receipt: 'receipts.show',
+    document: 'documents.show',
+    voucher: 'vouchers.show',
+    invoice: 'invoices.show',
+    contract: 'contracts.show',
+    bank_statement: 'bank-statements.show',
   };
-
-  const routeName = routeMap[entityType];
-  if (routeName) {
-    router.visit(route(routeName, entityId));
-  }
-};
-
-const redeemVoucher = (voucherId) => {
-  router.post(route('vouchers.redeem', voucherId), {}, {
-    preserveScroll: true,
-    onSuccess: () => {
-      // Optionally show a success message
-    }
-  });
+  return routes[extraction.entity_type] ? route(routes[extraction.entity_type], extraction.entity_id) : null;
 };
 
 const getStatusClass = (status) => {

@@ -288,23 +288,7 @@ const getFileType = (file) => {
     return 'File';
 };
 
-const getFileUrl = (file) => {
-    // Check for primary entity first (invoices, contracts, etc.)
-    if (file.primary_entity && file.primary_entity.entity_type && file.primary_entity.entity_id) {
-        const entityType = file.primary_entity.entity_type.split('\\').pop().toLowerCase();
-        const pluralType = entityType + 's'; // Simple pluralization
-        return route(pluralType + '.show', file.primary_entity.entity_id);
-    }
-    // Check for primary receipt
-    if (file.primary_receipt) {
-        return route('receipts.show', file.primary_receipt.id);
-    }
-    // Check for primary document
-    if (file.primary_document) {
-        return route('documents.show', file.primary_document.id);
-    }
-    return '#';
-};
+const getFileUrl = (file) => route('files.show', file.id);
 
 const formatDate = (date) => {
     if (!date) return 'N/A';

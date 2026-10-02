@@ -14,7 +14,6 @@ use App\Models\Collection;
 use App\Models\Contract;
 use App\Models\Document;
 use App\Models\DuplicateFlag;
-use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Receipt;
@@ -227,10 +226,6 @@ class AppServiceProvider extends ServiceProvider
             return $user && method_exists($user, 'isAdmin') ? $user->isAdmin() : false;
         });
 
-        // Custom route binding for polymorphic document resolution
-        // Handles both Document models and ExtractableEntity redirects
-        // Note: Route bindings execute before authentication middleware, so
-        // we cannot use auth()->id() here. Authorization is handled by policies.
         foreach (['contract' => Contract::class, 'invoice' => Invoice::class,
             'voucher' => Voucher::class, 'warranty' => Warranty::class,
             'returnPolicy' => ReturnPolicy::class] as $parameter => $modelClass) {
@@ -241,43 +236,8 @@ class AppServiceProvider extends ServiceProvider
         Route::bind('receipt', fn ($value) => request()->is('api/*') ? $value : Receipt::accessibleBy(auth()->user())
             ->with(['file' => fn ($query) => $query->withoutGlobalScope('user')])->findOrFail($value));
 
-        Route::bind('document', function ($value) {
-            // First, try to find an actual Document with this ID
-            $document = Document::accessibleBy(auth()->user())->with(['file' => fn ($query) => $query->withoutGlobalScope('user')])->find($value);
-
-            if ($document) {
-                return $document;
-            }
-
-            // Not a Document - check if it's another entity type via ExtractableEntity
-            // Only check for entity types other than 'document' to avoid confusion
-            $extractableEntity = ExtractableEntity::where('entity_id', $value)
-                ->whereNot('entity_type', 'document')
-                ->whereHas('file', fn ($query) => $query->accessibleBy(auth()->user()))
-                ->with(['entity' => fn ($query) => $query->withoutGlobalScope('user')])
-                ->first();
-
-            if (! $extractableEntity) {
-                abort(404, 'Document not found');
-            }
-
-            $entity = $extractableEntity->entity;
-            $entityType = class_basename($entity);
-
-            // Redirect to appropriate controller based on entity type
-            $route = match ($entityType) {
-                'Contract' => 'contracts.show',
-                'Invoice' => 'invoices.show',
-                'Voucher' => 'vouchers.show',
-                default => null
-            };
-
-            if ($route) {
-                abort(redirect()->route($route, $entity->id));
-            }
-
-            abort(404, "No show page available for entity type: {$entityType}");
-        });
+        Route::bind('document', fn ($value) => request()->is('api/*') ? $value : Document::accessibleBy(auth()->user())
+            ->with(['file' => fn ($query) => $query->withoutGlobalScope('user')])->findOrFail($value));
 
         // Register polymorphic morph map for extractable entities
         Relation::morphMap([

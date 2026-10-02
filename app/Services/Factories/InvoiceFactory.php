@@ -24,6 +24,11 @@ class InvoiceFactory extends BaseEntityFactory
         return Invoice::class;
     }
 
+    protected function resolveAttributes(array $data, File $file): array
+    {
+        return array_merge(parent::resolveAttributes($data, $file), data_get($file->meta, 'manual_edits.invoice', []));
+    }
+
     protected function fields(): array
     {
         return [

@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HandlesEntityCrud;
 use App\Http\Requests\EntityIndexRequest;
+use App\Http\Requests\UpdateContractRequest;
 use App\Http\Resources\Inertia\ContractInertiaResource;
 use App\Models\Contract;
 use App\Models\Tag;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,18 +29,6 @@ class ContractController extends BaseResourceController
     protected array $searchableFields = ['contract_number', 'contract_title', 'contract_type'];
 
     protected string $defaultSort = 'effective_date';
-
-    protected array $validationRules = [
-        'contract_title' => 'sometimes|string|max:255',
-        'contract_type' => 'sometimes|string|max:100',
-        'effective_date' => 'sometimes|date',
-        'expiry_date' => 'nullable|date',
-        'contract_value' => 'nullable|numeric|min:0',
-        'status' => 'sometimes|string|max:50',
-        'summary' => 'nullable|string|max:2000',
-        'governing_law' => 'nullable|string|max:255',
-        'jurisdiction' => 'nullable|string|max:255',
-    ];
 
     /**
      * Display a listing of contracts.
@@ -112,6 +102,23 @@ class ContractController extends BaseResourceController
     protected function transformForShow(Model $item): array
     {
         return ContractInertiaResource::forShow($item)->toArray(request());
+    }
+
+    public function update(Request $request, $id): RedirectResponse
+    {
+        $item = $id instanceof Contract ? $id : Contract::findOrFail($id);
+        $this->authorize('update', $item);
+        $validated = app(UpdateContractRequest::class)->validated();
+
+        $item->getConnection()->transaction(function () use ($item, $validated): void {
+            $item->update($validated);
+            $file = $item->file;
+            $meta = $file->meta ?? [];
+            $meta['manual_edits']['contract'] = array_merge($meta['manual_edits']['contract'] ?? [], $validated);
+            $file->update(['meta' => $meta]);
+        });
+
+        return $this->afterUpdate($item, $request);
     }
 
     public function download(Contract $contract): mixed

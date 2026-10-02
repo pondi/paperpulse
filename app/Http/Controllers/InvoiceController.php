@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HandlesEntityCrud;
 use App\Http\Requests\EntityIndexRequest;
+use App\Http\Requests\UpdateInvoiceRequest;
 use App\Http\Resources\Inertia\InvoiceInertiaResource;
 use App\Models\Invoice;
 use App\Models\Tag;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,17 +29,6 @@ class InvoiceController extends BaseResourceController
     protected array $searchableFields = ['invoice_number', 'from_name', 'to_name'];
 
     protected string $defaultSort = 'invoice_date';
-
-    protected array $validationRules = [
-        'invoice_number' => 'sometimes|string|max:255',
-        'from_name' => 'sometimes|string|max:255',
-        'to_name' => 'sometimes|string|max:255',
-        'invoice_date' => 'sometimes|date',
-        'due_date' => 'nullable|date',
-        'total_amount' => 'sometimes|numeric|min:0',
-        'payment_status' => 'sometimes|string|max:50',
-        'notes' => 'nullable|string|max:2000',
-    ];
 
     /**
      * Display a listing of invoices.
@@ -111,6 +102,40 @@ class InvoiceController extends BaseResourceController
     protected function transformForShow(Model $item): array
     {
         return InvoiceInertiaResource::forShow($item)->toArray(request());
+    }
+
+    public function update(Request $request, $id): RedirectResponse
+    {
+        $item = $id instanceof Invoice ? $id : Invoice::findOrFail($id);
+        $this->authorize('update', $item);
+        $validated = app(UpdateInvoiceRequest::class)->validated();
+
+        if (array_intersect(['total_amount', 'amount_paid', 'payment_status', 'invoice_type'], array_keys($validated))) {
+            $total = (float) ($validated['total_amount'] ?? $item->total_amount);
+            $status = $validated['payment_status'] ?? $item->payment_status ?? 'unpaid';
+            $paid = match ($status) {
+                'paid' => $total,
+                'unpaid', 'overdue' => 0,
+                'partial' => (float) ($validated['amount_paid'] ?? $item->amount_paid),
+            };
+            $validated = array_merge($validated, [
+                'invoice_type' => $validated['invoice_type'] ?? $item->invoice_type,
+                'total_amount' => $total,
+                'amount_paid' => $paid,
+                'amount_due' => $total - $paid,
+                'payment_status' => $status,
+            ]);
+        }
+
+        $item->getConnection()->transaction(function () use ($item, $validated): void {
+            $item->update($validated);
+            $file = $item->file;
+            $meta = $file->meta ?? [];
+            $meta['manual_edits']['invoice'] = array_merge($meta['manual_edits']['invoice'] ?? [], $validated);
+            $file->update(['meta' => $meta]);
+        });
+
+        return $this->afterUpdate($item, $request);
     }
 
     public function download(Invoice $invoice): mixed

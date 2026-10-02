@@ -5,12 +5,18 @@ declare(strict_types=1);
 namespace App\Services\Factories;
 
 use App\Models\Contract;
+use App\Models\File;
 
 class ContractFactory extends BaseEntityFactory
 {
     protected function modelClass(): string
     {
         return Contract::class;
+    }
+
+    protected function resolveAttributes(array $data, File $file): array
+    {
+        return array_merge(parent::resolveAttributes($data, $file), data_get($file->meta, 'manual_edits.contract', []));
     }
 
     protected function fields(): array

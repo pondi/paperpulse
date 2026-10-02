@@ -9,6 +9,7 @@ use App\Models\Tag;
 use App\Services\DocumentAnalysisService;
 use App\Services\Tags\TagAttachmentService;
 use Exception;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -105,9 +106,8 @@ class AnalyzeDocument extends BaseJob
                     ]),
                 ]);
 
-                // Sync tags with the document using proper file_type
                 if (! empty($tagIds)) {
-                    TagAttachmentService::syncTags($document, $tagIds, 'document');
+                    TagAttachmentService::syncTags($document, $tagIds);
                 }
 
                 // Handle entities extraction
@@ -176,7 +176,7 @@ class AnalyzeDocument extends BaseJob
                         'slug' => $slug,
                         'user_id' => $userId,
                     ]);
-                } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+                } catch (UniqueConstraintViolationException $e) {
                     // Race condition: another process created the category, fetch it
                     $category = Category::where('user_id', $userId)
                         ->where('name', 'like', $categoryName)

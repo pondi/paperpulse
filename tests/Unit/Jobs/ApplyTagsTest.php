@@ -129,10 +129,3 @@ it('syncTags is idempotent on File model', function () {
 
     expect($file->tags()->count())->toBe(1);
 });
-
-// Note: The ApplyTags job has a pre-existing bug where it passes
-// 'file_type' to the pivot table, but the 'file_type' column was
-// removed by migration move_tags_to_file_model. Tags should now
-// be applied directly to File, not through Receipt/Document.
-// Tests for the working empty/missing paths remain; full tag
-// application tests use the File model directly.

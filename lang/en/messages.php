@@ -254,4 +254,9 @@ return [
     'show_receipt_preview_description' => 'Display receipt thumbnails in list views.',
     'analytics_enabled_description' => 'Show analytics dashboard with spending insights.',
     'share_usage_data_description' => 'Help improve the application by sharing anonymous usage data.',
+    'voucher_expiring' => 'Voucher expiring',
+    'warranty_ending' => 'Warranty ending',
+    'receipt_shared' => 'Receipt shared',
+    'document_shared' => 'Document shared',
+    'days_remaining' => 'days remaining',
 ];

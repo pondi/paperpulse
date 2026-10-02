@@ -245,4 +245,9 @@ return [
     'minutes_ago' => 'minutter siden',
     'hours_ago' => 'timer siden',
     'days_ago' => 'dager siden',
+    'voucher_expiring' => 'Verdikupong utløper',
+    'warranty_ending' => 'Garanti utløper',
+    'receipt_shared' => 'Kvittering delt',
+    'document_shared' => 'Dokument delt',
+    'days_remaining' => 'dager igjen',
 ];

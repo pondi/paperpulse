@@ -120,6 +120,9 @@ const loading = ref(false);
 const notifications = ref([]);
 const unreadCount = ref(0);
 let pollInterval = null;
+let echoConnection = null;
+let echoChannelName = null;
+let realtimeConnected = false;
 const page = usePage();
 
 const __ = (key) => {
@@ -138,12 +141,12 @@ const loadNotifications = async () => {
 
 const markAsRead = async (notificationId) => {
   try {
-    await axios.post(`/notifications/${notificationId}/read`);
+    const response = await axios.post(`/notifications/${notificationId}/read`);
     const notification = notifications.value.find(n => n.id === notificationId);
     if (notification) {
       notification.read_at = new Date().toISOString();
-      unreadCount.value = Math.max(0, unreadCount.value - 1);
     }
+    unreadCount.value = response.data.unread_count;
   } catch (error) {
     console.error('Failed to mark notification as read:', error);
   }
@@ -151,13 +154,13 @@ const markAsRead = async (notificationId) => {
 
 const markAllAsRead = async () => {
   try {
-    await axios.post('/notifications/read-all');
+    const response = await axios.post('/notifications/read-all');
     notifications.value.forEach(n => {
       if (!n.read_at) {
         n.read_at = new Date().toISOString();
       }
     });
-    unreadCount.value = 0;
+    unreadCount.value = response.data.unread_count;
   } catch (error) {
     console.error('Failed to mark all notifications as read:', error);
   }
@@ -165,11 +168,9 @@ const markAllAsRead = async () => {
 
 const deleteNotification = async (notificationId) => {
   try {
-    await axios.delete(`/notifications/${notificationId}`);
+    const response = await axios.delete(`/notifications/${notificationId}`);
     notifications.value = notifications.value.filter(n => n.id !== notificationId);
-    if (notifications.value.find(n => n.id === notificationId && !n.read_at)) {
-      unreadCount.value = Math.max(0, unreadCount.value - 1);
-    }
+    unreadCount.value = response.data.unread_count;
   } catch (error) {
     console.error('Failed to delete notification:', error);
   }
@@ -179,9 +180,9 @@ const clearAll = async () => {
   if (!confirm(__('clear_all_notifications_confirm'))) return;
   
   try {
-    await axios.post('/notifications/clear');
+    const response = await axios.post('/notifications/clear');
     notifications.value = [];
-    unreadCount.value = 0;
+    unreadCount.value = response.data.unread_count;
   } catch (error) {
     console.error('Failed to clear notifications:', error);
   }
@@ -192,22 +193,8 @@ const handleNotificationClick = (notification) => {
     markAsRead(notification.id);
   }
 
-  // Navigate based on notification type
-  if (notification.data.type === 'receipt_processed' && notification.data.receipt_id) {
-    router.visit(route('receipts.show', notification.data.receipt_id));
-  } else if (notification.data.type === 'scanner_files_imported') {
-    router.visit(route('pulsedav.index'));
-  } else if (notification.data.type === 'bulk_operation_completed') {
-    router.visit(route('receipts.index'));
-  } else if (notification.data.type === 'duplicate_file_detected') {
-    // Navigate to the existing file's receipt or document
-    if (notification.data.receipt_id) {
-      router.visit(route('receipts.show', notification.data.receipt_id));
-    } else if (notification.data.document_id) {
-      router.visit(route('documents.show', notification.data.document_id));
-    } else {
-      router.visit(route('files.index'));
-    }
+  if (notification.url) {
+    router.visit(notification.url);
   }
 };
 
@@ -238,6 +225,7 @@ const getNotificationTitle = (notification) => {
   if (type === 'bulk_operation_completed') return __('bulk_operation_completed');
   if (type === 'scanner_files_imported') return __('scanner_files_imported');
   if (type === 'duplicate_file_detected') return __('duplicate_file_detected');
+  if (['voucher_expiring', 'warranty_ending', 'receipt_shared', 'document_shared', 'weekly_summary'].includes(type)) return __(type);
   return __('notification');
 };
 
@@ -267,6 +255,22 @@ const getNotificationMessage = (notification) => {
 
   if (data.type === 'duplicate_file_detected') {
     return `"${data.uploaded_file_name}" ${__('already_exists')} - "${data.existing_file_name}"`;
+  }
+
+  if (data.type === 'voucher_expiring') {
+    return `${data.merchant_name} · ${data.voucher_code} · ${data.expiry_date} (${data.days_remaining} ${__('days_remaining')})`;
+  }
+
+  if (data.type === 'warranty_ending') {
+    return `${data.product_name} · ${data.warranty_end_date} (${data.days_remaining} ${__('days_remaining')})`;
+  }
+
+  if (data.type === 'receipt_shared' || data.type === 'document_shared') {
+    return `${data.shared_by_name} · ${data.receipt_title || data.document_title}`;
+  }
+
+  if (data.type === 'weekly_summary') {
+    return `${data.week_start} – ${data.week_end} · ${data.total_receipts} ${__('receipts')} · ${formatCurrency(data.total_amount, data.currency)}`;
   }
 
   return '';
@@ -303,43 +307,46 @@ const formatCurrency = (amount, currency) => {
   }
 };
 
-const setupEcho = () => {
-  if (!window.Echo) return false;
-
-  try {
-    const userId = page.props.auth?.user?.id;
-    if (!userId) return false;
-
-    window.Echo.private(`App.Models.User.${userId}`)
-      .notification(() => {
-        loadNotifications();
-      });
-
-    return true;
-  } catch (error) {
-    console.error('Failed to connect to Echo:', error);
-    return false;
-  }
-};
-
-const startPolling = () => {
-  // Fallback polling only when Echo is unavailable
-  pollInterval = setInterval(loadNotifications, 30000);
-
-  // Pause polling when tab is hidden to avoid thundering herd
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-};
-
-const handleVisibilityChange = () => {
-  if (document.hidden) {
-    if (pollInterval) {
+const syncPolling = () => {
+  if (document.hidden || realtimeConnected) {
+    if (pollInterval !== null) {
       clearInterval(pollInterval);
       pollInterval = null;
     }
-  } else {
-    loadNotifications();
+  } else if (pollInterval === null) {
     pollInterval = setInterval(loadNotifications, 30000);
   }
+};
+
+const handleConnectionState = ({ current }) => {
+  realtimeConnected = current === 'connected';
+  syncPolling();
+  if (realtimeConnected && !document.hidden) {
+    loadNotifications();
+  }
+};
+
+const setupEcho = () => {
+  const userId = page.props.auth?.user?.id;
+  echoConnection = window.Echo?.connector?.pusher?.connection;
+  if (!echoConnection || !userId) return;
+
+  echoChannelName = `App.Models.User.${userId}`;
+  window.Echo.private(echoChannelName)
+    .notification(loadNotifications)
+    .error(() => {
+      realtimeConnected = false;
+      syncPolling();
+    });
+  echoConnection.bind('state_change', handleConnectionState);
+  realtimeConnected = echoConnection.state === 'connected';
+};
+
+const handleVisibilityChange = () => {
+  if (!document.hidden) {
+    loadNotifications();
+  }
+  syncPolling();
 };
 
 onMounted(() => {
@@ -347,26 +354,19 @@ onMounted(() => {
   loadNotifications().finally(() => {
     loading.value = false;
   });
-
-  const echoConnected = setupEcho();
-
-  if (!echoConnected) {
-    startPolling();
-  }
+  setupEcho();
+  syncPolling();
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 });
 
 onUnmounted(() => {
-  if (pollInterval) {
+  if (pollInterval !== null) {
     clearInterval(pollInterval);
   }
-
   document.removeEventListener('visibilitychange', handleVisibilityChange);
-
-  if (window.Echo) {
-    const userId = page.props.auth?.user?.id;
-    if (userId) {
-      window.Echo.leave(`App.Models.User.${userId}`);
-    }
+  echoConnection?.unbind('state_change', handleConnectionState);
+  if (echoChannelName) {
+    window.Echo.leave(echoChannelName);
   }
 });
 </script>

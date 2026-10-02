@@ -1,7 +1,6 @@
 <?php
 
 use App\Jobs\Maintenance\CleanupRetainedFiles;
-use App\Jobs\Maintenance\DeletePulseDavFiles;
 use App\Jobs\Notifications\SendWeeklySummary;
 use App\Jobs\PulseDav\SyncPulseDavFiles;
 use App\Jobs\PulseDav\SyncPulseDavFilesRealtime;
@@ -21,11 +20,6 @@ Schedule::job(new SyncPulseDavFiles)->everyThirtyMinutes()
 // Schedule real-time PulseDav sync every 5 minutes for users who enabled it
 Schedule::job(new SyncPulseDavFilesRealtime)->everyFiveMinutes()
     ->name('sync-pulsedav-files-realtime')
-    ->withoutOverlapping();
-
-// Schedule PulseDav cleanup daily at 2am
-Schedule::job(new DeletePulseDavFiles(30))->dailyAt('02:00')
-    ->name('cleanup-pulsedav-files')
     ->withoutOverlapping();
 
 // Schedule user file retention cleanup daily at 3am

@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -91,6 +92,25 @@ class File extends Model
         'file_modified_at' => 'datetime',
         'deleted_reason' => DeletedReason::class,
     ];
+
+    public function processingJobs(): HasMany
+    {
+        return $this->hasMany(JobHistory::class)->whereNull('parent_uuid');
+    }
+
+    public function scopeRetainable(Builder $query, Carbon $cutoff): Builder
+    {
+        return $query->where('status', 'completed')
+            ->whereHas('processingJobs', fn (Builder $jobs) => $jobs
+                ->where('status', 'completed')->where('finished_at', '<', $cutoff))
+            ->whereDoesntHave('processingJobs', fn (Builder $jobs) => $jobs
+                ->where(function (Builder $jobs) use ($cutoff): void {
+                    $jobs->whereNotIn('status', ['completed', 'failed', 'cancelled'])
+                        ->orWhere(function (Builder $jobs) use ($cutoff): void {
+                            $jobs->where('status', 'completed')->where('finished_at', '>=', $cutoff);
+                        });
+                }));
+    }
 
     public function scopeDeduplicatable(Builder $query): Builder
     {

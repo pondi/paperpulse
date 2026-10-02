@@ -10,12 +10,15 @@ use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\FileCleanupManifest;
 use App\Models\Invoice;
+use App\Models\JobHistory;
+use App\Models\PulseDavFile;
 use App\Models\Receipt;
 use App\Models\ReturnPolicy;
 use App\Models\Voucher;
 use App\Models\Warranty;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -69,6 +72,28 @@ class FileDeletionService
             $file->meta = $meta;
             $this->softDelete($file, $reason);
             $this->recordCleanup($file, $reason, $searchRecords, true);
+        });
+    }
+
+    public function retainFile(File $source, int $ownerId, Carbon $cutoff, bool $sourceOnly): void
+    {
+        $source->getConnection()->transaction(function () use ($source, $ownerId, $cutoff, $sourceOnly): void {
+            $file = File::withoutGlobalScope('user')->where('user_id', $ownerId)
+                ->lockForUpdate()->findOrFail($source->id);
+            if (! File::withoutGlobalScope('user')->whereKey($file->id)->retainable($cutoff)->exists()) {
+                return;
+            }
+            if ($sourceOnly) {
+                if (isset($file->meta['retention']['source_removed_at'])
+                    && ($file->meta['retention']['generation'] ?? null) === ($file->meta['processing_generation'] ?? null)) {
+                    return;
+                }
+                $manifest = $this->recordCleanup($file, DeletedReason::RetentionSource, [], true, true);
+            } else {
+                $this->deleteFile($file, $ownerId, DeletedReason::UserDelete);
+                $manifest = FileCleanupManifest::query()->where('file_id', $file->id)->firstOrFail();
+            }
+            $manifest->update(['available_at' => now()]);
         });
     }
 
@@ -215,18 +240,40 @@ class FileDeletionService
     }
 
     /** @param list<array{type: class-string<Model>, id: int, done: bool}> $searchRecords */
-    protected function recordCleanup(File $file, DeletedReason $reason, array $searchRecords, bool $deleteObjects): FileCleanupManifest
+    protected function recordCleanup(File $file, DeletedReason $reason, array $searchRecords, bool $deleteObjects, bool $sourceOnly = false): FileCleanupManifest
     {
         $manifest = FileCleanupManifest::query()->firstOrNew(['file_id' => $file->id]);
         $objects = $manifest->objects ?? [];
         if ($deleteObjects) {
-            $paths = array_filter([$file->s3_original_path, $file->s3_processed_path, $file->s3_archive_path, $file->s3_image_path, $file->file_path]);
+            $columns = ['s3_original_path', 's3_processed_path', 's3_archive_path', 'file_path'];
+            if (! $sourceOnly) {
+                $columns[] = 's3_image_path';
+            }
+            $paths = array_filter($file->only($columns));
             if ($file->guid) {
                 $paths[] = StoragePathBuilder::storagePath($file->user_id, $file->guid, $file->file_type ?? 'document', 'original', $file->fileExtension ?? 'pdf');
             }
             foreach (array_unique($paths) as $path) {
-                $objects[$path] ??= ['path' => $path, 'done' => false];
+                if ($sourceOnly) {
+                    $objects[$path] = ['path' => $path, 'done' => false, 'generation' => $file->meta['processing_generation'] ?? null];
+                } else {
+                    $objects[$path] ??= ['path' => $path, 'done' => false];
+                }
             }
+            $sourceIds = JobHistory::query()->where('file_id', $file->id)->get(['metadata'])
+                ->pluck('metadata.metadata.pulseDavFileId')->filter()->unique();
+            PulseDavFile::query()->where('user_id', $file->user_id)->whereIn('id', $sourceIds)
+                ->each(function (PulseDavFile $source) use (&$objects, $file, $sourceOnly): void {
+                    foreach ([$source->s3_path, 'archive/'.$source->s3_path] as $path) {
+                        $key = 'pulsedav:'.$path;
+                        $object = ['disk' => config('filesystems.incoming_disk', 'pulsedav'), 'path' => $path, 'done' => false];
+                        if ($sourceOnly) {
+                            $objects[$key] = $object + ['generation' => $file->meta['processing_generation'] ?? null];
+                        } else {
+                            $objects[$key] ??= $object;
+                        }
+                    }
+                });
         }
         $manifest->fill([
             'user_id' => $file->user_id,

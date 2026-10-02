@@ -439,6 +439,19 @@
             </div>
 
             <div>
+              <InputLabel for="retention_mode" :value="__('retention_mode')" />
+              <select
+                id="retention_mode"
+                v-model="form.retention_mode"
+                class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
+              >
+                <option value="source_only">{{ __('retention_source_only') }}</option>
+                <option value="full_delete">{{ __('retention_full_delete') }}</option>
+              </select>
+              <InputError class="mt-2" :message="form.errors.retention_mode" />
+            </div>
+
+            <div>
               <InputLabel for="file_retention_days" :value="__('file_retention_days')" />
               <input
                 id="file_retention_days"
@@ -545,6 +558,7 @@ const form = useForm({
   auto_process_scanner_uploads: props.preferences.auto_process_scanner_uploads ?? false,
   delete_after_processing: props.preferences.delete_after_processing ?? false,
   file_retention_days: props.preferences.file_retention_days || 30,
+  retention_mode: props.preferences.retention_mode || 'source_only',
   pulsedav_realtime_sync: props.preferences.pulsedav_realtime_sync ?? false,
 });
 

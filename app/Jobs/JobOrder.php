@@ -52,7 +52,6 @@ class JobOrder
      */
     const MAINTENANCE_PRIORITY = [
         'CleanupRetainedFiles' => 1,   // Highest priority
-        'DeletePulseDavFiles' => 2,
         'DeleteWorkingFiles' => 3,
     ];
 

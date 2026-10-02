@@ -2,6 +2,7 @@
 
 namespace App\Services\Files;
 
+use App\Enums\DeletedReason;
 use App\Models\File;
 use App\Models\FileCleanupManifest;
 use App\Services\StorageService;
@@ -21,6 +22,7 @@ class FileCleanupService
         return $source->getConnection()->transaction(function () use ($source): array {
             $file = File::withoutGlobalScope('user')->withTrashed()->lockForUpdate()->find($source->file_id);
             $manifest = FileCleanupManifest::query()->lockForUpdate()->findOrFail($source->id);
+            $sourceOnly = $manifest->reason === DeletedReason::RetentionSource->value;
             $objectsDeleted = 0;
             $failed = 0;
             $search = $manifest->search_records;
@@ -39,13 +41,17 @@ class FileCleanupService
                 }
             }
             $objects = $manifest->objects;
-            if ((! $file || $file->trashed()) && $manifest->available_at?->isPast()) {
+            $canDelete = ! $file || $file->trashed()
+                || ($sourceOnly && File::withoutGlobalScope('user')->whereKey($file->id)->retainable(now())->exists());
+            if ($canDelete && $manifest->available_at?->isPast()) {
                 foreach ($objects as $key => $object) {
                     if ($object['done']) {
                         continue;
                     }
                     try {
-                        if (! $this->hasLiveReference($object['path'])) {
+                        $currentGeneration = ! $sourceOnly || ! $file
+                            || ($object['generation'] ?? null) === ($file->meta['processing_generation'] ?? null);
+                        if ($currentGeneration && ! $this->hasLiveReference($object['path'], $sourceOnly ? $file?->id : null)) {
                             $deleted = isset($object['disk'])
                                 ? (! Storage::disk($object['disk'])->exists($object['path']) || Storage::disk($object['disk'])->delete($object['path']))
                                 : $this->storage->deleteFile($object['path']);
@@ -57,6 +63,14 @@ class FileCleanupService
                         $objects[$key]['done'] = true;
                         $manifest->objects = $objects;
                         $manifest->save();
+                        if ($sourceOnly && $file && $currentGeneration) {
+                            foreach (['s3_original_path', 's3_processed_path', 's3_archive_path', 'file_path'] as $column) {
+                                if ($file->{$column} === $object['path']) {
+                                    $file->{$column} = null;
+                                }
+                            }
+                            $file->saveQuietly();
+                        }
                     } catch (Throwable $exception) {
                         $manifest->last_error = $exception->getMessage();
                         $failed++;
@@ -64,6 +78,13 @@ class FileCleanupService
                 }
             }
             $allDone = ! collect(array_merge(array_values($objects), $search))->contains(fn (array $record): bool => ! $record['done']);
+            if ($sourceOnly && $file && collect($objects)->every(fn (array $object): bool => $object['done']
+                && ($object['generation'] ?? null) === ($file->meta['processing_generation'] ?? null))) {
+                $meta = $file->meta ?? [];
+                $meta['retention'] = ['source_removed_at' => now()->toISOString(), 'generation' => $meta['processing_generation'] ?? null];
+                $file->meta = $meta;
+                $file->saveQuietly();
+            }
             $manifest->completed_at = $allDone ? now() : null;
             if ($allDone) {
                 $manifest->last_error = null;
@@ -94,18 +115,19 @@ class FileCleanupService
         }
     }
 
-    protected function hasLiveReference(string $path): bool
+    protected function hasLiveReference(string $path, ?int $ignoredFileId = null): bool
     {
-        return File::withoutGlobalScope('user')->where(function ($query) use ($path): void {
-            foreach (['s3_original_path', 's3_processed_path', 's3_archive_path', 's3_image_path', 'file_path'] as $column) {
-                $query->orWhere($column, $path);
-            }
-            if (preg_match('~^(?:documents|receipts)/(\d+)/([^/]+)/~', $path, $matches)) {
-                $query->orWhere(function ($query) use ($matches): void {
-                    $query->where('user_id', (int) $matches[1])->where('guid', $matches[2]);
-                });
-            }
-        })->exists();
+        return File::withoutGlobalScope('user')->when($ignoredFileId, fn ($query) => $query->whereKeyNot($ignoredFileId))
+            ->where(function ($query) use ($path): void {
+                foreach (['s3_original_path', 's3_processed_path', 's3_archive_path', 's3_image_path', 'file_path'] as $column) {
+                    $query->orWhere($column, $path);
+                }
+                if (preg_match('~^(?:documents|receipts)/(\d+)/([^/]+)/~', $path, $matches)) {
+                    $query->orWhere(function ($query) use ($matches): void {
+                        $query->where('user_id', (int) $matches[1])->where('guid', $matches[2]);
+                    });
+                }
+            })->exists();
     }
 
     /** @return array<class-string<Model>, list<int>> */

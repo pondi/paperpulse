@@ -41,6 +41,7 @@ class UserPreference extends Model
         'auto_process_scanner_uploads',
         'delete_after_processing',
         'file_retention_days',
+        'retention_mode',
         'pulsedav_realtime_sync',
     ];
 
@@ -121,6 +122,7 @@ class UserPreference extends Model
             'auto_process_scanner_uploads' => false,
             'delete_after_processing' => false,
             'file_retention_days' => 30,
+            'retention_mode' => 'source_only',
             'pulsedav_realtime_sync' => false,
         ];
     }

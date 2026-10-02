@@ -52,6 +52,7 @@ class UpdatePreferencesRequest extends FormRequest
             'auto_process_scanner_uploads' => 'boolean',
             'delete_after_processing' => 'boolean',
             'file_retention_days' => 'required|integer|min:1|max:365',
+            'retention_mode' => ['sometimes', 'required', Rule::in(['source_only', 'full_delete'])],
             'pulsedav_realtime_sync' => 'boolean',
         ];
 
@@ -62,6 +63,7 @@ class UpdatePreferencesRequest extends FormRequest
         return [
             'date_format.in' => 'Select a supported date format.',
             'default_sort.in' => 'Select a supported sort order.',
+            'retention_mode.in' => 'Select a supported retention mode.',
         ];
     }
 

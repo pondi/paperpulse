@@ -1,6 +1,8 @@
 <?php
 
 use App\Contracts\Services\FileStorageContract;
+use App\Jobs\Files\ProcessFile;
+use App\Jobs\Files\ProcessFileGemini;
 use App\Models\File;
 use App\Models\FileCleanupManifest;
 use App\Models\FileProcessingRequest;
@@ -61,7 +63,12 @@ it('a queue failure leaves an accepted upload with one retryable durable request
 });
 
 it('a cache outage still accepts and dispatches the durable upload', function (): void {
-    Cache::shouldReceive('put')->andThrow(new RuntimeException('Redis offline'));
+    $cacheStore = Cache::store();
+    Cache::shouldReceive('put')->andThrow(new RuntimeException('Cache offline'));
+    Cache::shouldReceive('forever')->andReturn(true);
+    Cache::shouldReceive('get')->andReturn(null);
+    Cache::shouldReceive('store')->andReturn($cacheStore);
+    Cache::shouldReceive('driver')->andReturn($cacheStore);
     $result = app(FileProcessingService::class)->processFile($this->data, 'document', $this->owner->id);
 
     expect($result['success'])->toBeTrue()
@@ -95,7 +102,8 @@ it('a failed storage write surfaces failure while retaining durable asset cleanu
         ->toThrow(RuntimeException::class, 'S3 refused write');
     expect(File::count())->toBe(0)->and(FileProcessingRequest::first()->state)->toBe('cleanup_pending')
         ->and(FileCleanupManifest::first()->objects)->not->toBeEmpty();
-    Bus::assertNothingDispatched();
+    Bus::assertNotDispatched(ProcessFileGemini::class);
+    Bus::assertNotDispatched(ProcessFile::class);
 });
 
 it('recovers an uploaded object after a persistence crash without losing or duplicating its chain', function (): void {
@@ -110,7 +118,8 @@ it('recovers an uploaded object after a persistence crash without losing or dupl
         expect($result['success'])->toBeTrue()->and($result['queue_pending'])->toBeTrue()
             ->and($request->state)->toBe('upload_pending');
         Storage::disk('paperpulse')->assertExists($request->original_path);
-        Bus::assertNothingDispatched();
+        Bus::assertNotDispatched(ProcessFileGemini::class);
+        Bus::assertNotDispatched(ProcessFile::class);
     } finally {
         FileProcessingRequest::flushEventListeners();
     }

@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\TagController;
 use App\Http\Controllers\Api\V1\VoucherController;
 use App\Http\Controllers\Api\V1\WarrantyController;
+use App\Http\Controllers\Files\ExtractionReportController;
 use Illuminate\Support\Facades\Route;
 
 // Authentication routes
@@ -31,6 +32,7 @@ Route::middleware(['auth:sanctum', 'verified', 'api.rate_limit:200,1'])->group(f
     // File upload & listing (single file upload only)
     Route::get('files', [FileController::class, 'index'])->name('api.files.index');
     Route::get('files/{file}', [FileController::class, 'show'])->name('api.files.show');
+    Route::get('files/{file}/extraction-report', [ExtractionReportController::class, 'show'])->name('api.files.extraction-report');
     Route::get('files/{file}/content', [FileContentController::class, 'show'])->name('api.files.content');
     Route::post('files', [FileController::class, 'store'])->name('api.files.store');
     Route::patch('files/{file}', [FileController::class, 'update'])->name('api.files.update');

@@ -377,6 +377,9 @@ const toggleExpanded = (fileId: number) => {
 
                             <!-- Actions -->
                             <div class="mt-4 flex items-center gap-3">
+                                <Link :href="route('files.extraction-report', file.id)" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                                    Extraction report
+                                </Link>
                                 <a
                                     :href="file.viewUrl"
                                     target="_blank"

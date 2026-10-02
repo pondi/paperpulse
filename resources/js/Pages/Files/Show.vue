@@ -27,12 +27,8 @@
             </div>
             <div class="ml-3">
               <p class="text-sm text-yellow-700 dark:text-yellow-200">
-                Some information could not be extracted from this file.
-                {{ file.extraction.entities_created }} of {{ file.extraction.entities_detected }} entities were saved.
+                Review the extraction report for processing limits, validation warnings, or errors.
               </p>
-              <a :href="route('api.files.extraction-report', file.id)" target="_blank" class="mt-2 inline-block text-sm font-medium text-yellow-700 dark:text-yellow-200 underline">
-                View extraction report
-              </a>
             </div>
           </div>
         </div>
@@ -66,6 +62,9 @@
               <dd class="mt-1 text-zinc-900 dark:text-zinc-100">{{ file.processing_provider }}</dd>
             </div>
           </dl>
+          <Link v-if="file.can_view_extraction_report" :href="route('files.extraction-report', file.id)" class="mt-4 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline">
+            View extraction report
+          </Link>
         </div>
 
         <!-- Extracted Entities Section -->

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Files;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\WarrantyResource;
+use App\Http\Resources\FileExtractionReportResource;
 use App\Http\Resources\Inertia\BankStatementInertiaResource;
 use App\Http\Resources\Inertia\ContractInertiaResource;
 use App\Http\Resources\Inertia\DocumentInertiaResource;
@@ -47,6 +48,10 @@ class FileDetailController extends Controller
                 ];
             })->values();
         $fileData = FileInertiaResource::forShow($file)->toArray($request);
+        $fileData['can_view_extraction_report'] = $file->user_id === $request->user()->id;
+        if ($fileData['can_view_extraction_report']) {
+            $fileData['extraction'] = (new FileExtractionReportResource($file))->toArray($request)['extraction'];
+        }
         if ($entities->isEmpty()) {
             $fileData['primary_receipt'] = Receipt::withoutGlobalScope('user')->where('user_id', $file->user_id)->where('file_id', $file->id)->first(['id']);
             $fileData['primary_document'] = Document::withoutGlobalScope('user')->where('user_id', $file->user_id)->where('file_id', $file->id)->first(['id']);

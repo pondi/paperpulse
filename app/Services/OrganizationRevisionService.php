@@ -104,9 +104,11 @@ class OrganizationRevisionService
             hash_update($hash, json_encode(['file', $file->id, $this->semanticSummary($file->organization_summary),
                 $file->primary_folder_id, $file->placement_source], JSON_THROW_ON_ERROR));
         }
-        foreach (Collection::withoutGlobalScope('user')->where('user_id', $userId)->orderBy('id')->cursor() as $folder) {
+        foreach (Collection::withoutGlobalScope('user')->where('user_id', $userId)
+            ->with(['files' => fn ($query) => $query->withoutGlobalScope('user')->where('files.user_id', $userId)->orderBy('files.id')->select('files.id')])
+            ->lazyById(100) as $folder) {
             hash_update($hash, json_encode(['folder', $folder->id, $folder->name, $folder->parent_id,
-                $folder->is_archived, $folder->is_pinned, $folder->folder_type], JSON_THROW_ON_ERROR));
+                $folder->is_archived, $folder->is_pinned, $folder->folder_type, $folder->files->modelKeys()], JSON_THROW_ON_ERROR));
         }
         foreach (OrganizationAlias::withoutGlobalScope('user')->where('user_id', $userId)->orderBy('id')->cursor() as $alias) {
             hash_update($hash, json_encode(['alias', $alias->kind, $alias->alias_key, $alias->canonical_name], JSON_THROW_ON_ERROR));

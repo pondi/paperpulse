@@ -98,3 +98,21 @@ test('durable revision rolls back with a rejected transaction', function () {
     }
     expect($tracker->state($file->user_id)->revision)->toBe($snapshot['revision'])->and($tracker->hasChanges($file->user_id))->toBeFalse();
 });
+
+test('manual membership changes are tracked and recommendation membership writes are suppressed', function () {
+    $file = File::factory()->create();
+    $folder = app(FolderTreeService::class)->ensureFolder($file->user_id, 'Manual');
+    $tracker = app(OrganizationRevisionService::class);
+    $before = analyzedOrganization($file->user_id);
+    $folder->files()->syncWithoutDetaching([$file->id]);
+    $attached = analyzedOrganization($file->user_id);
+    expect($attached['fingerprint'])->not->toBe($before['fingerprint']);
+    $folder->files()->syncWithoutDetaching([$file->id]);
+    expect($tracker->hasChanges($file->user_id))->toBeFalse();
+    $tracker->withoutTracking(fn () => $folder->files()->detach($file->id));
+    expect($tracker->hasChanges($file->user_id))->toBeFalse();
+    $folder->files()->attach($file->id);
+    analyzedOrganization($file->user_id);
+    $folder->files()->detach($file->id);
+    expect($tracker->hasChanges($file->user_id))->toBeTrue();
+});

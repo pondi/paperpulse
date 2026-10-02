@@ -78,13 +78,13 @@ it('shows financial totals on overview tab', function () {
     Receipt::factory()->create([
         'user_id' => $user->id,
         'receipt_date' => now()->subMonths(3),
-        'total_amount' => 250.00,
+        'currency' => 'NOK', 'total_amount' => 250.00,
     ]);
 
     Invoice::factory()->create([
         'user_id' => $user->id,
         'invoice_date' => now()->subMonths(2),
-        'total_amount' => 500.00,
+        'currency' => 'NOK', 'total_amount' => 500.00,
     ]);
 
     $this->actingAs($user)
@@ -114,7 +114,7 @@ it('shows receipt analytics with all-time data', function () {
         'file_id' => $file->id,
         'merchant_id' => $merchant->id,
         'receipt_date' => now()->subMonths(6),
-        'total_amount' => 100.00,
+        'currency' => 'NOK', 'total_amount' => 100.00,
         'tax_amount' => 10.00,
         'receipt_category' => 'Groceries',
     ]);
@@ -139,14 +139,14 @@ it('filters receipts by month period', function () {
     Receipt::factory()->create([
         'user_id' => $user->id,
         'receipt_date' => now()->subDays(5),
-        'total_amount' => 50.00,
+        'currency' => 'NOK', 'total_amount' => 50.00,
         'receipt_category' => 'Food',
     ]);
 
     Receipt::factory()->create([
         'user_id' => $user->id,
         'receipt_date' => now()->subMonths(6),
-        'total_amount' => 200.00,
+        'currency' => 'NOK', 'total_amount' => 200.00,
         'receipt_category' => 'Electronics',
     ]);
 
@@ -169,21 +169,21 @@ it('shows invoice analytics with recipient breakdown', function () {
     Invoice::factory()->create([
         'user_id' => $user->id,
         'invoice_date' => now()->subDays(10),
-        'total_amount' => 1000.00,
+        'currency' => 'NOK', 'total_amount' => 1000.00,
         'to_name' => 'Acme Corp',
     ]);
 
     Invoice::factory()->create([
         'user_id' => $user->id,
         'invoice_date' => now()->subDays(5),
-        'total_amount' => 500.00,
+        'currency' => 'NOK', 'total_amount' => 500.00,
         'to_name' => 'Acme Corp',
     ]);
 
     Invoice::factory()->create([
         'user_id' => $user->id,
         'invoice_date' => now()->subDays(3),
-        'total_amount' => 300.00,
+        'currency' => 'NOK', 'total_amount' => 300.00,
         'to_name' => 'Beta LLC',
     ]);
 
@@ -215,8 +215,8 @@ it('shows banking analytics with statement data', function () {
         'total_debits' => 1500.00,
     ]);
 
-    BankTransaction::factory()->create(['user_id' => $user->id, 'bank_statement_id' => $statement->id, 'transaction_date' => now()->subDays(15), 'amount' => 2000, 'balance_after' => null]);
-    BankTransaction::factory()->create(['user_id' => $user->id, 'bank_statement_id' => $statement->id, 'transaction_date' => now()->subDays(14), 'amount' => -1500, 'balance_after' => 1500]);
+    BankTransaction::factory()->create(['user_id' => $user->id, 'bank_statement_id' => $statement->id, 'transaction_date' => now()->subDays(15), 'currency' => 'NOK', 'amount' => 2000, 'balance_after' => null]);
+    BankTransaction::factory()->create(['user_id' => $user->id, 'bank_statement_id' => $statement->id, 'transaction_date' => now()->subDays(14), 'currency' => 'NOK', 'amount' => -1500, 'balance_after' => 1500]);
 
     $this->actingAs($user)
         ->get(route('analytics.index', ['tab' => 'banking']))
@@ -240,7 +240,7 @@ it('shows contract analytics with status breakdown', function () {
         'user_id' => $user->id,
         'status' => 'active',
         'contract_type' => 'service',
-        'contract_value' => 50000.00,
+        'currency' => 'NOK', 'contract_value' => 50000.00,
         'effective_date' => now()->subMonths(3),
         'expiry_date' => now()->addMonths(9),
     ]);
@@ -249,7 +249,7 @@ it('shows contract analytics with status breakdown', function () {
         'user_id' => $user->id,
         'status' => 'expired',
         'contract_type' => 'rental',
-        'contract_value' => 12000.00,
+        'currency' => 'NOK', 'contract_value' => 12000.00,
         'effective_date' => now()->subYears(2),
         'expiry_date' => now()->subMonths(1),
     ]);
@@ -322,7 +322,7 @@ it('uses transaction boundaries categories and positive spending magnitudes for 
         ['2026-04-01', -888, 'food_and_drink', 'Groceries', 'Future'],
     ] as [$date, $amount, $group, $subcategory, $counterparty]) {
         BankTransaction::factory()->create(['user_id' => $user->id, 'bank_statement_id' => $statement->id,
-            'transaction_date' => $date, 'amount' => $amount, 'category' => 'Legacy incorrect category',
+            'transaction_date' => $date, 'currency' => 'NOK', 'amount' => $amount, 'category' => 'Legacy incorrect category',
             'category_group' => $group, 'subcategory' => $subcategory, 'counterparty_name' => $counterparty]);
     }
     $this->actingAs($user)->get(route('analytics.index', ['tab' => 'banking', 'period' => 'month']))

@@ -173,7 +173,7 @@
                                                 <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ receipt.merchant }}</div>
                                                 <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ receipt.date }}</div>
                                             </div>
-                                            <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ formatCurrency(receipt.total) }}</div>
+                                            <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ formatCurrency(receipt.total, receipt.currency) }}</div>
                                         </div>
                                     </Link>
                                 </div>
@@ -417,7 +417,7 @@
                                             <tr v-for="c in tab_data.expiring_soon" :key="c.id">
                                                 <td class="py-2 text-zinc-900 dark:text-zinc-100">{{ c.title }}</td>
                                                 <td class="py-2 text-zinc-700 dark:text-zinc-300 capitalize">{{ c.type }}</td>
-                                                <td class="py-2 text-right font-medium text-zinc-900 dark:text-zinc-100">{{ formatCurrency(c.value) }}</td>
+                                                <td class="py-2 text-right font-medium text-zinc-900 dark:text-zinc-100">{{ formatCurrency(c.value, c.currency) }}</td>
                                                 <td class="py-2 text-right text-zinc-600 dark:text-zinc-400">{{ c.expiry_date }}</td>
                                                 <td class="py-2 text-right font-medium" :class="c.days_until_expiry <= 14 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'">
                                                     {{ c.days_until_expiry }}d

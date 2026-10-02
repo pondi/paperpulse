@@ -9,6 +9,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(fn () => $this->withoutVite());
+
 it('requires authentication', function () {
     $this->get(route('dashboard'))
         ->assertRedirect(route('login'));
@@ -21,7 +23,7 @@ it('shows dashboard with stats', function () {
     Receipt::factory()->count(3)->create([
         'user_id' => $user->id,
         'merchant_id' => $merchant->id,
-        'total_amount' => 100.00,
+        'currency' => 'NOK', 'total_amount' => 100.00,
     ]);
 
     $this->actingAs($user)
@@ -55,8 +57,8 @@ it('isolates dashboard data by user', function () {
     $user = User::factory()->create();
     $other = User::factory()->create();
 
-    Receipt::factory()->count(5)->create(['user_id' => $other->id, 'total_amount' => 500.00]);
-    Receipt::factory()->count(2)->create(['user_id' => $user->id, 'total_amount' => 50.00]);
+    Receipt::factory()->count(5)->create(['user_id' => $other->id, 'currency' => 'NOK', 'total_amount' => 500.00]);
+    Receipt::factory()->count(2)->create(['user_id' => $user->id, 'currency' => 'NOK', 'total_amount' => 50.00]);
 
     $this->actingAs($user)
         ->get(route('dashboard'))

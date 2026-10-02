@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Receipt;
+use App\Services\MonetarySummaryService;
 use App\Support\SpreadsheetSafeText;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -80,7 +81,7 @@ class ExportController extends Controller
                     SpreadsheetSafeText::format($receipt->note ?? ''),
                     $receipt->total_amount ?? 0,
                     $receipt->tax_amount ?? 0,
-                    SpreadsheetSafeText::format($receipt->currency ?? auth()->user()->preference('currency', 'NOK')),
+                    SpreadsheetSafeText::format($receipt->currency ?? ''),
                     $receipt->lineItems->count(),
                     SpreadsheetSafeText::format($lineItems),
                 ], ',', '"', '');
@@ -124,7 +125,8 @@ class ExportController extends Controller
             'from_date' => $request->from_date,
             'to_date' => $request->to_date,
             'generated_at' => now(),
-            'total_amount' => $receipts->sum('total_amount'),
+            'total_amount' => app(MonetarySummaryService::class)->aggregate($receipts, ['total' => 'total_amount'], 'receipt_date', auth()->user()->preference('currency', 'NOK'))['amounts']['total'],
+            'currency' => auth()->user()->preference('currency', 'NOK'),
             'total_count' => $receipts->count(),
         ];
 

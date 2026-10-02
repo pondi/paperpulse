@@ -90,6 +90,7 @@ export function useDateFormatter() {
     };
     
     const formatCurrency = (amount, currency = null) => {
+        if (amount === null || amount === undefined) return 'Conversion unavailable';
         const user = page.props.auth?.user;
         let userCurrency = currency || user?.preferences?.currency || 'NOK';
         const locale = user?.preferences?.language === 'nb' ? 'nb-NO' : 'en-US';

@@ -161,44 +161,32 @@ class CollectionService
             ->with(['primaryEntity.entity' => fn ($query) => AuthorizedEntityRelations::load($query)])
             ->get();
 
-        $totalAmount = 0;
+        $currency = auth()->user()?->preference('currency', 'NOK') ?? $collection->user->preference('currency', 'NOK');
         $byType = [
-            'receipts' => ['count' => 0, 'total' => 0],
-            'documents' => ['count' => 0, 'total' => 0],
-            'invoices' => ['count' => 0, 'total' => 0],
-            'contracts' => ['count' => 0, 'total' => 0],
+            'receipts' => ['count' => 0, 'total' => 0.0], 'documents' => ['count' => 0, 'total' => 0.0],
+            'invoices' => ['count' => 0, 'total' => 0.0], 'contracts' => ['count' => 0, 'total' => 0.0],
         ];
-
+        $totalAmount = 0.0;
+        $conversion = app(HistoricalCurrencyService::class);
         foreach ($files as $file) {
-            $primaryEntity = $file->primaryEntity;
-            if (! $primaryEntity?->entity) {
+            $entity = $file->primaryEntity?->entity;
+            $type = $file->primaryEntity?->entity_type;
+            $key = ['receipt' => 'receipts', 'document' => 'documents', 'invoice' => 'invoices', 'contract' => 'contracts'][$type] ?? null;
+            if (! $entity || ! $key) {
                 continue;
             }
-
-            $entityType = $primaryEntity->entity_type;
-            $entity = $primaryEntity->entity;
-
-            match ($entityType) {
-                'receipt' => (function () use (&$byType, &$totalAmount, $entity) {
-                    $byType['receipts']['count']++;
-                    $amount = $entity->total_amount ?? 0;
-                    $byType['receipts']['total'] += $amount;
-                    $totalAmount += $amount;
-                })(),
-                'document' => $byType['documents']['count']++,
-                'invoice' => (function () use (&$byType, &$totalAmount, $entity) {
-                    $byType['invoices']['count']++;
-                    $amount = $entity->total_amount ?? 0;
-                    $byType['invoices']['total'] += $amount;
-                    $totalAmount += $amount;
-                })(),
-                'contract' => $byType['contracts']['count']++,
-                default => null,
-            };
+            $byType[$key]['count']++;
+            if (in_array($type, ['receipt', 'invoice'], true)) {
+                $amount = $conversion->convert($entity->total_amount === null ? null : (float) $entity->total_amount,
+                    $entity->currency, $entity->getAttribute($type.'_date'), $currency);
+                $byType[$key]['total'] = MonetarySummaryService::add($byType[$key]['total'], $amount);
+                $totalAmount = MonetarySummaryService::add($totalAmount, $amount);
+            }
         }
 
         return [
             'total' => $totalAmount,
+            'currency' => $currency,
             'count' => $files->count(),
             'total_files' => $files->count(),
             'documents_count' => $byType['documents']['count'],

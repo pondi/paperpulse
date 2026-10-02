@@ -110,6 +110,6 @@ class WeeklySummary extends Notification implements ShouldQueue
      */
     private function formatCurrency($amount, $currency = 'NOK'): string
     {
-        return number_format($amount, 2).' '.$currency;
+        return $amount === null ? 'Conversion unavailable' : number_format($amount, 2).' '.$currency;
     }
 }

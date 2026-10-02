@@ -6,6 +6,7 @@ use App\Jobs\BaseJob;
 use App\Models\Receipt;
 use App\Models\User;
 use App\Notifications\WeeklySummary;
+use App\Services\MonetarySummaryService;
 use Exception;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -52,17 +53,19 @@ class SendWeeklySummary extends BaseJob
                     ->with(['merchant', 'category'])
                     ->get();
 
+                $totals = app(MonetarySummaryService::class)->aggregate($receipts, ['total' => 'total_amount'], 'receipt_date', $user->preference('currency', 'NOK'));
+
                 // Calculate summary statistics
                 $summaryData = [
                     'user' => $user,
                     'week_start' => $startDate,
                     'week_end' => $endDate,
                     'total_receipts' => $receipts->count(),
-                    'total_amount' => $receipts->sum('total_amount'),
+                    'total_amount' => $totals['amounts']['total'],
                     'currency' => $user->preference('currency', 'NOK'),
                     'categories' => $receipts->groupBy('category.name')->map->count(),
                     'merchants' => $receipts->groupBy('merchant.name')->map->count(),
-                    'average_amount' => $receipts->count() > 0 ? $receipts->avg('total_amount') : 0,
+                    'average_amount' => $totals['amounts']['total'] === null ? null : ($receipts->count() > 0 ? $totals['amounts']['total'] / $receipts->count() : 0),
                 ];
 
                 // Send notification

@@ -4,8 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Merchant;
 use App\Models\Receipt;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use App\Services\MonetarySummaryService;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -14,30 +13,24 @@ class DashboardController extends Controller
     {
         $userId = auth()->id();
 
-        $stats = Cache::remember("dashboard_stats:{$userId}", 300, function () use ($userId) {
-            $receiptStats = Receipt::where('user_id', $userId)
-                ->select(
-                    DB::raw('COUNT(*) as count'),
-                    DB::raw('SUM(total_amount) as total_amount')
-                )->first();
-
-            $merchantCount = Merchant::whereHas('receipts', function ($query) use ($userId) {
-                $query->where('user_id', $userId);
-            })->count();
-
-            return [
-                'receiptCount' => $receiptStats->count ?? 0,
-                'totalAmount' => (float) ($receiptStats->total_amount ?? 0),
-                'merchantCount' => $merchantCount,
-            ];
-        });
+        $currency = auth()->user()->preference('currency', 'NOK');
+        $summary = app(MonetarySummaryService::class)->aggregate(
+            Receipt::where('user_id', $userId)->lazyById(200), ['total' => 'total_amount'], 'receipt_date', $currency);
+        $stats = [
+            'receiptCount' => $summary['count'], 'totalAmount' => $summary['amounts']['total'], 'summaryCurrency' => $currency,
+            'merchantCount' => Merchant::whereHas('receipts', fn ($query) => $query->where('user_id', $userId))->count(),
+        ];
 
         // Recent receipts are not cached — always fresh for dashboard relevance
         $recentReceipts = Receipt::with('merchant')
             ->where('user_id', $userId)
             ->orderBy('receipt_date', 'desc')
             ->take(5)
-            ->get();
+            ->get()->map(fn (Receipt $receipt): array => [
+                'id' => $receipt->id, 'receipt_date' => $receipt->receipt_date?->toDateString(),
+                'merchant' => $receipt->merchant, 'total_amount' => $receipt->total_amount,
+                'currency' => $receipt->currency, 'receipt_category' => $receipt->receipt_category,
+            ]);
 
         return Inertia::render('Dashboard', [
             ...$stats,

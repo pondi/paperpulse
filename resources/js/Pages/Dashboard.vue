@@ -94,7 +94,7 @@ const { formatDate, formatCurrency } = useDateFormatter();
                                             {{ receipt.merchant?.name }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                                            {{ formatCurrency(receipt.total_amount) }}
+                                            {{ formatCurrency(receipt.total_amount, receipt.currency) }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">
                                             {{ receipt.receipt_category }}

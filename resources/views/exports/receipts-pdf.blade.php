@@ -85,7 +85,7 @@
     </div>
     <div class="summary-item">
         <strong>Total
-            Amount:</strong> {{ number_format($total_amount, 2) }} {{ auth()->user()->preference('currency', 'NOK') }}
+            Amount:</strong> {{ $total_amount === null ? 'Conversion unavailable' : number_format($total_amount, 2).' '.$currency }}
     </div>
 </div>
 

@@ -6,6 +6,22 @@ use App\Models\User;
 use App\Models\Vendor;
 use App\Services\LogoService;
 
+it('renders uploaded and existing base64 logos as the original image bytes', function () {
+    $merchant = Merchant::create(['user_id' => User::factory()->create()->id, 'name' => 'Acme']);
+    $path = createFixturePngPath();
+    $image = file_get_contents($path);
+    unlink($path);
+    $service = app(LogoService::class);
+    $service->updateModelLogo($merchant, $image, 'image/png');
+    $uploaded = $merchant->fresh()->logo;
+    $existing = new Logo(['logo_data' => base64_encode($image), 'mime_type' => 'image/png']);
+
+    foreach ([$uploaded, $existing] as $logo) {
+        expect($logo->getUrl())->toBe($service->getImageUrl($merchant, $logo->logo_data, $logo->mime_type))
+            ->and(base64_decode(explode(',', $logo->getUrl(), 2)[1], true))->toBe($image);
+    }
+});
+
 it('keeps identical logo payloads associated with each model and tenant', function () {
     $owners = User::factory()->count(2)->create();
     $models = collect([

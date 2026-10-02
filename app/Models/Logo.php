@@ -30,7 +30,7 @@ class Logo extends Model
      */
     public function getUrl(): string
     {
-        return "data:{$this->mime_type};base64,".base64_encode($this->logo_data);
+        return "data:{$this->mime_type};base64,".$this->logo_data;
     }
 
     /**

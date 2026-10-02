@@ -13,123 +13,46 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class ProcessBatchItem implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected int $batchJobId;
+    public int $timeout = 300;
 
-    protected int $chunkIndex;
+    public int $tries = 3;
 
-    protected array $batchConfig;
-
-    public $timeout = 300; // 5 minutes
-
-    public $tries = 3;
-
-    public function __construct(int $batchJobId, int $chunkIndex, array $batchConfig)
-    {
-        $this->batchJobId = $batchJobId;
-        $this->chunkIndex = $chunkIndex;
-        $this->batchConfig = $batchConfig;
-    }
+    /** @param array<int, int> $itemIds */
+    public function __construct(protected int $batchJobId, protected array $itemIds) {}
 
     public function handle(): void
     {
-        try {
-            $batchJob = BatchJob::findOrFail($this->batchJobId);
+        $batchJob = BatchJob::withoutGlobalScope('user')->findOrFail($this->batchJobId);
 
-            // Get batch items for this chunk
-            $batchItems = BatchItem::where('batch_job_id', $this->batchJobId)
-                ->where('status', 'queued')
-                ->orderBy('item_index')
-                ->skip($this->chunkIndex * $this->batchConfig['batch_size'])
-                ->take($this->batchConfig['batch_size'])
-                ->get();
+        foreach ($this->itemIds as $itemId) {
+            $batchJob->getConnection()->transaction(function () use ($batchJob, $itemId): void {
+                $item = $batchJob->items()->whereKey($itemId)->lockForUpdate()->firstOrFail();
+                if ($item->status !== 'queued') {
+                    return;
+                }
+                $startTime = microtime(true);
+                try {
+                    $result = $this->processIndividualItem($item, $batchJob);
+                } catch (Throwable $exception) {
+                    $item->markAsFailed($exception->getMessage(), (int) ((microtime(true) - $startTime) * 1000));
 
-            if ($batchItems->isEmpty()) {
-                Log::warning('[ProcessBatchItem] No items found for chunk', [
-                    'batch_id' => $this->batchJobId,
-                    'chunk_index' => $this->chunkIndex,
-                ]);
-
-                return;
-            }
-
-            Log::info('[ProcessBatchItem] Processing batch chunk', [
-                'batch_id' => $this->batchJobId,
-                'chunk_index' => $this->chunkIndex,
-                'items_count' => $batchItems->count(),
-            ]);
-
-            // Process items in this chunk (sequential processing)
-            $results = $this->processItemsSequentially($batchItems, $batchJob);
-
-            // Update batch progress
-            $batchService = app(BatchProcessingService::class);
-            $batchService->updateBatchProgress($this->batchJobId, $results);
-
-        } catch (Exception $e) {
-            Log::error('[ProcessBatchItem] Batch chunk processing failed', [
-                'batch_id' => $this->batchJobId,
-                'chunk_index' => $this->chunkIndex,
-                'error' => $e->getMessage(),
-            ]);
-
-            // Mark all items in this chunk as failed
-            $this->markChunkAsFailed($e->getMessage());
-
-            throw $e;
-        }
-    }
-
-    /**
-     * Process items one by one
-     */
-    protected function processItemsSequentially(Collection $batchItems, BatchJob $batchJob): array
-    {
-        $results = [];
-
-        foreach ($batchItems as $item) {
-            $startTime = microtime(true);
-
-            try {
-                $result = $this->processIndividualItem($item, $batchJob);
-                $processingTime = (int) ((microtime(true) - $startTime) * 1000);
-
+                    return;
+                }
                 $item->markAsCompleted(
                     $result['data'],
                     $result['cost'] ?? 0,
-                    $processingTime
+                    (int) ((microtime(true) - $startTime) * 1000),
                 );
-
-                $results[] = array_merge($result, [
-                    'processing_time' => $processingTime,
-                    'success' => true,
-                ]);
-
-            } catch (Exception $e) {
-                $processingTime = (int) ((microtime(true) - $startTime) * 1000);
-
-                $item->markAsFailed($e->getMessage(), $processingTime);
-
-                $results[] = [
-                    'success' => false,
-                    'error' => $e->getMessage(),
-                    'processing_time' => $processingTime,
-                ];
-            }
-
-            // Add small delay between items to avoid rate limiting
-            if (count($results) < $batchItems->count()) {
-                usleep(100000); // 100ms delay
-            }
+            });
         }
 
-        return $results;
+        app(BatchProcessingService::class)->updateBatchProgress($this->batchJobId);
     }
 
     /**
@@ -176,28 +99,17 @@ class ProcessBatchItem implements ShouldQueue
         return $result;
     }
 
-    protected function markChunkAsFailed(string $error): void
+    public function failed(Throwable $exception): void
     {
         BatchItem::where('batch_job_id', $this->batchJobId)
+            ->whereIn('id', $this->itemIds)
             ->where('status', 'queued')
-            ->skip($this->chunkIndex * $this->batchConfig['batch_size'])
-            ->take($this->batchConfig['batch_size'])
             ->update([
                 'status' => 'failed',
-                'error_message' => $error,
+                'error_message' => $exception->getMessage(),
                 'processed_at' => now(),
             ]);
-    }
 
-    public function failed(Exception $exception): void
-    {
-        Log::error('[ProcessBatchItem] Job failed', [
-            'batch_id' => $this->batchJobId,
-            'chunk_index' => $this->chunkIndex,
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
-        ]);
-
-        $this->markChunkAsFailed($exception->getMessage());
+        app(BatchProcessingService::class)->updateBatchProgress($this->batchJobId);
     }
 }

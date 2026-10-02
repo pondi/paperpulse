@@ -118,8 +118,12 @@ class BatchProcessingService
             // Insert batch items
             DB::table('batch_items')->insert($batchItems);
 
-            // Dispatch processing job for this chunk
-            ProcessBatchItem::dispatch($batchJob->id, $chunkIndex, $batchConfig)
+            $itemIds = $batchJob->items()->whereBetween('item_index', [
+                $chunkIndex * $batchConfig['batch_size'],
+                $chunkIndex * $batchConfig['batch_size'] + count($chunk) - 1,
+            ])->orderBy('item_index')->pluck('id')->all();
+
+            ProcessBatchItem::dispatch($batchJob->id, $itemIds)
                 ->delay(now()->addSeconds($delay))
                 ->onQueue($this->getQueueForBatch($batchJob, $options));
 
@@ -134,51 +138,24 @@ class BatchProcessingService
     /**
      * Update batch progress
      */
-    public function updateBatchProgress(int $batchJobId, array $results): void
+    public function updateBatchProgress(int $batchJobId): void
     {
-        try {
-            DB::beginTransaction();
-
-            $batchJob = BatchJob::findOrFail($batchJobId);
-
-            $successCount = count(array_filter($results, fn ($r) => $r['success']));
-            $failureCount = count($results) - $successCount;
-
-            $batchJob->increment('processed_items', count($results));
-            $batchJob->increment('failed_items', $failureCount);
-
-            // Update actual cost if provided
-            $totalCost = array_sum(array_column($results, 'cost'));
-            if ($totalCost > 0) {
-                $batchJob->increment('actual_cost', $totalCost);
+        (new BatchJob)->getConnection()->transaction(function () use ($batchJobId): void {
+            $batchJob = BatchJob::withoutGlobalScope('user')->lockForUpdate()->findOrFail($batchJobId);
+            $totals = $batchJob->items()->selectRaw("COUNT(CASE WHEN status IN ('completed', 'failed') THEN 1 END) AS processed_count")
+                ->selectRaw("COUNT(CASE WHEN status = 'failed' THEN 1 END) AS failed_count")
+                ->selectRaw('COALESCE(SUM(cost), 0) AS total_cost')->first();
+            $attributes = [
+                'processed_items' => $totals->processed_count,
+                'failed_items' => $totals->failed_count,
+                'actual_cost' => $totals->total_cost,
+            ];
+            if ($totals->processed_count >= $batchJob->total_items) {
+                $attributes['status'] = $totals->failed_count > 0 ? 'completed_with_errors' : 'completed';
+                $attributes['completed_at'] = $batchJob->completed_at ?? now();
             }
-
-            // Check if batch is complete
-            if ($batchJob->processed_items >= $batchJob->total_items) {
-                $batchJob->update([
-                    'status' => $batchJob->failed_items > 0 ? 'completed_with_errors' : 'completed',
-                    'completed_at' => now(),
-                ]);
-
-                Log::info('[BatchProcessingService] Batch processing completed', [
-                    'batch_id' => $batchJobId,
-                    'total_items' => $batchJob->total_items,
-                    'failed_items' => $batchJob->failed_items,
-                    'actual_cost' => $batchJob->actual_cost,
-                    'duration' => $batchJob->completed_at->diffInSeconds($batchJob->started_at),
-                ]);
-            }
-
-            DB::commit();
-
-        } catch (Exception $e) {
-            DB::rollBack();
-
-            Log::error('[BatchProcessingService] Failed to update batch progress', [
-                'batch_id' => $batchJobId,
-                'error' => $e->getMessage(),
-            ]);
-        }
+            $batchJob->update($attributes);
+        });
     }
 
     /**

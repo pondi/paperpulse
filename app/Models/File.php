@@ -82,6 +82,16 @@ class File extends Model
         'deleted_reason' => DeletedReason::class,
     ];
 
+    public function scopeDeduplicatable(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query->whereIn('status', ['pending', 'processing', 'needs_review'])
+                ->orWhere(function (Builder $query): void {
+                    $query->where('status', 'completed')->whereHas('extractableEntities');
+                });
+        });
+    }
+
     public function resolveRouteBindingQuery($query, $value, $field = null): Builder
     {
         return parent::resolveRouteBindingQuery($query, $value, $field)->accessibleBy(auth()->user());

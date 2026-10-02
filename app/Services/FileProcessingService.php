@@ -158,6 +158,11 @@ class FileProcessingService
 
             $s3Path = StoragePathBuilder::storagePath($userId, $fileGuid, $fileType, 'original', $fileData['extension']);
             [$file, $request] = DB::transaction(function () use ($fileData, $fileGuid, $fileType, $userId, $fileHash, $s3Path, $jobId, $jobName, $metadata, $workingPath): array {
+                User::query()->whereKey($userId)->lockForUpdate()->firstOrFail();
+                $existingFile = $this->fileDuplication->findDuplicateByHash($fileHash, $userId);
+                if ($existingFile) {
+                    throw new DuplicateFileException($existingFile, $fileHash);
+                }
                 $file = $this->fileMetadata->createFileRecordFromData($fileData, $fileGuid, $fileType, $userId, $fileHash);
                 if (! empty($metadata['collection_ids'])) {
                     $file->collections()->sync($metadata['collection_ids']);

@@ -30,15 +30,10 @@ class FileDuplicationService implements FileDuplicationContract
      */
     public function findDuplicateByHash(string $hash, int $userId): ?File
     {
-        return File::where('user_id', $userId)
+        return File::withoutGlobalScope('user')->where('user_id', $userId)
             ->where('file_hash', $hash)
-            ->whereNotNull('file_hash')
-            // If a file is marked completed but has no linked entities,
-            // treat it as non-existent for deduplication purposes (e.g. after deletion).
-            ->where(function ($query) {
-                $query->where('status', '!=', 'completed')
-                    ->orWhereHas('extractableEntities');
-            })
+            ->deduplicatable()
+            ->orderBy('id')
             ->first();
     }
 

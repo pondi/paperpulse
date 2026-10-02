@@ -2,10 +2,8 @@
 
 namespace App\Jobs\Documents;
 
-use App\Enums\DeletedReason;
 use App\Jobs\BaseJob;
 use App\Models\Document;
-use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Services\Files\FilePreviewManager;
 use App\Services\TextExtractionService;
@@ -13,18 +11,16 @@ use App\Services\Workers\WorkerFileManager;
 use Carbon\Carbon;
 use DateTimeInterface;
 use Exception;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * Creates a Document from a processed file and prepares it for analysis.
+ * Stages extracted document attributes until analysis can commit a complete result.
  *
  * Responsibilities:
  * - Ensure text extraction for documents
  * - Create Document row with metadata and searchable content
- * - Update File status/paths and queue AnalyzeDocument
+ * - Update File processing paths; analysis follows in the existing chain
  */
 class ProcessDocument extends BaseJob
 {
@@ -225,8 +221,7 @@ class ProcessDocument extends BaseJob
 
         $this->updateProgress(60);
 
-        $isReprocessing = $metadata['metadata']['reprocessing'] ?? false;
-        $this->createDocumentRecord($file, $note, $extractedText, $jobName, (bool) $isReprocessing);
+        $this->createDocumentRecord($file, $note, $extractedText, $jobName);
     }
 
     private function maybeGenerateDocumentPreview(
@@ -290,120 +285,31 @@ class ProcessDocument extends BaseJob
         return $metadata['s3OriginalPath'];
     }
 
-    private function createDocumentRecord(File $file, ?string $note, string $extractedText, string $jobName, bool $isReprocessing): void
+    private function createDocumentRecord(File $file, ?string $note, string $extractedText, string $jobName): void
     {
-        DB::beginTransaction();
-
-        try {
-            if ($isReprocessing) {
-                $existingDocument = Document::where('file_id', $file->id)->first();
-                if ($existingDocument) {
-                    Log::info('[ProcessDocument] Soft deleting existing document during reprocessing', [
-                        'file_id' => $file->id,
-                        'document_id' => $existingDocument->id,
-                    ]);
-
-                    // Soft delete the extractable_entity record with reprocess reason
-                    $extractableEntities = ExtractableEntity::where('file_id', $file->id)
-                        ->where('entity_type', 'document')
-                        ->where('entity_id', $existingDocument->id)
-                        ->get();
-                    foreach ($extractableEntities as $entity) {
-                        $entity->deleted_reason = DeletedReason::Reprocess;
-                        $entity->save();
-                        $entity->delete();
-                    }
-
-                    // Soft delete the document with reprocess reason
-                    $existingDocument->deleted_reason = DeletedReason::Reprocess;
-                    $existingDocument->save();
-                    $existingDocument->delete();
-
-                    Log::info('[ProcessDocument] Existing document soft deleted successfully', [
-                        'file_id' => $file->id,
-                    ]);
-                }
-            }
-
-            $document = new Document;
-            $document->file_id = $file->id;
-            $document->user_id = $file->user_id;
-            $document->title = $this->sanitizeTextForDatabase($this->extractTitle($extractedText, $file->fileName));
-            $document->description = $this->extractDescription($extractedText);
-            $document->note = $this->sanitizeTextForDatabase($note);
-            $document->content = $this->sanitizeTextForDatabase($extractedText) ?? '';
-            $document->document_type = $this->detectDocumentType($extractedText, $file->fileName);
-            $document->extracted_text = $this->prepareExtractedText($extractedText);
-            $document->language = $this->detectLanguage($extractedText);
-            $document->document_date = $this->extractDocumentDate($extractedText);
-            $document->page_count = $this->estimatePageCount($extractedText);
-            $document->metadata = [
-                'original_filename' => $file->fileName,
-                'mime_type' => $file->fileType,
-                'file_size' => $file->fileSize,
-                'page_count' => $this->estimatePageCount($extractedText),
-                'word_count' => str_word_count($extractedText),
-            ];
-            $document->save();
-
-            // Create extractable_entity record for consistency with Gemini pipeline
-            ExtractableEntity::create([
-                'file_id' => $file->id,
-                'user_id' => $file->user_id,
-                'entity_type' => 'document',
-                'entity_id' => $document->id,
-                'is_primary' => true,
-                'confidence_score' => null,
-                'extraction_provider' => 'textract_openai',
-                'extraction_model' => null,
-                'extraction_metadata' => [
-                    'entity_type_name' => 'document',
-                    'extracted_at' => now()->toIso8601String(),
-                ],
-                'extracted_at' => now(),
-            ]);
-
-            $file->refresh();
-            if ($file->status !== 'needs_review') {
-                $file->status = 'completed';
-            }
-            $file->save();
-
-            DB::commit();
-
-            $documentData = [
-                'documentId' => $document->id,
-                'title' => $document->title,
-                'extractedText' => $extractedText,
-                'documentType' => $document->document_type,
-            ];
-
-            Cache::put("job.{$this->jobID}.documentMetaData", $documentData, now()->addHours(1));
-
-            Log::debug("[ProcessDocument] [{$jobName}] Document created", [
-                'document_id' => $document->id,
-                'title' => $document->title,
-                'type' => $document->document_type,
-            ]);
-
-            $this->updateProgress(90);
-
-            $document->searchable();
-
-            $this->updateProgress(100);
-
-            Log::info("[ProcessDocument] [{$jobName}] Document processed successfully", [
-                'job_id' => $this->jobID,
-                'task_id' => $this->uuid,
-                'document_id' => $document->id,
-            ]);
-
-            AnalyzeDocument::dispatch($this->jobID)
-                ->onQueue('documents');
-        } catch (Exception $e) {
-            DB::rollBack();
-            throw $e;
-        }
+        $document = new Document;
+        $document->file_id = $file->id;
+        $document->user_id = $file->user_id;
+        $document->title = $this->sanitizeTextForDatabase($this->extractTitle($extractedText, $file->fileName));
+        $document->description = $this->extractDescription($extractedText);
+        $document->note = $this->sanitizeTextForDatabase($note);
+        $document->content = $this->sanitizeTextForDatabase($extractedText) ?? '';
+        $document->document_type = $this->detectDocumentType($extractedText, $file->fileName);
+        $document->extracted_text = $this->prepareExtractedText($extractedText);
+        $document->language = $this->detectLanguage($extractedText);
+        $document->document_date = $this->extractDocumentDate($extractedText);
+        $document->page_count = $this->estimatePageCount($extractedText);
+        $document->metadata = [
+            'original_filename' => $file->fileName,
+            'mime_type' => $file->fileType,
+            'file_size' => $file->fileSize,
+            'page_count' => $this->estimatePageCount($extractedText),
+            'word_count' => str_word_count($extractedText),
+        ];
+        $metadata = $this->getMetadata();
+        $metadata['artifacts']['documentDraft'] = $document->attributesToArray();
+        $this->storeMetadata($metadata);
+        $this->updateProgress(100);
     }
 
     /**

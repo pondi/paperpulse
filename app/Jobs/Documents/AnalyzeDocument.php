@@ -5,6 +5,8 @@ namespace App\Jobs\Documents;
 use App\Jobs\BaseJob;
 use App\Models\Category;
 use App\Models\Document;
+use App\Models\ExtractableEntity;
+use App\Models\File;
 use App\Models\Tag;
 use App\Services\DocumentAnalysisService;
 use App\Services\Tags\TagAttachmentService;
@@ -55,11 +57,17 @@ class AnalyzeDocument extends BaseJob
                 'file_id' => $fileId,
             ]);
 
-            // Find the document associated with this file
-            $document = Document::where('file_id', $fileId)->first();
-
-            if (! $document) {
-                throw new Exception("Document not found for file ID: {$fileId}");
+            $draft = $metadata['artifacts']['documentDraft'] ?? null;
+            if ($draft) {
+                $document = new Document;
+                $document->forceFill($draft);
+                $document->save();
+                ExtractableEntity::create([
+                    'user_id' => $metadata['userId'], 'file_id' => $fileId, 'entity_type' => 'document',
+                    'entity_id' => $document->id, 'is_primary' => true, 'extraction_provider' => 'textract_openai', 'extracted_at' => now(),
+                ]);
+            } else {
+                $document = Document::where('user_id', $metadata['userId'])->where('file_id', $fileId)->firstOrFail();
             }
 
             $this->updateProgress(25);
@@ -129,6 +137,10 @@ class AnalyzeDocument extends BaseJob
                 'tags_count' => count($analysis['tags'] ?? []),
             ]);
 
+            $file = File::withoutGlobalScope('user')->where('user_id', $metadata['userId'])->findOrFail($fileId);
+            if ($file->status !== 'needs_review') {
+                $file->update(['status' => 'completed']);
+            }
             $this->updateProgress(100);
 
         } catch (Exception $e) {

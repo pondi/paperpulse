@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Enums\DeletedReason;
 use App\Models\File;
 use App\Models\Receipt;
 use App\Services\Files\FileDeletionService;
@@ -45,7 +44,7 @@ class ReceiptService
      * @param  string  $filePath  Absolute working path
      * @return array{receiptId:int,merchantName:string,merchantAddress:string,merchantVatID:string}
      */
-    public function processReceiptData(int $fileId, string $fileGuid, string $filePath, ?string $note = null, bool $isReprocessing = false): array
+    public function processReceiptData(int $fileId, string $fileGuid, string $filePath, ?string $note = null): array
     {
         try {
             Log::info('Processing receipt data', [
@@ -55,34 +54,6 @@ class ReceiptService
 
             // Get the file model to get user ID
             $file = File::findOrFail($fileId);
-
-            // Check if we're reprocessing - soft delete existing receipt if so
-            if ($isReprocessing) {
-                $existingReceipt = Receipt::where('file_id', $fileId)->first();
-                if ($existingReceipt) {
-                    Log::info('[ReceiptService] Soft deleting existing receipt during reprocessing', [
-                        'file_id' => $fileId,
-                        'receipt_id' => $existingReceipt->id,
-                        'line_items_count' => $existingReceipt->lineItems()->count(),
-                    ]);
-
-                    // Soft delete line items first with reprocess reason
-                    foreach ($existingReceipt->lineItems as $lineItem) {
-                        $lineItem->deleted_reason = DeletedReason::Reprocess;
-                        $lineItem->save();
-                        $lineItem->delete();
-                    }
-
-                    // Soft delete the receipt with reprocess reason
-                    $existingReceipt->deleted_reason = DeletedReason::Reprocess;
-                    $existingReceipt->save();
-                    $existingReceipt->delete();
-
-                    Log::info('[ReceiptService] Existing receipt soft deleted successfully', [
-                        'file_id' => $fileId,
-                    ]);
-                }
-            }
 
             // Extract text and structured data from the file using TextExtractionService
             $ocrData = $this->textExtractionService->extractWithStructuredData($filePath, 'receipt', $fileGuid);

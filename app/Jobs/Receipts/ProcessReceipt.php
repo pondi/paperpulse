@@ -329,8 +329,7 @@ class ProcessReceipt extends BaseJob
             $metadata['fileId'],
             $metadata['fileGuid'],
             $localFilePath,
-            $note,
-            (bool) ($metadata['metadata']['reprocessing'] ?? false)
+            $note
         );
 
         if ($debugEnabled) {

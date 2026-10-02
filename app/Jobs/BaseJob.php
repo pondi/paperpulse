@@ -2,10 +2,15 @@
 
 namespace App\Jobs;
 
+use App\Jobs\BankStatements\ProcessCsvImport;
+use App\Jobs\Documents\AnalyzeDocument;
+use App\Jobs\Files\ProcessFileGemini;
+use App\Jobs\Receipts\ProcessReceipt;
 use App\Models\File;
 use App\Models\JobHistory;
 use App\Models\User;
 use App\Services\File\FileStorageService;
+use App\Services\Files\FileEntityCleanupService;
 use App\Services\Jobs\JobMetadataPersistence;
 use App\Services\Jobs\JobParentStatusCalculator;
 use Illuminate\Bus\Queueable;
@@ -125,6 +130,28 @@ abstract class BaseJob implements ShouldQueue
     {
         $metadata = $this->getMetadata();
         $ownerId = $metadata['userId'] ?? ($this->pulseDavFile->user_id ?? null);
+        if (isset($metadata['fileId'])) {
+            (new File)->getConnection()->transaction(function () use ($metadata, $ownerId): void {
+                $file = File::withoutGlobalScope('user')->where('user_id', $ownerId)->lockForUpdate()->find($metadata['fileId']);
+                if (! $file || ($file->meta['processing_generation'] ?? null) !== ($metadata['processingGeneration'] ?? null)) {
+                    JobHistory::query()->whereIn('uuid', [$this->uuid, $this->jobID])->update(['status' => 'cancelled', 'finished_at' => now()]);
+                    $this->delete();
+
+                    return;
+                }
+                $replace = ($metadata['metadata']['reprocessing'] ?? false) && $this->commitsExtraction()
+                    && ! JobHistory::query()->where('uuid', $this->uuid)->where('status', 'completed')->exists();
+                if ($replace) {
+                    app(FileEntityCleanupService::class)->softDeleteAndUnindexEntities($file);
+                }
+                $this->execute();
+                if ($replace && ! app(FileEntityCleanupService::class)->hasEntities($file)) {
+                    throw new RuntimeException('Replacement extraction produced no entities.');
+                }
+            });
+
+            return;
+        }
         if ($ownerId !== null) {
             (new User)->getConnection()->transaction(function () use ($ownerId): void {
                 if (! User::query()->whereKey($ownerId)->sharedLock()->first()) {
@@ -138,6 +165,14 @@ abstract class BaseJob implements ShouldQueue
             return;
         }
         $this->execute();
+    }
+
+    protected function commitsExtraction(): bool
+    {
+        return $this instanceof ProcessFileGemini
+            || $this instanceof ProcessReceipt
+            || $this instanceof AnalyzeDocument
+            || $this instanceof ProcessCsvImport;
     }
 
     protected function execute(): void
@@ -360,6 +395,13 @@ abstract class BaseJob implements ShouldQueue
      */
     public function failed(Throwable $exception): void
     {
+        $metadata = $this->getMetadata();
+        if (isset($metadata['fileId'])) {
+            $file = File::withoutGlobalScope('user')->where('user_id', $metadata['userId'])->find($metadata['fileId']);
+            if (! $file || ($file->meta['processing_generation'] ?? null) !== ($metadata['processingGeneration'] ?? null)) {
+                return;
+            }
+        }
         $ownerId = $this->getMetadata()['userId'] ?? null;
         if (($ownerId !== null && ! User::query()->whereKey($ownerId)->exists())
             || JobHistory::query()->where('uuid', $this->jobID)->where('status', 'cancelled')->exists()) {

@@ -21,21 +21,10 @@ use Illuminate\Support\Str;
  */
 class FileReprocessingService
 {
-    protected StorageService $storageService;
-
-    protected FileJobChainDispatcher $jobChainDispatcher;
-
-    protected FileEntityCleanupService $entityCleanupService;
-
     public function __construct(
-        StorageService $storageService,
-        FileJobChainDispatcher $jobChainDispatcher,
-        FileEntityCleanupService $entityCleanupService
-    ) {
-        $this->storageService = $storageService;
-        $this->jobChainDispatcher = $jobChainDispatcher;
-        $this->entityCleanupService = $entityCleanupService;
-    }
+        private StorageService $storageService,
+        private FileJobChainDispatcher $jobChainDispatcher,
+    ) {}
 
     /**
      * Reprocess a single file.
@@ -46,71 +35,24 @@ class FileReprocessingService
      */
     public function reprocessFile(File $file, bool $force = false): array
     {
-        // Validate file can be reprocessed
-        $validation = $this->validateReprocessing($file, $force);
-        if (! $validation['canReprocess']) {
-            return [
-                'success' => false,
-                'jobId' => null,
-                'message' => $validation['reason'],
-            ];
-        }
-
         try {
-            Log::info('[FileReprocessing] Starting file reprocessing', [
-                'file_id' => $file->id,
-                'file_guid' => $file->guid,
-                'file_type' => $file->file_type,
-                'current_status' => $file->status,
-                's3_path' => $file->s3_original_path,
-            ]);
+            return $file->getConnection()->transaction(function () use ($file, $force): array {
+                $file = File::withoutGlobalScope('user')->where('user_id', $file->user_id)->lockForUpdate()->findOrFail($file->id);
+                $validation = $this->validateReprocessing($file, $force);
+                if (! $validation['canReprocess']) {
+                    return ['success' => false, 'jobId' => null, 'message' => $validation['reason']];
+                }
+                $jobId = (string) Str::uuid();
+                $jobName = 'Reprocess '.ucfirst($file->file_type);
+                $metadata = $this->prepareReprocessingMetadata($file, $jobId, $jobName);
+                $file->update(['meta' => array_merge($file->meta ?? [], ['processing_generation' => (string) Str::uuid()]), 'status' => 'pending']);
+                $metadata['processingGeneration'] = $file->meta['processing_generation'];
+                JobMetadataPersistence::store($jobId, $metadata);
+                JobHistoryCreator::createParentJob($jobId, $jobName, $file->file_type, $metadata, $file->id, $file->fileName);
+                $this->jobChainDispatcher->dispatch($jobId, $file->file_type);
 
-            // Generate new job ID for this reprocessing attempt
-            $jobId = (string) Str::uuid();
-            $jobName = 'Reprocess '.ucfirst($file->file_type);
-
-            // Soft-delete existing entities and remove from search index
-            $deletedEntities = $this->entityCleanupService->softDeleteAndUnindexEntities($file);
-
-            // Prepare metadata for job chain
-            $metadata = $this->prepareReprocessingMetadata($file, $jobId, $jobName);
-
-            // Store deleted entity info in metadata for hard-deletion after success
-            $metadata['metadata']['previousEntities'] = $deletedEntities;
-
-            // Store metadata for job chain
-            JobMetadataPersistence::store($jobId, $metadata);
-
-            // Create parent job history record
-            JobHistoryCreator::createParentJob(
-                $jobId,
-                $jobName,
-                $file->file_type,
-                $metadata,
-                $file->id,
-                $file->fileName
-            );
-
-            // Reset file status to pending
-            $this->resetFileProcessingState($file);
-            $file->status = 'pending';
-            $file->save();
-
-            // Dispatch job chain
-            $this->jobChainDispatcher->dispatch($jobId, $file->file_type);
-
-            Log::info('[FileReprocessing] File reprocessing initiated', [
-                'file_id' => $file->id,
-                'file_guid' => $file->guid,
-                'job_id' => $jobId,
-                'job_name' => $jobName,
-            ]);
-
-            return [
-                'success' => true,
-                'jobId' => $jobId,
-                'message' => "File reprocessing started with job ID: {$jobId}",
-            ];
+                return ['success' => true, 'jobId' => $jobId, 'message' => "File reprocessing started with job ID: {$jobId}"];
+            });
 
         } catch (Exception $e) {
             Log::error('[FileReprocessing] Failed to start reprocessing', [
@@ -283,19 +225,6 @@ class FileReprocessingService
                 'file_modified_at' => $file->file_modified_at?->toISOString(),
             ],
         ];
-    }
-
-    /**
-     * Reset derived/processing fields before a restart.
-     */
-    protected function resetFileProcessingState(File $file): void
-    {
-        $file->s3_processed_path = null;
-        $file->s3_archive_path = null;
-        $file->s3_image_path = null;
-        $file->has_image_preview = false;
-        $file->image_generation_error = null;
-        $file->fileImage = null;
     }
 
     /**

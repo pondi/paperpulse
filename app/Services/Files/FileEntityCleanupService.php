@@ -22,9 +22,8 @@ use Illuminate\Support\Facades\Log;
 /**
  * Handles cleanup of extracted entities during file reprocessing.
  *
- * This service soft-deletes entities and removes them from search indexes
- * before new processing begins, then hard-deletes them after successful
- * reprocessing completes.
+ * Replacement jobs retire prior entities inside the extraction transaction.
+ * Search removal waits until the successful replacement commits.
  */
 class FileEntityCleanupService
 {
@@ -44,6 +43,17 @@ class FileEntityCleanupService
         Warranty::class,
         ReturnPolicy::class,
     ];
+
+    public function hasEntities(File $file): bool
+    {
+        foreach ($this->entityTypesWithFileId as $model) {
+            if ($model::withoutGlobalScope('user')->where('user_id', $file->user_id)->where('file_id', $file->id)->exists()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /**
      * Soft-delete ALL entities associated with a file and remove from search index.
@@ -70,7 +80,7 @@ class FileEntityCleanupService
                 BankStatement::class => ['transactions'],
                 default => [],
             };
-            $entities = $entityClass::with($childRelations)->where('file_id', $file->id)->get();
+            $entities = $entityClass::withoutGlobalScope('user')->where('user_id', $file->user_id)->with($childRelations)->where('file_id', $file->id)->get();
 
             foreach ($entities as $entity) {
                 // Delete child entities first
@@ -80,7 +90,7 @@ class FileEntityCleanupService
                 // Remove from search index before soft-deleting
                 if (method_exists($entity, 'unsearchable')) {
                     try {
-                        $entity->unsearchable();
+                        $entity->getConnection()->afterCommit(fn () => $entity->unsearchable());
                     } catch (\Exception $e) {
                         Log::warning('[FileEntityCleanup] Failed to remove entity from search index', [
                             'entity_type' => $entityClass,
@@ -108,7 +118,7 @@ class FileEntityCleanupService
         }
 
         // Also clean up ExtractableEntity junction records
-        $extractableEntities = ExtractableEntity::where('file_id', $file->id)->get();
+        $extractableEntities = ExtractableEntity::withoutGlobalScope('user')->where('user_id', $file->user_id)->where('file_id', $file->id)->get();
         foreach ($extractableEntities as $extractableEntity) {
             $extractableEntity->deleted_reason = DeletedReason::Reprocess;
             $extractableEntity->save();
@@ -147,7 +157,7 @@ class FileEntityCleanupService
                 // Remove from search index
                 if (method_exists($lineItem, 'unsearchable')) {
                     try {
-                        $lineItem->unsearchable();
+                        $lineItem->getConnection()->afterCommit(fn () => $lineItem->unsearchable());
                     } catch (\Exception $e) {
                         Log::warning('[FileEntityCleanup] Failed to remove line item from search index', [
                             'line_item_id' => $lineItem->id,

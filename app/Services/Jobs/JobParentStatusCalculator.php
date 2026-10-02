@@ -3,12 +3,13 @@
 namespace App\Services\Jobs;
 
 use App\Models\JobHistory;
+use App\Services\BulkUpload\BulkUploadService;
 
 class JobParentStatusCalculator
 {
     public static function calculate(JobHistory $parentJob): string
     {
-        $children = $parentJob->tasks()->get()->keyBy('uuid');
+        $children = $parentJob->tasks->keyBy('uuid');
         $plan = $parentJob->metadata['plannedSteps'] ?? [];
         $statuses = $plan
             ? collect($plan)->filter(fn (array $step): bool => $step['required'] ?? true)
@@ -34,7 +35,7 @@ class JobParentStatusCalculator
         if (! $parent) {
             return;
         }
-        $children = $parent->tasks()->get()->keyBy('uuid');
+        $children = $parent->tasks->keyBy('uuid');
         $plan = $parent->metadata['plannedSteps'] ?? [];
         $requiredIds = $plan
             ? collect($plan)->filter(fn (array $step): bool => $step['required'] ?? true)->pluck('uuid')
@@ -46,5 +47,6 @@ class JobParentStatusCalculator
             'progress' => $progress,
             'finished_at' => in_array($status, ['completed', 'failed'], true) ? now() : null,
         ]);
+        app(BulkUploadService::class)->reconcileJob($parentUuid);
     }
 }

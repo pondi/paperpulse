@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\BulkUploadFileStatus;
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Requests\Api\V1\BulkPresignRequest;
 use App\Http\Requests\Api\V1\CreateBulkSessionRequest;
 use App\Models\BulkUploadFile;
 use App\Models\BulkUploadSession;
+use App\Models\User;
 use App\Services\BulkUpload\BulkUploadService;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -26,7 +28,7 @@ class BulkUploadController extends BaseApiController
      */
     public function index(Request $request): JsonResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
 
         $sessions = BulkUploadSession::where('user_id', $user->id)
@@ -41,7 +43,7 @@ class BulkUploadController extends BaseApiController
      */
     public function store(CreateBulkSessionRequest $request): JsonResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
 
         try {
@@ -60,7 +62,7 @@ class BulkUploadController extends BaseApiController
             $session = $result['session'];
             $files = $result['files'];
 
-            $uploadableCount = $files->where('status', '!=', \App\Enums\BulkUploadFileStatus::Duplicate)->count();
+            $uploadableCount = $files->where('status', '!=', BulkUploadFileStatus::Duplicate)->count();
 
             Log::info('[API] Bulk upload session created', [
                 'user_id' => $user->id,
@@ -204,7 +206,7 @@ class BulkUploadController extends BaseApiController
                 'file_id' => $result['file_id'],
                 'file_guid' => $result['file_guid'],
                 'job_id' => $result['job_id'],
-                'status' => 'processing',
+                'status' => $bulkFile->fresh()->status->value,
             ], 'File confirmed and processing started');
         } catch (Exception $e) {
             Log::error('[API] File confirmation failed', [
@@ -238,7 +240,7 @@ class BulkUploadController extends BaseApiController
 
     private function findSession(Request $request, string $uuid): ?BulkUploadSession
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
 
         return BulkUploadSession::where('uuid', $uuid)

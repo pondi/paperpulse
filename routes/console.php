@@ -55,3 +55,5 @@ Schedule::command('notify:expiring-vouchers --days=30')->dailyAt('08:00')->timez
 
 Schedule::command('notify:expiring-warranties --days=30')->dailyAt('08:00')->timezone('UTC')
     ->name('notify-expiring-warranties')->withoutOverlapping();
+
+Schedule::command('bulk:reconcile')->everyFiveMinutes()->name('reconcile-bulk-uploads')->withoutOverlapping();

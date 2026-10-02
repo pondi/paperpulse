@@ -9,9 +9,11 @@ use App\Enums\BulkUploadSessionStatus;
 use App\Models\BulkUploadFile;
 use App\Models\BulkUploadSession;
 use App\Models\File;
+use App\Models\JobHistory;
 use App\Services\File\FileValidationService;
 use App\Services\FileProcessingService;
 use App\Services\Files\FileUploadConfigService;
+use App\Services\Jobs\JobParentStatusCalculator;
 use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -280,6 +282,45 @@ class BulkUploadService
         });
     }
 
+    public function reconcileJob(string $jobId): void
+    {
+        foreach (BulkUploadFile::withoutGlobalScope('user')->where('job_id', $jobId)->get() as $bulkFile) {
+            $this->reconcileFile($bulkFile);
+        }
+    }
+
+    public function reconcileSession(BulkUploadSession $session): void
+    {
+        $session->files()->withoutGlobalScope('user')->whereNotNull('job_id')->whereNotNull('file_id')
+            ->whereIn('status', [BulkUploadFileStatus::Processing, BulkUploadFileStatus::Failed])
+            ->chunkById(100, function ($files): void {
+                foreach ($files as $file) {
+                    $this->reconcileFile($file);
+                }
+            });
+        $session->refresh()->checkCompletion();
+    }
+
+    private function reconcileFile(BulkUploadFile $bulkFile): void
+    {
+        $bulkFile->getConnection()->transaction(function () use ($bulkFile): void {
+            $session = BulkUploadSession::withoutGlobalScope('user')->lockForUpdate()->findOrFail($bulkFile->bulk_upload_session_id);
+            $bulkFile = $session->files()->withoutGlobalScope('user')->lockForUpdate()->findOrFail($bulkFile->id);
+            $job = JobHistory::query()->where('uuid', $bulkFile->job_id)->where('file_id', $bulkFile->file_id)->with('tasks')->first();
+            $file = File::withoutGlobalScope('user')->where('user_id', $bulkFile->user_id)->find($bulkFile->file_id);
+            if ($job === null) {
+                return;
+            }
+            $status = JobParentStatusCalculator::calculate($job);
+            if ($file === null || $status === 'failed' || $file->status === 'failed') {
+                $bulkFile->update(['status' => BulkUploadFileStatus::Failed, 'error_message' => $job->tasks->firstWhere('status', 'failed')?->exception ?? $file?->meta['last_processing_error']['message'] ?? 'Processing source is unavailable or failed.']);
+            } elseif ($status === 'completed' && in_array($file->status, ['completed', 'needs_review'], true)) {
+                $bulkFile->update(['status' => BulkUploadFileStatus::Completed, 'error_message' => null]);
+            }
+            $session->checkCompletion();
+        });
+    }
+
     /**
      * Get session with summary for status endpoint.
      *
@@ -287,7 +328,7 @@ class BulkUploadService
      */
     public function getSessionStatus(BulkUploadSession $session): array
     {
-        $session->refreshCounts();
+        $this->reconcileSession($session);
 
         $filesByStatus = $session->files()
             ->selectRaw('status, count(*) as count')

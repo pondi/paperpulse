@@ -105,12 +105,12 @@ class BulkUploadSession extends Model
     public function refreshCounts(): void
     {
         $this->update([
-            'uploaded_count' => $this->files()->whereIn('status', [
+            'uploaded_count' => $this->files()->where(fn ($query) => $query->whereIn('status', [
                 BulkUploadFileStatus::Uploaded,
                 BulkUploadFileStatus::Confirming,
                 BulkUploadFileStatus::Processing,
                 BulkUploadFileStatus::Completed,
-            ])->count(),
+            ])->orWhereNotNull('file_id'))->count(),
             'completed_count' => $this->files()->where('status', BulkUploadFileStatus::Completed)->count(),
             'failed_count' => $this->files()->where('status', BulkUploadFileStatus::Failed)->count(),
             'duplicate_count' => $this->files()->where('status', BulkUploadFileStatus::Duplicate)->count(),
@@ -121,14 +121,13 @@ class BulkUploadSession extends Model
     {
         $this->refreshCounts();
 
-        $terminalCount = $this->completed_count + $this->failed_count + $this->duplicate_count;
-
+        $terminalCount = $this->files()->whereIn('status', [BulkUploadFileStatus::Completed, BulkUploadFileStatus::Failed, BulkUploadFileStatus::Duplicate, BulkUploadFileStatus::Skipped])->count();
         if ($terminalCount >= $this->total_files) {
             $this->update([
-                'status' => $this->failed_count > 0 && $this->completed_count === 0
-                    ? BulkUploadSessionStatus::Failed
-                    : BulkUploadSessionStatus::Completed,
-                'completed_at' => now(),
+                'status' => $this->status === BulkUploadSessionStatus::Cancelled
+                    ? BulkUploadSessionStatus::Cancelled
+                    : ($this->failed_count > 0 && $this->completed_count === 0 ? BulkUploadSessionStatus::Failed : BulkUploadSessionStatus::Completed),
+                'completed_at' => $this->completed_at ?? now(),
             ]);
         }
     }

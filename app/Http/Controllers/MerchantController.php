@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Merchant;
+use App\Models\Receipt;
 use App\Services\LogoService;
+use App\Services\MonetarySummaryService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,7 +28,8 @@ class MerchantController extends Controller
             })
             ->join('receipts', function ($join) {
                 $join->on('merchants.id', '=', 'receipts.merchant_id')
-                    ->where('receipts.user_id', '=', auth()->id());
+                    ->where('receipts.user_id', '=', auth()->id())
+                    ->whereNull('receipts.deleted_at');
             })
             ->select(
                 'merchants.id',
@@ -38,7 +41,6 @@ class MerchantController extends Controller
                 'merchants.website',
                 'logos.logo_data',
                 'logos.mime_type',
-                DB::raw('SUM(CAST(receipts.total_amount AS DECIMAL(10,2))) as total_amount'),
                 DB::raw('MAX(receipts.receipt_date) as last_receipt_date'),
                 DB::raw('COUNT(receipts.id) as receipt_count')
             )
@@ -53,19 +55,24 @@ class MerchantController extends Controller
                 'logos.logo_data',
                 'logos.mime_type'
             )
-            ->get()
-            ->map(fn ($merchant) => [
-                'id' => $merchant->id,
-                'name' => $merchant->name,
-                'imageUrl' => $this->logoService->getImageUrl($merchant, $merchant->logo_data, $merchant->mime_type),
-                'lastInvoice' => [
-                    'date' => $merchant->last_receipt_date
-                        ? Carbon::parse($merchant->last_receipt_date)->format('F j, Y')
-                        : 'Ingen kvitteringer',
-                    'dateTime' => $merchant->last_receipt_date,
-                    'amount' => number_format((float) $merchant->total_amount, 2, ',', ' ').' kr',
-                ],
-            ]);
+            ->orderBy('merchants.name')->orderBy('merchants.id')->paginate(50);
+        $currency = auth()->user()->preference('currency', 'NOK');
+        $totals = app(MonetarySummaryService::class)->aggregate(Receipt::where('user_id', auth()->id())
+            ->whereIn('merchant_id', $merchants->getCollection()->pluck('id'))->lazyById(200), ['total' => 'total_amount'], 'receipt_date', $currency,
+            ['merchant' => fn ($receipt) => $receipt->merchant_id]);
+        $merchants->through(fn ($merchant) => [
+            'id' => $merchant->id,
+            'name' => $merchant->name,
+            'imageUrl' => $this->logoService->getImageUrl($merchant, $merchant->logo_data, $merchant->mime_type),
+            'lastInvoice' => [
+                'date' => $merchant->last_receipt_date
+                    ? Carbon::parse($merchant->last_receipt_date)->format('F j, Y')
+                    : 'Ingen kvitteringer',
+                'dateTime' => $merchant->last_receipt_date ? Carbon::parse($merchant->last_receipt_date)->toDateString() : null,
+                'amount' => $totals['groups']['merchant'][$merchant->id]['total'],
+                'currency' => $currency,
+            ],
+        ]);
 
         return Inertia::render('Receipt/Merchants', [
             'merchants' => $merchants,

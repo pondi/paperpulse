@@ -8,9 +8,9 @@
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <template v-if="vendors.length > 0">
+                <template v-if="vendors.data.length > 0">
                     <ul role="list" class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                        <li v-for="vendor in vendors" :key="vendor.id" class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-200 rounded-xl border-t-4 border-orange-600 dark:border-orange-500">
+                        <li v-for="vendor in vendors.data" :key="vendor.id" class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-200 rounded-xl border-t-4 border-orange-600 dark:border-orange-500">
                             <div class="flex items-center gap-x-4 border-b border-amber-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6">
                                 <img :src="vendor.imageUrl" :alt="vendor.name" class="h-12 w-12 flex-none rounded-lg bg-white dark:bg-zinc-700 object-cover ring-1 ring-zinc-900/10 dark:ring-zinc-700" />
                                 <div class="text-sm font-bold leading-6 text-zinc-900 dark:text-zinc-100">{{ vendor.name }}</div>
@@ -44,7 +44,7 @@
                                 <div class="flex justify-between gap-x-4 py-3">
                                     <dt class="font-bold text-xs uppercase tracking-wider text-zinc-600 dark:text-zinc-400">{{ __('total_value') }}</dt>
                                     <dd class="flex items-start gap-x-2">
-                                        <div class="font-black text-zinc-900 dark:text-zinc-100">{{ vendor.stats.totalValue }}</div>
+                                        <div class="font-black text-zinc-900 dark:text-zinc-100">{{ formatCurrency(vendor.stats.totalValue, vendor.stats.currency) }}</div>
                                         <div :class="[statuses[vendor.stats.status], 'rounded-md py-1 px-2 text-xs font-medium ring-1 ring-inset']">
                                             {{ vendor.stats.status }}
                                         </div>
@@ -59,6 +59,7 @@
                             </dl>
                         </li>
                     </ul>
+                    <Pagination :links="vendors.links" :from="vendors.from" :to="vendors.to" :total="vendors.total" />
                 </template>
                 <template v-else>
                     <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-orange-600 dark:border-orange-500">
@@ -77,6 +78,8 @@
 </template>
 
 <script setup>
+import Pagination from '@/Components/Pagination.vue';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
@@ -97,9 +100,11 @@ const __ = (key) => {
   return value || key.split('.').pop();
 };
 
+const { formatCurrency } = useDateFormatter();
+
 defineProps({
     vendors: {
-        type: Array,
+        type: Object,
         required: true
     }
 });

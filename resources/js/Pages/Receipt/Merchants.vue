@@ -8,9 +8,9 @@
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <template v-if="merchants.length > 0">
+                <template v-if="merchants.data.length > 0">
                     <ul role="list" class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                        <li v-for="merchant in merchants" :key="merchant.id" class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-200 rounded-xl border-t-4 border-amber-600 dark:border-amber-500">
+                        <li v-for="merchant in merchants.data" :key="merchant.id" class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-200 rounded-xl border-t-4 border-amber-600 dark:border-amber-500">
                             <div class="flex items-center gap-x-4 border-b border-amber-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6">
                                 <div class="flex-1 flex items-center min-w-0 gap-x-4">
                                     <img 
@@ -76,11 +76,12 @@
                                 </div>
                                 <div class="flex justify-between gap-x-4 py-3">
                                     <dt class="font-bold text-xs uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Total Amount</dt>
-                                    <dd class="font-black text-zinc-900 dark:text-zinc-100">{{ merchant.lastInvoice.amount }}</dd>
+                                    <dd class="font-black text-zinc-900 dark:text-zinc-100">{{ formatCurrency(merchant.lastInvoice.amount, merchant.lastInvoice.currency) }}</dd>
                                 </div>
                             </dl>
                         </li>
                     </ul>
+                    <Pagination :links="merchants.links" :from="merchants.from" :to="merchants.to" :total="merchants.total" />
                 </template>
                 <template v-else>
                     <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-amber-600 dark:border-amber-500">
@@ -215,15 +216,19 @@
 </template>
 
 <script setup>
+import Pagination from '@/Components/Pagination.vue';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { Menu, MenuButton, MenuItem, MenuItems, Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import { EllipsisHorizontalIcon, PhotoIcon, XMarkIcon } from '@heroicons/vue/20/solid'
 import { ref } from 'vue'
 
+const { formatCurrency } = useDateFormatter();
+
 defineProps({
     merchants: {
-        type: Array,
+        type: Object,
         required: true
     }
 });

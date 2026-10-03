@@ -21,7 +21,7 @@ class ReadinessCheck
         $connection = null;
         $failed = false;
 
-        foreach (config('health.required', ['database', 'migrations', 'redis']) as $service) {
+        foreach (config('health.required', ['database', 'migrations', 'queue']) as $service) {
             $start = microtime(true);
             try {
                 $healthy = match ($service) {

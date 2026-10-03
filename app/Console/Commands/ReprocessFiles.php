@@ -219,7 +219,7 @@ class ReprocessFiles extends Command
         // Next steps
         if ($results['successful'] > 0) {
             $this->info('Monitor job progress:');
-            $this->line('   php artisan horizon                              (Horizon dashboard)');
+            $this->line('   php artisan queue:health                         (Database queue health)');
             $this->line('   tail -f storage/logs/laravel.log | grep Process  (Live logs)');
             $this->line('   php artisan files:reprocess --stats              (View statistics)');
         }

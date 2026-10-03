@@ -73,7 +73,6 @@ class RunSafeMigrations extends Command
 
             // Clear and rebuild caches
             $this->info('Clearing caches...');
-            $this->call('cache:clear');
             $this->call('config:clear');
             $this->call('route:clear');
             $this->call('view:clear');

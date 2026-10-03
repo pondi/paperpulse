@@ -21,6 +21,7 @@ beforeEach(function (): void {
     Storage::fake('paperpulse');
     Storage::fake('pulsedav');
     Storage::fake('uplink');
+    Storage::fake('local');
 });
 
 test('account deletion captures owned binaries and search records before cascading and revokes access', function (): void {
@@ -44,12 +45,16 @@ test('account deletion captures owned binaries and search records before cascadi
     Storage::disk('paperpulse')->put($foreign->s3_original_path, 'foreign');
     Storage::disk('pulsedav')->put($source->s3_path, 'incoming');
     Storage::disk('pulsedav')->put('archive/'.$source->s3_path, 'archive');
+    Storage::disk('local')->put('private/exports/'.$owner->id.'/1/archive.pdf', 'owned export');
+    Storage::disk('local')->put('private/exports/'.$other->id.'/2/archive.pdf', 'foreign export');
 
     $owner->delete();
 
     expect($owner->fresh())->toBeNull()->and(File::withTrashed()->find($file->id))->toBeNull();
     $this->assertDatabaseMissing('personal_access_tokens', ['tokenable_id' => $owner->id]);
     $this->assertDatabaseMissing('sessions', ['user_id' => $owner->id]);
+    Storage::disk('local')->assertMissing('private/exports/'.$owner->id.'/1/archive.pdf');
+    Storage::disk('local')->assertExists('private/exports/'.$other->id.'/2/archive.pdf');
     $manifest = FileCleanupManifest::where('file_id', $file->id)->firstOrFail();
     expect($manifest->search_records)->toContain(
         ['type' => Receipt::class, 'id' => $receipt->id, 'done' => false],

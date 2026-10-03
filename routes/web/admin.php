@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\ArchiveExportController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\MerchantController;
@@ -12,6 +13,10 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     // Analytics
     Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
     Route::get('/analytics/processing', [AnalyticsController::class, 'processing'])->name('analytics.processing');
+
+    Route::get('/exports', [ArchiveExportController::class, 'index'])->name('exports.index');
+    Route::get('/exports/{export}/status', [ArchiveExportController::class, 'status'])->name('exports.status');
+    Route::get('/exports/{export}/download', [ArchiveExportController::class, 'download'])->middleware('signed')->name('exports.download');
 
     // Jobs routes (admin only)
     Route::prefix('jobs')->name('jobs.')->middleware('admin')->group(function () {

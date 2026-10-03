@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Category;
 use App\Models\File;
 use App\Models\LineItem;
 use App\Models\Merchant;
@@ -21,6 +22,7 @@ it('exports spreadsheet-safe text while preserving numeric and date cells', func
         'file_id' => File::factory()->create(['user_id' => $user->id])->id,
         'merchant_id' => $merchant->id,
         'receipt_date' => '2025-06-15',
+        'category_id' => Category::create(['user_id' => $user->id, 'name' => '+Category', 'slug' => 'category'])->id,
         'receipt_category' => '+Category',
         'receipt_description' => " \t@Description",
         'total_amount' => -12.50,

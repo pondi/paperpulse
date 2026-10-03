@@ -11,6 +11,7 @@ use App\Models\PulseDavFile;
 use App\Models\Receipt;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 class AccountDeletionService
 {
@@ -18,6 +19,9 @@ class AccountDeletionService
 
     public function prepare(User $user): void
     {
+        if (! Storage::disk('local')->deleteDirectory('private/exports/'.$user->id)) {
+            throw new \RuntimeException('Could not remove private account exports.');
+        }
         $user->tokens()->delete();
         $user->getConnection()->table('sessions')->where('user_id', $user->id)->delete();
 

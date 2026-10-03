@@ -8,13 +8,14 @@ use App\Jobs\Search\ReindexFile;
 use App\Models\Category;
 use App\Models\Receipt;
 use App\Notifications\BulkOperationCompleted;
+use App\Services\ArchiveExportService;
+use App\Services\ReceiptExportService;
 use App\Services\ReceiptService;
-use App\Support\SpreadsheetSafeText;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Response;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BulkOperationsController extends Controller
 {
@@ -91,82 +92,30 @@ class BulkOperationsController extends Controller
         );
     }
 
-    /**
-     * Export multiple receipts as CSV
-     */
-    public function bulkExportCsv(BulkReceiptIdsRequest $request)
+    public function bulkExportCsv(BulkReceiptIdsRequest $request, ReceiptExportService $service): StreamedResponse
     {
-        $receiptIds = $request->validated()['receipt_ids'];
-        $userId = auth()->id();
+        $query = $service->query($request->user()->id, $request->validated());
 
-        $filename = 'receipts_selection_'.now()->format('Y-m-d_His').'.csv';
-
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-        ];
-
-        $callback = function () use ($receiptIds, $userId) {
-            $file = fopen('php://output', 'w');
-
-            fputcsv($file, [
-                'Receipt Date',
-                'Merchant',
-                'Category',
-                'Description',
-                'Total Amount',
-                'Tax Amount',
-                'Currency',
-                'Items Count',
-                'Line Items',
-            ], ',', '"', '');
-
-            Receipt::with(['merchant', 'lineItems'])
-                ->whereIn('id', $receiptIds)
-                ->where('user_id', $userId)
-                ->orderBy('receipt_date', 'desc')
-                ->chunk(200, function ($receipts) use ($file) {
-                    foreach ($receipts as $receipt) {
-                        fputcsv($file, $this->formatCsvRow($receipt), ',', '"', '');
-                    }
-                });
-
-            fclose($file);
-        };
-
-        return Response::stream($callback, 200, $headers);
+        return response()->streamDownload(function () use ($service, $query): void {
+            $stream = fopen('php://output', 'wb');
+            try {
+                $service->writeCsv($query, $stream, includeNote: false);
+            } finally {
+                fclose($stream);
+            }
+        }, 'receipts_selection_'.now()->format('Y-m-d_His').'.csv', ['Content-Type' => 'text/csv']);
     }
 
-    /**
-     * Export multiple receipts as PDF
-     */
-    public function bulkExportPdf(BulkReceiptIdsRequest $request)
+    public function bulkExportPdf(BulkReceiptIdsRequest $request, ReceiptExportService $service, ArchiveExportService $exports): Response
     {
-        $receiptIds = $request->validated()['receipt_ids'];
-        $userId = auth()->id();
+        $filters = $request->validated();
+        $query = $service->query($request->user()->id, $filters);
+        $total = $query->count();
+        if ($total > config('exports.immediate_limit')) {
+            return $exports->queue($request, 'pdf', $filters, $total);
+        }
 
-        $query = Receipt::with(['merchant', 'lineItems'])
-            ->whereIn('id', $receiptIds)
-            ->where('user_id', $userId)
-            ->orderBy('receipt_date', 'desc');
-
-        $aggregates = Receipt::whereIn('id', $receiptIds)
-            ->where('user_id', $userId)
-            ->selectRaw('COUNT(*) as total_count, SUM(total_amount) as total_amount')
-            ->first();
-
-        $data = [
-            'receipts' => $query->lazy(200),
-            'generated_at' => now(),
-            'total_amount' => (float) ($aggregates->total_amount ?? 0),
-            'total_count' => $aggregates->total_count ?? 0,
-        ];
-
-        $pdf = Pdf::loadView('exports.receipts-pdf', $data);
-
-        $filename = 'receipts_selection_'.now()->format('Y-m-d_His').'.pdf';
-
-        return $pdf->download($filename);
+        return $service->pdf($query->get(), $request->user(), $filters)->download('receipts_selection_'.now()->format('Y-m-d_His').'.pdf');
     }
 
     /**
@@ -205,27 +154,5 @@ class BulkOperationsController extends Controller
             ],
             'categories' => $categories,
         ]);
-    }
-
-    /**
-     * @return array<int, mixed>
-     */
-    private function formatCsvRow(Receipt $receipt): array
-    {
-        $lineItems = $receipt->lineItems->map(function ($item) {
-            return $item->text.' (Qty: '.$item->qty.', Price: '.$item->price.')';
-        })->implode('; ');
-
-        return [
-            $receipt->receipt_date ? Carbon::parse($receipt->receipt_date)->format('Y-m-d') : '',
-            SpreadsheetSafeText::format($receipt->merchant?->name ?? 'Unknown'),
-            SpreadsheetSafeText::format($receipt->receipt_category ?? ''),
-            SpreadsheetSafeText::format($receipt->receipt_description ?? ''),
-            $receipt->total_amount ?? 0,
-            $receipt->tax_amount ?? 0,
-            SpreadsheetSafeText::format($receipt->currency ?? ''),
-            $receipt->lineItems->count(),
-            SpreadsheetSafeText::format($lineItems),
-        ];
     }
 }

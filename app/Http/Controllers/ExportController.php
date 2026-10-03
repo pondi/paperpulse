@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ReceiptExportRequest;
 use App\Models\Receipt;
-use App\Services\MonetarySummaryService;
-use App\Support\SpreadsheetSafeText;
+use App\Services\ArchiveExportService;
+use App\Services\ReceiptExportService;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\Carbon;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Response;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExportController extends Controller
 {
@@ -18,123 +18,30 @@ class ExportController extends Controller
         $this->middleware('throttle:exports');
     }
 
-    /**
-     * Export receipts as CSV
-     */
-    public function exportCsv(Request $request)
+    public function exportCsv(ReceiptExportRequest $request, ReceiptExportService $service): StreamedResponse
     {
-        $query = Receipt::with(['merchant', 'lineItems'])
-            ->where('user_id', auth()->id());
+        $query = $service->query($request->user()->id, $request->validated());
 
-        // Apply filters
-        if ($request->has('from_date')) {
-            $query->where('receipt_date', '>=', $request->from_date);
-        }
-
-        if ($request->has('to_date')) {
-            $query->where('receipt_date', '<=', $request->to_date);
-        }
-
-        if ($request->has('merchant_id')) {
-            $query->where('merchant_id', $request->merchant_id);
-        }
-
-        if ($request->has('category')) {
-            $query->where('receipt_category', $request->category);
-        }
-
-        $receipts = $query->orderBy('receipt_date', 'desc')->get();
-
-        $filename = 'receipts_'.now()->format('Y-m-d_His').'.csv';
-
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-        ];
-
-        $callback = function () use ($receipts) {
-            $file = fopen('php://output', 'w');
-
-            fputcsv($file, [
-                'Receipt Date',
-                'Merchant',
-                'Category',
-                'Description',
-                'Note',
-                'Total Amount',
-                'Tax Amount',
-                'Currency',
-                'Items Count',
-                'Line Items',
-            ], ',', '"', '');
-
-            foreach ($receipts as $receipt) {
-                $lineItems = $receipt->lineItems->map(function ($item) {
-                    return $item->text.' (Qty: '.$item->qty.', Price: '.$item->price.')';
-                })->implode('; ');
-
-                fputcsv($file, [
-                    $receipt->receipt_date ? Carbon::parse($receipt->receipt_date)->format('Y-m-d') : '',
-                    SpreadsheetSafeText::format($receipt->merchant?->name ?? 'Unknown'),
-                    SpreadsheetSafeText::format($receipt->receipt_category ?? ''),
-                    SpreadsheetSafeText::format($receipt->receipt_description ?? ''),
-                    SpreadsheetSafeText::format($receipt->note ?? ''),
-                    $receipt->total_amount ?? 0,
-                    $receipt->tax_amount ?? 0,
-                    SpreadsheetSafeText::format($receipt->currency ?? ''),
-                    $receipt->lineItems->count(),
-                    SpreadsheetSafeText::format($lineItems),
-                ], ',', '"', '');
+        return response()->streamDownload(function () use ($service, $query): void {
+            $stream = fopen('php://output', 'wb');
+            try {
+                $service->writeCsv($query, $stream);
+            } finally {
+                fclose($stream);
             }
-
-            fclose($file);
-        };
-
-        return Response::stream($callback, 200, $headers);
+        }, 'receipts_'.now()->format('Y-m-d_His').'.csv', ['Content-Type' => 'text/csv']);
     }
 
-    /**
-     * Export receipts as PDF
-     */
-    public function exportPdf(Request $request)
+    public function exportPdf(ReceiptExportRequest $request, ReceiptExportService $service, ArchiveExportService $exports): Response
     {
-        $query = Receipt::with(['merchant', 'lineItems'])
-            ->where('user_id', auth()->id());
-
-        // Apply filters
-        if ($request->has('from_date')) {
-            $query->where('receipt_date', '>=', $request->from_date);
+        $filters = $request->validated();
+        $query = $service->query($request->user()->id, $filters);
+        $total = $query->count();
+        if ($total > config('exports.immediate_limit')) {
+            return $exports->queue($request, 'pdf', $filters, $total);
         }
 
-        if ($request->has('to_date')) {
-            $query->where('receipt_date', '<=', $request->to_date);
-        }
-
-        if ($request->has('merchant_id')) {
-            $query->where('merchant_id', $request->merchant_id);
-        }
-
-        if ($request->has('category')) {
-            $query->where('receipt_category', $request->category);
-        }
-
-        $receipts = $query->orderBy('receipt_date', 'desc')->get();
-
-        $data = [
-            'receipts' => $receipts,
-            'from_date' => $request->from_date,
-            'to_date' => $request->to_date,
-            'generated_at' => now(),
-            'total_amount' => app(MonetarySummaryService::class)->aggregate($receipts, ['total' => 'total_amount'], 'receipt_date', auth()->user()->preference('currency', 'NOK'))['amounts']['total'],
-            'currency' => auth()->user()->preference('currency', 'NOK'),
-            'total_count' => $receipts->count(),
-        ];
-
-        $pdf = Pdf::loadView('exports.receipts-pdf', $data);
-
-        $filename = 'receipts_'.now()->format('Y-m-d_His').'.pdf';
-
-        return $pdf->download($filename);
+        return $service->pdf($query->get(), $request->user(), $filters)->download('receipts_'.now()->format('Y-m-d_His').'.pdf');
     }
 
     /**

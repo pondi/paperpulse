@@ -322,6 +322,7 @@ const navigationItems = [
   // Tools
   { name: 'upload', href: route('documents.upload'), icon: CloudArrowUpIcon, current: route().current('documents.upload') },
   { name: 'analytics', href: route('analytics.index'), icon: ChartBarIcon, current: route().current('analytics.*') },
+  { name: 'exports', href: route('exports.index'), icon: DocumentDuplicateIcon, current: route().current('exports.*') },
   { name: 'scanner_imports', href: route('pulsedav.index'), icon: CloudArrowDownIcon, current: route().current('pulsedav.*') },
 
   // Admin (conditionally added)

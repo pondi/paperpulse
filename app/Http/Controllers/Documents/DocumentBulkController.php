@@ -3,16 +3,18 @@
 namespace App\Http\Controllers\Documents;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DocumentDownloadRequest;
 use App\Models\Document;
 use App\Rules\ExistsForUser;
+use App\Services\ArchiveExportService;
+use App\Services\DocumentArchiveService;
 use App\Services\Files\FileDeletionService;
-use App\Services\StorageService;
 use Exception;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\HttpFoundation\StreamedResponse;
-use ZipArchive;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
 
 class DocumentBulkController extends Controller
 {
@@ -46,113 +48,22 @@ class DocumentBulkController extends Controller
         return back()->with('success', "{$deleted} documents deleted successfully");
     }
 
-    /**
-     * Bulk download documents
-     */
-    public function downloadBulk(Request $request): StreamedResponse|RedirectResponse
+    public function downloadBulk(DocumentDownloadRequest $request, DocumentArchiveService $documents, ArchiveExportService $exports): Response
     {
-        $validated = $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => ['integer', new ExistsForUser('documents')],
-        ]);
-
-        $documents = Document::forUser($request->user())
-            ->whereIn('id', $validated['ids'])
-            ->with(['file'])
-            ->get();
-
-        if ($documents->isEmpty()) {
-            return back()->with('error', 'No accessible documents found');
+        $ids = $request->validated()['ids'];
+        $userId = $request->user()->id;
+        $total = Document::withoutGlobalScope('user')->where('user_id', $userId)->whereIn('id', $ids)->count();
+        if ($total > config('exports.immediate_limit')) {
+            return $exports->queue($request, 'zip', ['ids' => $ids], $total);
         }
 
-        $zipFileName = 'documents_'.now()->format('Y-m-d_H-i-s').'.zip';
-
-        return new StreamedResponse(function () use ($documents) {
-            // Create temporary file for the zip
-            $zipPath = tempnam(sys_get_temp_dir(), 'bulk_download');
-            $zip = new ZipArchive;
-
-            if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-                Log::error('Failed to create zip file for bulk download');
-
-                return;
+        return response()->streamDownload(function () use ($documents, $userId, $ids): void {
+            $directory = storage_path('app/private/export-download-'.Str::uuid());
+            try {
+                readfile($documents->write($userId, $ids, $directory));
+            } finally {
+                File::deleteDirectory($directory);
             }
-
-            $filenameCounter = [];
-
-            $storageService = app(StorageService::class);
-
-            foreach ($documents as $document) {
-                try {
-                    if (! $document->file || ! $document->file->guid) {
-                        Log::warning("Document {$document->id} has no file or guid");
-
-                        continue;
-                    }
-
-                    // Get file content from storage using user/guid
-                    $extension = $document->file->fileExtension ?? 'pdf';
-                    $fileContent = $storageService->getFileByUserAndGuid(
-                        $document->user_id,
-                        $document->file->guid,
-                        'document',
-                        'original',
-                        $extension
-                    );
-
-                    if ($fileContent === null) {
-                        Log::warning("Could not retrieve file content for document {$document->id}");
-
-                        continue;
-                    }
-
-                    $originalName = $document->file->fileName;
-                    $extension = $extension ?: 'txt';
-
-                    $safeFilename = preg_replace('/[^\pL\pN _.-]/u', '_', $originalName);
-                    $baseFilename = str_ends_with(strtolower($safeFilename), '.'.strtolower($extension))
-                        ? $safeFilename
-                        : $safeFilename.'.'.$extension;
-
-                    $finalFilename = $baseFilename;
-                    $counter = 1;
-
-                    while (isset($filenameCounter[$finalFilename])) {
-                        $finalFilename = pathinfo($baseFilename, PATHINFO_FILENAME).'_'.$counter.'.'.pathinfo($baseFilename, PATHINFO_EXTENSION);
-                        $counter++;
-                    }
-
-                    $filenameCounter[$finalFilename] = true;
-
-                    // Add file to zip
-                    $zip->addFromString($finalFilename, $fileContent);
-
-                } catch (Exception $e) {
-                    Log::error("Error adding document {$document->id} to zip: ".$e->getMessage());
-
-                    continue;
-                }
-            }
-
-            $hasFiles = $zip->numFiles > 0;
-            $zip->close();
-            if (! $hasFiles) {
-                echo "PK\x05\x06".str_repeat("\0", 18);
-
-                return;
-            }
-
-            // Stream the zip file
-            if (file_exists($zipPath)) {
-                readfile($zipPath);
-                unlink($zipPath); // Clean up temporary file
-            }
-        }, 200, [
-            'Content-Type' => 'application/zip',
-            'Content-Disposition' => 'attachment; filename="'.$zipFileName.'"',
-            'Cache-Control' => 'no-cache, no-store, must-revalidate',
-            'Pragma' => 'no-cache',
-            'Expires' => '0',
-        ]);
+        }, 'documents_'.now()->format('Y-m-d_H-i-s').'.zip', ['Content-Type' => 'application/zip', 'Cache-Control' => 'private, no-store']);
     }
 }

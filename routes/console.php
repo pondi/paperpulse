@@ -73,3 +73,5 @@ Schedule::command('organization:recover-placements')->everyFiveMinutes()->name('
 Schedule::command('organization:plan')->everyFiveMinutes()->name('plan-organization')->withoutOverlapping();
 
 Schedule::command('organization:backfill --recover')->everyFiveMinutes()->name('recover-organization-backfills')->withoutOverlapping();
+
+Schedule::command('exports:cleanup')->hourly()->name('cleanup-expired-exports')->withoutOverlapping();

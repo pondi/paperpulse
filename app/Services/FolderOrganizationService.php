@@ -46,6 +46,17 @@ class FolderOrganizationService
                 return $this->review($locked);
             }
             $rules = app(OrganizationFeedbackService::class)->rules($locked->user_id);
+            $targetName = $rules['role_labels'][$role] ?? ucfirst($role);
+            $targetType = 'document_role';
+            if ($employer && ($rules['work_structure'] ?? 'role') === 'year') {
+                $dates = $summary['dates'] ?? [];
+                $date = $dates['document_date'] ?? $dates['effective_date'] ?? $dates['invoice_date'] ?? $dates['creation_date'] ?? null;
+                if (! is_string($date) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                    return $this->review($locked);
+                }
+                $targetName = substr($date, 0, 4);
+                $targetType = 'document_year';
+            }
             $rootName = $property ? ($rules['building_root'] ?? 'Building') : ($rules['work_root'] ?? 'Work');
             $root = $this->tree->ensureFolder($locked->user_id, $rootName, type: 'group_root', source: 'system');
             if ($root->is_archived) {
@@ -57,7 +68,7 @@ class FolderOrganizationService
             if ($group->is_archived) {
                 return $this->review($locked);
             }
-            $target = $this->tree->ensureFolder($locked->user_id, $rules['role_labels'][$role] ?? ucfirst($role), $group->id, 'document_role', 'system');
+            $target = $this->tree->ensureFolder($locked->user_id, $targetName, $group->id, $targetType, 'system');
             if ($target->is_archived || $this->tree->hasSharing($target)) {
                 return $this->review($locked);
             }

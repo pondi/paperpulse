@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\Organization\GenerateOrganizationRecommendations;
+use App\Models\OrganizationBackfill;
 use App\Models\OrganizationRun;
 use App\Models\User;
 use App\Models\UserPreference;
@@ -22,6 +23,9 @@ class OrganizationRunService
             $active = OrganizationRun::withoutGlobalScope('user')->where('active_user_id', $userId)->first();
             if ($active) {
                 return $active;
+            }
+            if (OrganizationBackfill::withoutGlobalScope('user')->where('active_user_id', $userId)->exists()) {
+                return null;
             }
             $state = $this->revisions->state($userId);
             if (! $this->revisions->hasChanges($userId) || ($scheduled && $state->debounce_until?->isFuture())) {

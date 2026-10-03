@@ -15,6 +15,7 @@
         <form class="flex flex-col gap-4" @submit.prevent="saveOrganization">
           <label class="flex flex-col gap-2">Building folder name<input v-model="organization.naming_rules.building_root" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
           <label class="flex flex-col gap-2">Work folder name<input v-model="organization.naming_rules.work_root" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
+          <label class="flex flex-col gap-2">Work folder template<select v-model="organization.naming_rules.work_structure" class="rounded dark:bg-zinc-700"><option value="role">Work / employer / document role</option><option value="year">Work / employer / year</option></select></label>
           <div v-for="role in ['contracts', 'invoices', 'receipts', 'payslips', 'letters', 'other']" :key="role">
             <label class="flex flex-col gap-2">{{ role }} folder name<input :value="organization.naming_rules.role_labels[role] ?? role[0].toUpperCase() + role.slice(1)" @input="organization.naming_rules.role_labels[role] = $event.target.value" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
           </div>
@@ -32,6 +33,31 @@
           </div>
         </form>
       </section>
+      <section class="flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800 dark:text-zinc-100">
+        <h2 class="text-lg font-medium">Organize an existing archive</h2>
+        <p>Preview first. Saved summaries require no paid extraction. Manual placements and pinned folders are preserved; pending recommendations must be resolved first.</p>
+        <label class="flex items-center gap-2"><input v-model="backfill.extract_missing" type="checkbox" />Extract missing grouping evidence from stored text using AI</label>
+        <label class="flex flex-col gap-2">Maximum provider calls<input v-model.number="backfill.max_calls" type="number" min="1" max="100" class="rounded dark:bg-zinc-700" /></label>
+        <label class="flex flex-col gap-2">Maximum reserved tokens<input v-model.number="backfill.max_tokens" type="number" min="10000" max="1000000" class="rounded dark:bg-zinc-700" /></label>
+        <p v-if="previewError" role="alert" class="text-red-600 dark:text-red-400">{{ previewError }}</p>
+        <p v-for="(message, field) in backfill.errors" :key="field" role="alert" class="text-red-600 dark:text-red-400">{{ message }}</p>
+        <div v-if="backfillPreview" class="flex flex-col gap-2">
+          <p>{{ backfillPreview.eligible }} eligible documents · {{ backfillPreview.missing_metadata }} need grouping metadata · {{ backfill.extract_missing ? `up to ${backfillPreview.maximum_calls_with_extraction} provider calls, within your budget` : '0 paid provider calls' }}</p>
+          <p v-if="!backfillPreview.can_start">Enable automatic organization and finish pending recommendations to continue.</p>
+          <ul class="flex flex-col gap-2"><li v-for="file in backfillPreview.sample" :key="file.id">{{ file.name }} · {{ file.current_folder ?? 'Unfiled' }} → {{ file.group }}{{ file.role ? ` / ${file.role}` : '' }}</li></ul>
+        </div>
+        <div v-if="organizationBackfill" class="flex flex-col gap-2">
+          <p>{{ organizationBackfill.status }} · {{ organizationBackfill.processed }} processed · {{ organizationBackfill.skipped }} skipped · {{ organizationBackfill.calls }} provider calls · {{ organizationBackfill.tokens }} reserved tokens</p>
+          <p v-if="organizationBackfill.error" role="alert" class="text-amber-700 dark:text-amber-300">{{ organizationBackfill.error }}</p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <SecondaryButton :disabled="previewBusy" @click="previewBackfill">Preview archive and budget</SecondaryButton>
+          <PrimaryButton :disabled="!backfillPreview?.can_start || backfill.processing || ['queued', 'running', 'paused', 'failed'].includes(organizationBackfill?.status)" @click="startBackfill">Organize this archive</PrimaryButton>
+          <SecondaryButton v-if="['paused', 'failed'].includes(organizationBackfill?.status)" :disabled="!backfillPreview?.can_start || backfill.processing" @click="resumeBackfill">Resume with this budget</SecondaryButton>
+          <SecondaryButton v-if="organizationBackfill" @click="router.reload({ only: ['organizationBackfill'] })">Refresh progress</SecondaryButton>
+        </div>
+      </section>
+
       <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
         <section>
           <header>
@@ -533,6 +559,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import axios from 'axios';
 import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import InputError from '@/Components/Forms/InputError.vue';
@@ -546,12 +573,14 @@ const props = defineProps({
   options: Object,
   timezones: Array,
   organizationAliases: Array,
+  organizationBackfill: Object,
 });
 
 const organization = useForm({
   naming_rules: {
     building_root: props.preferences.organization_naming_rules?.building_root ?? 'Building',
     work_root: props.preferences.organization_naming_rules?.work_root ?? 'Work',
+    work_structure: props.preferences.organization_naming_rules?.work_structure ?? 'role',
     role_labels: props.preferences.organization_naming_rules?.role_labels ?? {},
   },
   aliases: props.organizationAliases.map(alias => ({ ...alias, alias: null })),
@@ -568,9 +597,29 @@ const resetOrganization = () => router.patch(route('preferences.organization'), 
   onSuccess: () => {
     organization.aliases = [];
     organization.removed_alias_ids = [];
-    organization.naming_rules = { building_root: 'Building', work_root: 'Work', role_labels: {} };
+    organization.naming_rules = { building_root: 'Building', work_root: 'Work', work_structure: 'role', role_labels: {} };
   },
 });
+
+const backfill = useForm({ extract_missing: false, max_calls: 10, max_tokens: 160000 });
+const backfillPreview = ref(null);
+const previewError = ref('');
+const previewBusy = ref(false);
+const previewBackfill = async () => {
+  previewBusy.value = true;
+  previewError.value = '';
+  try {
+    const response = await axios.get(route('preferences.backfill.preview'));
+    backfillPreview.value = response.data;
+  } catch {
+    backfillPreview.value = null;
+    previewError.value = 'The archive preview could not be loaded. Try again.';
+  } finally {
+    previewBusy.value = false;
+  }
+};
+const startBackfill = () => backfill.post(route('preferences.backfill.start'), { preserveScroll: true });
+const resumeBackfill = () => backfill.post(route('preferences.backfill.resume', props.organizationBackfill.id), { preserveScroll: true });
 
 const page = usePage();
 const __ = (key) => {

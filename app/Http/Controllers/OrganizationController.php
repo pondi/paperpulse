@@ -6,6 +6,7 @@ use App\Http\Requests\OrganizationDecisionRequest;
 use App\Jobs\Organization\GenerateOrganizationRecommendations;
 use App\Models\Collection;
 use App\Models\File;
+use App\Models\OrganizationBackfill;
 use App\Models\OrganizationRun;
 use App\Models\User;
 use App\Models\UserPreference;
@@ -52,11 +53,12 @@ class OrganizationController extends Controller
         });
         $state = $revisions->state($userId);
         $enabled = UserPreference::query()->where('user_id', $userId)->value('auto_organize_documents') !== false;
-        $data = ['run' => $run?->only(['id', 'status', 'attempts', 'calls', 'tokens', 'error']),
+        $backfilling = OrganizationBackfill::query()->where('active_user_id', $userId)->exists();
+        $data = ['backfill_waiting' => $backfilling, 'run' => $run?->only(['id', 'status', 'attempts', 'calls', 'tokens', 'error']),
             'recommendations' => $recommendations,
             'pending_count' => $run?->recommendations()->whereIn('status', ['pending', 'conflict'])->count() ?? 0,
             'changes_waiting' => $state->revision > ($run?->input_revision ?? $state->analyzed_revision),
-            'can_start' => $enabled && ! $run?->active_user_id && $revisions->hasChanges($userId), 'enabled' => $enabled];
+            'can_start' => $enabled && ! $backfilling && ! $run?->active_user_id && $revisions->hasChanges($userId), 'enabled' => $enabled];
 
         return $request->is('api/*') ? response()->json(['data' => $data]) : Inertia::render('Collections/Recommendations', $data);
     }

@@ -17,8 +17,8 @@ class OrganizationPreferencesRequest extends FormRequest
         $label = ['sometimes', 'required', 'string', 'max:180', 'regex:#^[^/\\\\\\x00-\\x1f]+$#u'];
 
         return ['reset' => 'sometimes|boolean', 'removed_alias_ids' => 'sometimes|array|max:100',
-            'removed_alias_ids.*' => ['integer', 'distinct', new ExistsForUser('organization_aliases')], 'naming_rules' => 'present_unless:reset,true|array:building_root,work_root,role_labels',
-            'naming_rules.building_root' => $label, 'naming_rules.work_root' => $label,
+            'removed_alias_ids.*' => ['integer', 'distinct', new ExistsForUser('organization_aliases')], 'naming_rules' => 'present_unless:reset,true|array:building_root,work_root,role_labels,work_structure',
+            'naming_rules.building_root' => $label, 'naming_rules.work_root' => $label, 'naming_rules.work_structure' => 'sometimes|required|in:role,year',
             'naming_rules.role_labels' => 'sometimes|array:contracts,invoices,receipts,payslips,letters,other',
             'naming_rules.role_labels.*' => $label, 'aliases' => 'present_unless:reset,true|array|max:100',
             'aliases.*' => 'array:id,kind,alias,canonical_name', 'aliases.*.id' => ['nullable', 'integer', 'distinct', new ExistsForUser('organization_aliases')],

@@ -9,7 +9,7 @@ import FilePreviewModal from '@/Components/Common/FilePreviewModal.vue';
 
 const props = defineProps({
     run: Object, recommendations: Object, pending_count: Number,
-    changes_waiting: Boolean, can_start: Boolean, enabled: Boolean,
+    changes_waiting: Boolean, can_start: Boolean, enabled: Boolean, backfill_waiting: Boolean,
 });
 const selected = ref([]);
 const reason = ref('');
@@ -46,12 +46,13 @@ const decide = (decision, ids) => post(route('collections.organization.decide'),
                 <p>{{ pending_count }} decisions remaining · {{ run?.status?.replaceAll('_', ' ') ?? 'No recommendations yet' }}</p>
                 <p v-if="!enabled">Automatic organization is turned off in preferences.</p>
                 <p v-else-if="pending_count">Apply or decline every suggestion before starting another review.</p>
+                <p v-if="backfill_waiting">An archive backfill is still active. Resume or finish it in preferences before starting another review.</p>
                 <p v-if="changes_waiting">New changes are waiting for the next review.</p>
                 <p v-if="run?.error" role="alert" class="text-red-600 dark:text-red-400">{{ run.error }}</p>
                 <p v-if="error" role="alert" class="text-red-600 dark:text-red-400">{{ error }}</p>
                 <div class="flex flex-wrap gap-3">
                     <PrimaryButton :disabled="!can_start || busy" @click="post(route('collections.organization.start'))">Generate recommendations</PrimaryButton>
-                    <SecondaryButton v-if="['queued', 'running'].includes(run?.status)" :disabled="busy" @click="router.reload({ only: ['run', 'recommendations', 'pending_count', 'changes_waiting', 'can_start'] })">Refresh status</SecondaryButton>
+                    <SecondaryButton v-if="['queued', 'running'].includes(run?.status)" :disabled="busy" @click="router.reload({ only: ['run', 'recommendations', 'pending_count', 'changes_waiting', 'can_start', 'backfill_waiting'] })">Refresh status</SecondaryButton>
                     <SecondaryButton v-if="run?.status === 'failed' && run.attempts < 3" :disabled="busy" @click="post(route('collections.organization.retry', run.id))">Retry</SecondaryButton>
                     <SecondaryButton v-if="run?.status === 'failed'" :disabled="busy" @click="post(route('collections.organization.dismiss', run.id))">Dismiss failed run</SecondaryButton>
                 </div>

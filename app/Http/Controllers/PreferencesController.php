@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\OrganizationBackfillRequest;
 use App\Http\Requests\OrganizationPreferencesRequest;
 use App\Http\Requests\UpdatePreferencesRequest;
 use App\Models\OrganizationAlias;
+use App\Models\OrganizationBackfill;
 use App\Models\UserPreference;
+use App\Services\OrganizationBackfillService;
 use App\Services\OrganizationFeedbackService;
 use DateTimeZone;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Inertia\Inertia;
 
@@ -25,6 +30,7 @@ class PreferencesController extends Controller
 
         return Inertia::render('Preferences/Index', [
             'preferences' => $preferences,
+            'organizationBackfill' => OrganizationBackfill::query()->where('user_id', $user->id)->latest('id')->first()?->only(['id', 'status', 'processed', 'skipped', 'calls', 'tokens', 'error']),
             'organizationAliases' => OrganizationAlias::query()->where('user_id', $user->id)->orderBy('id')->limit(100)->get(['id', 'kind', 'canonical_name']),
             'categories' => $categories,
             'options' => UserPreference::getOptions(),
@@ -60,6 +66,25 @@ class PreferencesController extends Controller
         }
 
         return redirect()->back()->with('success', 'Preferences updated successfully.');
+    }
+
+    public function backfillPreview(Request $request, OrganizationBackfillService $backfills): JsonResponse
+    {
+        return response()->json($backfills->preview($request->user()->id));
+    }
+
+    public function backfill(OrganizationBackfillRequest $request, OrganizationBackfillService $backfills): RedirectResponse
+    {
+        $backfills->start($request->user()->id, $request->validated());
+
+        return back();
+    }
+
+    public function resumeBackfill(OrganizationBackfillRequest $request, int $backfill, OrganizationBackfillService $backfills): RedirectResponse
+    {
+        $backfills->resume($request->user()->id, $backfill, $request->validated());
+
+        return back();
     }
 
     public function organization(OrganizationPreferencesRequest $request, OrganizationFeedbackService $feedback): RedirectResponse

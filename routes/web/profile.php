@@ -18,6 +18,9 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::prefix('preferences')->name('preferences.')->group(function () {
         Route::get('/', [PreferencesController::class, 'index'])->name('index');
         Route::patch('/', [PreferencesController::class, 'update'])->name('update');
+        Route::get('/organization/backfill', [PreferencesController::class, 'backfillPreview'])->name('backfill.preview');
+        Route::post('/organization/backfill', [PreferencesController::class, 'backfill'])->name('backfill.start');
+        Route::post('/organization/backfill/{backfill}/resume', [PreferencesController::class, 'resumeBackfill'])->name('backfill.resume');
         Route::patch('/organization', [PreferencesController::class, 'organization'])->name('organization');
         Route::post('/reset', [PreferencesController::class, 'reset'])->name('reset');
     });

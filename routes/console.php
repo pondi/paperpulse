@@ -71,3 +71,5 @@ Schedule::command('pulsedav:reconcile-imports')->everyFiveMinutes()->name('recon
 Schedule::command('organization:recover-placements')->everyFiveMinutes()->name('recover-file-organization')->withoutOverlapping();
 
 Schedule::command('organization:plan')->everyFiveMinutes()->name('plan-organization')->withoutOverlapping();
+
+Schedule::command('organization:backfill --recover')->everyFiveMinutes()->name('recover-organization-backfills')->withoutOverlapping();

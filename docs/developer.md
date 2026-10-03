@@ -571,3 +571,8 @@ Follow conventional commits:
 - `refactor:` Code restructuring
 - `test:` Test additions
 - `chore:` Maintenance
+## Populated PostgreSQL upgrades
+
+Back up PostgreSQL and stored source files before `php artisan migrate:safe --force --no-interaction`. Tenant reference backfills process bounded batches; PostgreSQL migration transactions roll back failed backfills so they can be rerun. The forward tenant repair migration also corrects foreign merchant/vendor references in already upgraded archives.
+
+Tag migration uses SQL to merge entity memberships into owned file memberships without loading the pivot into PHP. Orphan references and foreign-owner tags are excluded. Merging tags and tenant copies is irreversible: restore the pre-upgrade backup if a rollback is required. Previously discarded memberships cannot be reconstructed from the migrated table.

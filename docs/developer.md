@@ -227,7 +227,7 @@ php artisan db:seed --class=NameSeeder
 - Use eager loading to prevent N+1 queries
 - Add database indexes for frequent queries
 - Use query scopes for reusable filters
-- Cache expensive queries with Redis
+- Cache expensive queries with the database cache
 
 ### Job Optimization
 
@@ -293,69 +293,11 @@ Log::info('Processing file', ['file_id' => $file->id]);
 
 ### Building Documentation
 
-Paperpulse documentation uses MkDocs with the Material theme. We use Docker to avoid installing dependencies locally.
+The documentation uses MkDocs Material. Build it with the local tooling described below.
 
-#### Using Docker (Recommended)
+#### Local Installation
 
-All documentation tasks can be run using the official MkDocs Material Docker image.
-
-##### Build Documentation
-
-Build the static documentation site:
-
-```bash
-docker run --rm -v "${PWD}:/docs" squidfunk/mkdocs-material build
-```
-
-This generates files in `public/docs/` which are served at `/docs` by Laravel.
-
-##### Live Preview with Hot Reload
-
-Start the development server with automatic rebuild on changes:
-
-```bash
-docker run --rm -it -p 8000:8000 -v "${PWD}:/docs" squidfunk/mkdocs-material
-```
-
-Access at `http://localhost:8000`. The server watches for changes and rebuilds automatically.
-
-##### Create New Documentation Project
-
-If starting fresh:
-
-```bash
-docker run --rm -it -v "${PWD}:/docs" squidfunk/mkdocs-material new .
-```
-
-##### Additional Docker Commands
-
-Get help on available commands:
-
-```bash
-docker run --rm -it -v "${PWD}:/docs" squidfunk/mkdocs-material --help
-```
-
-Build with verbose output:
-
-```bash
-docker run --rm -v "${PWD}:/docs" squidfunk/mkdocs-material build --verbose
-```
-
-Build with strict mode (fails on warnings):
-
-```bash
-docker run --rm -v "${PWD}:/docs" squidfunk/mkdocs-material build --strict
-```
-
-Serve on a different port:
-
-```bash
-docker run --rm -it -p 8001:8000 -v "${PWD}:/docs" squidfunk/mkdocs-material serve --dev-addr=0.0.0.0:8000
-```
-
-#### Alternative: Local Installation
-
-If you prefer local installation:
+Install the documentation tooling locally:
 
 ```bash
 # Using Homebrew on macOS
@@ -469,7 +411,7 @@ Group related content:
 - Set `APP_ENV=production`
 - Set `APP_DEBUG=false`
 - Configure proper database
-- Set up Redis cluster
+- Configure PostgreSQL database cache and queues
 - Configure S3 storage
 - Set up queue workers
 - Configure SSL certificates
@@ -486,33 +428,16 @@ APP_DEBUG=false
 APP_URL=https://paperpulse.test
 
 DB_CONNECTION=pgsql
-QUEUE_CONNECTION=redis
-CACHE_DRIVER=redis
-SESSION_DRIVER=redis
+QUEUE_CONNECTION=database
+CACHE_STORE=database
+SESSION_DRIVER=database
 
 FILESYSTEM_DISK=s3
 ```
 
 ### Queue Worker Configuration
 
-Run Horizon as the Forge daemon using the site's PHP 8.4 CLI. Horizon owns the queue list and worker timeouts in `config/horizon.php`; avoid a second daemon consuming those same queues.
-
-```ini
-[program:paperpulse-horizon]
-command=php8.4 /path/to/artisan horizon
-autostart=true
-autorestart=true
-user=forge
-stopasgroup=true
-killasgroup=true
-stopwaitsecs=3800
-redirect_stderr=true
-stdout_logfile=/path/to/horizon.log
-```
-
-Set the Forge daemon's graceful stop wait to at least 3800 seconds. Processing jobs may run for 3600 seconds, Horizon's worker timeout is 3660 seconds, and queue `retry_after` must be at least 3720 seconds. `REDIS_QUEUE_RETRY_AFTER` values below this floor are clamped by the queue configuration. Conversion operations are capped at 240 seconds, below the enclosing job timeout. Preserve operation timeout < job timeout < Horizon timeout < retry window whenever changing these limits.
-
-After deployment, run `php8.4 artisan horizon:terminate` so the daemon restarts Horizon after active jobs finish. Horizon fast termination stays disabled to preserve this graceful shutdown window.
+Use the standard database workers, installer and deployment script in [Getting Started](getting-started.md#native-forge-production). The supported queues are `default,receipts,documents,conversions,files,exports`. Operation timeout must remain below job timeout, worker timeout, and queue retry window. Use `queue:restart` for graceful worker restarts.
 
 ## Troubleshooting Development
 

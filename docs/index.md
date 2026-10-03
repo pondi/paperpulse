@@ -21,8 +21,8 @@ Paperpulse is a comprehensive document management system built with Laravel that
 **Application Stack**
 - Laravel 11 framework for the backend
 - Vue.js 3 with Inertia.js for reactive frontend
-- PostgreSQL/MySQL for data persistence
-- Redis for caching and queue management
+- PostgreSQL for data persistence
+- PostgreSQL database cache and standard Laravel queue workers
 - Meilisearch for full-text search capabilities
 
 **Processing Pipeline**
@@ -57,8 +57,7 @@ Paperpulse is a comprehensive document management system built with Laravel that
 - PHP 8.2 or higher with required extensions
 - Composer for dependency management
 - Node.js 18+ for frontend builds
-- PostgreSQL 14+ or MySQL 8.0+
-- Redis 6.0+ for queues and caching
+- PostgreSQL 17
 - Meilisearch 1.0+ for search functionality
 
 ## Quick Start

@@ -9,10 +9,9 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Manages file lifecycle for worker jobs in distributed environments.
+ * Manages private working files for Laravel queue jobs.
  *
- * In production, web servers and worker servers may be separate containers.
- * This service ensures workers can access files by downloading from S3 (the
+ * This service ensures Forge workers can access files by downloading from S3 (the
  * single source of truth) and properly cleaning up local files after processing.
  *
  * Key principles:

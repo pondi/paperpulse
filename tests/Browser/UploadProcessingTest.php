@@ -9,9 +9,9 @@ use Laravel\Dusk\Browser;
 | Upload & Processing Tests (Real E2E)
 |--------------------------------------------------------------------------
 |
-| These tests upload real files and wait for Horizon/queue workers to
+| These tests upload real files and wait for database queue workers to
 | process them end-to-end. They require external services (S3, Gemini)
-| and a running Horizon instance.
+| and running Laravel queue workers.
 |
 | Skip these with: php artisan dusk --exclude-group=processing
 |

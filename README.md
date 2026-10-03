@@ -25,7 +25,6 @@ Built with Laravel 11 and Vue.js 3, PaperPulse uses AI-powered OCR to extract st
 - Composer
 - Node.js >= 18.x
 - PostgreSQL >= 14
-- Redis >= 6.x
 - Meilisearch >= 1.0
 - ImageMagick (for PDF processing)
 
@@ -61,8 +60,8 @@ php artisan scout:import "App\Models\LineItem"
 4. Build assets and start:
 ```bash
 npm run build
-php artisan serve
-php artisan horizon
+npm run dev
+php artisan queue:work database --queue=default,receipts,documents,conversions,files,exports --timeout=3660
 ```
 
 ## Required Environment Variables
@@ -88,13 +87,11 @@ DB_USERNAME=root
 DB_PASSWORD=
 ```
 
-### Redis
+### Cache and queues
 ```
-REDIS_HOST=127.0.0.1
-REDIS_PASSWORD=
-REDIS_PORT=6379
-CACHE_STORE=redis
-QUEUE_CONNECTION=redis
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+SESSION_DRIVER=database
 ```
 
 ### Search
@@ -136,7 +133,7 @@ MAIL_FROM_ADDRESS="hello@example.com"
 
 ## Usage
 
-Start the application with `php artisan serve` and `php artisan horizon`. Access the web interface to upload and manage receipts. The system automatically processes documents using OCR and AI extraction.
+Laravel Herd serves the local site. Start assets and workers with `npm run dev` and `php artisan queue:work database --queue=default,receipts,documents,conversions,files,exports --timeout=3660`. Access the web interface to upload and manage receipts. The system automatically processes documents using OCR and AI extraction.
 
 ## License
 

@@ -133,7 +133,7 @@ return [
             // Persisting raw Textract blocks can be extremely memory-heavy for some PDFs.
             // Keep disabled by default in production; enable temporarily for debugging/auditing.
             'store_blocks' => env('OCR_STORE_BLOCKS', false),
-            // Upper bound for returning raw blocks in-memory (safety valve for Horizon workers).
+            // Upper bound for returning raw blocks in-memory (limit for queue workers).
             'max_blocks_in_memory' => (int) env('OCR_MAX_BLOCKS_IN_MEMORY', 5000),
             'pretty_print_structured' => env('OCR_PRETTY_PRINT_STRUCTURED', false),
             'pretty_print_blocks' => env('OCR_PRETTY_PRINT_BLOCKS', false),

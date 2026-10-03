@@ -3,10 +3,11 @@
 use App\Services\Documents\ConversionCapabilities;
 use App\Services\Documents\LocalOfficeConverter;
 use Dompdf\Dompdf;
+use Illuminate\Process\Exceptions\ProcessTimedOutException;
+use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
-use PHPUnit\Framework\Assert;
 use Smalot\PdfParser\Parser;
 
 beforeEach(function (): void {
@@ -27,7 +28,7 @@ it('isolates profiles, network, inherited secrets and macro settings for each lo
     Process::fake(function ($process) use (&$profiles, $pdf) {
         $profiles[] = $process->path;
         expect($process->command)->toContain('--unshare-all', '--clearenv', '--cap-drop', 'ALL', '--die-with-parent',
-            '--convert-to', 'pdf', '-env:UserInstallation=file:///work/profile', '/work/source.docx');
+            '--proc', '/proc', '--convert-to', 'pdf', '-env:UserInstallation=file:///work/profile', '/work/source.docx');
         expect($process->command)->not->toContain(base_path(), '/');
         expect($process->timeout)->toBe(120);
         expect(File::get($process->path.'/profile/user/registrymodifications.xcu'))
@@ -76,29 +77,14 @@ it('fails closed without a sandbox or successful PDF output and removes private 
 });
 
 it('converts real DOCX XLSX and PPTX fixtures in an isolated Ubuntu runtime', function (string $extension): void {
-    $container = getenv('PAPERPULSE_OFFICE_CONTAINER');
-    if (! $container) {
-        $this->markTestSkipped('Requires the documented disposable Ubuntu conversion runtime.');
+    if (! getenv('PAPERPULSE_OFFICE_RUNTIME')) {
+        $this->markTestSkipped('Requires Ubuntu with LibreOffice, Bubblewrap and unprivileged namespaces.');
     }
+    config()->set('processing.conversion.local.binary', '/usr/bin/libreoffice');
+    config()->set('processing.conversion.local.sandbox', '/usr/bin/bwrap');
+    Process::swap(new Factory);
     $directory = storage_path('app/private/conversion-runtime-'.Str::uuid());
     File::ensureDirectoryExists($directory, 0700);
-    Process::fake(function ($pending) use ($container) {
-        $command = array_map(fn ($argument) => str_replace(base_path(), '/workspace', $argument), $pending->command);
-        $mountIndex = array_search('--dir', $command, true);
-        $command = ['/usr/bin/bwrap', '--unshare-all', '--die-with-parent', '--new-session', '--cap-drop', 'ALL',
-            '--ro-bind', '/usr', '/usr', '--ro-bind', '/lib', '/lib', '--ro-bind-try', '/lib64', '/lib64',
-            '--ro-bind', '/bin', '/bin', '--ro-bind', '/etc/fonts', '/etc/fonts', '--ro-bind', '/etc/ld.so.cache', '/etc/ld.so.cache',
-            ...array_slice($command, $mountIndex)];
-        $index = array_search('/usr/bin/true', $command, true);
-        $command[$index] = '/usr/lib/libreoffice/program/soffice.bin';
-        $libraryIndex = array_search('LD_LIBRARY_PATH', $command, true);
-        $command[$libraryIndex + 1] = '/usr/lib/libreoffice/program';
-        $process = new Symfony\Component\Process\Process(['docker', 'exec', '--user', posix_getuid().':'.posix_getgid(), $container, ...$command]);
-        $process->setTimeout(125)->run();
-        Assert::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
-
-        return Process::result(output: $process->getOutput(), errorOutput: $process->getErrorOutput(), exitCode: $process->getExitCode());
-    });
     try {
         $source = base_path('tests/fixtures/office/fixture.'.$extension);
         $output = $directory.'/archive.pdf';
@@ -109,3 +95,65 @@ it('converts real DOCX XLSX and PPTX fixtures in an isolated Ubuntu runtime', fu
         File::deleteDirectory($directory);
     }
 })->with(['docx', 'xlsx', 'pptx']);
+
+it('cleans the isolated work directory when the conversion process times out', function (): void {
+    $directory = storage_path('app/private/conversion-test-'.Str::uuid());
+    File::ensureDirectoryExists($directory, 0700);
+    $source = $directory.'/source.docx';
+    file_put_contents($source, 'input');
+    $process = new Symfony\Component\Process\Process(['sleep', '10']);
+    $exception = new ProcessTimedOutException(
+        new Symfony\Component\Process\Exception\ProcessTimedOutException($process, 1),
+        Process::result(exitCode: 124),
+    );
+    Process::fake(fn () => throw $exception);
+    try {
+        expect(fn () => app(LocalOfficeConverter::class)->convert($source, $directory.'/out.pdf', ConversionCapabilities::OFFICE_MIME_TYPES['docx']))
+            ->toThrow(ProcessTimedOutException::class);
+        expect(glob($directory.'/local-*'))->toBe([]);
+        expect(is_file($directory.'/out.pdf'))->toBeFalse();
+    } finally {
+        File::deleteDirectory($directory);
+    }
+});
+
+it('converts concurrent jobs and rejects corrupt input in the Ubuntu runtime', function (): void {
+    if (! getenv('PAPERPULSE_OFFICE_RUNTIME')) {
+        $this->markTestSkipped('Requires the Ubuntu conversion runtime.');
+    }
+    $directory = storage_path('app/private/conversion-runtime-'.Str::uuid());
+    File::ensureDirectoryExists($directory, 0700);
+    $processes = [];
+    $script = 'require "vendor/autoload.php"; $app = require "bootstrap/app.php"; '
+        .'$app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); '
+        .'$app->make(App\\Services\\Documents\\LocalOfficeConverter::class)->convert($argv[1], $argv[2], $argv[3]);';
+    try {
+        foreach (['docx', 'xlsx', 'pptx'] as $extension) {
+            $process = new Symfony\Component\Process\Process([PHP_BINARY, '-r', $script,
+                base_path('tests/fixtures/office/fixture.'.$extension), $directory.'/'.$extension.'.pdf',
+                ConversionCapabilities::OFFICE_MIME_TYPES[$extension]], base_path());
+            $process->setTimeout(125)->start();
+            $processes[] = $process;
+        }
+        foreach ($processes as $process) {
+            $process->wait();
+            expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
+        }
+        expect(glob($directory.'/local-*'))->toBe([]);
+        expect(count(glob($directory.'/*.pdf')))->toBe(3);
+        config()->set('processing.conversion.local.binary', '/usr/bin/libreoffice');
+        config()->set('processing.conversion.local.sandbox', '/usr/bin/bwrap');
+        Process::swap(new Factory);
+        $source = $directory.'/corrupt.docx';
+        file_put_contents($source, "PK\x03\x04corrupt document");
+        expect(fn () => app(LocalOfficeConverter::class)->convert($source, $directory.'/corrupt.pdf', ConversionCapabilities::OFFICE_MIME_TYPES['docx']))
+            ->toThrow(RuntimeException::class);
+        expect(glob($directory.'/local-*'))->toBe([]);
+        expect(is_file($directory.'/corrupt.pdf'))->toBeFalse();
+    } finally {
+        foreach ($processes as $process) {
+            $process->stop();
+        }
+        File::deleteDirectory($directory);
+    }
+});

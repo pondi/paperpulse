@@ -42,11 +42,10 @@ class LocalOfficeConverter implements DocumentConverter
                     array_push($command, '--ro-bind', $path, $path);
                 }
             }
-            array_push($command, '--dir', '/proc', '--dev', '/dev', '--tmpfs', '/tmp', '--dir', '/run',
+            array_push($command, '--proc', '/proc', '--dev', '/dev', '--tmpfs', '/tmp', '--dir', '/run',
                 '--bind', $directory, '/work', '--chdir', '/work', '--clearenv',
                 '--setenv', 'HOME', '/work/home', '--setenv', 'TMPDIR', '/tmp', '--setenv', 'LANG', 'C.UTF-8',
-                '--setenv', 'PATH', '/usr/bin:/bin', '--setenv', 'SAL_USE_VCLPLUGIN', 'gen',
-                '--setenv', 'LD_LIBRARY_PATH', dirname($binary),
+                '--setenv', 'PATH', '/usr/bin:/bin', '--setenv', 'SAL_USE_VCLPLUGIN', 'svp',
                 $binary, '-env:UserInstallation=file:///work/profile', '--headless', '--nologo', '--nodefault',
                 '--nofirststartwizard', '--norestore', '--convert-to', 'pdf', '--outdir', '/work/output', '/work/source.'.$extension);
             $environment = array_fill_keys(array_keys(getenv()), false);

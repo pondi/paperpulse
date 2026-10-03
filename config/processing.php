@@ -59,7 +59,7 @@ return [
         'max_input_bytes' => 20971520,
         'max_output_bytes' => 104857600,
         'local' => [
-            'binary' => env('LIBREOFFICE_BINARY', '/usr/lib/libreoffice/program/soffice.bin'),
+            'binary' => env('LIBREOFFICE_BINARY', '/usr/bin/libreoffice'),
             'sandbox' => env('CONVERSION_SANDBOX_BINARY', '/usr/bin/bwrap'),
         ],
 

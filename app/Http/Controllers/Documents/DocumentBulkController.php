@@ -134,7 +134,13 @@ class DocumentBulkController extends Controller
                 }
             }
 
+            $hasFiles = $zip->numFiles > 0;
             $zip->close();
+            if (! $hasFiles) {
+                echo "PK\x05\x06".str_repeat("\0", 18);
+
+                return;
+            }
 
             // Stream the zip file
             if (file_exists($zipPath)) {

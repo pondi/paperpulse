@@ -18,7 +18,7 @@ class ForgePreflight extends Command
     protected $description = 'Validate the native Forge runtime before deployment';
 
     /** @var list<string> */
-    public const EXTENSIONS = ['ctype', 'curl', 'dom', 'fileinfo', 'gd', 'imagick', 'intl', 'mbstring', 'openssl', 'pdo_pgsql', 'tokenizer', 'xml'];
+    public const EXTENSIONS = ['ctype', 'curl', 'dom', 'fileinfo', 'gd', 'imagick', 'intl', 'mbstring', 'openssl', 'pdo_pgsql', 'tokenizer', 'xml', 'zip'];
 
     public function handle(DatabaseManager $database): int
     {

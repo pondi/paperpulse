@@ -131,3 +131,10 @@ it('rejects invalid document selections before reading storage', function (strin
         ->assertUnprocessable()
         ->assertJsonValidationErrors($selection === 'empty' ? 'ids' : 'ids.'.($selection === 'mixed' ? '1' : '0'));
 })->with(['foreign', 'mixed', 'nonexistent', 'empty']);
+
+it('returns a valid empty ZIP when every selected asset is missing', function (): void {
+    Storage::fake('paperpulse');
+    $document = Document::factory()->create();
+    $response = $this->actingAs($document->user)->get(route('documents.download-bulk', ['ids' => [$document->id]]))->assertOk();
+    expect($response->streamedContent())->toBe("PK\x05\x06".str_repeat("\0", 18));
+});

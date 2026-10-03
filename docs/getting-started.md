@@ -19,3 +19,5 @@ Configure a Forge scheduled task to run `php8.4 /home/forge/paperpulse/artisan s
 Reverb is optional. Start with `BROADCAST_CONNECTION=log`; browser notification polling remains available. Enable Reverb only after configuring its daemon, TLS proxy and browser environment. Keep `REVERB_SCALING_ENABLED=false`: scaling requires Redis and is rejected by the Forge preflight.
 
 Manual smoke verification uses `tests/Feature/ForgeProcessingSmokeTest.php` with `PAPERPULSE_OFFICE_RUNTIME=1` and an isolated PostgreSQL database. It exercises real Office conversion, previews, database workers, cache locks, downloads and queued notifications; Gemini and object storage are faked. Live API credentials and production bucket access must be checked on the deployed site.
+
+ZIP exports require `ext-zip` in both PHP 8.4 CLI and FPM. The native installer enables `php8.4-zip`; restart the site's FPM service after installing extensions. `forge:preflight` checks both runtimes. Empty selections are rejected; selected missing assets are omitted, and an all-missing download returns a valid empty ZIP.

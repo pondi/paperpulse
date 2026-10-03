@@ -213,6 +213,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if ($this->app->isProduction() && $this->app->make('db')->connection()->getDriverName() !== 'pgsql') {
+            throw new \RuntimeException('PaperPulse production requires PostgreSQL. Set DB_CONNECTION=pgsql.');
+        }
+
         $this->configureRateLimiting();
         $this->registerPolicies();
 

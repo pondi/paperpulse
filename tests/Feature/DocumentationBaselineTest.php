@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 it('documents only registered Artisan commands and supported options', function (): void {
     $commands = Artisan::all();
     foreach ([base_path('README.md'), ...File::glob(base_path('docs/*.md'))] as $path) {
-        preg_match_all('/^\s*(?:php|php8\.4)\s+artisan\s+([^\r\n`]+)/m', File::get($path), $examples);
+        preg_match_all('/^\s*(?:php|php8\.5)\s+artisan\s+([^\r\n`]+)/m', File::get($path), $examples);
         foreach ($examples[1] as $example) {
             $tokens = str_getcsv(trim($example), ' ', '"', '');
             $name = array_shift($tokens);
@@ -28,6 +28,21 @@ it('keeps documented relative Markdown links valid', function (): void {
         preg_match_all('/\]\(([^)\s]+\.md)(?:#[^)]*)?\)/', File::get($path), $links);
         foreach ($links[1] as $link) {
             expect(is_file(dirname($path).'/'.$link))->toBeTrue($path.': '.$link);
+        }
+    }
+});
+
+it('documents container formatting paths and safe migration troubleshooting', function (): void {
+    $guide = File::get(base_path('docs/developer.md'));
+    expect($guide)->toContain('docker compose exec app sh')
+        ->toContain('In a native Git checkout, use `vendor/bin/pint --dirty`')
+        ->not->toContain('php artisan migrate:fresh');
+
+    preg_match_all('/^vendor\/bin\/pint ([^\r\n]+)/m', $guide, $commands);
+    expect($commands[1])->not->toBeEmpty();
+    foreach ($commands[1] as $paths) {
+        foreach (explode(' ', $paths) as $path) {
+            expect(is_file(base_path($path)))->toBeTrue($path);
         }
     }
 });

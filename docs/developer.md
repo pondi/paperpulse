@@ -1,10 +1,10 @@
 # Developer Guide
 
-This guide covers the installed package baseline, development practices and native deployment. Composer and npm lockfiles define exact versions; runtime setup uses PHP 8.4 and PostgreSQL 17.
+This guide covers the installed package baseline, development practices and native deployment. Composer and npm lockfiles define exact versions; runtime setup uses PHP 8.5 and PostgreSQL 17.
 
 | Component | Supported baseline |
 | --- | --- |
-| PHP | 8.4; ZIP and other extensions checked by `forge:preflight` |
+| PHP | 8.5; ZIP and other extensions checked by `forge:preflight` |
 | Laravel | 13 |
 | Inertia server/client | 3 |
 | Vue | 3.5 |
@@ -15,7 +15,7 @@ This guide covers the installed package baseline, development practices and nati
 | Larastan | 3 |
 | PostgreSQL | 17 |
 
-Use `composer install` and `npm ci` to reproduce the lockfiles. Laravel Herd serves local HTTP requests; `npm run dev` supplies asset hot reload. Office conversion requires the native Ubuntu runtime described in [Getting Started](getting-started.md).
+Use `docker compose up --build -d` for shared development and testing. The application image installs locked Composer/npm dependencies, builds assets, and bundles local services and processing tools; PostgreSQL 17 and Garage S3 storage run in the two separate service containers. See [Getting Started](getting-started.md) for tests, live editing and native Forge production.
 
 ## Code Organization
 
@@ -93,13 +93,15 @@ $result = $aiService->analyzeReceipt($text);
 
 `AIService` is bound to the OpenAI implementation. File pipeline selection uses `FILE_PROCESSING_PROVIDER`; text analysis uses `TEXT_ANALYSIS_PROVIDER`. Use the existing provider and extractor factories for their respective tasks.
 
+Run PHP, Composer and Node commands in the application container: `docker compose exec app sh`. The examples below assume that shell unless they start with `docker compose`.
+
 ## Development Workflow
 
 ### Setting Up Development Environment
 
 1. Fork and clone the repository
 2. Create feature branch from `main`
-3. Install dependencies and configure `.env`
+3. Start the shared runtime with `docker compose up --build -d`
 4. Run tests to verify setup
 5. Make changes with tests
 6. Submit pull request
@@ -108,10 +110,10 @@ $result = $aiService->analyzeReceipt($text);
 
 ```bash
 # Run the directly affected test file
-php artisan test tests/Feature/ProcessingCapabilitiesTest.php
+test.sh backend tests/Feature/ProcessingCapabilitiesTest.php
 
 # Run one affected flow
-php artisan test --filter="preserves the last pipeline"
+test.sh backend --filter="preserves the last pipeline"
 ```
 
 ### Code Style
@@ -119,8 +121,10 @@ php artisan test --filter="preserves the last pipeline"
 Follow PSR-12 coding standards. Use the provided formatter:
 
 ```bash
-vendor/bin/pint --dirty
+vendor/bin/pint app/Providers/AppServiceProvider.php
 ```
+
+Pass your changed PHP files to Pint. In a native Git checkout, use `vendor/bin/pint --dirty`; Git metadata is excluded from the Docker image.
 
 Static analysis with PHPStan:
 
@@ -465,14 +469,16 @@ composer install
 
 **NPM build failures**
 ```bash
-rm -rf node_modules package-lock.json
-npm install
+npm ci
+npm run build
 ```
 
-**Migration rollback issues**
+**Test database migration issues**
 ```bash
-php artisan migrate:fresh --seed
+test.sh backend tests/Feature/PostgreSqlRuntimeTest.php
 ```
+
+The test runner selects the isolated test database. Apply development migrations with `php artisan migrate:safe --no-interaction`; do not reset development data to diagnose tests.
 
 **Cache problems**
 ```bash

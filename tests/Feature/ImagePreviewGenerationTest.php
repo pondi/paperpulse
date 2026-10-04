@@ -137,6 +137,7 @@ class ImagePreviewGenerationTest extends TestCase
             'file_type' => 'receipt',
             'status' => 'completed',
             'uploaded_at' => now(),
+            's3_original_path' => 'receipts/1/test/original.pdf',
             's3_image_path' => 'receipts/1/test/preview.jpg',
             'has_image_preview' => true,
         ]);
@@ -155,5 +156,9 @@ class ImagePreviewGenerationTest extends TestCase
         $this->assertArrayHasKey('file', $transformed);
         $this->assertTrue($transformed['file']['has_preview']);
         $this->assertTrue($transformed['file']['is_pdf']);
+
+        $file->update(['s3_original_path' => null]);
+        $transformed = ReceiptInertiaResource::forShow($receipt->fresh('file'))->toArray(request());
+        $this->assertFalse($transformed['file']['is_pdf']);
     }
 }

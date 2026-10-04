@@ -39,6 +39,28 @@ it('rejects invalid invoice status sign and partial payment edits', function (ar
     [['invoice_type' => 'credit_note'], 'total_amount'],
 ]);
 
+it('generates invoices with valid signs and payment balances', function (string $type, string $status): void {
+    $invoice = Invoice::factory()->create([
+        'file_id' => $this->file->id, 'user_id' => $this->owner->id,
+        'invoice_type' => $type, 'payment_status' => $status,
+    ]);
+    $total = (float) $invoice->total_amount;
+    $paid = (float) $invoice->amount_paid;
+    expect($type === 'credit_note' ? $total < 0 : $total > 0)->toBeTrue()
+        ->and((float) $invoice->amount_due)->toBe(round($total - $paid, 2));
+    if ($status === 'paid') {
+        expect($paid)->toBe($total)->and((float) $invoice->amount_due)->toBe(0.0);
+    } elseif ($status === 'partial') {
+        expect($total * $paid)->toBeGreaterThan(0)->and(abs($paid))->toBeLessThan(abs($total));
+    } else {
+        expect($paid)->toBe(0.0);
+    }
+    $this->patchJson(route('invoices.update', $invoice), [
+        'invoice_type' => $type, 'total_amount' => $total,
+        'amount_paid' => $paid, 'payment_status' => $status,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+})->with(['invoice', 'credit_note', 'debit_note', 'proforma'])->with(['paid', 'unpaid', 'partial', 'overdue']);
+
 it('validates contract statuses and preserves manual contract edits during replacement', function () {
     $contract = Contract::factory()->create(['file_id' => $this->file->id, 'user_id' => $this->owner->id, 'status' => 'active']);
     $this->patchJson(route('contracts.update', $contract), ['status' => 'invented'])->assertUnprocessable()->assertJsonValidationErrors('status');

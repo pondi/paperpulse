@@ -24,9 +24,6 @@ class InvoiceFactory extends Factory
         $invoiceDate = Carbon::instance($this->faker->dateTimeBetween('-3 months', 'now'));
         $dueDate = (clone $invoiceDate)->addDays($this->faker->numberBetween(14, 45));
         $subtotal = $this->faker->randomFloat(2, 100, 2000);
-        $taxAmount = round($subtotal * 0.25, 2);
-        $total = $subtotal + $taxAmount;
-        $amountPaid = $this->faker->randomFloat(2, 0, $total);
 
         return [
             'file_id' => $fileFactory,
@@ -50,16 +47,20 @@ class InvoiceFactory extends Factory
             'invoice_date' => $invoiceDate,
             'due_date' => $dueDate,
             'delivery_date' => $this->faker->optional()->dateTimeBetween($invoiceDate, $dueDate),
-            'subtotal' => $subtotal,
-            'tax_amount' => $taxAmount,
+            'subtotal' => fn (array $attributes): float => $attributes['invoice_type'] === 'credit_note' ? -$subtotal : $subtotal,
+            'tax_amount' => fn (array $attributes): float => round($attributes['subtotal'] * 0.25, 2),
             'discount_amount' => $this->faker->optional()->randomFloat(2, 0, 50),
             'shipping_amount' => $this->faker->optional()->randomFloat(2, 0, 50),
-            'total_amount' => $total,
-            'amount_paid' => $amountPaid,
-            'amount_due' => max($total - $amountPaid, 0),
+            'total_amount' => fn (array $attributes): float => $attributes['subtotal'] + $attributes['tax_amount'],
+            'payment_status' => $this->faker->randomElement(['paid', 'unpaid', 'partial', 'overdue']),
+            'amount_paid' => fn (array $attributes): float => match ($attributes['payment_status']) {
+                'paid' => $attributes['total_amount'],
+                'partial' => round($attributes['total_amount'] / 2, 2),
+                default => 0.0,
+            },
+            'amount_due' => fn (array $attributes): float => round($attributes['total_amount'] - $attributes['amount_paid'], 2),
             'currency' => 'NOK',
             'payment_method' => $this->faker->optional()->randomElement(['card', 'bank_transfer', 'cash']),
-            'payment_status' => $this->faker->optional()->randomElement(['paid', 'unpaid', 'partial', 'overdue']),
             'payment_terms' => $this->faker->optional()->sentence(),
             'purchase_order_number' => $this->faker->optional()->bothify('PO-#####'),
             'reference_number' => $this->faker->optional()->bothify('REF-#####'),

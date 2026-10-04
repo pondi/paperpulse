@@ -14,6 +14,8 @@ use App\Services\Files\FileJobChainDispatcher;
 use App\Services\TextExtractionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 uses(RefreshDatabase::class);
 
@@ -59,6 +61,8 @@ it('processes a file successfully through the full pipeline', function () {
         ->once()
         ->with('file-content', $this->user->id)
         ->andReturn(['isDuplicate' => false, 'hash' => 'abc123', 'existingFile' => null]);
+    $this->fileDuplication->shouldReceive('findDuplicateByHash')->once()
+        ->with('abc123', $this->user->id)->andReturnNull();
 
     $this->fileStorage->shouldReceive('generateFileGuid')
         ->once()
@@ -70,7 +74,7 @@ it('processes a file successfully through the full pipeline', function () {
 
     $this->fileStorage->shouldReceive('storeWorkingContent')
         ->once()
-        ->with('file-content', 'test-guid', 'jpg')
+        ->with('file-content', Mockery::on(fn (string $jobId): bool => Str::isUuid($jobId)), 'jpg')
         ->andReturn('/tmp/test-guid.jpg');
 
     $this->fileMetadata->shouldReceive('createFileRecordFromData')
@@ -174,6 +178,8 @@ it('uses provided jobId and jobName from metadata', function () {
 
     $this->fileDuplication->shouldReceive('checkDuplication')
         ->andReturn(['isDuplicate' => false, 'hash' => 'hash', 'existingFile' => null]);
+    $this->fileDuplication->shouldReceive('findDuplicateByHash')->once()
+        ->with('hash', $this->user->id)->andReturnNull();
 
     $this->fileStorage->shouldReceive('storeWorkingContent')->andReturn('/tmp/guid.pdf');
     $this->fileMetadata->shouldReceive('createFileRecordFromData')->andReturn($file);
@@ -183,13 +189,14 @@ it('uses provided jobId and jobName from metadata', function () {
     $this->fileMetadata->shouldReceive('prepareFileMetadata')->andReturn([]);
     $this->jobChainDispatcher->shouldReceive('dispatch')->once();
 
+    $jobId = (string) Str::uuid();
     $result = $this->service->processFile($fileData, 'document', $this->user->id, [
-        'jobId' => 'custom-job-id',
+        'jobId' => $jobId,
         'jobName' => 'CustomJobName',
     ]);
 
     expect($result['success'])->toBeTrue();
-    expect($result['jobId'])->toBe('custom-job-id');
+    expect($result['jobId'])->toBe($jobId);
     expect($result['jobName'])->toBe('CustomJobName');
 });
 
@@ -219,6 +226,8 @@ it('processes an uploaded file via processUpload', function () {
     $this->fileValidation->shouldReceive('validateFileData')->andReturn(['valid' => true]);
     $this->fileDuplication->shouldReceive('checkDuplication')
         ->andReturn(['isDuplicate' => false, 'hash' => 'h', 'existingFile' => null]);
+    $this->fileDuplication->shouldReceive('findDuplicateByHash')->once()
+        ->with('h', $this->user->id)->andReturnNull();
     $this->fileStorage->shouldReceive('storeWorkingContent')->andReturn('/tmp/guid.jpg');
     $this->fileMetadata->shouldReceive('createFileRecordFromData')->andReturn($file);
     $this->fileStorage->shouldReceive('storeToS3')->andReturn('s3://path');
@@ -248,15 +257,15 @@ it('processes a PulseDav file and deletes from incoming bucket on success', func
     $file = File::factory()->create(['user_id' => $this->user->id]);
 
     $this->fileStorage->shouldReceive('existsInS3')
-        ->with('pulsedav', 'inbox/receipt.pdf')
+        ->with('pulsedav', 'incoming/'.$this->user->id.'/receipt.pdf')
         ->andReturn(true);
 
     $this->fileStorage->shouldReceive('getFromS3')
-        ->with('pulsedav', 'inbox/receipt.pdf')
+        ->with('pulsedav', 'incoming/'.$this->user->id.'/receipt.pdf')
         ->andReturn('pdf-content');
 
     $this->fileStorage->shouldReceive('getSizeFromS3')
-        ->with('pulsedav', 'inbox/receipt.pdf')
+        ->with('pulsedav', 'incoming/'.$this->user->id.'/receipt.pdf')
         ->andReturn(4096);
 
     $this->fileMetadata->shouldReceive('extractFileDataFromPulseDav')
@@ -275,6 +284,8 @@ it('processes a PulseDav file and deletes from incoming bucket on success', func
     $this->fileValidation->shouldReceive('validateFileData')->andReturn(['valid' => true]);
     $this->fileDuplication->shouldReceive('checkDuplication')
         ->andReturn(['isDuplicate' => false, 'hash' => 'h', 'existingFile' => null]);
+    $this->fileDuplication->shouldReceive('findDuplicateByHash')->once()
+        ->with('h', $this->user->id)->andReturnNull();
     $this->fileStorage->shouldReceive('storeWorkingContent')->andReturn('/tmp/guid.pdf');
     $this->fileMetadata->shouldReceive('createFileRecordFromData')->andReturn($file);
     $this->fileStorage->shouldReceive('storeToS3')->andReturn('s3://path');
@@ -285,19 +296,19 @@ it('processes a PulseDav file and deletes from incoming bucket on success', func
 
     $this->fileStorage->shouldReceive('deleteFromS3')
         ->once()
-        ->with('pulsedav', 'inbox/receipt.pdf');
+        ->with('pulsedav', 'incoming/'.$this->user->id.'/receipt.pdf');
 
-    $result = $this->service->processPulseDavFile('inbox/receipt.pdf', 'receipt', $this->user->id);
+    $result = $this->service->processPulseDavFile('incoming/'.$this->user->id.'/receipt.pdf', 'receipt', $this->user->id);
 
     expect($result['success'])->toBeTrue();
 });
 
 it('throws when PulseDav file does not exist in bucket', function () {
     $this->fileStorage->shouldReceive('existsInS3')
-        ->with('pulsedav', 'missing/file.pdf')
+        ->with('pulsedav', 'incoming/'.$this->user->id.'/missing.pdf')
         ->andReturn(false);
 
-    $this->service->processPulseDavFile('missing/file.pdf', 'receipt', $this->user->id);
+    $this->service->processPulseDavFile('incoming/'.$this->user->id.'/missing.pdf', 'receipt', $this->user->id);
 })->throws(Exception::class, 'File not found in PulseDav bucket');
 
 // --- isSupported / getMaxFileSize delegates ---
@@ -319,3 +330,10 @@ it('delegates getMaxFileSize to validation contract', function () {
 
     expect($this->service->getMaxFileSize('document'))->toBe(10485760);
 });
+
+it('rejects a foreign PulseDav path before accessing storage', function (): void {
+    $this->fileStorage->shouldNotReceive('existsInS3');
+    $this->fileStorage->shouldNotReceive('getFromS3');
+
+    $this->service->processPulseDavFile('incoming/'.($this->user->id + 1).'/receipt.pdf', 'receipt', $this->user->id);
+})->throws(ValidationException::class, 'Invalid scanner path for this user.');

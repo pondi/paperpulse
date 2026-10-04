@@ -54,6 +54,7 @@ test('retention preserves extracted siblings in source mode and removes them in 
     $file = File::factory()->create([
         'user_id' => $this->owner->id, 'status' => 'completed',
         's3_original_path' => 'documents/'.$this->owner->id.'/source.docx',
+        's3_processed_path' => 'documents/'.$this->owner->id.'/processed.pdf',
         's3_archive_path' => 'documents/'.$this->owner->id.'/archive.pdf',
         's3_image_path' => 'documents/'.$this->owner->id.'/preview.jpg',
         'meta' => ['processing_generation' => 'current'],
@@ -61,23 +62,26 @@ test('retention preserves extracted siblings in source mode and removes them in 
     $entities = collect(FileDeletionService::ENTITY_CLASSES)->map(fn ($class) => $class::factory()->create([
         'user_id' => $this->owner->id, 'file_id' => $file->id,
     ]));
-    foreach ([$file->s3_original_path, $file->s3_archive_path, $file->s3_image_path] as $path) {
+    foreach ([$file->s3_original_path, $file->s3_processed_path, $file->s3_archive_path, $file->s3_image_path] as $path) {
         Storage::disk('paperpulse')->put($path, 'binary');
     }
     retentionCompletion($file);
     (new CleanupRetainedFiles)->handle();
     $manifest = FileCleanupManifest::where('file_id', $file->id)->firstOrFail();
     $this->travel(1)->seconds();
-    app(FileCleanupService::class)->process($manifest);
+    expect(app(FileCleanupService::class)->process($manifest)['failed'])->toBe(0);
 
     foreach ($entities as $entity) {
         expect($entity->fresh()->trashed())->toBe($mode === 'full_delete');
     }
     expect($file->fresh()->trashed())->toBe($mode === 'full_delete');
-    Storage::disk('paperpulse')->assertMissing([$file->s3_original_path, $file->s3_archive_path]);
+    Storage::disk('paperpulse')->assertMissing([$file->s3_original_path, $file->s3_processed_path, $file->s3_archive_path]);
     if ($mode === 'source_only') {
         Storage::disk('paperpulse')->assertExists($file->s3_image_path);
-        expect($file->fresh()->s3_original_path)->toBeNull()->and($file->fresh()->s3_image_path)->toBe($file->s3_image_path);
+        expect($file->fresh()->s3_original_path)->toBeNull()
+            ->and($file->fresh()->s3_processed_path)->toBeNull()
+            ->and($file->fresh()->s3_archive_path)->toBeNull()
+            ->and($file->fresh()->s3_image_path)->toBe($file->s3_image_path);
         $updatedAt = $manifest->fresh()->updated_at;
         (new CleanupRetainedFiles)->handle();
         expect($manifest->fresh()->updated_at->eq($updatedAt))->toBeTrue();

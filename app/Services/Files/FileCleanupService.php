@@ -64,7 +64,7 @@ class FileCleanupService
                         $manifest->objects = $objects;
                         $manifest->save();
                         if ($sourceOnly && $file && $currentGeneration) {
-                            foreach (['s3_original_path', 's3_processed_path', 's3_archive_path', 'file_path'] as $column) {
+                            foreach (['s3_original_path', 's3_processed_path', 's3_archive_path'] as $column) {
                                 if ($file->{$column} === $object['path']) {
                                     $file->{$column} = null;
                                 }

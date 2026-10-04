@@ -34,7 +34,8 @@ class ReceiptProcessed extends TemplatedNotification
      */
     public function via($notifiable): array
     {
-        $channels = ['database', 'broadcast'];
+        $channels = ! $this->success || $notifiable->preference('notify_processing_complete', true)
+            ? ['database', 'broadcast'] : [];
 
         if ($this->success && $notifiable->preference('email_notify_processing_complete')) {
             $channels[] = 'mail';

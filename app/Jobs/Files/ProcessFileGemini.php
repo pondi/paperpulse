@@ -9,6 +9,7 @@ use App\Models\File;
 use App\Models\FileProcessingAnalytic;
 use App\Models\Invoice;
 use App\Models\Receipt;
+use App\Notifications\ReceiptProcessed;
 use App\Services\AI\Extractors\EntityExtractorFactory;
 use App\Services\AI\FileManager\GeminiFileManager;
 use App\Services\AI\Providers\GeminiFileAnalyzer;
@@ -373,6 +374,14 @@ class ProcessFileGemini extends BaseJob
         $this->createAnalyticsRecord($file, 'completed', $classification ?? null, $extractedEntity ?? null);
 
         $this->updateProgress(100);
+
+        if ($file->status === 'completed') {
+            foreach ($createdEntities as $entityInfo) {
+                if ($entityInfo['model'] instanceof Receipt) {
+                    $file->user->notify((new ReceiptProcessed($entityInfo['model']))->onConnection('database')->beforeCommit());
+                }
+            }
+        }
     }
 
     /**

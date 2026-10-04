@@ -70,7 +70,8 @@ it('rejects cross-site form requests without a CSRF token', function () {
 });
 
 it('parses document analysis responses from the upgraded OpenAI client', function () {
-    $analysis = ['summary' => 'A software licensing agreement.', 'tags' => ['software', 'contract']];
+    $analysis = ['title' => 'Software license', 'document_type' => 'contract',
+        'summary' => 'A software licensing agreement.', 'tags' => ['software', 'contract']];
 
     OpenAI::fake([
         CreateResponse::fake([

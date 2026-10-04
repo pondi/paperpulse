@@ -19,6 +19,7 @@ use App\Services\Tags\TagAttachmentService;
 use App\Traits\SanitizesInput;
 use App\Traits\ShareableController;
 use Exception;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -35,8 +36,6 @@ class ReceiptController extends BaseResourceController
     protected array $indexWith = ['merchant', 'file.tags', 'lineItems', 'category'];
 
     protected array $showWith = ['merchant', 'file.collections', 'file.tags', 'lineItems', 'sharedUsers'];
-
-    protected array $searchableFields = ['receipt_description', 'note'];
 
     protected array $filterableFields = ['category_id', 'merchant_id'];
 
@@ -197,6 +196,13 @@ class ReceiptController extends BaseResourceController
     protected function applySortOption($query, string $sortOption): void
     {
         ReceiptSortApplier::apply($query, $sortOption);
+    }
+
+    protected function applySearch(mixed $query, string $search): Builder
+    {
+        return $query->where(fn (Builder $query) => $query
+            ->whereLike('receipt_description', "%{$search}%")
+            ->orWhereHas('file', fn (Builder $files) => $files->whereLike('note', "%{$search}%")));
     }
 
     /**

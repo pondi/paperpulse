@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Contract;
+use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Receipt;
 use App\Models\User;
@@ -43,6 +44,19 @@ it('rejects invalid list sizes and page numbers', function (string $route): void
         ->getJson(route($route, ['per_page' => 1000, 'page' => -1, 'sort_direction' => 'invalid']))
         ->assertUnprocessable()->assertJsonValidationErrors(['per_page', 'page', 'sort_direction']);
 })->with(['invoices.index', 'contracts.index', 'vouchers.index', 'receipts.index']);
+
+it('searches receipt notes on the owned source file', function (): void {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id]);
+    $receipt = Receipt::factory()->create(['user_id' => $user->id, 'file_id' => $file->id, 'note' => 'SourceNoteMatch']);
+    Receipt::factory()->create(['user_id' => $user->id]);
+    $foreignFile = File::factory()->create();
+    Receipt::factory()->create(['user_id' => $foreignFile->user_id, 'file_id' => $foreignFile->id, 'note' => 'SourceNoteMatch']);
+
+    $this->actingAs($user)->get(route('receipts.index', ['search' => 'sourcenotematch']))
+        ->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->has('receipts', 1)->where('receipts.0.id', $receipt->id)->where('pagination.total', 1));
+});
 
 it('rejects unsupported sort and type filters', function (string $route): void {
     $this->actingAs(User::factory()->create())

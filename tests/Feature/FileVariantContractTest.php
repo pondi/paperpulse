@@ -89,7 +89,12 @@ it('advertises a working original PDF search link without an archive', function 
     $file = File::factory()->create(['user_id' => $owner->id, 'fileExtension' => 'pdf', 's3_original_path' => 'assets/plain.pdf']);
     Storage::disk('paperpulse')->put($file->s3_original_path, '%PDF plain');
     $info = (new SearchResultFormatter)->buildEntityFileInfo($file);
-    $this->mock(SearchService::class, fn ($mock) => $mock->shouldReceive('search')->once()->andReturn(['results' => [['file' => $info]]]));
+    $this->mock(SearchService::class, fn ($mock) => $mock->shouldReceive('search')->once()->andReturn([
+        'results' => [['file' => $info]],
+        'search_status' => 'available',
+        'unavailable_types' => [],
+        'pagination' => ['page' => 1, 'per_page' => 20, 'total' => 1, 'last_page' => 1],
+    ]));
     $response = $this->actingAs($owner)->getJson('/api/v1/search?q=plain')->assertOk();
     $url = $response->json('data.results.0.links.pdf');
     expect($url)->toBe(route('api.files.content', $file).'?variant=original');

@@ -1,11 +1,13 @@
 <?php
 
+use App\Jobs\Notifications\DeliverExpiryReminder;
 use App\Models\DuplicateFlag;
 use App\Models\File;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Models\Warranty;
 use App\Services\DuplicateDetectionService;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -101,6 +103,14 @@ describe('Duplicate Detection', function () {
 });
 
 describe('Notification System', function () {
+    beforeEach(function (): void {
+        Queue::fake();
+        $this->user->preferences()->create([
+            'notify_voucher_expiring' => true,
+            'notify_warranty_expiring' => true,
+        ]);
+    });
+
     it('creates notification history for expiring vouchers', function () {
         $file = File::factory()->create(['user_id' => $this->user->id]);
 
@@ -131,13 +141,16 @@ describe('Notification System', function () {
             'is_redeemed' => false,
         ]);
 
-        // First notification
         $this->artisan('notify:expiring-vouchers --days=30')
-            ->expectsOutput('Sent 1 voucher expiring notifications.');
+            ->expectsOutput('Queued 1 voucher expiring notifications.')
+            ->assertSuccessful();
 
-        // Second notification - should skip
         $this->artisan('notify:expiring-vouchers --days=30')
-            ->expectsOutput('Skipped 1 vouchers (preferences, missing user, or already notified).');
+            ->expectsOutput('Skipped 1 vouchers (preferences, missing user, or already notified).')
+            ->assertSuccessful();
+
+        $this->assertDatabaseCount('notification_history', 1);
+        Queue::assertPushed(DeliverExpiryReminder::class, 1);
     });
 
     it('creates notification history for expiring warranties', function () {

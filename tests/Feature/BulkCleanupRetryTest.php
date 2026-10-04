@@ -8,6 +8,7 @@ use App\Models\File;
 use App\Models\FileProcessingRequest;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 beforeEach(function (): void {
     $this->disk = Storage::fake('uplink');
@@ -47,7 +48,7 @@ it('retries deletion failures independently of the cancelled session status', fu
 
 it('protects pending handoffs and active original assets while cleaning handed-off sources', function (): void {
     $file = File::factory()->create(['user_id' => $this->user->id, 'status' => 'processing', 's3_original_path' => 'receipts/original.pdf']);
-    $request = FileProcessingRequest::create(['job_id' => 'pending-handoff', 'user_id' => $this->user->id, 'file_id' => $file->id,
+    $request = FileProcessingRequest::create(['job_id' => (string) Str::uuid(), 'user_id' => $this->user->id, 'file_id' => $file->id,
         'file_type' => 'receipt', 'guid' => $file->guid, 'extension' => 'pdf', 'storage_disk' => 'paperpulse', 'original_path' => $file->s3_original_path, 'state' => 'upload_pending']);
     $this->bulkFile->update(['file_id' => $file->id, 'job_id' => $request->job_id, 'status' => BulkUploadFileStatus::Processing, 'presigned_expires_at' => now()->subMinute()]);
     $this->disk->put($this->bulkFile->s3_key, 'source');

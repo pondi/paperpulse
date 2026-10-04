@@ -300,7 +300,7 @@ class BulkUploadService
                 $session->update(['status' => BulkUploadSessionStatus::Cancelled]);
             }
             $session->files()->withoutGlobalScope('user')->whereNull('file_id')->where('status', '!=', BulkUploadFileStatus::Duplicate)->update(['status' => BulkUploadFileStatus::Skipped]);
-            $protected = $session->files()->withoutGlobalScope('user')->whereIn('job_id', FileProcessingRequest::query()->where('state', 'upload_pending')->select('job_id'))->pluck('s3_key')->all();
+            $protected = $session->files()->withoutGlobalScope('user')->whereIn('job_id', FileProcessingRequest::query()->where('state', 'upload_pending')->selectRaw('CAST(job_id AS TEXT)'))->pluck('s3_key')->all();
             $prefix = rtrim(config('filesystems.uplink_prefix', 'uplink-incoming/'), '/').'/'.$session->user_id.'/'.$session->uuid.'/';
             $disk = Storage::disk('uplink');
             foreach ($disk->getDriver()->listContents($prefix, true) as $object) {

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import SearchBar from '@/Components/Features/SearchBar.vue';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 import { 
     DocumentIcon, 
     UserIcon,
@@ -31,22 +31,25 @@ interface SharedDocument {
         name: string;
         email: string;
     };
-    permission: 'view' | 'edit';
+    shared_permission: 'view' | 'edit';
     shared_at: string;
 }
 
 interface Props {
     documents: {
         data: SharedDocument[];
-        links: any;
-        meta: any;
+        links: Array<{ url: string | null; label: string; active: boolean }>;
+        from: number | null;
+        to: number | null;
+        total: number;
     };
     filters: {
         search?: string;
     };
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
+const { formatDate } = useDateFormatter();
 
 const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -67,9 +70,8 @@ const applyFilter = (filters: any) => {
 </script>
 
 <template>
-    <Head title="Shared Documents" />
-
     <AuthenticatedLayout>
+        <Head title="Shared Documents" />
         <template #header>
             <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
                 Shared Documents
@@ -180,11 +182,11 @@ const applyFilter = (filters: any) => {
                                         <span
                                             class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                                             :class="{
-                                                'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300': document.permission === 'edit',
-                                                'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300': document.permission === 'view'
+                                                'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300': document.shared_permission === 'edit',
+                                                'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300': document.shared_permission === 'view'
                                             }"
                                         >
-                                            {{ document.permission === 'edit' ? 'Can edit' : 'View only' }}
+                                            {{ document.shared_permission === 'edit' ? 'Can edit' : 'View only' }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-600 dark:text-zinc-400">
@@ -231,14 +233,14 @@ const applyFilter = (filters: any) => {
                                 />
                             </div>
                             <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                                <div v-if="documents?.meta">
+                                <div>
                                     <p class="text-sm text-zinc-700 dark:text-zinc-300">
                                         Showing
-                                        <span class="font-bold">{{ documents.meta.from || 0 }}</span>
+                                        <span class="font-bold">{{ documents.from || 0 }}</span>
                                         to
-                                        <span class="font-bold">{{ documents.meta.to || 0 }}</span>
+                                        <span class="font-bold">{{ documents.to || 0 }}</span>
                                         of
-                                        <span class="font-bold">{{ documents.meta.total || 0 }}</span>
+                                        <span class="font-bold">{{ documents.total || 0 }}</span>
                                         results
                                     </p>
                                 </div>

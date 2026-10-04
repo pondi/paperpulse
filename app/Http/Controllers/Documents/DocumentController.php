@@ -460,18 +460,23 @@ class DocumentController extends BaseResourceController
     /**
      * Display shared documents.
      */
-    public function shared(Request $request)
+    public function shared(Request $request): Response
     {
-        $query = Document::query()
+        $query = Document::withoutGlobalScope('user')
             ->join('file_shares', function ($join) {
                 $join->on('documents.file_id', '=', 'file_shares.file_id')
                     ->where('file_shares.file_type', '=', 'document');
             })
             ->where('file_shares.shared_with_user_id', auth()->id())
-            ->with(['owner', 'category', 'tags', 'file'])
+            ->where(fn ($query) => $query->whereNull('file_shares.expires_at')->orWhere('file_shares.expires_at', '>', now()))
+            ->with([
+                'owner', 'sharedUsers',
+                'category' => fn ($query) => $query->withoutGlobalScope('user'),
+                'file' => fn ($query) => $query->withoutGlobalScope('user'),
+                'file.tags' => fn ($query) => $query->withoutGlobalScope('user'),
+            ])
             ->select('documents.*', 'file_shares.permission', 'file_shares.shared_at');
 
-        // Apply search filter
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('documents.title', 'like', "%{$search}%")
@@ -482,7 +487,7 @@ class DocumentController extends BaseResourceController
         $documents = $query->orderBy('file_shares.shared_at', 'desc')->paginate(20);
 
         return Inertia::render('Documents/Shared', [
-            'documents' => $documents,
+            'documents' => $documents->through(fn (Document $document) => $this->transformForSharedIndex($document)),
             'filters' => $request->only(['search']),
         ]);
     }

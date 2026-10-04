@@ -22,10 +22,18 @@ it('reports ready when all required migrations are applied', function (): void {
 });
 
 it('fails readiness for a migration on disk that is missing from the database', function (): void {
-    $repository = app(Migrator::class)->getRepository();
-    $repository->delete((object) ['migration' => $repository->getRan()[0]]);
+    $directory = sys_get_temp_dir().'/readiness-'.uniqid();
+    mkdir($directory);
+    $migration = $directory.'/2099_01_01_000000_pending_readiness.php';
+    file_put_contents($migration, '<?php');
+    app(Migrator::class)->path($directory);
 
-    $this->getJson('/ready')->assertServiceUnavailable()->assertJsonPath('components.migrations.status', 'down');
+    try {
+        $this->getJson('/ready')->assertServiceUnavailable()->assertJsonPath('components.migrations.status', 'down');
+    } finally {
+        unlink($migration);
+        rmdir($directory);
+    }
 });
 
 it('ignores historical applied migrations that are no longer on disk', function (): void {

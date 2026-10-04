@@ -36,6 +36,8 @@ COPY --chown=www-data:www-data . .
 RUN composer dump-autoload --no-interaction --no-scripts \
     && VITE_REVERB_APP_KEY=paperpulse-local VITE_REVERB_HOST=localhost VITE_REVERB_PORT=8081 VITE_REVERB_SCHEME=http npm run build \
     && mkdir -p /data/meilisearch /data/runtime storage/app/private storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && mkdir -p vendor/pestphp/pest-plugin-mutate/.temp/pest-mutate-cache vendor/pestphp/pest/.temp \
+    && chown -R www-data:www-data vendor/pestphp/pest-plugin-mutate/.temp vendor/pestphp/pest/.temp \
     && chown -R www-data:www-data /data storage bootstrap/cache public/build
 EXPOSE 80 5173 7700 8081 3900
 ENTRYPOINT ["entrypoint.sh"]

@@ -84,3 +84,9 @@ it('includes the required PHP extensions in the application image', function ():
         expect(extension_loaded($extension))->toBeTrue('Missing ext-'.$extension);
     }
 });
+
+it('allows the test user to write Pest result and mutation caches', function (): void {
+    foreach (['pest/.temp', 'pest-plugin-mutate/.temp/pest-mutate-cache'] as $directory) {
+        expect(is_writable(base_path('vendor/pestphp/'.$directory)))->toBeTrue($directory);
+    }
+});

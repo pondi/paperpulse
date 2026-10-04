@@ -27,10 +27,8 @@ it('serializes and downloads the persisted uploaded filename', function (): void
         'fileName' => 'uploaded-report.pdf',
         'fileExtension' => 'pdf',
     ]);
-    Storage::disk('paperpulse')->put(
-        StoragePathBuilder::storagePath($this->user->id, $file->guid, 'document', 'original', 'pdf'),
-        '%PDF-original'
-    );
+    $file->update(['s3_original_path' => StoragePathBuilder::storagePath($this->user->id, $file->guid, 'document', 'original', 'pdf')]);
+    Storage::disk('paperpulse')->put($file->s3_original_path, '%PDF-original');
 
     expect((new FileResource($file))->resolve()['name'])->toBe('uploaded-report.pdf')
         ->and((new FileListResource($file))->resolve()['name'])->toBe('uploaded-report.pdf')

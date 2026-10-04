@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\File;
 use App\Models\LineItem;
 use App\Models\Merchant;
 use App\Models\Receipt;
@@ -37,7 +38,7 @@ test('receipt index shows receipts when they exist', function () {
         'name' => 'Dusk Test Store',
     ]);
 
-    Receipt::factory()->create([
+    Receipt::factory()->for(File::factory()->for($user))->create([
         'user_id' => $user->id,
         'merchant_id' => $merchant->id,
         'total_amount' => 149.99,
@@ -61,7 +62,7 @@ test('clicking receipt row opens drawer', function () {
         'name' => 'Drawer Test Store',
     ]);
 
-    Receipt::factory()->create([
+    Receipt::factory()->for(File::factory()->for($user))->create([
         'user_id' => $user->id,
         'merchant_id' => $merchant->id,
         'total_amount' => 42.00,
@@ -92,7 +93,7 @@ test('receipt show page loads', function () {
         'name' => 'Show Page Store',
     ]);
 
-    $receipt = Receipt::factory()->create([
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create([
         'user_id' => $user->id,
         'merchant_id' => $merchant->id,
         'total_amount' => 75.50,
@@ -104,10 +105,10 @@ test('receipt show page loads', function () {
     $this->browse(function (Browser $browser) use ($user, $receipt) {
         $this->loginAs($browser, $user);
 
-        $browser->visit('/receipts/' . $receipt->id)
+        $browser->visit('/receipts/'.$receipt->id)
             ->waitForText('Show Page Store')
             ->assertSee('Show Page Store')
-            ->assertPathIs('/receipts/' . $receipt->id);
+            ->assertPathIs('/receipts/'.$receipt->id);
     });
 });
 
@@ -118,7 +119,7 @@ test('receipt show has edit button and toggles edit mode', function () {
         'name' => 'Edit Toggle Store',
     ]);
 
-    $receipt = Receipt::factory()->create([
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create([
         'user_id' => $user->id,
         'merchant_id' => $merchant->id,
         'total_amount' => 50.00,
@@ -129,7 +130,7 @@ test('receipt show has edit button and toggles edit mode', function () {
     $this->browse(function (Browser $browser) use ($user, $receipt) {
         $this->loginAs($browser, $user);
 
-        $browser->visit('/receipts/' . $receipt->id)
+        $browser->visit('/receipts/'.$receipt->id)
             ->waitForText('Edit Toggle Store')
             ->assertSee('Edit Receipt')
             ->pause(300)
@@ -147,7 +148,7 @@ test('receipt show displays tags section', function () {
         'name' => 'Tags Section Store',
     ]);
 
-    $receipt = Receipt::factory()->create([
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create([
         'user_id' => $user->id,
         'merchant_id' => $merchant->id,
         'total_amount' => 30.00,
@@ -157,7 +158,7 @@ test('receipt show displays tags section', function () {
     $this->browse(function (Browser $browser) use ($user, $receipt) {
         $this->loginAs($browser, $user);
 
-        $browser->visit('/receipts/' . $receipt->id)
+        $browser->visit('/receipts/'.$receipt->id)
             ->waitForText('Tags Section Store')
             ->assertSee('Tags');
     });
@@ -170,7 +171,7 @@ test('receipt show displays line items section', function () {
         'name' => 'Line Items Store',
     ]);
 
-    $receipt = Receipt::factory()->create([
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create([
         'user_id' => $user->id,
         'merchant_id' => $merchant->id,
         'total_amount' => 45.00,
@@ -189,7 +190,7 @@ test('receipt show displays line items section', function () {
     $this->browse(function (Browser $browser) use ($user, $receipt) {
         $this->loginAs($browser, $user);
 
-        $browser->visit('/receipts/' . $receipt->id)
+        $browser->visit('/receipts/'.$receipt->id)
             ->waitForText('Line Items Store')
             ->assertSee('Line Items')
             ->assertSee('Widget Alpha')
@@ -204,7 +205,7 @@ test('receipt show displays collections section', function () {
         'name' => 'Collections Store',
     ]);
 
-    $receipt = Receipt::factory()->create([
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create([
         'user_id' => $user->id,
         'merchant_id' => $merchant->id,
         'total_amount' => 60.00,
@@ -214,7 +215,7 @@ test('receipt show displays collections section', function () {
     $this->browse(function (Browser $browser) use ($user, $receipt) {
         $this->loginAs($browser, $user);
 
-        $browser->visit('/receipts/' . $receipt->id)
+        $browser->visit('/receipts/'.$receipt->id)
             ->waitForText('Collections Store')
             ->assertSee('Collections');
     });
@@ -227,7 +228,7 @@ test('receipt show has breadcrumbs', function () {
         'name' => 'Breadcrumb Store',
     ]);
 
-    $receipt = Receipt::factory()->create([
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create([
         'user_id' => $user->id,
         'merchant_id' => $merchant->id,
         'total_amount' => 20.00,
@@ -237,7 +238,7 @@ test('receipt show has breadcrumbs', function () {
     $this->browse(function (Browser $browser) use ($user, $receipt) {
         $this->loginAs($browser, $user);
 
-        $browser->visit('/receipts/' . $receipt->id)
+        $browser->visit('/receipts/'.$receipt->id)
             ->waitForText('Breadcrumb Store')
             ->assertSee('Dashboard')
             ->assertSee('Receipts');
@@ -251,7 +252,7 @@ test('receipt show has back to overview link', function () {
         'name' => 'Back Link Store',
     ]);
 
-    $receipt = Receipt::factory()->create([
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create([
         'user_id' => $user->id,
         'merchant_id' => $merchant->id,
         'total_amount' => 20.00,
@@ -261,7 +262,7 @@ test('receipt show has back to overview link', function () {
     $this->browse(function (Browser $browser) use ($user, $receipt) {
         $this->loginAs($browser, $user);
 
-        $browser->visit('/receipts/' . $receipt->id)
+        $browser->visit('/receipts/'.$receipt->id)
             ->waitForText('Back Link Store')
             ->assertPresent('a[href$="/receipts"]');
     });
@@ -274,7 +275,7 @@ test('bulk select shows operations bar', function () {
         'name' => 'Bulk Select Store',
     ]);
 
-    Receipt::factory()->create([
+    Receipt::factory()->for(File::factory()->for($user))->create([
         'user_id' => $user->id,
         'merchant_id' => $merchant->id,
         'total_amount' => 25.00,
@@ -286,12 +287,15 @@ test('bulk select shows operations bar', function () {
 
         $browser->visit('/receipts')
             ->waitForText('Bulk Select Store')
-            ->pause(500)
-            ->click('thead input[type="checkbox"]')
-            ->pause(500)
-            ->waitForText('selected')
-            ->assertSee('selected')
+            ->check('thead input[type="checkbox"]')
+            ->assertChecked('thead input[type="checkbox"]')
+            ->waitForText('1 receipt selected')
+            ->assertSee('1 receipt selected')
             ->assertSee('Categorize')
-            ->assertSee('Export');
+            ->assertSee('Export')
+            ->uncheck('thead input[type="checkbox"]')
+            ->assertNotChecked('thead input[type="checkbox"]')
+            ->waitUntilMissingText('1 receipt selected')
+            ->assertDontSee('1 receipt selected');
     });
 });

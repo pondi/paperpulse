@@ -11,6 +11,8 @@ beforeEach(function (): void {
 });
 
 it('ignores forwarded headers from an untrusted client', function (): void {
+    config()->set('network.trusted_proxies', []);
+
     $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.10'])
         ->getJson('http://localhost/_test/proxy', [
             'X-Forwarded-For' => '203.0.113.99',

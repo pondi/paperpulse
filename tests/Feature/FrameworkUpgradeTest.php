@@ -1,6 +1,9 @@
 <?php
 
 use App\Services\AI\Providers\OpenAIProvider;
+use Composer\InstalledVersions;
+use Composer\Semver\Semver;
+use Composer\Semver\VersionParser;
 use Inertia\Testing\AssertableInertia as Assert;
 use OpenAI\Laravel\Facades\OpenAI;
 use OpenAI\Resources\Chat;
@@ -106,3 +109,14 @@ it('handles document analysis failures from the upgraded OpenAI client', functio
         ->error->toBe('Request timed out')
         ->provider->toBe('openai');
 });
+
+it('keeps locked storage and PDF packages within supported version constraints', function (string $package, string $nextMajor): void {
+    $manifest = json_decode(file_get_contents(base_path('composer.json')), true);
+    $constraint = $manifest['require'][$package];
+
+    expect(InstalledVersions::satisfies(new VersionParser, $package, $constraint))->toBeTrue()
+        ->and(Semver::satisfies($nextMajor, $constraint))->toBeFalse();
+})->with([
+    ['league/flysystem-aws-s3-v3', '4.0.0'],
+    ['smalot/pdfparser', '3.0.0'],
+]);

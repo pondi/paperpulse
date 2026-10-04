@@ -21,11 +21,11 @@
         "laravel/sanctum": "^4.0",
         "laravel/scout": "^10.8",
         "laravel/tinker": "^3.0",
-        "league/flysystem-aws-s3-v3": "*",
+        "league/flysystem-aws-s3-v3": "^3.35",
         "meilisearch/meilisearch-php": "^1.12",
         "opcodesio/log-viewer": "^3.6",
         "openai-php/laravel": "^0.21.0",
-        "smalot/pdfparser": "*",
+        "smalot/pdfparser": "^2.12",
         "spatie/laravel-csp": "^3.23",
         "spatie/pdf-to-image": "^3.1",
         "tightenco/ziggy": "^2.0"

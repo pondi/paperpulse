@@ -47,6 +47,22 @@ test('file type toggle works', function () {
     });
 });
 
+test('browser can save console screenshot and source artifacts', function (): void {
+    $name = 'artifact-permissions';
+    $this->browse(function (Browser $browser) use ($name): void {
+        $browser->visit('/login')->waitFor('#email');
+        $browser->script("console.error('Artifact permission fixture');");
+        $browser->storeConsoleLog($name)->screenshot($name)->storeSource($name);
+    });
+
+    foreach (['console' => 'log', 'screenshots' => 'png', 'source' => 'txt'] as $directory => $extension) {
+        $path = __DIR__.'/'.$directory.'/'.$name.'.'.$extension;
+        expect(is_file($path))->toBeTrue($path);
+        expect(filesize($path))->toBeGreaterThan(0);
+        unlink($path);
+    }
+});
+
 test('can attach file for upload', function () {
     $user = $this->createUser();
 

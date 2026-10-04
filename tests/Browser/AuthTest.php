@@ -145,19 +145,12 @@ test('logout works', function () {
         $this->loginAs($browser, $user);
 
         $browser->waitForText($user->name)
-            ->pause(500);
-
-        // Use fetch with XSRF cookie (meta csrf-token is stale after Inertia login)
-        $browser->script("
-            const xsrf = decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)[1]);
-            fetch('/logout', {
-                method: 'POST',
-                headers: { 'X-XSRF-TOKEN': xsrf, 'Accept': 'text/html' },
-                credentials: 'same-origin'
-            }).then(() => { window.location.href = '/login'; });
-        ");
-
-        $browser->waitForLocation('/login')
+            ->click('div.xl\\:pl-72 button[class*="flex"][class*="items-center"]')
+            ->waitForText('Log Out')
+            ->press('Log Out')
+            ->waitForLocation('/')
+            ->visit('/dashboard')
+            ->waitForLocation('/login')
             ->assertPathIs('/login');
     });
 });

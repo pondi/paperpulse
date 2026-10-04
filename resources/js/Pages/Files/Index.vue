@@ -5,6 +5,9 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
 import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
 import Pagination from '@/Pages/Jobs/Components/Pagination.vue';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
+
+const { formatDate } = useDateFormatter();
 
 type FileItem = {
     id: number;

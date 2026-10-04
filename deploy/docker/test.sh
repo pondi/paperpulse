@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 cd /app
-export DB_CONNECTION=pgsql
+export DB_CONNECTION=pgsql DB_HOST=postgres DB_PORT=5432 DB_URL=""
 mode="${1:-backend}"
 if [ "$#" -gt 0 ]; then shift; fi
 case "$mode" in

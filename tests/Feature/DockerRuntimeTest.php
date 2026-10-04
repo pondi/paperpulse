@@ -14,6 +14,8 @@ it('runs supported PHP and isolated PostgreSQL tests', function (): void {
     $connection = app('db')->connection();
     expect($connection->getDriverName())->toBe('pgsql');
     expect($connection->getDatabaseName())->toBe('paperpulse_test');
+    expect($connection->getConfig('host'))->toBe('postgres');
+    expect($connection->getConfig('url'))->toBeEmpty();
     expect($connection->selectOne('SELECT current_user AS username')->username)->toBe('paperpulse_test');
     foreach (['GEMINI_API_KEY', 'OPENAI_API_KEY', 'TEXTRACT_KEY', 'TEXTRACT_SECRET'] as $credential) {
         expect(getenv($credential))->toBe('isolated-test');

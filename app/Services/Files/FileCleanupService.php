@@ -119,7 +119,7 @@ class FileCleanupService
     {
         return File::withoutGlobalScope('user')->when($ignoredFileId, fn ($query) => $query->whereKeyNot($ignoredFileId))
             ->where(function ($query) use ($path): void {
-                foreach (['s3_original_path', 's3_processed_path', 's3_archive_path', 's3_image_path', 'file_path'] as $column) {
+                foreach (['s3_original_path', 's3_processed_path', 's3_archive_path', 's3_image_path'] as $column) {
                     $query->orWhere($column, $path);
                 }
                 if (preg_match('~^(?:documents|receipts)/(\d+)/([^/]+)/~', $path, $matches)) {

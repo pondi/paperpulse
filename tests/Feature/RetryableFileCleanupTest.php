@@ -59,16 +59,18 @@ test('a failed object is retried without repeating a successful variant deletion
     expect($manifest->fresh()->completed_at)->not->toBeNull();
 });
 
-test('a live retained copy protects shared object paths from cleanup', function (): void {
-    $retained = File::factory()->create(['user_id' => $this->owner->id, 's3_original_path' => $this->file->s3_original_path]);
+test('a live retained copy protects shared object paths from cleanup', function (string $column): void {
+    $retained = File::factory()->create(['user_id' => $this->owner->id, $column => $this->file->s3_original_path]);
     $manifest = FileCleanupManifest::first();
     $manifest->update(['objects' => [$this->file->s3_original_path => ['path' => $this->file->s3_original_path, 'done' => false]]]);
     $storage = Mockery::mock(StorageService::class);
     $storage->shouldNotReceive('deleteFile');
     (new FileCleanupService($storage))->process($manifest);
     expect($retained->fresh()->trashed())->toBeFalse();
-    Storage::disk('paperpulse')->assertExists($retained->s3_original_path);
-});
+    Storage::disk('paperpulse')->assertExists($retained->{$column});
+    expect($manifest->fresh()->completed_at)->not->toBeNull()
+        ->and($manifest->fresh()->last_error)->toBeNull();
+})->with(['s3_original_path', 's3_processed_path', 's3_archive_path', 's3_image_path']);
 
 test('restored sources are never deleted by pending cleanup', function (): void {
     app(FileDeletionService::class)->restoreFile($this->file, $this->owner->id);

@@ -47,7 +47,7 @@ it('processes an office upload through native database workers and serves its ow
         $workerErrors[] = $event->exception->getMessage();
     });
     $this->artisan('queue:work', ['connection' => 'database', '--queue' => implode(',', config('queue.worker_queues')),
-        '--stop-when-empty' => true, '--sleep' => 0, '--tries' => 1, '--no-interaction' => true])->assertSuccessful();
+        '--stop-when-empty' => true, '--sleep' => 0, '--tries' => 1, '--memory' => 512, '--no-interaction' => true])->assertSuccessful();
     $file = File::findOrFail($result['fileId']);
     expect($file->status)->toBe('completed', json_encode($workerErrors));
     expect($file->s3_archive_path)->not->toBeNull();
@@ -57,7 +57,7 @@ it('processes an office upload through native database workers and serves its ow
     $this->actingAs($user)->get(route('documents.download', $document))->assertOk();
     $this->actingAs(User::factory()->create())->get(route('documents.download', $document))->assertNotFound();
     $user->notify((new BulkOperationCompleted('export', 1))->onConnection('database'));
-    $this->artisan('queue:work', ['connection' => 'database', '--queue' => 'default', '--stop-when-empty' => true, '--sleep' => 0, '--no-interaction' => true])->assertSuccessful();
+    $this->artisan('queue:work', ['connection' => 'database', '--queue' => 'default', '--stop-when-empty' => true, '--sleep' => 0, '--memory' => 512, '--no-interaction' => true])->assertSuccessful();
     expect($user->notifications()->count())->toBe(1);
     $this->artisan('queue:restart', ['--no-interaction' => true])->assertSuccessful();
     expect(Cache::get('illuminate:queue:restart'))->not->toBeNull();

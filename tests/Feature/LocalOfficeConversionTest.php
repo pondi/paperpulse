@@ -16,6 +16,44 @@ beforeEach(function (): void {
     Process::preventStrayProcesses();
 });
 
+it('enforces real filesystem network process and environment isolation in the container', function (): void {
+    if (! getenv('PAPERPULSE_CONTAINER_RUNTIME')) {
+        $this->markTestSkipped('Requires the container Bubblewrap runtime.');
+    }
+    config()->set('processing.conversion.local.binary', '/usr/bin/libreoffice');
+    config()->set('processing.conversion.local.sandbox', '/usr/bin/bwrap');
+    $directory = storage_path('app/private/sandbox-test-'.Str::uuid());
+    File::ensureDirectoryExists($directory, 0700);
+    $pdf = new Dompdf;
+    $pdf->loadHtml('<p>Sandbox probe</p>');
+    $pdf->render();
+    Process::fake(function ($process) use ($pdf): mixed {
+        $binaryIndex = array_search('/usr/bin/libreoffice', $process->command, true);
+        $command = array_slice($process->command, 0, $binaryIndex);
+        array_push($command, '/bin/sh', '-ec',
+            'test ! -e /app; test ! -e /etc/passwd; test -z "${SANDBOX_TEST_SECRET:-}"; '
+            .'test -e /work/source.docx; test -d /tmp; '
+            .'grep -E "^CapEff:[[:space:]]+0+$" /proc/self/status; '
+            .'cat /proc/net/dev; cat /proc/self/status');
+        $probe = new Symfony\Component\Process\Process($command, $process->path,
+            ['SANDBOX_TEST_SECRET' => 'must-not-be-inherited']);
+        $probe->setTimeout(10)->run();
+        expect($probe->isSuccessful())->toBeTrue($probe->getErrorOutput());
+        expect($probe->getOutput())->toContain('lo:')->not->toContain('eth0:', 'php', 'nginx');
+        expect(preg_match('/^NSpid:\s+\d+\s*$/m', $probe->getOutput()))->toBe(1);
+        file_put_contents($process->path.'/output/source.pdf', $pdf->output());
+
+        return Process::result();
+    });
+    try {
+        app(LocalOfficeConverter::class)->convert(base_path('tests/fixtures/office/fixture.docx'),
+            $directory.'/out.pdf', ConversionCapabilities::OFFICE_MIME_TYPES['docx']);
+        expect(glob($directory.'/local-*'))->toBe([]);
+    } finally {
+        File::deleteDirectory($directory);
+    }
+});
+
 it('isolates profiles, network, inherited secrets and macro settings for each local office job', function (): void {
     $directory = storage_path('app/private/conversion-test-'.Str::uuid());
     File::ensureDirectoryExists($directory, 0700);

@@ -15,5 +15,6 @@ it('converts owned office documents using a standard database queue worker', fun
     $conversion = app(ConversionService::class)->queueConversion($file, $file->s3_original_path, $output);
     $this->artisan('queue:work', ['connection' => 'database', '--queue' => 'conversions', '--once' => true, '--no-interaction' => true])->assertSuccessful();
     expect($conversion->fresh()->isCompleted())->toBeTrue();
+    $this->assertDatabaseCount('failed_jobs', 0);
     Storage::disk('paperpulse')->assertExists($output);
 });

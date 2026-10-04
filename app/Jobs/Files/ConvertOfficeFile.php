@@ -6,6 +6,7 @@ use App\Jobs\BaseJob;
 use App\Models\FileConversion;
 use App\Services\Documents\ConversionService;
 use App\Services\Jobs\JobMetadataPersistence;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
@@ -17,7 +18,7 @@ class ConvertOfficeFile extends BaseJob
 
     public function __construct(public int $conversionId, ?string $chainId = null)
     {
-        parent::__construct($chainId ?? 'office-conversion-'.$conversionId);
+        parent::__construct($chainId ?? (string) Str::uuid());
         $this->onConnection('database')->onQueue('conversions');
     }
 

@@ -17,7 +17,9 @@ it('renders uploaded and existing base64 logos as the original image bytes', fun
     $existing = new Logo(['logo_data' => base64_encode($image), 'mime_type' => 'image/png']);
 
     foreach ([$uploaded, $existing] as $logo) {
-        expect($logo->getUrl())->toBe($service->getImageUrl($merchant, $logo->logo_data, $logo->mime_type))
+        $url = $logo->getUrl();
+        expect($logo->getUrl())->toBe($url)
+            ->and($url)->toBe($service->getImageUrl($merchant, $logo->logo_data, $logo->mime_type))
             ->and(base64_decode(explode(',', $logo->getUrl(), 2)[1], true))->toBe($image);
     }
 });

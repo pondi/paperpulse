@@ -47,7 +47,7 @@ class Logo extends Model
     public function getLogoDataAttribute($value): string
     {
         if (is_resource($value)) {
-            $value = stream_get_contents($value);
+            $value = stream_get_contents($value, -1, 0);
         }
 
         return $value;

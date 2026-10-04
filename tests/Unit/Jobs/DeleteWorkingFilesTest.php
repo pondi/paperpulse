@@ -124,18 +124,19 @@ it('cleans every artifact in the private job directory on success and terminal f
 })->with([false, true]);
 
 it('sweeps all extensions while preserving old directories owned by active jobs and pending handoffs', function (): void {
-    foreach (['active', 'pending-upload', 'completed', 'untracked'] as $id) {
+    $pendingJobId = (string) Str::uuid();
+    foreach (['active', $pendingJobId, 'completed', 'untracked'] as $id) {
         Storage::disk('local')->put('uploads/'.$id.'/source.docx', 'artifact');
         touch(Storage::disk('local')->path('uploads/'.$id.'/source.docx'), time() - 90000);
     }
     JobHistory::create(['uuid' => 'active', 'status' => 'processing', 'name' => 'Active', 'queue' => 'documents']);
     JobHistory::create(['uuid' => 'completed', 'status' => 'completed', 'name' => 'Done', 'queue' => 'documents']);
     $file = File::factory()->create();
-    FileProcessingRequest::create(['job_id' => 'pending-upload', 'user_id' => $file->user_id, 'file_id' => $file->id,
+    FileProcessingRequest::create(['job_id' => $pendingJobId, 'user_id' => $file->user_id, 'file_id' => $file->id,
         'file_type' => 'document', 'guid' => $file->guid, 'extension' => 'docx', 'storage_disk' => 'paperpulse', 'original_path' => 'original.docx', 'state' => 'upload_pending']);
     expect(app(FileStorageService::class)->cleanupOldWorkingFiles())->toBe(2);
     Storage::disk('local')->assertExists('uploads/active/source.docx');
-    Storage::disk('local')->assertExists('uploads/pending-upload/source.docx');
+    Storage::disk('local')->assertExists('uploads/'.$pendingJobId.'/source.docx');
     Storage::disk('local')->assertMissing('uploads/completed/source.docx');
     Storage::disk('local')->assertMissing('uploads/untracked/source.docx');
     $this->artisan('files:cleanup-working')->expectsOutput('Removed 0 working files.')->assertSuccessful();

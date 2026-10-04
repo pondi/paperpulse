@@ -10,15 +10,18 @@ beforeEach(function () {
 });
 
 describe('list tags', function () {
-    it('lists all tags for the authenticated user', function () {
-        Tag::factory()->count(3)->create([
-            'user_id' => $this->user->id,
-        ]);
+    it('lists mass-created tags for the authenticated user', function (): void {
+        $factory = Tag::factory()->count(50)->state(['user_id' => $this->user->id]);
+        fake()->seed(195);
+        $factory->create();
+        fake()->seed(195);
+        $factory->create();
 
-        $response = $this->getJson(route('api.tags.index'));
+        $response = $this->getJson(route('api.tags.index', ['per_page' => 100]));
 
-        $response->assertStatus(200);
-        $response->assertJsonCount(3, 'data');
+        $response->assertOk();
+        $response->assertJsonCount(100, 'data');
+        expect(collect($response->json('data'))->unique('name'))->toHaveCount(100);
     });
 
     it('does not show other users tags', function () {

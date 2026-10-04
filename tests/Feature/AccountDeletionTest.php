@@ -153,3 +153,19 @@ test('search cleanup retries after the account and entity identities have been r
     (new FileCleanupService($storage))->process($manifest);
     expect($manifest->fresh()->search_records[0])->toBe(['type' => Document::class, 'id' => $document->id, 'done' => true]);
 });
+
+test('account cleanup preserves an original referenced by a surviving file', function (): void {
+    $owner = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $owner->id, 's3_original_path' => 'documents/'.$owner->id.'/shared/original.pdf']);
+    $survivor = File::factory()->create(['s3_original_path' => $file->s3_original_path]);
+    Storage::disk('paperpulse')->put($file->s3_original_path, 'shared original');
+
+    $owner->delete();
+    $this->travel(1)->seconds();
+    $manifest = FileCleanupManifest::where('file_id', $file->id)->firstOrFail();
+
+    expect(app(FileCleanupService::class)->process($manifest)['failed'])->toBe(0)
+        ->and($manifest->fresh()->completed_at)->not->toBeNull()
+        ->and($survivor->fresh())->not->toBeNull();
+    Storage::disk('paperpulse')->assertExists($file->s3_original_path);
+});

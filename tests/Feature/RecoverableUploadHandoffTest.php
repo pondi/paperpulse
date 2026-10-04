@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 beforeEach(function (): void {
     Storage::fake('local');
@@ -152,7 +153,7 @@ it('recovers an expired handoff claim once and retains the accepted original', f
     Storage::disk('paperpulse')->assertExists($request->original_path);
 
     $request->update([
-        'state' => 'dispatching', 'claim_token' => 'expired-worker', 'claimed_at' => now()->subMinutes(11),
+        'state' => 'dispatching', 'claim_token' => (string) Str::uuid(), 'claimed_at' => now()->subMinutes(11),
     ]);
     $dispatcher = Mockery::mock(FileJobChainDispatcher::class);
     $dispatcher->shouldReceive('dispatch')->once()->with($result['jobId'], 'document');

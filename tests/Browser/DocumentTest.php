@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\ReturnPolicy;
 use App\Models\Voucher;
 use App\Models\Warranty;
+use App\Services\Files\FileUploadConfigService;
 use Laravel\Dusk\Browser;
 
 test('upload page loads', function () {
@@ -28,29 +29,21 @@ test('upload page loads', function () {
 
 test('file type toggle works', function () {
     $user = $this->createUser();
+    $config = app(FileUploadConfigService::class)->getUploadConfig();
+    $receiptHint = strtoupper(implode(', ', array_keys($config['capabilities']['receipt']))).' up to '.$config['maxFileSizeMb']['receipt'].'MB';
+    $documentHint = strtoupper(implode(', ', array_keys($config['capabilities']['document']))).' up to '.$config['maxFileSizeMb']['document'].'MB';
 
-    $this->browse(function (Browser $browser) use ($user) {
+    $this->browse(function (Browser $browser) use ($user, $receiptHint, $documentHint) {
         $this->loginAs($browser, $user);
-
         $browser->visit('/documents/upload')
-            ->waitForText('Upload Your Documents');
-
-        // Receipt is active by default — verify hint text for receipts
-        $browser->assertSee('PDF, PNG, JPG up to 10MB');
-
-        // Click Document toggle button (not a link — it's a <button>)
-        $browser->click('button[class*="rounded-r-lg"]')
-            ->pause(300);
-
-        // Document hint text should appear with expanded file types
-        $browser->assertSee('PDF, PNG, JPG, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV up to 50MB');
-
-        // Click Receipt toggle back
-        $browser->click('button[class*="rounded-l-lg"]')
-            ->pause(300);
-
-        // Receipt hint text should return
-        $browser->assertSee('PDF, PNG, JPG up to 10MB');
+            ->waitForText('Upload Your Documents')
+            ->assertSee($receiptHint)
+            ->click('button[class*="rounded-r-lg"]')
+            ->waitForText($documentHint)
+            ->assertSee($documentHint)
+            ->click('button[class*="rounded-l-lg"]')
+            ->waitForText($receiptHint)
+            ->assertSee($receiptHint);
     });
 });
 

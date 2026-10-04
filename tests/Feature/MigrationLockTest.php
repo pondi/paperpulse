@@ -9,6 +9,7 @@ it('holds the migration mutex across cache clearing and elapsed legacy TTL', fun
     $second = new MigrationLock(app(DatabaseManager::class));
     try {
         expect($first->acquire())->toBeTrue();
+        expect($first->acquire())->toBeTrue();
         Cache::flush();
         $this->travel(301)->seconds();
         expect($second->acquire())->toBeFalse();

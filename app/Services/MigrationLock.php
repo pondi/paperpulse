@@ -24,7 +24,10 @@ class MigrationLock
         $connection = $this->database->connection();
 
         if ($connection->getDriverName() === 'pgsql') {
+            $connection = $this->database->build([...$connection->getConfig(), 'name' => 'migration_lock_'.spl_object_id($this)]);
             if (! $connection->selectOne('SELECT pg_try_advisory_lock(?, ?) AS acquired', [190126, 47])->acquired) {
+                $connection->disconnect();
+
                 return false;
             }
             $this->connection = $connection;
@@ -54,6 +57,7 @@ class MigrationLock
     {
         if ($this->connection !== null) {
             $this->connection->selectOne('SELECT pg_advisory_unlock(?, ?)', [190126, 47]);
+            $this->connection->disconnect();
             $this->connection = null;
         }
         if (is_resource($this->handle)) {

@@ -1,6 +1,8 @@
 # Getting Started
 
-Install Composer and npm dependencies, copy `.env.example` to `.env`, set the PostgreSQL database and private S3 buckets, configure the extraction provider and Meilisearch, and generate the application key with `php artisan key:generate --no-interaction`.
+The lockfiles use Laravel 13, Inertia 3, Vue 3.5, Vite 8, Tailwind 3 and Pest 4/PHPUnit 12. Use PHP 8.4 and Node.js 20.19+ or 22.12+. See [Developer Guide](developer.md) for manual checks.
+
+Run `composer install` and `npm ci`, then copy `.env.example` to `.env`. Configure PostgreSQL, private S3 buckets and Meilisearch. For Gemini extraction, set `FILE_PROCESSING_PROVIDER=gemini` and `GEMINI_API_KEY`; choose `TEXT_ANALYSIS_PROVIDER` separately. Generate the application key with `php artisan key:generate --no-interaction`.
 
 Run `php artisan migrate:safe --no-interaction`, `php artisan meilisearch:configure --no-interaction`, and `php artisan scout:reindex-all --no-interaction`. Laravel Herd serves the local site; use `npm run dev` for assets and standard Laravel database workers for processing. On macOS, perform Office conversion acceptance checks in an Ubuntu runtime with LibreOffice and Bubblewrap.
 
@@ -21,3 +23,5 @@ Reverb is optional. Start with `BROADCAST_CONNECTION=log`; browser notification 
 Manual smoke verification uses `tests/Feature/ForgeProcessingSmokeTest.php` with `PAPERPULSE_OFFICE_RUNTIME=1` and an isolated PostgreSQL database. It exercises real Office conversion, previews, database workers, cache locks, downloads and queued notifications; Gemini and object storage are faked. Live API credentials and production bucket access must be checked on the deployed site.
 
 ZIP exports require `ext-zip` in both PHP 8.4 CLI and FPM. The native installer enables `php8.4-zip`; restart the site's FPM service after installing extensions. `forge:preflight` checks both runtimes. Empty selections are rejected; selected missing assets are omitted, and an all-missing download returns a valid empty ZIP.
+
+Large PDF and ZIP exports use the `exports` queue and private local artifacts. Ghostscript joins bounded PDF parts; `exports:cleanup` runs hourly through the scheduler. Monitor progress at `/exports`. Defaults are 50 immediate records, two active jobs per owner and a 24-hour artifact lifetime (`config/exports.php`).

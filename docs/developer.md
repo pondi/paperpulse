@@ -1,6 +1,21 @@
 # Developer Guide
 
-This guide covers development practices, code organization, and how to extend Paperpulse functionality.
+This guide covers the installed package baseline, development practices and native deployment. Composer and npm lockfiles define exact versions; runtime setup uses PHP 8.4 and PostgreSQL 17.
+
+| Component | Supported baseline |
+| --- | --- |
+| PHP | 8.4; ZIP and other extensions checked by `forge:preflight` |
+| Laravel | 13 |
+| Inertia server/client | 3 |
+| Vue | 3.5 |
+| Vite / Vue plugin | 8 / 6 |
+| Node.js | 20.19+ or 22.12+ |
+| Tailwind CSS | 3 |
+| Pest / PHPUnit | 4 / 12 |
+| Larastan | 3 |
+| PostgreSQL | 17 |
+
+Use `composer install` and `npm ci` to reproduce the lockfiles. Laravel Herd serves local HTTP requests; `npm run dev` supplies asset hot reload. Office conversion requires the native Ubuntu runtime described in [Getting Started](getting-started.md).
 
 ## Code Organization
 
@@ -54,31 +69,29 @@ class Receipt extends Model
 
 This trait:
 - Adds global scope filtering by user_id
-- Prevents cross-user data access
+- Applies only during authenticated HTTP requests
+- Requires explicit `user_id` filtering in queue jobs and console commands; policies and owned validation rules enforce access
 - Automatically sets user_id on creation
 
 ### File Processing Pipeline
 
-1. **Upload Handler** receives file and creates `UploadedFile` record
-2. **ProcessFileJob** queued for asynchronous processing
-3. **FileProcessor** service orchestrates:
-   - Storage service saves file to S3/local
-   - OCR service extracts text
-   - AI service analyzes content
-   - Data service stores results
-4. **IndexingJob** updates search indexes
-5. **NotificationJob** alerts user of completion
+1. `FileProcessingService` validates uploads and stores the original in private source storage.
+2. `FileJobChainDispatcher` persists the selected processing plan and queues preprocessing.
+3. Office inputs cross an asynchronous database-queue conversion barrier using isolated LibreOffice.
+4. Gemini classifies and extracts supported entities; the legacy path uses Textract OCR and OpenAI text extraction.
+5. Entity factories persist owned records and junctions transactionally; replacement processing preserves the prior entities until it succeeds.
+6. Search reindexing follows committed changes. Stage metadata, coverage and owner review remain on the file.
 
 ### AI Service Abstraction
 
-Never use AI providers directly. Always use the AIService factory:
+Resolve the existing text-extraction contract when working on the legacy pipeline:
 
 ```php
 $aiService = app(AIService::class);
-$result = $aiService->processReceipt($text);
+$result = $aiService->analyzeReceipt($text);
 ```
 
-This abstraction allows switching providers without code changes.
+`AIService` is bound to the OpenAI implementation. File pipeline selection uses `FILE_PROCESSING_PROVIDER`; text analysis uses `TEXT_ANALYSIS_PROVIDER`. Use the existing provider and extractor factories for their respective tasks.
 
 ## Development Workflow
 
@@ -94,14 +107,11 @@ This abstraction allows switching providers without code changes.
 ### Running Tests
 
 ```bash
-# Run all tests
-php artisan test
+# Run the directly affected test file
+php artisan test tests/Feature/ProcessingCapabilitiesTest.php
 
-# Run specific test suite
-php artisan test --testsuite=Feature
-
-# Run with coverage
-php artisan test --coverage
+# Run one affected flow
+php artisan test --filter="preserves the last pipeline"
 ```
 
 ### Code Style
@@ -109,36 +119,38 @@ php artisan test --coverage
 Follow PSR-12 coding standards. Use the provided formatter:
 
 ```bash
-./vendor/bin/pint
+vendor/bin/pint --dirty
 ```
 
 Static analysis with PHPStan:
 
 ```bash
-./vendor/bin/phpstan analyse
+vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 ```
+
+The PHPStan baseline contains reviewed, exact-message, path and count entries for legacy inference debt. New findings still fail. Run analysis manually before committing relevant backend changes; do not regenerate the baseline blindly. Laravel 13 casts are parsed from `casts()` methods. This is a local manual check, without a new PR gate.
 
 ## Extending Functionality
 
 ### Adding New File Types
 
-1. Create processor class implementing `FileProcessorInterface`
-2. Register in `FileProcessorFactory`
-3. Add MIME type mapping
-4. Create tests
+1. Check `FileValidationService`, upload configuration and `FileProcessingCapabilities`.
+2. Extend conversion capabilities only when the selected provider cannot process the input natively.
+3. For a new extraction kind, register its existing-style extractor and entity factory.
+4. Add focused success and rejection tests with external services faked.
 
 ### Creating Custom AI Providers
 
-1. Implement `AIProviderInterface`
-2. Add configuration to `config/ai.php`
-3. Register in `AIServiceProvider`
+1. Implement the applicable existing AI contract.
+2. Add configuration to `config/ai.php`.
+3. Register the implementation in `AppServiceProvider` or the existing extractor factory.
 4. Add environment variables
 
 ### Adding Console Commands
 
-1. Generate command: `php artisan make:command CommandName`
+1. Generate command: `php artisan make:command CommandName --no-interaction`
 2. Implement logic in `handle()` method
-3. Add to `app/Console/Kernel.php` if needed
+3. Commands in `app/Console/Commands/` register automatically; schedule work in `routes/console.php`
 4. Document in `docs/cli.md`
 
 ## Frontend Development
@@ -247,7 +259,7 @@ php artisan db:seed --class=NameSeeder
 
 ### Data Protection
 
-- Never expose user IDs in URLs
+- Authorize resource IDs with policies and owned validation rules
 - Use UUIDs for public identifiers
 - Sanitize all user input
 - Implement rate limiting
@@ -255,14 +267,14 @@ php artisan db:seed --class=NameSeeder
 ### Authentication & Authorization
 
 - Use Laravel policies for authorization
-- Implement 2FA for admin accounts
+- Keep administrator-only routes behind the existing admin middleware
 - Rotate API keys regularly
 - Log authentication events
 
 ### File Handling
 
 - Validate file types and sizes
-- Scan uploads for malware
+- Detect uploaded content types and enforce processing limits
 - Store files outside public directory
 - Use signed URLs for temporary access
 
@@ -278,7 +290,6 @@ Log::info('Processing file', ['file_id' => $file->id]);
 
 ### Debugging Tools
 
-- Laravel Telescope for local debugging
 - Laravel Debugbar for query analysis
 - Xdebug for step debugging
 
@@ -432,8 +443,12 @@ QUEUE_CONNECTION=database
 CACHE_STORE=database
 SESSION_DRIVER=database
 
-FILESYSTEM_DISK=s3
+FILESYSTEM_DISK=local
+BROADCAST_CONNECTION=log
+REVERB_SCALING_ENABLED=false
 ```
+
+`FILESYSTEM_DISK` covers framework-local storage; application originals use the private `paperpulse` disk. Scanner input uses `pulsedav`, and desktop bulk input uses `uplink`, both backed by the incoming S3 bucket. Set `S3_KEY`, `S3_SECRET`, `S3_REGION`, `AWS_BUCKET` and `AWS_INCOMING_BUCKET`; custom S3 endpoints retain TLS verification.
 
 ### Queue Worker Configuration
 
@@ -445,7 +460,7 @@ Use the standard database workers, installer and deployment script in [Getting S
 
 **Composer dependency conflicts**
 ```bash
-composer update --with-dependencies
+composer install
 ```
 
 **NPM build failures**

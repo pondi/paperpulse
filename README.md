@@ -1,7 +1,7 @@
 # PaperPulse
 
 > [!WARNING]
-> This project is under heavy development. It started as a personal need and has since evolved into an experimentation platform for AI-assisted coding and its capabilities. There are known issues, areas with improper code structure, features that will be deprecated, and minor security concerns that are being addressed. If you use the project, we will always ensure that your original data is never deleted, though you may need to reprocess it from time to time. The APIs are also under active development and do not yet follow versioning standards.
+> This project is under heavy development. It started as a personal need and has since evolved into an experimentation platform for AI-assisted coding and its capabilities. There are known issues, areas with improper code structure, features that will be deprecated, and minor security concerns that are being addressed. Source files are private; deletion and retention settings apply. The versioned integration API is under `/api/v1`.
 
 Say goodbye to paper chaos forever. PaperPulse transforms your receipts and documents into organized, searchable intelligence.
 
@@ -17,31 +17,30 @@ Stop losing receipts, missing tax deductions, and spending hours organizing pape
 
 ## Technical Overview
 
-Built with Laravel 11 and Vue.js 3, PaperPulse uses AI-powered OCR to extract structured data from documents. It provides full-text search, analytics, and multi-tenant user management.
+Built with Laravel 13, Inertia 3 and Vue.js 3.5, PaperPulse uses AI-powered OCR to extract structured data from documents. It provides full-text search, analytics, and multi-tenant user management.
 
 ## Requirements
 
-- PHP >= 8.2
+- PHP 8.4 with the extensions checked by `forge:preflight` (including ZIP)
 - Composer
-- Node.js >= 18.x
-- PostgreSQL >= 14
-- Meilisearch >= 1.0
-- ImageMagick (for PDF processing)
+- Node.js 20.19+ or 22.12+ (Vite 8)
+- PostgreSQL 17
+- Meilisearch (indexes configured by the application)
+- ImageMagick, Ghostscript, LibreOffice, Bubblewrap and fonts (native Ubuntu installer)
 
 ## External Services Required
 
-- AWS Textract (for OCR)
-- OpenAI API (for data extraction)
+- Gemini for the recommended file extraction pipeline
+- AWS Textract and OpenAI when selecting the legacy `textract+openai` pipeline
 - S3-compatible storage
 
 ## Installation
 
-1. Clone and install dependencies:
+1. From a repository checkout, install dependencies:
 ```bash
-git clone https://github.com/yourusername/paperpulse.git
 cd paperpulse
 composer install
-npm install
+npm ci
 ```
 
 2. Configure environment:
@@ -52,9 +51,9 @@ php artisan key:generate
 
 3. Setup database and search:
 ```bash
-php artisan migrate
-php artisan scout:import "App\Models\Receipt"
-php artisan scout:import "App\Models\LineItem"
+php artisan migrate:safe --no-interaction
+php artisan meilisearch:configure --no-interaction
+php artisan scout:reindex-all --no-interaction
 ```
 
 4. Build assets and start:
@@ -63,6 +62,8 @@ npm run build
 npm run dev
 php artisan queue:work database --queue=default,receipts,documents,conversions,files,exports --timeout=3660
 ```
+
+Native production installation, FPM/CLI checks, worker settings and scheduler setup are described in [Getting Started](docs/getting-started.md). See [Developer Guide](docs/developer.md) for the tested package baseline and manual checks.
 
 ## Required Environment Variables
 
@@ -103,11 +104,14 @@ MEILISEARCH_KEY=LARAVEL-HERD
 
 ### AI Services
 ```
-AI_PROVIDER=openai
-OPENAI_API_KEY=sk-...your-openai-api-key
+FILE_PROCESSING_PROVIDER=gemini
+GEMINI_API_KEY=your-gemini-api-key
+TEXT_ANALYSIS_PROVIDER=gemini
+AI_DEFAULT_PROVIDER=openai
+# OPENAI_API_KEY is needed when selecting OpenAI text analysis or legacy extraction.
 ```
 
-### AWS/OCR
+### Storage and optional legacy OCR
 ```
 TEXTRACT_KEY=your-textract-key
 TEXTRACT_SECRET=your-textract-secret

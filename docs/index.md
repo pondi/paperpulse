@@ -19,8 +19,8 @@ Paperpulse is a comprehensive document management system built with Laravel that
 ### Core Components
 
 **Application Stack**
-- Laravel 11 framework for the backend
-- Vue.js 3 with Inertia.js for reactive frontend
+- Laravel 13 framework for the backend
+- Vue.js 3.5 with Inertia.js 3 for reactive frontend
 - PostgreSQL for data persistence
 - PostgreSQL database cache and standard Laravel queue workers
 - Meilisearch for full-text search capabilities
@@ -35,7 +35,7 @@ Paperpulse is a comprehensive document management system built with Laravel that
 
 ### Integration Points
 
-- **AI Services** - OpenAI (extensible for custom providers)
+- **AI Services** - Gemini file extraction, or the legacy Textract/OpenAI pipeline
 - **Storage** - AWS S3 or compatible object storage
 - **WebDAV** - Pulsedav server for desktop/mobile client uploads
 - **Search** - Meilisearch for instant document retrieval
@@ -47,18 +47,19 @@ Paperpulse is a comprehensive document management system built with Laravel that
 - [Console Commands](cli.md) - Managing the system via CLI
 
 ### For Administrators
-- [Pulsedav](pulsedav.md) - WebDAV server configuration and integration
+- [Native Forge setup](getting-started.md#native-forge-production) - Services, workers and scheduler
 
 ### For Developers
 - [Developer Guide](developer.md) - Building and extending Paperpulse
+- [API v1](api.md) - Authentication and integration contracts
 
 ## System Requirements
 
-- PHP 8.2 or higher with required extensions
+- PHP 8.4 with required extensions, including ZIP
 - Composer for dependency management
-- Node.js 18+ for frontend builds
+- Node.js 20.19+ or 22.12+ for Vite 8 frontend builds
 - PostgreSQL 17
-- Meilisearch 1.0+ for search functionality
+- Meilisearch with application-managed index settings
 
 ## Quick Start
 

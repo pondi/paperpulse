@@ -1,12 +1,13 @@
 # API (v1) Documentation
 
-REST API for external integrations. All operations are scoped to the authenticated user. File processing reuses the same pipeline as the web upload.
+REST API for external integrations on Laravel 13 and Sanctum 4. Listings are scoped to the owner; explicitly shared resources use the file access policy. Writes require the corresponding permission. File processing reuses the same pipeline as the web upload.
 
 ## Base URL
 - `/api/v1`
 
 ## Authentication
 - Tokens: Laravel Sanctum personal access token (30-day expiry).
+- Login requires a verified email address. Unverified accounts receive 403; authenticated integration routes also require verification.
 - Header: `Authorization: Bearer <token>`
 
 ### Login
@@ -50,14 +51,14 @@ REST API for external integrations. All operations are scoped to the authenticat
 
 Upload a file and automatically trigger processing to create a Receipt or Document record. This is a **one-step operation** - there is no separate endpoint to create documents. The file upload handles everything:
 
-1. File is immediately stored to S3 (original preserved)
+1. File is stored to the private source bucket before extraction starts
 2. File record created in database with `status='pending'`
 3. Processing job dispatched based on `file_type`
 4. Receipt or Document record automatically created during processing
 5. OCR extraction and AI analysis performed
 6. User notes are preserved and indexed for search
 
-**Important**: The original uploaded file is **always preserved in S3** regardless of processing success/failure, allowing for reprocessing later if needed.
+The original remains available after processing failure for retries. Owner deletion and configured retention still apply.
 
 #### Endpoint
 - `POST /files`
@@ -148,14 +149,14 @@ When uploading a file that already exists (based on SHA256 hash), the API return
 #### Example Requests
 ```bash
 # Basic upload
-curl -X POST https://paperpulse.app/api/v1/files \
+curl -X POST https://paperpulse.test/api/v1/files \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "file=@receipt.pdf" \
   -F "file_type=receipt" \
   -F "note=Lunch with client - Project Alpha discussion"
 
 # Upload with collections and tags
-curl -X POST https://paperpulse.app/api/v1/files \
+curl -X POST https://paperpulse.test/api/v1/files \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "file=@invoice.pdf" \
   -F "file_type=document" \
@@ -180,7 +181,8 @@ After upload returns successfully:
 - `pending`: Waiting for processing
 - `processing`: OCR/AI analysis in progress
 - `completed`: Receipt/Document created successfully
-- `failed`: Processing error (original file still preserved for retry)
+- `failed`: Processing error (original file retained for retry subject to deletion/retention)
+- `needs_review`: Extraction needs owner review or full-coverage processing
 
 ### View File Details
 - `GET /files/{file_id}`
@@ -379,7 +381,7 @@ No content body.
 
 ### Stream File Content (open/preview)
 - `GET /files/{file_id}/content`
-- Auth: required; **owner-only** (non-owners receive 404).
+- Auth: required; owner or an active share with view permission. Unrelated users receive 404.
 - Rate limit: 200 requests/minute
 - Query:
   - `variant` (optional): `original` (default), `preview`, `archive`
@@ -392,15 +394,15 @@ No content body.
 ```bash
 # Open the original file inline
 curl -L -H "Authorization: Bearer YOUR_TOKEN" \
-  "https://paperpulse.app/api/v1/files/123/content"
+  "https://paperpulse.test/api/v1/files/123/content"
 
 # Fetch the preview image (when available)
 curl -L -H "Authorization: Bearer YOUR_TOKEN" \
-  "https://paperpulse.app/api/v1/files/123/content?variant=preview"
+  "https://paperpulse.test/api/v1/files/123/content?variant=preview"
 
 # Fetch the PDF (converted when available)
 curl -L -H "Authorization: Bearer YOUR_TOKEN" \
-  "https://paperpulse.app/api/v1/files/123/content?variant=archive"
+  "https://paperpulse.test/api/v1/files/123/content?variant=archive"
 ```
 
 ### List Files
@@ -457,9 +459,9 @@ GET /files?per_page=20&page=2
         "category": { "id": 5, "name": "Finance", "color": "#EF4444" }
       },
       "links": {
-        "content": "https://paperpulse.app/api/v1/files/123/content",
+        "content": "https://paperpulse.test/api/v1/files/123/content",
         "preview": null,
-        "pdf": "https://paperpulse.app/api/v1/files/123/content?variant=archive"
+        "pdf": "https://paperpulse.test/api/v1/files/123/content?variant=archive"
       }
     },
     {
@@ -490,8 +492,8 @@ GET /files?per_page=20&page=2
         "category": { "id": 10, "name": "Groceries", "color": "#10B981" }
       },
       "links": {
-        "content": "https://paperpulse.app/api/v1/files/124/content",
-        "preview": "https://paperpulse.app/api/v1/files/124/content?variant=preview",
+        "content": "https://paperpulse.test/api/v1/files/124/content",
+        "preview": "https://paperpulse.test/api/v1/files/124/content?variant=preview",
         "pdf": null
       }
     }
@@ -505,8 +507,8 @@ GET /files?per_page=20&page=2
     "to": 2
   },
   "links": {
-    "first": "https://paperpulse.app/api/v1/files?page=1",
-    "last": "https://paperpulse.app/api/v1/files?page=1",
+    "first": "https://paperpulse.test/api/v1/files?page=1",
+    "last": "https://paperpulse.test/api/v1/files?page=1",
     "prev": null,
     "next": null
   },
@@ -609,7 +611,13 @@ Instant search across receipts, documents, and extracted entities, returning a l
 - `amount_min`, `amount_max`: Numeric filters (receipts/invoices)
 - `category`: Category name filter
 - `document_type`: Document type filter
-- `tags`: CSV (`tags=a,b`) or array (`tags[]=a&tags[]=b`)
+- `tags`: Array (`tags[]=a&tags[]=b`), at most 20 string values
+- `vendors`: Array of at most 20 string values; `vendor` accepts one string
+- `collection_id`: Owned collection ID
+- `page`: Integer 1–20
+- `date_to` must be on or after `date_from`; `amount_max` must be at least `amount_min`.
+
+Search returns `search_status` and `unavailable_types` so clients can display degraded search explicitly.
 
 #### Success Response (200)
 ```json
@@ -637,9 +645,9 @@ Instant search across receipts, documents, and extracted entities, returning a l
           "has_converted_pdf": true
         },
         "links": {
-          "content": "https://paperpulse.app/api/v1/files/123/content",
+          "content": "https://paperpulse.test/api/v1/files/123/content",
           "preview": null,
-          "pdf": "https://paperpulse.app/api/v1/files/123/content?variant=archive"
+          "pdf": "https://paperpulse.test/api/v1/files/123/content?variant=archive"
         }
       }
     ],
@@ -1574,7 +1582,7 @@ All API responses follow a consistent envelope:
 ---
 
 ## Other Routes Outside `/v1`
-- `GET /api/health`: Health check (no auth). Returns status of database, Redis, Meilisearch, and queue.
+- `GET /api/health`: Readiness response (no auth): sanitized component status and latency, timestamp and application version. Returns 503 when a required service is unavailable. The native baseline requires database, migrations and database queues; `HEALTH_REQUIRED_SERVICES` can additionally require Meilisearch.
 - `POST /api/webdav/auth`: PulseDav auth (used by sync feature).
 - `/api/documents/{id}/shares`, `/api/receipts/{id}/shares`, `/api/batch/*`: Internal/web-facing APIs. External clients should use `/api/v1` endpoints.
 
@@ -1590,3 +1598,9 @@ All API responses follow a consistent envelope:
 | `POST /bulk/sessions/*/files/*/presign` | 60 per minute |
 | `POST /bulk/sessions/*/files/*/confirm` | 600 per minute |
 | All other authenticated endpoints | 200 per minute |
+
+## Native runtime and web exports
+
+Production uses PostgreSQL 17, database cache, sessions and queues, and private S3-backed `paperpulse`, `pulsedav` and `uplink` disks. The incoming scanner/upload bucket and permanent source bucket may use a custom endpoint with TLS verification enabled. Configure credentials through `.env`; do not return bucket paths or provider payloads to clients.
+
+Web receipt CSV exports stream in bounded chunks. PDF exports and document ZIP downloads exceeding the immediate limit create database queue jobs and redirect browser requests to `/exports`; JSON requests receive 202 with an export ID, status and status URL. Owners can poll status and obtain a temporary signed download URL after completion. Artifacts are private, expire after 24 hours by default, and are removed by `exports:cleanup`. These authenticated web routes are separate from `/api/v1`.

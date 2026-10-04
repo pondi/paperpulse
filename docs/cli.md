@@ -22,7 +22,7 @@ php artisan user:demote-admin admin@example.com
 php artisan invite:list
 
 # Only pending invitations
-php artisan invite:list --pending
+php artisan invite:list --status=pending
 ```
 
 ### Send New Invitation
@@ -103,7 +103,25 @@ php artisan scout:reindex-all
 php artisan scout:reindex-all --fresh
 ```
 
-## Queue Management
+## Native runtime and queue management
+
+```bash
+php8.4 artisan forge:preflight --no-interaction
+php8.4 artisan forge:preflight --after-migrations --no-interaction
+php8.4 artisan queue:work database --queue=default,receipts,documents,conversions,files,exports --timeout=3660 --tries=3
+php8.4 artisan queue:restart --no-interaction
+php8.4 artisan schedule:run --no-interaction
+```
+
+Use Forge or Supervisor to monitor and restart worker processes. `queue:health` reports database backlog and failed jobs. The scheduler recovers abandoned processing/conversion/scanner work and removes expired exports.
+
+```bash
+php artisan files:recover-processing --limit=100
+php artisan pulsedav:reconcile-imports
+php artisan bulk:reconcile
+php artisan exports:cleanup
+```
+
 
 ### Check Queue Health
 ```bash
@@ -113,7 +131,7 @@ php artisan queue:health
 # Output as JSON
 php artisan queue:health --format=json
 
-# Send alert if unhealthy
+# Log a critical alert if unhealthy
 php artisan queue:health --alert
 ```
 

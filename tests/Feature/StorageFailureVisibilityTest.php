@@ -26,8 +26,9 @@ it('supports local storage only when explicitly configured', function (): void {
 it('never returns a working path after a false local write', function (): void {
     $disk = Mockery::mock(Filesystem::class);
     $disk->shouldReceive('put')->once()->andReturn(false);
-    $disk->shouldNotReceive('path');
-    Storage::shouldReceive('disk')->with('local')->once()->andReturn($disk);
+    $disk->shouldReceive('path')->with('uploads/guid')->once()->andReturn(sys_get_temp_dir());
+    $disk->shouldNotReceive('path')->with('uploads/guid/source.png');
+    Storage::shouldReceive('disk')->with('local')->twice()->andReturn($disk);
 
     expect(fn () => (new FileStorageService(new StorageService))->storeWorkingContent('data', 'guid', 'png'))
         ->toThrow(Exception::class, 'Failed to write the working file');

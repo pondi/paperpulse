@@ -2,39 +2,18 @@
 
 declare(strict_types=1);
 
-use App\Jobs\BaseJob;
 use App\Models\File;
 use App\Models\JobHistory;
 use App\Models\User;
 use App\Services\Jobs\JobMetadataPersistence;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Symfony\Component\Process\Process;
+use Tests\Feature\AtomicReceiptReplacementJob;
+use Tests\Feature\DurableLifecycleTestJob;
+use Tests\Unit\Jobs\TestConcreteJob;
 
 uses(RefreshDatabase::class);
-
-// Concrete implementation for testing
-class TestConcreteJob extends BaseJob
-{
-    public bool $shouldFail = false;
-
-    public bool $executed = false;
-
-    public function __construct(string $jobID, bool $shouldFail = false)
-    {
-        parent::__construct($jobID);
-        $this->shouldFail = $shouldFail;
-        $this->jobName = 'TestConcreteJob';
-    }
-
-    protected function handleJob(): void
-    {
-        $this->executed = true;
-
-        if ($this->shouldFail) {
-            throw new RuntimeException('Test failure message');
-        }
-    }
-}
 
 // --- Construction ---
 
@@ -240,3 +219,19 @@ it('prevents double handling of failures', function () {
     $history = JobHistory::where('uuid', $job->uuid)->first();
     expect($history->status)->toBe('processing');
 });
+
+it('resolves serialized helper jobs in an independent PHP process', function (string $class): void {
+    $jobId = (string) Str::uuid();
+    $serialized = base64_encode(serialize(new $class($jobId)));
+    $process = new Process([PHP_BINARY, '-r',
+        'require "vendor/autoload.php"; $job = unserialize(base64_decode($argv[1])); echo get_class($job)."|".$job->getJobID();',
+        $serialized,
+    ], base_path());
+    $process->mustRun();
+
+    expect($process->getOutput())->toBe($class.'|'.$jobId);
+})->with([
+    TestConcreteJob::class,
+    DurableLifecycleTestJob::class,
+    AtomicReceiptReplacementJob::class,
+]);

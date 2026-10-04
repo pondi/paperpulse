@@ -2,7 +2,6 @@
 
 use App\Jobs\Documents\AnalyzeDocument;
 use App\Jobs\Documents\ProcessDocument;
-use App\Jobs\Receipts\ProcessReceipt;
 use App\Models\Document;
 use App\Models\File;
 use App\Models\JobHistory;
@@ -14,20 +13,7 @@ use App\Services\Jobs\JobMetadataPersistence;
 use App\Services\StorageService;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Str;
-
-class AtomicReceiptReplacementJob extends ProcessReceipt
-{
-    public bool $shouldFail = false;
-
-    protected function handleJob(): void
-    {
-        $metadata = $this->getMetadata();
-        Receipt::factory()->create(['user_id' => $metadata['userId'], 'file_id' => $metadata['fileId'], 'total_amount' => 200]);
-        if ($this->shouldFail) {
-            throw new RuntimeException('Extraction failed');
-        }
-    }
-}
+use Tests\Feature\AtomicReceiptReplacementJob;
 
 beforeEach(function (): void {
     Bus::fake();

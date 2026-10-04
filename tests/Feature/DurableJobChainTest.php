@@ -1,6 +1,5 @@
 <?php
 
-use App\Jobs\BaseJob;
 use App\Models\JobHistory;
 use App\Services\Files\FileJobChainDispatcher;
 use App\Services\Jobs\JobChainPlan;
@@ -11,21 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
-
-class DurableLifecycleTestJob extends BaseJob
-{
-    public bool $shouldThrow = false;
-
-    public int $executions = 0;
-
-    protected function handleJob(): void
-    {
-        $this->executions++;
-        if ($this->shouldThrow) {
-            throw new RuntimeException('Transient provider failure');
-        }
-    }
-}
+use Tests\Feature\DurableLifecycleTestJob;
 
 it('uses one logical step identity in serialized queue payload and retries', function (): void {
     $job = new DurableLifecycleTestJob((string) Str::uuid());

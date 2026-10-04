@@ -55,7 +55,7 @@ it('exports spreadsheet-safe text while preserving numeric and date cells', func
     expect($row['Merchant'])->toBe("'".$merchant->name)
         ->and($row['Category'])->toBe("'+Category")
         ->and($row['Description'])->toBe("' \t@Description")
-        ->and($row['Line Items'])->toBe("'-Item (Qty: 1, Price: -12.5)")
+        ->and($row['Line Items'])->toBe("'-Item (Qty: 1.00, Price: -12.50)")
         ->and($row['Total Amount'])->toBe('-12.50')
         ->and($row['Tax Amount'])->toBe('-2.50')
         ->and($row['Receipt Date'])->toBe('2025-06-15')

@@ -7,6 +7,7 @@ use App\Models\BulkUploadSession;
 use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 
 beforeEach(function () {
@@ -308,18 +309,29 @@ it('cancels an active session', function () {
         'total_files' => 2,
     ]);
 
-    BulkUploadFile::factory()->count(2)->create([
+    BulkUploadFile::factory()->create([
         'bulk_upload_session_id' => $session->id,
         'user_id' => $this->user->id,
-        'status' => BulkUploadFileStatus::Presigned,
+        'status' => BulkUploadFileStatus::Pending,
     ]);
+
+    $source = BulkUploadFile::factory()->presigned()->create([
+        'bulk_upload_session_id' => $session->id,
+        'user_id' => $this->user->id,
+        's3_key' => 'uplink-incoming/'.$this->user->id.'/'.$session->uuid.'/source.pdf',
+    ]);
+    $disk = Storage::fake('uplink');
+    $disk->put($source->s3_key, 'uploaded');
 
     $response = $this->postJson("/api/v1/bulk/sessions/{$session->uuid}/cancel");
 
     $response->assertSuccessful();
 
     $session->refresh();
-    expect($session->status)->toBe(BulkUploadSessionStatus::Cancelled);
+    expect($session->status)->toBe(BulkUploadSessionStatus::Cancelled)
+        ->and($session->cleanup_pending)->toBeTrue()
+        ->and($session->files()->where('status', BulkUploadFileStatus::Skipped)->count())->toBe(2);
+    $disk->assertMissing($source->s3_key);
 });
 
 it('cannot cancel a completed session', function () {

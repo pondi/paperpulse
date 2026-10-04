@@ -275,6 +275,9 @@ class BulkUploadService
             $session->update(['status' => BulkUploadSessionStatus::Cancelled]);
             foreach ($session->files()->withoutGlobalScope('user')->whereNull('file_id')->where('status', '!=', BulkUploadFileStatus::Duplicate)->lockForUpdate()->get() as $file) {
                 $file->update(['status' => BulkUploadFileStatus::Skipped]);
+                if ($file->s3_key === null) {
+                    continue;
+                }
                 try {
                     Storage::disk('uplink')->delete($file->s3_key);
                 } catch (Exception $exception) {

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Invitation;
+use App\Models\User;
 use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
 
@@ -72,8 +73,8 @@ test('registration requires invitation warning', function () {
     });
 });
 
-test('successful registration with invitation redirects to dashboard', function () {
-    $email = 'dusk-register-' . strtolower(Str::random(8)) . '@example.com';
+test('successful registration with invitation requires email verification', function () {
+    $email = 'dusk-register-'.strtolower(Str::random(8)).'@example.com';
     $token = Str::random(64);
 
     Invitation::create([
@@ -84,21 +85,27 @@ test('successful registration with invitation redirects to dashboard', function 
         'expires_at' => now()->addDays(7),
     ]);
 
-    $this->browse(function (Browser $browser) use ($email, $token) {
-        $browser->visit('/register?token=' . $token)
+    $this->browse(function (Browser $browser) use ($token) {
+        $browser->visit('/register?token='.$token)
             ->waitFor('#name')
             ->assertSee('You\'ve been invited')
             ->type('#name', 'Dusk Test User')
             ->type('#password', 'SecurePass123!')
             ->type('#password_confirmation', 'SecurePass123!')
             ->click('form button')
-            ->waitForLocation('/dashboard')
-            ->assertPathIs('/dashboard');
+            ->waitForLocation('/verify-email')
+            ->assertPathIs('/verify-email')
+            ->visit('/dashboard')
+            ->waitForLocation('/verify-email')
+            ->assertPathIs('/verify-email');
     });
+
+    expect(User::query()->where('email', $email)->firstOrFail()->hasVerifiedEmail())->toBeFalse();
+    expect(Invitation::query()->where('token', $token)->firstOrFail()->isUsed())->toBeTrue();
 });
 
 test('registration with weak password shows validation error', function () {
-    $email = 'dusk-weak-pw-' . strtolower(Str::random(8)) . '@example.com';
+    $email = 'dusk-weak-pw-'.strtolower(Str::random(8)).'@example.com';
     $token = Str::random(64);
 
     Invitation::create([
@@ -109,8 +116,8 @@ test('registration with weak password shows validation error', function () {
         'expires_at' => now()->addDays(7),
     ]);
 
-    $this->browse(function (Browser $browser) use ($email, $token) {
-        $browser->visit('/register?token=' . $token)
+    $this->browse(function (Browser $browser) use ($token) {
+        $browser->visit('/register?token='.$token)
             ->waitFor('#name')
             ->type('#name', 'Dusk Test User')
             ->type('#password', 'short')

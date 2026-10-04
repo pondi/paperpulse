@@ -37,6 +37,8 @@ test('existing extraction produces a bounded primary summary with exactly one pr
         ['type' => 'document', 'data' => ['title' => 'Supplemental document']],
     ]], $file);
     expect($file->fresh()->organization_summary)->toBeNull();
+    expect(mb_strlen($file->primaryEntity->entity->title))->toBe(255)
+        ->and($file->primaryEntity->entity->metadata['title'])->toBe(str_repeat('Long title ', 30));
     app(FileOrganizationSummaryService::class)->capture($file, $file->primaryEntity->entity);
     $summary = $file->fresh()->organization_summary;
     expect(mb_strlen($summary['title']))->toBe(120)

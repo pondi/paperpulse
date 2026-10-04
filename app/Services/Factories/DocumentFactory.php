@@ -56,6 +56,10 @@ class DocumentFactory extends BaseEntityFactory
         $data['title'] = $data['title']
             ?? (is_string($metadata['title'] ?? null) ? $metadata['title'] : null);
 
+        if (is_string($data['title'])) {
+            $data['title'] = mb_substr($data['title'], 0, 255);
+        }
+
         $data['document_type'] = $data['document_type']
             ?? (is_string($metadata['type'] ?? null) ? $metadata['type'] : null)
             ?? ($data['_fallback_type'] ?? null);

@@ -19,6 +19,7 @@ use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 
 beforeEach(function (): void {
     config(['queue.connections.database.after_commit' => true]);
@@ -31,8 +32,9 @@ beforeEach(function (): void {
     ]);
     $this->needsReview = false;
     $this->realNotifications = app(ChannelManager::class);
-    JobMetadataPersistence::store('gemini-notification', ['fileId' => $this->file->id, 'fileExtension' => $this->file->fileExtension]);
-    $this->job = new ProcessFileGemini('gemini-notification');
+    $this->jobId = (string) Str::uuid();
+    JobMetadataPersistence::store($this->jobId, ['fileId' => $this->file->id, 'fileExtension' => $this->file->fileExtension]);
+    $this->job = new ProcessFileGemini($this->jobId);
 
     $this->mock(WorkerFileManager::class, fn ($mock) => $mock->shouldReceive('processWithCleanup')->andReturn([
         'typeInfo' => ['type' => 'receipt'],
@@ -66,7 +68,7 @@ it('queues completion once for the selected channels despite repeated Gemini del
     ]);
     $this->job->handle();
     $this->job->handle();
-    (new ProcessFileGemini('gemini-notification'))->handle();
+    (new ProcessFileGemini($this->jobId))->handle();
 
     expect($this->file->fresh()->status)->toBe('completed');
     $this->assertDatabaseCount('receipts', 1);

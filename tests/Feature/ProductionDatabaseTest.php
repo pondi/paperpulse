@@ -3,16 +3,25 @@
 use App\Providers\AppServiceProvider;
 
 it('rejects unsupported production databases before handling requests', function (): void {
-    config()->set('database.default', 'sqlite');
-    app()->instance('env', 'production');
-
-    expect(fn () => (new AppServiceProvider(app()))->boot())
-        ->toThrow(RuntimeException::class, 'production requires PostgreSQL');
+    $original = config('database.default');
+    try {
+        config()->set('database.default', 'unsupported');
+        app()->instance('env', 'production');
+        expect(fn () => (new AppServiceProvider(app()))->boot())
+            ->toThrow(RuntimeException::class, 'requires PostgreSQL');
+    } finally {
+        config()->set('database.default', $original);
+    }
 });
 
 it('rejects an unsupported Forge database', function (): void {
-    config()->set('database.default', 'sqlite');
-    $this->artisan('forge:preflight')->expectsOutputToContain('requires PostgreSQL')->assertFailed();
+    $original = config('database.default');
+    try {
+        config()->set('database.default', 'unsupported');
+        $this->artisan('forge:preflight')->expectsOutputToContain('requires PostgreSQL')->assertFailed();
+    } finally {
+        config()->set('database.default', $original);
+    }
 });
 
 it('accepts a PostgreSQL production configuration without connecting during boot', function (): void {

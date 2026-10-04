@@ -22,7 +22,7 @@ class ForgePreflight extends Command
 
     public function handle(DatabaseManager $database): int
     {
-        if ($database->connection()->getDriverName() !== 'pgsql') {
+        if (config('database.connections.'.config('database.default').'.driver') !== 'pgsql') {
             $this->error('Forge requires PostgreSQL. Set DB_CONNECTION=pgsql.');
 
             return self::FAILURE;

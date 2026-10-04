@@ -133,13 +133,17 @@ it('retries duplicate cleanup without deleting the retained original', function 
     $storage->shouldNotReceive('deleteFile')->with($path);
     $storage->shouldReceive('deleteFile')->with($uniquePath)->once()->andReturn(false);
     expect((new FileCleanupService($storage))->process($manifest)['failed'])->toBe(1)
-        ->and($manifest->fresh()->completed_at)->toBeNull();
+        ->and($manifest->fresh()->completed_at)->toBeNull()
+        ->and($manifest->fresh()->objects[$path]['done'])->toBeTrue()
+        ->and($manifest->fresh()->objects[$uniquePath]['done'])->toBeFalse();
 
     $storage = Mockery::mock(StorageService::class);
     $storage->shouldNotReceive('deleteFile')->with($path);
     $storage->shouldReceive('deleteFile')->with($uniquePath)->once()->andReturn(true);
     expect((new FileCleanupService($storage))->process($manifest)['failed'])->toBe(0)
         ->and($manifest->fresh()->completed_at)->not->toBeNull()
+        ->and($manifest->fresh()->last_error)->toBeNull()
+        ->and($manifest->fresh()->objects[$uniquePath]['done'])->toBeTrue()
         ->and($retained->fresh()->trashed())->toBeFalse();
 });
 

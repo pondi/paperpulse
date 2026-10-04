@@ -16,11 +16,11 @@ it('bounds analyzed provider titles and preserves complete evidence', function (
         'file_id' => $file->id,
         'user_id' => $file->user_id,
         'title' => 'Original title',
-        'metadata' => ['source' => 'scanner'],
+        'metadata' => ['source' => 'scanner', 'userId' => 0],
     ]);
     $jobId = (string) Str::uuid();
     JobMetadataPersistence::store($jobId, ['fileId' => $file->id]);
-    $analysis = ['title' => $title, 'summary' => 'Analyzed summary'];
+    $analysis = ['title' => $title, 'summary' => 'Analyzed summary', 'entities' => [['type' => 'person', 'name' => 'Ada']]];
     $this->mock(DocumentAnalysisService::class)->shouldReceive('analyze')->once()->andReturn($analysis);
 
     $job = new AnalyzeDocument($jobId);
@@ -30,6 +30,7 @@ it('bounds analyzed provider titles and preserves complete evidence', function (
     expect($document->title)->toBe($expectedTitle)
         ->and($document->metadata['ai_analysis'])->toBe($analysis)
         ->and($document->metadata['source'])->toBe('scanner')
+        ->and($document->metadata['entities'])->toBe($analysis['entities'])
         ->and($file->fresh()->status)->toBe('completed')
         ->and(JobHistory::where('uuid', $job->uuid)->firstOrFail()->status)->toBe('completed');
 })->with([

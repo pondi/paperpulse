@@ -125,9 +125,9 @@ class AnalyzeDocument extends BaseJob
 
                 // Handle entities extraction
                 if (! empty($analysis['entities'])) {
-                    $metadata = $document->metadata ?? [];
-                    $metadata['entities'] = $analysis['entities'];
-                    $document->update(['metadata' => $metadata]);
+                    $documentMetadata = $document->metadata ?? [];
+                    $documentMetadata['entities'] = $analysis['entities'];
+                    $document->update(['metadata' => $documentMetadata]);
                 }
             });
 

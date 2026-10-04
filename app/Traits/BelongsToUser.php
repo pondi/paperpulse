@@ -49,10 +49,9 @@ trait BelongsToUser
      */
     public function resolveRouteBindingQuery($query, $value, $field = null): Builder|Relation
     {
-        /** @var Builder<static> $query */
         $query = parent::resolveRouteBindingQuery($query, $value, $field);
 
-        return $this->scopeAccessibleBy($query, auth()->user());
+        return $query->accessibleBy(auth()->user());
     }
 
     /** @return BelongsTo<User, $this> */

@@ -203,6 +203,7 @@ it('can update an invoice', function () {
         'user_id' => $user->id,
         'file_id' => $file->id,
         'invoice_number' => 'INV-001',
+        'invoice_type' => 'invoice',
     ]);
 
     $this->actingAs($user)
@@ -210,7 +211,8 @@ it('can update an invoice', function () {
             'invoice_number' => 'INV-002',
             'payment_status' => 'paid',
         ])
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
 
     expect($invoice->fresh())
         ->invoice_number->toBe('INV-002')
@@ -492,3 +494,19 @@ it('can detach a tag from a contract', function () {
 
     expect($file->fresh()->tags)->toHaveCount(0);
 });
+
+it('rejects unrelated and foreign tags when detaching entity tags', function (string $modelClass, string $routeName): void {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id]);
+    $entity = $modelClass::factory()->create(['user_id' => $user->id, 'file_id' => $file->id]);
+    $unrelatedTag = Tag::factory()->create(['user_id' => $user->id]);
+    $foreignTag = Tag::factory()->create();
+    $file->tags()->attach($foreignTag);
+
+    $this->actingAs($user)->delete(route($routeName, [$entity, $unrelatedTag]))->assertNotFound();
+    $this->delete(route($routeName, [$entity, $foreignTag]))->assertNotFound();
+    expect($file->tags()->withoutGlobalScope('user')->get()->modelKeys())->toBe([$foreignTag->id]);
+})->with([
+    [Invoice::class, 'invoices.tags.destroy'],
+    [Contract::class, 'contracts.tags.destroy'],
+]);

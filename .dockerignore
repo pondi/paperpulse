@@ -1,5 +1,15 @@
 /.git
 /.todo
+/.issues
+/.codex
+/.agents
+/.aws
+/.claude
+/.idea
+/.vscode
+/.worktree*
+**/.DS_Store
+/build-push.local.sh
 /node_modules
 /vendor
 /.env
@@ -13,3 +23,6 @@
 /tests/Browser/console
 /tests/Browser/source
 /.phpunit.cache
+/AGENTS.md
+/CLAUDE.md
+/compose.override.yaml

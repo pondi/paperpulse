@@ -85,6 +85,15 @@ it('includes the required PHP extensions in the application image', function ():
     }
 });
 
+it('excludes host credentials editor settings and local metadata from the image', function (): void {
+    if (! getenv('PAPERPULSE_CONTAINER_RUNTIME')) {
+        $this->markTestSkipped('Requires the built application image.');
+    }
+    foreach (['.git', '.aws', '.claude', '.idea', '.vscode', '.todo', '.issues', '.env.dusk.local', '.DS_Store', 'build-push.local.sh'] as $path) {
+        expect(file_exists(base_path($path)))->toBeFalse('Host file included in image: '.$path);
+    }
+});
+
 it('allows the test user to write Pest result and mutation caches', function (): void {
     foreach (['pest/.temp', 'pest-plugin-mutate/.temp/pest-mutate-cache'] as $directory) {
         expect(is_writable(base_path('vendor/pestphp/'.$directory)))->toBeTrue($directory);

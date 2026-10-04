@@ -17,6 +17,7 @@ use App\Services\Jobs\JobMetadataPersistence;
 use App\Services\Workers\WorkerFileManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Mockery;
 use Tests\TestCase;
 
@@ -49,7 +50,7 @@ class ProcessFileGeminiTest extends TestCase
         Storage::disk('paperpulse')->put($path, 'example text content');
         $file->update(['s3_original_path' => $path]);
 
-        $jobId = 'job-unit-'.uniqid();
+        $jobId = (string) Str::uuid();
         JobMetadataPersistence::store($jobId, [
             'fileId' => $file->id,
             'fileGuid' => $file->guid,

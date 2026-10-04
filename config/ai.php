@@ -39,7 +39,7 @@ return [
         ],
         'gemini' => [
             'api_key' => env('GEMINI_API_KEY'),
-            'model' => env('GEMINI_MODEL', 'gemini-3-flash-preview'),
+            'model' => env('GEMINI_MODEL', 'gemini-3.5-flash-lite'),
             'timeout' => env('GEMINI_REQUEST_TIMEOUT', 90),
             'max_file_size_mb' => env('GEMINI_MAX_FILE_SIZE_MB', 50),
             'large_file_threshold_mb' => env('GEMINI_LARGE_FILE_THRESHOLD_MB', 15),

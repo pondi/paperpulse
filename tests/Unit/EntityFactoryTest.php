@@ -2,6 +2,7 @@
 
 use App\Models\BankStatement;
 use App\Models\BankTransaction;
+use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Merchant;
@@ -12,6 +13,40 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
+
+it('records the selected Gemini model in extraction metadata', function (?string $configuredModel, string $expectedModel) {
+    $geminiConfiguration = config('ai.providers.gemini');
+    unset($geminiConfiguration['model']);
+    config(['ai.providers.gemini' => $geminiConfiguration]);
+    if ($configuredModel !== null) {
+        config(['ai.providers.gemini.model' => $configuredModel]);
+    }
+
+    $file = File::factory()->create(['processing_type' => 'gemini']);
+    $created = app(EntityFactory::class)->createEntitiesFromParsedData([
+        'entities' => [[
+            'type' => 'voucher',
+            'data' => [
+                'voucher_type' => 'gift_card',
+                'code' => 'MODEL-TEST',
+                'original_value' => 100,
+                'merchant' => ['name' => 'Model Test Shop'],
+            ],
+        ]],
+    ], $file, 'receipt');
+
+    expect($created)->toHaveCount(1);
+    $this->assertDatabaseHas('extractable_entities', [
+        'file_id' => $file->id,
+        'extraction_provider' => 'gemini',
+        'extraction_model' => $expectedModel,
+    ]);
+    expect(ExtractableEntity::factory()->make()->extraction_model)->toBe($expectedModel);
+})->with([
+    'default fallback' => [null, 'gemini-3.5-flash-lite'],
+    'selected model' => ['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite'],
+    'override' => ['gemini-3.8-flash', 'gemini-3.8-flash'],
+]);
 
 it('skips entities without data', function () {
     $file = File::factory()->create();

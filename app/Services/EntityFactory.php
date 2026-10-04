@@ -221,7 +221,7 @@ class EntityFactory
             'is_primary' => $isPrimary,
             'confidence_score' => $confidence,
             'extraction_provider' => $file->processing_type ?? 'gemini',
-            'extraction_model' => config('ai.providers.gemini.model', 'gemini-2.0-flash'),
+            'extraction_model' => config('ai.providers.gemini.model', 'gemini-3.5-flash-lite'),
             'extraction_metadata' => [
                 'entity_type_name' => $type,
                 'extracted_at' => now()->toIso8601String(),

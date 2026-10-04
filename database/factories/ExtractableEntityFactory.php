@@ -38,7 +38,7 @@ class ExtractableEntityFactory extends Factory
             'is_primary' => false,
             'confidence_score' => null,
             'extraction_provider' => 'gemini',
-            'extraction_model' => 'gemini-2.0-flash',
+            'extraction_model' => config('ai.providers.gemini.model', 'gemini-3.5-flash-lite'),
             'extraction_metadata' => null,
             'extracted_at' => now(),
         ];

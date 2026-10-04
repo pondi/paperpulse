@@ -33,7 +33,7 @@ class GeminiProvider
      */
     protected function resolveModelAndKey(): array
     {
-        $model = config('ai.providers.gemini.model', 'gemini-2.0-flash');
+        $model = config('ai.providers.gemini.model', 'gemini-3.5-flash-lite');
         $apiKey = config('ai.providers.gemini.api_key');
 
         if (empty($apiKey)) {

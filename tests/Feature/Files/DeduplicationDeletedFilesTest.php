@@ -121,6 +121,9 @@ it('does not treat a deleted document as a duplicate source', function () {
     $this->travelTo($manifest->available_at->copy()->addSecond());
     expect(app(FileCleanupService::class)->process($manifest)['failed'])->toBe(0);
     Storage::disk('paperpulse')->assertMissing($fullPath);
+    expect($manifest->fresh()->completed_at)->not->toBeNull()
+        ->and($manifest->fresh()->last_error)->toBeNull()
+        ->and($manifest->fresh()->objects[$fullPath]['done'])->toBeTrue();
     expect(Document::find($document->id))->toBeNull();
     expect(File::find($file->id))->toBeNull();
     expect($dedupe->checkDuplication($content, $user->id)['isDuplicate'])->toBeFalse();

@@ -120,6 +120,9 @@ it('rejects a queued record pointing at another users object', function () {
     ]);
     $this->mock(FileStorageContract::class)->shouldNotReceive('existsInS3', 'getFromS3', 'deleteFromS3');
 
-    expect(fn () => (new ProcessPulseDavFile($file))->handle())->toThrow(ValidationException::class);
+    $job = new ProcessPulseDavFile($file);
+    $file->update(['job_id' => $job->jobID, 'status' => 'queued']);
+    expect(fn () => $job->handle())->toThrow(ValidationException::class);
+    $job->failed(ValidationException::withMessages(['s3_path' => 'Invalid incoming path.']));
     expect($file->fresh()->status)->toBe('failed');
 });

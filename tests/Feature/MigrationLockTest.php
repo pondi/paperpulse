@@ -17,6 +17,10 @@ it('holds the migration mutex across cache clearing and elapsed legacy TTL', fun
         expect($second->acquire())->toBeFalse();
         $first->release();
         expect($second->acquire())->toBeTrue();
+        $first->release();
+        expect($first->acquire())->toBeFalse();
+        $second->release();
+        expect($first->acquire())->toBeTrue();
     } finally {
         $first->release();
         $second->release();

@@ -459,8 +459,6 @@ class AnalyticsController extends Controller
 
     private function getMonthExpression(string $column): string
     {
-        return DB::connection()->getDriverName() === 'sqlite'
-            ? "strftime('%Y-%m', {$column})"
-            : "TO_CHAR({$column}, 'YYYY-MM')";
+        return "TO_CHAR({$column}, 'YYYY-MM')";
     }
 }

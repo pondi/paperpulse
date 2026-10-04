@@ -16,6 +16,29 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+it('binds owned and shared receipts through model builder and relationship queries', function (string $queryType): void {
+    $owner = User::factory()->create();
+    $recipient = User::factory()->create();
+    $file = File::factory()->for($owner)->create();
+    $receipt = Receipt::factory()->create(['user_id' => $owner->id, 'file_id' => $file->id]);
+    $share = FileShare::create([
+        'file_id' => $file->id, 'file_type' => 'receipt', 'shared_by_user_id' => $owner->id,
+        'shared_with_user_id' => $recipient->id, 'permission' => 'view', 'shared_at' => now(),
+    ]);
+    $this->actingAs($recipient);
+    $query = fn () => match ($queryType) {
+        'model' => new Receipt,
+        'builder' => Receipt::query(),
+        'relationship' => $owner->receipts(),
+    };
+
+    expect($receipt->resolveRouteBindingQuery($query(), $receipt->id)->firstOrFail()->id)->toBe($receipt->id);
+    $share->update(['expires_at' => now()->subMinute()]);
+    expect($receipt->resolveRouteBindingQuery($query(), $receipt->id)->first())->toBeNull();
+    $this->actingAs($owner);
+    expect($receipt->resolveRouteBindingQuery($query(), $receipt->id)->firstOrFail()->id)->toBe($receipt->id);
+})->with(['model', 'builder', 'relationship']);
+
 /*
 |--------------------------------------------------------------------------
 | Multi-Tenant Data Isolation Tests

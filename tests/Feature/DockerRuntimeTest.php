@@ -1,6 +1,6 @@
 <?php
 
-use App\Console\Commands\ForgePreflight;
+use App\Console\Commands\RuntimeCheck;
 use App\Providers\AppServiceProvider;
 use Illuminate\Database\Connectors\PostgresConnector;
 use Illuminate\Support\Facades\Http;
@@ -82,8 +82,36 @@ it('includes the required PHP extensions in the application image', function ():
     if (! getenv('PAPERPULSE_CONTAINER_RUNTIME')) {
         $this->markTestSkipped('Requires the container PHP extensions.');
     }
-    foreach ([...ForgePreflight::EXTENSIONS, 'pcntl', 'posix'] as $extension) {
+    foreach ([...RuntimeCheck::EXTENSIONS, 'pcntl', 'posix'] as $extension) {
         expect(extension_loaded($extension))->toBeTrue('Missing ext-'.$extension);
+    }
+});
+
+it('accepts WebSocket upgrades using the bundled Reverb application', function (): void {
+    if (! getenv('PAPERPULSE_CONTAINER_RUNTIME')) {
+        $this->markTestSkipped('Requires the container Reverb server.');
+    }
+    $settings = config('broadcasting.connections.reverb');
+    $host = $settings['options']['host'];
+    $port = $settings['options']['port'];
+    $socket = stream_socket_client('tcp://'.$host.':'.$port, timeout: 3);
+    expect($socket)->toBeResource();
+    try {
+        stream_set_timeout($socket, 3);
+        $key = base64_encode(random_bytes(16));
+        $request = 'GET /app/'.$settings['key']."?protocol=7&client=js&version=8.4.0 HTTP/1.1\r\n"
+            ."Host: {$host}:{$port}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+            ."Sec-WebSocket-Key: {$key}\r\nSec-WebSocket-Version: 13\r\n\r\n";
+        fwrite($socket, $request);
+        expect(trim(fgets($socket)))->toContain('101 Switching Protocols');
+        $headers = '';
+        while (($line = fgets($socket)) !== false && trim($line) !== '') {
+            $headers .= $line;
+        }
+        expect($headers)->toContain(base64_encode(sha1($key.'258EAFA5-E914-47DA-95CA-C5AB0DC85B11', true)));
+        expect(fread($socket, 2048))->toContain('pusher:connection_established');
+    } finally {
+        fclose($socket);
     }
 });
 

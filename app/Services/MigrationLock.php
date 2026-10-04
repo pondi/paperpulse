@@ -23,6 +23,7 @@ class MigrationLock
         if ($connection->getDriverName() !== 'pgsql') {
             throw new RuntimeException('Safe migrations require PostgreSQL.');
         }
+        /** @var Connection $connection */
         $connection = $this->database->build([...$connection->getConfig(), 'name' => 'migration_lock_'.spl_object_id($this)]);
         if (! $connection->selectOne('SELECT pg_try_advisory_lock(?, ?) AS acquired', [190126, 47])->acquired) {
             $connection->disconnect();

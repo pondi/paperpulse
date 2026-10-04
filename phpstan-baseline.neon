@@ -1,4 +1,4 @@
-# Reviewed manual baseline for the Laravel 13 / PHP 8.4 application.
+# Reviewed manual baseline for the Laravel 13 / PHP 8.5 application.
 # Remaining debt: conditional trait branches with model-specific relations;
 # dynamic model classes, Scout paginator/proxy and configured S3 adapter types;
 # SQL projection aliases and optional fields on polymorphic resources;

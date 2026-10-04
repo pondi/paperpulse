@@ -49,6 +49,7 @@ trait BelongsToUser
      */
     public function resolveRouteBindingQuery($query, $value, $field = null): Builder|Relation
     {
+        /** @var Builder<static>|Relation $query */
         $query = parent::resolveRouteBindingQuery($query, $value, $field);
 
         return $query->accessibleBy(auth()->user());

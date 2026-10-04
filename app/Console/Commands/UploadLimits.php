@@ -9,7 +9,7 @@ class UploadLimits extends Command
 {
     protected $signature = 'uploads:limits';
 
-    protected $description = 'Print PHP CLI/FPM and Forge Nginx upload settings for the selected processing capabilities';
+    protected $description = 'Print PHP CLI/FPM and Nginx upload settings for the selected processing capabilities';
 
     public function handle(FileUploadConfigService $config): int
     {

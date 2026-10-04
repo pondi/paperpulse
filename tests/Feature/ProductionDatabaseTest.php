@@ -14,11 +14,11 @@ it('rejects unsupported production databases before handling requests', function
     }
 });
 
-it('rejects an unsupported Forge database', function (): void {
+it('rejects an unsupported database in the optional runtime check', function (): void {
     $original = config('database.default');
     try {
         config()->set('database.default', 'unsupported');
-        $this->artisan('forge:preflight')->expectsOutputToContain('requires PostgreSQL')->assertFailed();
+        $this->artisan('runtime:check')->expectsOutputToContain('requires PostgreSQL')->assertFailed();
     } finally {
         config()->set('database.default', $original);
     }

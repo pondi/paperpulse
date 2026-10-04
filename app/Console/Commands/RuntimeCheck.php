@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\Process;
 use RuntimeException;
 use Throwable;
 
-class ForgePreflight extends Command
+class RuntimeCheck extends Command
 {
-    protected $signature = 'forge:preflight {--fpm-binary=php-fpm8.5} {--after-migrations : Check database tables, cache, queues and search}';
+    protected $signature = 'runtime:check {--fpm-binary=php-fpm8.5} {--after-migrations : Check database tables, cache, queues and search}';
 
-    protected $description = 'Validate the native Forge runtime before deployment';
+    protected $description = 'Check PHP, local conversion tools and configured application services';
 
     /** @var list<string> */
     public const EXTENSIONS = ['ctype', 'curl', 'dom', 'fileinfo', 'gd', 'imagick', 'intl', 'mbstring', 'openssl', 'pdo_pgsql', 'tokenizer', 'xml', 'zip'];
@@ -23,13 +23,13 @@ class ForgePreflight extends Command
     public function handle(DatabaseManager $database): int
     {
         if (config('database.connections.'.config('database.default').'.driver') !== 'pgsql') {
-            $this->error('Forge requires PostgreSQL. Set DB_CONNECTION=pgsql.');
+            $this->error('PaperPulse requires PostgreSQL. Set DB_CONNECTION=pgsql.');
 
             return self::FAILURE;
         }
         try {
             if (config('queue.default') !== 'database' || config('cache.default') !== 'database' || config('session.driver') !== 'database') {
-                throw new RuntimeException('Forge requires database queues, cache and sessions.');
+                throw new RuntimeException('The supported runtime requires database queues, cache and sessions.');
             }
             foreach (['queue.connections.database.connection', 'cache.stores.database.connection', 'cache.stores.database.lock_connection', 'queue.failed.database', 'queue.batching.database'] as $key) {
                 if ($database->connection(config($key))->getDriverName() !== 'pgsql') {
@@ -37,7 +37,7 @@ class ForgePreflight extends Command
                 }
             }
             if (config('reverb.servers.reverb.scaling.enabled') || config('broadcasting.default') === 'redis') {
-                throw new RuntimeException('Disable Reverb scaling and Redis broadcasting for the Forge baseline.');
+                throw new RuntimeException('Disable Reverb scaling and Redis broadcasting for the supported runtime.');
             }
             if (! config('app.key') || config('app.debug')) {
                 throw new RuntimeException('Set APP_KEY and APP_DEBUG=false before deployment.');
@@ -75,12 +75,12 @@ class ForgePreflight extends Command
             $sandbox = Process::timeout(10)->run([config('processing.conversion.local.sandbox'), '--unshare-all', '--die-with-parent',
                 '--ro-bind', '/usr', '/usr', '--ro-bind', '/lib', '/lib', '--ro-bind', '/bin', '/bin', '--clearenv', '/usr/bin/true']);
             if (! $sandbox->successful()) {
-                throw new RuntimeException('Bubblewrap requires unprivileged user namespaces for the Forge worker user.');
+                throw new RuntimeException('Bubblewrap requires unprivileged user namespaces for the application worker user.');
             }
             foreach ([storage_path('app/private'), storage_path('app/uploads'), storage_path('framework'), storage_path('logs'), base_path('bootstrap/cache')] as $path) {
                 File::ensureDirectoryExists($path, 0700);
                 if (! is_writable($path)) {
-                    throw new RuntimeException('Make storage and bootstrap/cache writable by the Forge user.');
+                    throw new RuntimeException('Make storage and bootstrap/cache writable by the application user.');
                 }
             }
             if ($this->option('after-migrations')) {
@@ -93,17 +93,17 @@ class ForgePreflight extends Command
                         throw new RuntimeException('Run migrations to create cache, queue and session tables.');
                     }
                 }
-                Cache::lock('forge-preflight', 10)->block(1, fn () => Cache::put('forge-preflight', 'ready', 10));
-                if (Cache::pull('forge-preflight') !== 'ready') {
+                Cache::lock('runtime-check', 10)->block(1, fn () => Cache::put('runtime-check', 'ready', 10));
+                if (Cache::pull('runtime-check') !== 'ready') {
                     throw new RuntimeException('Database cache verification failed.');
                 }
             }
         } catch (Throwable $exception) {
-            $this->error($exception instanceof RuntimeException ? $exception->getMessage() : 'Forge runtime validation failed. Check runtime configuration and service availability.');
+            $this->error($exception instanceof RuntimeException ? $exception->getMessage() : 'Runtime validation failed. Check runtime configuration and service availability.');
 
             return self::FAILURE;
         }
-        $this->info('Forge runtime verified.');
+        $this->info('Application runtime verified.');
 
         return self::SUCCESS;
     }

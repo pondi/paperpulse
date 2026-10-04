@@ -62,7 +62,7 @@ class FileController extends BaseApiController
     }
 
     /**
-     * @return array<int, string|array>
+     * @return array<string, \Closure>
      */
     private function relationshipsForList(?string $fileType): array
     {

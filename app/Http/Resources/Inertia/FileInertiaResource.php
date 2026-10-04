@@ -2,10 +2,12 @@
 
 namespace App\Http\Resources\Inertia;
 
+use App\Models\File;
 use App\Services\Files\StoragePathBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin File */
 class FileInertiaResource extends JsonResource
 {
     protected bool $detailed = false;

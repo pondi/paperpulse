@@ -65,16 +65,19 @@ class PublicCollectionLink extends Model
         ];
     }
 
+    /** @return BelongsTo<Collection, $this> */
     public function collection(): BelongsTo
     {
         return $this->belongsTo(Collection::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
+    /** @return HasMany<PublicShareAccessLog, $this> */
     public function accessLogs(): HasMany
     {
         return $this->hasMany(PublicShareAccessLog::class);

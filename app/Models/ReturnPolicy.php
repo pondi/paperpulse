@@ -56,16 +56,19 @@ class ReturnPolicy extends Model implements Taggable
         'deleted_reason' => DeletedReason::class,
     ];
 
+    /** @return BelongsTo<Receipt, $this> */
     public function receipt(): BelongsTo
     {
         return $this->belongsTo(Receipt::class);
     }
 
+    /** @return BelongsTo<Invoice, $this> */
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
     }
 
+    /** @return BelongsTo<Merchant, $this> */
     public function merchant(): BelongsTo
     {
         return $this->belongsTo(Merchant::class);

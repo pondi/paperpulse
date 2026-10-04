@@ -105,16 +105,19 @@ class Collection extends Model
         ];
     }
 
+    /** @return BelongsTo<Collection, $this> */
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');
     }
 
+    /** @return HasMany<Collection, $this> */
     public function children(): HasMany
     {
         return $this->hasMany(self::class, 'parent_id');
     }
 
+    /** @return HasMany<File, $this> */
     public function primaryFiles(): HasMany
     {
         return $this->hasMany(File::class, 'primary_folder_id');
@@ -147,11 +150,13 @@ class Collection extends Model
         }
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsToMany<File, $this, SearchableFilePivot> */
     public function files(): BelongsToMany
     {
         return $this->belongsToMany(File::class)
@@ -159,16 +164,19 @@ class Collection extends Model
             ->withPivot('is_primary_placement')->withTimestamps();
     }
 
+    /** @return HasMany<CollectionShare, $this> */
     public function shares(): HasMany
     {
         return $this->hasMany(CollectionShare::class);
     }
 
+    /** @return HasMany<PublicCollectionLink, $this> */
     public function publicLinks(): HasMany
     {
         return $this->hasMany(PublicCollectionLink::class);
     }
 
+    /** @return BelongsToMany<User, $this> */
     public function sharedUsers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'collection_shares', 'collection_id', 'shared_with_user_id')

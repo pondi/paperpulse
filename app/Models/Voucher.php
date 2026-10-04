@@ -78,6 +78,7 @@ class Voucher extends Model implements Taggable
         'deleted_reason' => DeletedReason::class,
     ];
 
+    /** @return BelongsTo<Merchant, $this> */
     public function merchant(): BelongsTo
     {
         return $this->belongsTo(Merchant::class);

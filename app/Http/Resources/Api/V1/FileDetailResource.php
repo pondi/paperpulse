@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api\V1;
 
 use App\Models\Document;
+use App\Models\File;
 use App\Models\Receipt;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -12,6 +13,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Single Responsibility: Orchestrate detailed file response with entity data
  * - Returns file metadata + entity data based on primary entity type
  * - Does NOT include S3 paths or signed URLs
+ *
+ * @mixin File
  */
 class FileDetailResource extends JsonResource
 {

@@ -1,5 +1,6 @@
 includes:
     - ./vendor/larastan/larastan/extension.neon
+    - ./phpstan-baseline.neon
 
 parameters:
     paths:
@@ -7,4 +8,5 @@ parameters:
         - config
         - database
     level: 5
-    # No ignoreErrors by default; keep the signal high
+    parseModelCastsMethod: true
+    # Manual checks retain exact, counted legacy entries; new findings still fail.

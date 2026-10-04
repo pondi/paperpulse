@@ -13,7 +13,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
+
 /**
  * Document Model
  *
@@ -32,17 +35,16 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property array|null $ai_entities
  * @property array|null $metadata
  * @property string|null $language
- * @property Carbon|null $document_date
+ * @property-read Carbon|null $document_date
+ * @property-write \DateTimeInterface|string|null $document_date
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read File $file
  * @property-read User $user
  * @property-read Category|null $category
- * @property-read Collection|Tag[] $tags
- * @property-read Collection|FileShare[] $shares
+ * @property-read Collection<int, Tag> $tags
+ * @property-read Collection<int, FileShare> $shares
  */
-use Laravel\Scout\Searchable;
-
 class Document extends Model implements Taggable
 {
     use BelongsToUser;
@@ -56,7 +58,7 @@ class Document extends Model implements Taggable
     /**
      * The attributes that are mass assignable.
      *
-     * @var array<string>
+     * @var list<string>
      */
     protected $fillable = [
         'file_id',
@@ -113,32 +115,40 @@ class Document extends Model implements Taggable
 
     /**
      * Get the file that owns the document.
+     *
+     * @return BelongsTo<File, $this>
      */
-    public function file()
+    public function file(): BelongsTo
     {
         return $this->belongsTo(File::class);
     }
 
     /**
      * Get the user that owns the document.
+     *
+     * @return BelongsTo<User, $this>
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
     /**
      * Get the owner of the document (alias for user relation).
+     *
+     * @return BelongsTo<User, $this>
      */
-    public function owner()
+    public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
     /**
      * Get the category that the document belongs to.
+     *
+     * @return BelongsTo<Category, $this>
      */
-    public function category()
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }

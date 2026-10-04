@@ -2,10 +2,12 @@
 
 namespace App\Http\Resources\Inertia;
 
+use App\Models\Invoice;
 use App\Services\Files\StoragePathBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin Invoice */
 class InvoiceInertiaResource extends JsonResource
 {
     protected bool $detailed = false;

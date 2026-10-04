@@ -61,6 +61,7 @@ class BankStatement extends Model implements Taggable
         'deleted_reason' => DeletedReason::class,
     ];
 
+    /** @return HasMany<BankTransaction, $this> */
     public function transactions(): HasMany
     {
         return $this->hasMany(BankTransaction::class);

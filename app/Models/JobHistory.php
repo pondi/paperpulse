@@ -45,6 +45,8 @@ class JobHistory extends Model
 
     /**
      * Get all tasks for this job
+     *
+     * @return HasMany<JobHistory, $this>
      */
     public function tasks(): HasMany
     {
@@ -54,6 +56,8 @@ class JobHistory extends Model
 
     /**
      * Get the parent job
+     *
+     * @return BelongsTo<JobHistory, $this>
      */
     public function parent(): BelongsTo
     {

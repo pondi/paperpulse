@@ -2,12 +2,15 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Models\Document;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Document Resource
  *
  * Single Responsibility: Transform document data for API responses
+ *
+ * @mixin Document
  */
 class DocumentResource extends JsonResource
 {

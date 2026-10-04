@@ -2,12 +2,15 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Models\Receipt;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Receipt Resource
  *
  * Single Responsibility: Transform receipt data for API responses
+ *
+ * @mixin Receipt
  */
 class ReceiptResource extends JsonResource
 {
@@ -20,7 +23,7 @@ class ReceiptResource extends JsonResource
             'tax_amount' => $this->tax_amount,
             'currency' => $this->currency,
             'receipt_date' => $this->receipt_date,
-            'summary' => $this->summary,
+            'summary' => $this->receipt_description,
             'note' => $this->note,
             'receipt_description' => $this->receipt_description,
             'category' => $this->relationLoaded('category') && $this->category ? CategoryResource::make($this->category) : null,

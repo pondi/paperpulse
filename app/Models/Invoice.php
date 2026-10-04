@@ -79,16 +79,19 @@ class Invoice extends Model implements Taggable
         'deleted_reason' => DeletedReason::class,
     ];
 
+    /** @return BelongsTo<Merchant, $this> */
     public function merchant(): BelongsTo
     {
         return $this->belongsTo(Merchant::class);
     }
 
+    /** @return BelongsTo<Category, $this> */
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
+    /** @return HasMany<InvoiceLineItem, $this> */
     public function lineItems(): HasMany
     {
         return $this->hasMany(InvoiceLineItem::class);

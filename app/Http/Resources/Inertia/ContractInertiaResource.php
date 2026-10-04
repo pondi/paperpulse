@@ -2,10 +2,12 @@
 
 namespace App\Http\Resources\Inertia;
 
+use App\Models\Contract;
 use App\Services\Files\StoragePathBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin Contract */
 class ContractInertiaResource extends JsonResource
 {
     protected bool $detailed = false;

@@ -16,6 +16,7 @@ class OrganizationState extends Model
 
     protected $casts = ['revision' => 'integer', 'analyzed_revision' => 'integer', 'debounce_until' => 'datetime'];
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

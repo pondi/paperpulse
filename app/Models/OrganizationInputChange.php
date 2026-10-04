@@ -14,6 +14,7 @@ class OrganizationInputChange extends Model
 
     protected $casts = ['revision' => 'integer', 'entity_id' => 'integer'];
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

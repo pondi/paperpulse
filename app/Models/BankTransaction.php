@@ -61,6 +61,7 @@ class BankTransaction extends Model
         });
     }
 
+    /** @return BelongsTo<BankStatement, $this> */
     public function bankStatement(): BelongsTo
     {
         return $this->belongsTo(BankStatement::class, 'bank_statement_id');

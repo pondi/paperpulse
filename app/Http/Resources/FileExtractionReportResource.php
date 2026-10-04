@@ -2,10 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\File;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Arr;
 
+/** @mixin File */
 class FileExtractionReportResource extends JsonResource
 {
     /**

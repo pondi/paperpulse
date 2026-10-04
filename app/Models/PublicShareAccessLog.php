@@ -44,6 +44,7 @@ class PublicShareAccessLog extends Model
         ];
     }
 
+    /** @return BelongsTo<PublicCollectionLink, $this> */
     public function publicCollectionLink(): BelongsTo
     {
         return $this->belongsTo(PublicCollectionLink::class);

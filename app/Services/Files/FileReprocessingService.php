@@ -31,7 +31,7 @@ class FileReprocessingService
      *
      * @param  File  $file  The file to reprocess
      * @param  bool  $force  Force reprocessing even if already processing
-     * @return array{success:bool,jobId:string,message:string}
+     * @return array{success:bool,jobId:?string,message:string}
      */
     public function reprocessFile(File $file, bool $force = false): array
     {
@@ -270,11 +270,10 @@ class FileReprocessingService
             ];
         }
 
-        // Clear any derived outputs (they will be regenerated)
-        $this->resetFileProcessingState($file);
-
-        // Entity cleanup happens in reprocessFile() which is called after this method
-        // No need to delete entities here - reprocessFile() handles it
+        $file->s3_processed_path = null;
+        $file->s3_image_path = null;
+        $file->has_image_preview = false;
+        $file->image_generation_error = null;
 
         FileShare::where('file_id', $file->id)->update(['file_type' => $newFileType]);
 

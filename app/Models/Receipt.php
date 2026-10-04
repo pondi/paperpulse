@@ -13,7 +13,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
+use Laravel\Scout\Searchable;
+
 /**
  * App\Models\Receipt
  *
@@ -23,8 +28,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int|null $merchant_id
  * @property int|null $category_id
  * @property Carbon|null $receipt_date
- * @property float|null $tax_amount
- * @property float|null $total_amount
+ * @property numeric-string|null $tax_amount
+ * @property numeric-string|null $total_amount
  * @property string|null $currency
  * @property string|null $receipt_category
  * @property string|null $receipt_description
@@ -35,17 +40,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property-read File $file
  * @property-read User $user
  * @property-read Merchant|null $merchant
- * @property-read Collection|LineItem[] $lineItems
+ * @property-read Collection<int, LineItem> $lineItems
  * @property-read Category|null $category
- * @property-read Collection|Tag[] $tags
+ * @property-read Collection<int, Tag> $tags
  *
- * @method static Builder|Receipt newModelQuery()
- * @method static Builder|Receipt newQuery()
- * @method static Builder|Receipt query()
+ * @method static Builder<Receipt> newModelQuery()
+ * @method static Builder<Receipt> newQuery()
+ * @method static Builder<Receipt> query()
  */
-use Illuminate\Support\Facades\Cache;
-use Laravel\Scout\Searchable;
-
 class Receipt extends Model implements Taggable
 {
     use BelongsToUser;
@@ -125,27 +127,32 @@ class Receipt extends Model implements Taggable
         }
     }
 
-    public function file()
+    /** @return BelongsTo<File, $this> */
+    public function file(): BelongsTo
     {
         return $this->belongsTo(File::class);
     }
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function merchant()
+    /** @return BelongsTo<Merchant, $this> */
+    public function merchant(): BelongsTo
     {
         return $this->belongsTo(Merchant::class);
     }
 
-    public function lineItems()
+    /** @return HasMany<LineItem, $this> */
+    public function lineItems(): HasMany
     {
         return $this->hasMany(LineItem::class);
     }
 
-    public function category()
+    /** @return BelongsTo<Category, $this> */
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
@@ -192,7 +199,7 @@ class Receipt extends Model implements Taggable
             'note' => $this->note,
             'merchant_name' => $this->merchant?->name,
             'merchant_address' => $this->merchant?->address,
-            'merchant_vat_id' => $this->merchant?->vat_id,
+            'merchant_vat_id' => $this->merchant?->vat_number,
             'tags' => $this->tags?->pluck('name')->toArray() ?? [],
             'collections' => $this->file?->collections?->pluck('name')->toArray() ?? [],
             'line_items' => $this->lineItems->map(function ($item) {

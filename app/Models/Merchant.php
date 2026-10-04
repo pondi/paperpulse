@@ -6,6 +6,7 @@ use App\Enums\DeletedReason;
 use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -33,6 +34,7 @@ class Merchant extends Model
         'deleted_reason' => DeletedReason::class,
     ];
 
+    /** @return MorphOne<Logo, $this> */
     public function logo(): MorphOne
     {
         return $this->morphOne(Logo::class, 'logoable');
@@ -44,7 +46,8 @@ class Merchant extends Model
             ?? route('merchants.logo', ['merchant' => $this->id]);
     }
 
-    public function receipts()
+    /** @return HasMany<Receipt, $this> */
+    public function receipts(): HasMany
     {
         return $this->hasMany(Receipt::class);
     }

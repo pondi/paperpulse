@@ -8,6 +8,8 @@ use App\Services\MonetarySummaryService;
 use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -65,24 +67,30 @@ class Category extends Model
 
     /**
      * Get the user that owns the category.
+     *
+     * @return BelongsTo<User, $this>
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
     /**
      * Get the receipts for the category.
+     *
+     * @return HasMany<Receipt, $this>
      */
-    public function receipts()
+    public function receipts(): HasMany
     {
         return $this->hasMany(Receipt::class);
     }
 
     /**
      * Get the documents for the category.
+     *
+     * @return HasMany<Document, $this>
      */
-    public function documents()
+    public function documents(): HasMany
     {
         return $this->hasMany(Document::class);
     }

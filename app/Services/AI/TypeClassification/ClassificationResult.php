@@ -20,7 +20,6 @@ class ClassificationResult
      * Create from Gemini API response.
      *
      * @param  array  $response  Gemini response data
-     * @return static
      */
     public static function fromGeminiResponse(array $response): self
     {

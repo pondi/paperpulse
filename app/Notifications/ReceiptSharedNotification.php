@@ -51,7 +51,7 @@ class ReceiptSharedNotification extends Notification implements ShouldQueue
             ->line($this->sharedBy->name.' has shared a receipt with you.')
             ->line('Receipt: '.$receiptTitle)
             ->when($this->receipt->total_amount, function ($message) {
-                return $message->line('Amount: '.number_format($this->receipt->total_amount, 2).' '.$this->receipt->currency);
+                return $message->line('Amount: '.number_format((float) $this->receipt->total_amount, 2).' '.$this->receipt->currency);
             })
             ->when($this->receipt->receipt_date, function ($message) {
                 return $message->line('Date: '.$this->receipt->receipt_date->format('Y-m-d'));

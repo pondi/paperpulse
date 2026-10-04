@@ -9,7 +9,7 @@ use App\Services\AI\Providers\GeminiProvider;
 use App\Services\AI\Shared\ProcessingUsageBudget;
 use Exception;
 use Illuminate\Support\Facades\Log;
-use OpenAI;
+use OpenAI\Laravel\Facades\OpenAI;
 
 class TextAnalysisService implements TextAnalysisContract
 {

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\DeletedReason;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class InvoiceLineItem extends Model
@@ -40,7 +41,8 @@ class InvoiceLineItem extends Model
         'deleted_reason' => DeletedReason::class,
     ];
 
-    public function invoice()
+    /** @return BelongsTo<Invoice, $this> */
+    public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
     }

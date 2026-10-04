@@ -16,6 +16,7 @@ use App\Services\StorageService;
 use App\Services\Tags\TagAttachmentService;
 use App\Traits\ShareableController;
 use Exception;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -104,7 +105,7 @@ class DocumentController extends BaseResourceController
     /**
      * Transform any entity type for index display.
      */
-    protected function transformEntityForIndex($entity, File $file): array
+    protected function transformEntityForIndex(Model $entity, File $file): array
     {
         $entityType = class_basename($entity);
 
@@ -144,7 +145,7 @@ class DocumentController extends BaseResourceController
         $data['description'] = $entity->description ?? $entity->summary ?? null;
         $data['uploaded_at'] = $file->uploaded_at?->toIso8601String();
 
-        if (in_array($entityType, ['Document', 'Invoice']) && method_exists($entity, 'category')) {
+        if ($entity instanceof Document || $entity instanceof Invoice) {
             $entity->loadMissing('category');
             $data['category'] = $entity->category;
         }

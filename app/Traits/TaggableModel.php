@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  */
 trait TaggableModel
 {
+    /** @return BelongsToMany<Tag, $this, SearchableFilePivot> */
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class, 'file_tags', 'file_id', 'tag_id', 'file_id')

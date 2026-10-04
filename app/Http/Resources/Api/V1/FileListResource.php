@@ -4,11 +4,13 @@ namespace App\Http\Resources\Api\V1;
 
 use App\Models\Contract;
 use App\Models\Document;
+use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Receipt;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
 
+/** @mixin File */
 class FileListResource extends JsonResource
 {
     public function toArray($request): array

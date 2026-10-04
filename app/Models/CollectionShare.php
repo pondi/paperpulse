@@ -55,16 +55,19 @@ class CollectionShare extends Model
         ];
     }
 
+    /** @return BelongsTo<Collection, $this> */
     public function collection(): BelongsTo
     {
         return $this->belongsTo(Collection::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function sharedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'shared_by_user_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function sharedWithUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'shared_with_user_id');

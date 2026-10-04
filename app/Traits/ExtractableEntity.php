@@ -11,6 +11,8 @@ trait ExtractableEntity
 {
     /**
      * Polymorphic relation to the extraction junction record.
+     *
+     * @return MorphOne<ExtractableEntityModel, $this>
      */
     public function extraction(): MorphOne
     {
@@ -19,6 +21,8 @@ trait ExtractableEntity
 
     /**
      * Get the file this entity was extracted from.
+     *
+     * @return BelongsTo<File, $this>
      */
     public function file(): BelongsTo
     {

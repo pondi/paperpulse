@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -93,6 +94,7 @@ class File extends Model
         'deleted_reason' => DeletedReason::class,
     ];
 
+    /** @return HasMany<JobHistory, $this> */
     public function processingJobs(): HasMany
     {
         return $this->hasMany(JobHistory::class)->whereNull('parent_uuid');
@@ -122,43 +124,45 @@ class File extends Model
         });
     }
 
-    public function resolveRouteBindingQuery($query, $value, $field = null): Builder
-    {
-        return parent::resolveRouteBindingQuery($query, $value, $field)->accessibleBy(auth()->user());
-    }
-
+    /** @return BelongsTo<Collection, $this> */
     public function primaryFolder(): BelongsTo
     {
         return $this->belongsTo(Collection::class, 'primary_folder_id');
     }
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function extractableEntities()
+    /** @return HasMany<ExtractableEntity, $this> */
+    public function extractableEntities(): HasMany
     {
         return $this->hasMany(ExtractableEntity::class);
     }
 
-    public function primaryEntity()
+    /** @return HasOne<ExtractableEntity, $this> */
+    public function primaryEntity(): HasOne
     {
         return $this->hasOne(ExtractableEntity::class)
             ->where('is_primary', true)
             ->with('entity');
     }
 
-    public function conversion()
+    /** @return HasOne<FileConversion, $this> */
+    public function conversion(): HasOne
     {
         return $this->hasOne(FileConversion::class);
     }
 
-    public function shares()
+    /** @return HasMany<FileShare, $this> */
+    public function shares(): HasMany
     {
         return $this->hasMany(FileShare::class);
     }
 
+    /** @return BelongsToMany<Collection, $this, SearchableFilePivot> */
     public function collections(): BelongsToMany
     {
         return $this->belongsToMany(Collection::class)
@@ -168,6 +172,8 @@ class File extends Model
 
     /**
      * Get the tags for this file.
+     *
+     * @return BelongsToMany<Tag, $this, SearchableFilePivot>
      */
     public function tags(): BelongsToMany
     {

@@ -113,7 +113,7 @@ class OpenAIProvider implements AIService
 
             return $finalResult;
         } catch (Exception $e) {
-            if (($e instanceof AIResponseException && $e->retryable) || AIFallbackHandler::shouldAttemptFallback($e)) {
+            if (isset($promptData, $model, $params) && (($e instanceof AIResponseException && $e->retryable) || AIFallbackHandler::shouldAttemptFallback($e))) {
                 try {
                     $fallbackPayload = FallbackPayloadFactory::make($promptData['messages'], $model, $params);
 

@@ -9,6 +9,7 @@ class WeeklySummaryDelivery extends Model
 {
     protected $fillable = ['user_id', 'period_start', 'period_end', 'status'];
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

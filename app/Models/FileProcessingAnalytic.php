@@ -43,11 +43,13 @@ class FileProcessingAnalytic extends Model
         ];
     }
 
+    /** @return BelongsTo<File, $this> */
     public function file(): BelongsTo
     {
         return $this->belongsTo(File::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

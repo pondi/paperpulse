@@ -10,7 +10,7 @@ use App\Models\JobHistory;
 use App\Models\PulseDavFile;
 use App\Models\Receipt;
 use App\Models\User;
-use Illuminate\Support\Carbon;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 class AccountDeletionService

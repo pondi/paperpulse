@@ -38,6 +38,7 @@ class BatchJob extends Model
         'completed_at' => 'datetime',
     ];
 
+    /** @return HasMany<BatchItem, $this> */
     public function items(): HasMany
     {
         return $this->hasMany(BatchItem::class);

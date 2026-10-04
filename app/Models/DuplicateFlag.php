@@ -25,16 +25,19 @@ class DuplicateFlag extends Model
         ];
     }
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsTo<File, $this> */
     public function file(): BelongsTo
     {
         return $this->belongsTo(File::class, 'file_id');
     }
 
+    /** @return BelongsTo<File, $this> */
     public function duplicateFile(): BelongsTo
     {
         return $this->belongsTo(File::class, 'duplicate_file_id');

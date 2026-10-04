@@ -2,10 +2,12 @@
 
 namespace App\Http\Resources\Inertia;
 
+use App\Models\DuplicateFlag;
 use App\Models\File;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin DuplicateFlag */
 class DuplicateFlagInertiaResource extends JsonResource
 {
     public static function forIndex($resource): self

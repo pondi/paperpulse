@@ -20,6 +20,7 @@ class OrganizationRecommendation extends Model
             'confidence' => 'float', 'decided_at' => 'datetime', 'undone_at' => 'datetime'];
     }
 
+    /** @return BelongsTo<OrganizationRun, $this> */
     public function run(): BelongsTo
     {
         return $this->belongsTo(OrganizationRun::class, 'organization_run_id');

@@ -91,6 +91,9 @@ it('can change type, move storage, and restart a failed file', function () {
         'fileExtension' => 'pdf',
         'status' => 'failed',
         's3_original_path' => $oldPath,
+        's3_processed_path' => 'receipts/old/processed.pdf',
+        's3_image_path' => 'receipts/old/preview.png',
+        'has_image_preview' => true,
     ]);
 
     $dispatcher = Mockery::mock(FileJobChainDispatcher::class);
@@ -111,6 +114,9 @@ it('can change type, move storage, and restart a failed file', function () {
     expect($file->file_type)->toBe('document');
     expect($file->s3_original_path)->toBe($newPath);
     expect($file->status)->toBe('pending');
+    expect($file->s3_processed_path)->toBeNull();
+    expect($file->s3_image_path)->toBeNull();
+    expect($file->has_image_preview)->toBeFalse();
 
     Storage::disk('paperpulse')->assertMissing($oldPath);
     Storage::disk('paperpulse')->assertExists($newPath);

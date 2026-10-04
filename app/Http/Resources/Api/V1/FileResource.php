@@ -2,8 +2,10 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Models\File;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin File */
 class FileResource extends JsonResource
 {
     /**

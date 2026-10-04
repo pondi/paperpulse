@@ -13,6 +13,8 @@ trait ShareableModel
 {
     /**
      * Get the shares for this model.
+     *
+     * @return HasMany<FileShare, $this>
      */
     public function shares(): HasMany
     {
@@ -22,6 +24,8 @@ trait ShareableModel
 
     /**
      * Get the users that this model is shared with.
+     *
+     * @return BelongsToMany<User, $this>
      */
     public function sharedUsers(): BelongsToMany
     {

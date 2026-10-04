@@ -30,6 +30,7 @@ class BatchItem extends Model
         'processed_at' => 'datetime',
     ];
 
+    /** @return BelongsTo<BatchJob, $this> */
     public function batchJob(): BelongsTo
     {
         return $this->belongsTo(BatchJob::class);

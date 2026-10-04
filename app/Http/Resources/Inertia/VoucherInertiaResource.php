@@ -2,10 +2,12 @@
 
 namespace App\Http\Resources\Inertia;
 
+use App\Models\Voucher;
 use App\Services\Files\StoragePathBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin Voucher */
 class VoucherInertiaResource extends JsonResource
 {
     protected bool $detailed = false;

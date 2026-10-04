@@ -17,6 +17,7 @@ class ProcessingUsageCounter extends Model
         return ['usage' => 'array', 'expires_at' => 'datetime'];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

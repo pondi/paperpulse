@@ -1,6 +1,8 @@
 <?php
 
+use App\Services\AI\PromptTemplateService;
 use App\Services\AI\Providers\OpenAIProvider;
+use App\Services\AI\TextAnalysisService;
 use OpenAI\Laravel\Facades\OpenAI;
 
 it('validates tag suggestions against their requested string array schema', function (array $response, array $expected): void {
@@ -41,3 +43,27 @@ it('validates selected entity lists before returning provider output', function 
     'object instead of list' => [['people' => ['name' => 'Ada'], 'organizations' => []], ['people' => [], 'organizations' => []]],
     'missing selected key' => [['people' => ['Ada']], ['people' => [], 'organizations' => []]],
 ]);
+
+it('returns an error without a fallback request when prompt compilation fails', function (): void {
+    $this->mock(PromptTemplateService::class)->shouldReceive('getPrompt')->once()
+        ->andThrow(new Exception('Invalid schema in the template'));
+    $client = Mockery::mock();
+    $client->shouldNotReceive('chat');
+    OpenAI::swap($client);
+
+    expect((new OpenAIProvider)->analyzeReceipt('Receipt content')['success'])->toBeFalse();
+});
+
+it('uses the Laravel OpenAI client for text analysis', function (): void {
+    config(['ai.text_analysis_provider' => 'openai']);
+    $chat = Mockery::mock();
+    $chat->shouldReceive('create')->once()->andReturn((object) [
+        'choices' => [(object) ['message' => (object) ['content' => '{"result":"ok"}']]],
+        'usage' => (object) ['promptTokens' => 10, 'completionTokens' => 5],
+    ]);
+    $client = Mockery::mock();
+    $client->shouldReceive('chat')->once()->andReturn($chat);
+    OpenAI::swap($client);
+
+    expect((new TextAnalysisService)->analyze('Analyze text'))->toBe(['result' => 'ok']);
+});

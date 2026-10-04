@@ -51,6 +51,8 @@ class LineItem extends Model
 
     /**
      * Get the receipt that owns the line item.
+     *
+     * @return BelongsTo<Receipt, $this>
      */
     public function receipt(): BelongsTo
     {
@@ -65,6 +67,7 @@ class LineItem extends Model
         ]);
     }
 
+    /** @return BelongsTo<Vendor, $this> */
     public function vendor(): BelongsTo
     {
         return $this->belongsTo(Vendor::class);

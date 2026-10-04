@@ -14,7 +14,7 @@ class ReceiptSelectionStrategy
     /**
      * Select the best receipt to keep from a collection of duplicates.
      *
-     * @param  Collection  $receipts  Collection of duplicate receipts
+     * @param  Collection<int, Receipt>  $receipts  Nonempty collection of duplicate receipts
      * @return Receipt The receipt to keep
      */
     public static function selectBestReceipt(Collection $receipts): Receipt

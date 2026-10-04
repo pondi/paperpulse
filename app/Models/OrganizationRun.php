@@ -18,6 +18,7 @@ class OrganizationRun extends Model
             'calls' => 'integer', 'tokens' => 'integer', 'started_at' => 'datetime', 'completed_at' => 'datetime'];
     }
 
+    /** @return HasMany<OrganizationRecommendation, $this> */
     public function recommendations(): HasMany
     {
         return $this->hasMany(OrganizationRecommendation::class);

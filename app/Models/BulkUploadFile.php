@@ -76,16 +76,19 @@ class BulkUploadFile extends Model
         ];
     }
 
+    /** @return BelongsTo<BulkUploadSession, $this> */
     public function session(): BelongsTo
     {
         return $this->belongsTo(BulkUploadSession::class, 'bulk_upload_session_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsTo<File, $this> */
     public function file(): BelongsTo
     {
         return $this->belongsTo(File::class);

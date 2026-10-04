@@ -69,6 +69,8 @@ class FileShare extends Model
 
     /**
      * Get the file that is being shared.
+     *
+     * @return BelongsTo<File, $this>
      */
     public function file(): BelongsTo
     {
@@ -77,6 +79,8 @@ class FileShare extends Model
 
     /**
      * Get the user who created the share.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function sharedBy(): BelongsTo
     {
@@ -85,6 +89,8 @@ class FileShare extends Model
 
     /**
      * Get the user the file is shared with.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function sharedWithUser(): BelongsTo
     {
@@ -109,11 +115,13 @@ class FileShare extends Model
         };
     }
 
+    /** @return BelongsTo<Receipt, $this> */
     public function receipt(): BelongsTo
     {
         return $this->belongsTo(Receipt::class, 'file_id', 'file_id');
     }
 
+    /** @return BelongsTo<Document, $this> */
     public function document(): BelongsTo
     {
         return $this->belongsTo(Document::class, 'file_id', 'file_id');

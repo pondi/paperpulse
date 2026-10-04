@@ -155,6 +155,7 @@ class OrganizationBackfillService
         return $result['organization'];
     }
 
+    /** @return Builder<File> */
     private function eligible(int $userId): Builder
     {
         return File::withoutGlobalScope('user')->where('user_id', $userId)->whereIn('status', ['completed', 'needs_review'])

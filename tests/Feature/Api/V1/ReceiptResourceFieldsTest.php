@@ -11,7 +11,7 @@ it('always includes tags and line_items fields in receipt response', function ()
     $user = User::factory()->create();
     Sanctum::actingAs($user);
 
-    $merchant = Merchant::create(['name' => 'Test Store']);
+    $merchant = Merchant::create(['name' => 'Test Store', 'vat_number' => 'NO123456789MVA']);
 
     $file = File::factory()->create([
         'user_id' => $user->id,
@@ -27,7 +27,7 @@ it('always includes tags and line_items fields in receipt response', function ()
         'tax_amount' => 10.00,
         'currency' => 'USD',
         'receipt_date' => now(),
-        'summary' => 'Test receipt',
+        'receipt_description' => 'Test receipt',
     ]);
 
     ExtractableEntity::create([
@@ -39,11 +39,12 @@ it('always includes tags and line_items fields in receipt response', function ()
         'extracted_at' => now(),
     ]);
 
-    // Don't attach any tags or line items - they should still appear in response
+    $receipt->lineItems()->create(['text' => 'Coffee', 'qty' => 2, 'price' => 25, 'total' => 50]);
+    expect($receipt->toSearchableArray()['merchant_vat_id'])->toBe('NO123456789MVA');
 
     $response = $this->get(route('api.files.show', $file->id));
 
-    $response->assertStatus(200);
+    $response->assertOk();
 
     // Verify that tags and line_items fields are ALWAYS present
     $json = $response->json();
@@ -55,7 +56,10 @@ it('always includes tags and line_items fields in receipt response', function ()
 
     // Verify they are arrays/null as expected
     expect($json['data']['receipt']['tags'])->toBeArray();
-    expect($json['data']['receipt']['line_items'])->toBeArray();
+    expect($json['data']['receipt']['line_items'])->toHaveCount(1);
+    expect($json['data']['receipt']['summary'])->toBe('Test receipt');
+    expect((float) $json['data']['receipt']['line_items'][0]['amount'])->toBe(50.0);
+    expect((float) $json['data']['receipt']['line_items'][0]['unit_price'])->toBe(25.0);
     expect($json['data']['receipt']['category'])->toBeNull();
 
     // Verify merchant is an object since it's loaded
@@ -82,7 +86,7 @@ it('merchant field is always present even when null', function () {
         'tax_amount' => 10.00,
         'currency' => 'USD',
         'receipt_date' => now(),
-        'summary' => 'Test receipt without merchant',
+        'receipt_description' => 'Test receipt without merchant',
     ]);
 
     ExtractableEntity::create([
@@ -96,7 +100,7 @@ it('merchant field is always present even when null', function () {
 
     $response = $this->get(route('api.files.show', $file->id));
 
-    $response->assertStatus(200);
+    $response->assertOk();
 
     $json = $response->json();
 

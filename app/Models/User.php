@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Services\Files\AccountDeletionService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -33,7 +35,7 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * The attributes that are mass assignable.
      *
-     * @var array<int, string>
+     * @var list<string>
      */
     protected $fillable = [
         'name',
@@ -46,7 +48,7 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * The attributes that should be hidden for serialization.
      *
-     * @var array<int, string>
+     * @var list<string>
      */
     protected $hidden = [
         'password',
@@ -69,48 +71,60 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Get the user's preferences.
+     *
+     * @return HasOne<UserPreference, $this>
      */
-    public function preferences()
+    public function preferences(): HasOne
     {
         return $this->hasOne(UserPreference::class);
     }
 
     /**
      * Get the PulseDav files for the user.
+     *
+     * @return HasMany<PulseDavFile, $this>
      */
-    public function pulseDavFiles()
+    public function pulseDavFiles(): HasMany
     {
         return $this->hasMany(PulseDavFile::class);
     }
 
     /**
      * Get the receipts for the user.
+     *
+     * @return HasMany<Receipt, $this>
      */
-    public function receipts()
+    public function receipts(): HasMany
     {
         return $this->hasMany(Receipt::class);
     }
 
     /**
      * Get the categories for the user.
+     *
+     * @return HasMany<Category, $this>
      */
-    public function categories()
+    public function categories(): HasMany
     {
         return $this->hasMany(Category::class);
     }
 
     /**
      * Get the tags for the user.
+     *
+     * @return HasMany<Tag, $this>
      */
-    public function tags()
+    public function tags(): HasMany
     {
         return $this->hasMany(Tag::class);
     }
 
     /**
      * Get the batch jobs for the user.
+     *
+     * @return HasMany<BatchJob, $this>
      */
-    public function batchJobs()
+    public function batchJobs(): HasMany
     {
         return $this->hasMany(BatchJob::class);
     }

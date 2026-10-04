@@ -3,7 +3,9 @@
 namespace App\Http\Resources\Api\V1;
 
 use App\Http\Resources\Api\BaseApiResource;
+use App\Models\Collection;
 
+/** @mixin Collection */
 class CollectionResource extends BaseApiResource
 {
     public function toArray($request)

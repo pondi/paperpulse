@@ -49,9 +49,13 @@ trait BelongsToUser
      */
     public function resolveRouteBindingQuery($query, $value, $field = null): Builder|Relation
     {
-        return parent::resolveRouteBindingQuery($query, $value, $field)->accessibleBy(auth()->user());
+        /** @var Builder<static> $query */
+        $query = parent::resolveRouteBindingQuery($query, $value, $field);
+
+        return $this->scopeAccessibleBy($query, auth()->user());
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -59,6 +63,8 @@ trait BelongsToUser
 
     /**
      * Get the owner of this model (alias for user relation).
+     *
+     * @return BelongsTo<User, $this>
      */
     public function owner(): BelongsTo
     {
@@ -68,9 +74,9 @@ trait BelongsToUser
     /**
      * Scope a query to include records for a specific user.
      *
-     * @param  Builder  $query
+     * @param  Builder<static>  $query
      * @param  int|User  $user
-     * @return Builder
+     * @return Builder<static>
      */
     public function scopeForUser($query, $user)
     {
@@ -81,6 +87,9 @@ trait BelongsToUser
 
     /**
      * Scope a query to include records accessible by a user (owned + shared).
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
     public function scopeAccessibleBy(Builder $query, User $user, string $permission = 'view'): Builder
     {

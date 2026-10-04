@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/** @property-read Receipt|Document|Invoice|Contract|BankStatement|Voucher|Warranty|ReturnPolicy|null $entity */
 class ExtractableEntity extends Model
 {
     use HasFactory;
@@ -34,11 +35,13 @@ class ExtractableEntity extends Model
         'deleted_reason' => DeletedReason::class,
     ];
 
+    /** @return BelongsTo<File, $this> */
     public function file(): BelongsTo
     {
         return $this->belongsTo(File::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -46,6 +49,8 @@ class ExtractableEntity extends Model
 
     /**
      * Get the owning entity (polymorphic).
+     *
+     * @return MorphTo<Model, $this>
      */
     public function entity(): MorphTo
     {

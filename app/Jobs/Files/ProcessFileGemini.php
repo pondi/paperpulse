@@ -376,38 +376,6 @@ class ProcessFileGemini extends BaseJob
     }
 
     /**
-     * Persist AI analysis response to storage and link in metadata.
-     */
-    protected function persistAiArtifacts(File $file, ?array $providerResponse, StorageService $storageService): void
-    {
-        if (empty($providerResponse)) {
-            return;
-        }
-
-        try {
-            $json = json_encode($providerResponse, JSON_PRETTY_PRINT);
-            $path = $storageService->storeFile(
-                $json,
-                $file->user_id,
-                $file->guid,
-                $file->file_type ?? 'document',
-                'gemini_response',
-                'json'
-            );
-
-            $meta = $file->meta ?? [];
-            $meta['artifacts'] = array_merge($meta['artifacts'] ?? [], [
-                'ai_response' => $path,
-                'ai_response_provider' => 'gemini',
-            ]);
-            $file->meta = $meta;
-            $file->save();
-        } catch (Exception $e) {
-            Log::warning('[ProcessFileGemini] Failed to persist AI artifacts', ['error' => $e->getMessage()]);
-        }
-    }
-
-    /**
      * Generate thumbnail preview.
      */
     protected function generateThumbnail(string $filePath, string $fileGuid): ?string

@@ -75,11 +75,13 @@ class BulkUploadSession extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /** @return HasMany<BulkUploadFile, $this> */
     public function files(): HasMany
     {
         return $this->hasMany(BulkUploadFile::class);

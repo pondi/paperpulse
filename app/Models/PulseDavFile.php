@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PulseDavFile extends Model
@@ -48,24 +50,30 @@ class PulseDavFile extends Model
 
     /**
      * Get the user that owns the S3 file.
+     *
+     * @return BelongsTo<User, $this>
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
     /**
      * Get the receipt associated with this S3 file.
+     *
+     * @return BelongsTo<Receipt, $this>
      */
-    public function receipt()
+    public function receipt(): BelongsTo
     {
         return $this->belongsTo(Receipt::class);
     }
 
     /**
      * Get the document associated with this S3 file.
+     *
+     * @return BelongsTo<Document, $this>
      */
-    public function document()
+    public function document(): BelongsTo
     {
         return $this->belongsTo(Document::class);
     }
@@ -143,8 +151,10 @@ class PulseDavFile extends Model
 
     /**
      * Get the import batch relationship
+     *
+     * @return BelongsTo<PulseDavImportBatch, $this>
      */
-    public function importBatch()
+    public function importBatch(): BelongsTo
     {
         return $this->belongsTo(PulseDavImportBatch::class, 'import_batch_id');
     }
@@ -223,8 +233,10 @@ class PulseDavFile extends Model
 
     /**
      * Get child files and folders
+     *
+     * @return HasMany<PulseDavFile, $this>
      */
-    public function children()
+    public function children(): HasMany
     {
         return $this->hasMany(self::class, 'parent_folder', 'folder_path')
             ->where('user_id', $this->user_id);

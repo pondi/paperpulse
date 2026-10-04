@@ -32,6 +32,7 @@ class Vendor extends Model
         'deleted_reason' => DeletedReason::class,
     ];
 
+    /** @return MorphOne<Logo, $this> */
     public function logo(): MorphOne
     {
         return $this->morphOne(Logo::class, 'logoable');
@@ -43,11 +44,13 @@ class Vendor extends Model
             ?? route('merchants.logo.generate', ['name' => $this->name]);
     }
 
+    /** @return HasMany<LineItem, $this> */
     public function lineItems(): HasMany
     {
         return $this->hasMany(LineItem::class);
     }
 
+    /** @return HasManyThrough<Receipt, LineItem, $this> */
     public function receipts(): HasManyThrough
     {
         return $this->hasManyThrough(Receipt::class, LineItem::class);

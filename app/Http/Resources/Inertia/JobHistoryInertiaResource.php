@@ -2,11 +2,13 @@
 
 namespace App\Http\Resources\Inertia;
 
+use App\Models\JobHistory;
 use App\Services\Jobs\JobMetadataPersistence;
 use App\Services\Jobs\JobParentStatusCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin JobHistory */
 class JobHistoryInertiaResource extends JsonResource
 {
     protected bool $isChild = false;
@@ -49,7 +51,7 @@ class JobHistoryInertiaResource extends JsonResource
     private function calculateDuration(): ?int
     {
         if ($this->started_at && $this->finished_at) {
-            return abs($this->finished_at->diffInSeconds($this->started_at));
+            return (int) abs($this->finished_at->diffInSeconds($this->started_at));
         }
 
         return null;

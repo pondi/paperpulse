@@ -9,7 +9,9 @@ class RedactLogRecords
 {
     public function __invoke(Logger $logger): void
     {
-        $logger->getLogger()->pushProcessor(static function (LogRecord $record): LogRecord {
+        /** @var \Monolog\Logger $monolog */
+        $monolog = $logger->getLogger();
+        $monolog->pushProcessor(static function (LogRecord $record): LogRecord {
             return $record->with(message: self::message($record->message), context: self::context($record->context), extra: self::context($record->extra));
         });
     }

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Inertia;
 
+use App\Models\BankStatement;
 use App\Services\Files\StoragePathBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin BankStatement */
 class BankStatementInertiaResource extends JsonResource
 {
     protected bool $detailed = false;

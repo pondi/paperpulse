@@ -33,6 +33,8 @@ class FileConversion extends Model
 
     /**
      * Get the file that owns the conversion.
+     *
+     * @return BelongsTo<File, $this>
      */
     public function file(): BelongsTo
     {
@@ -41,6 +43,8 @@ class FileConversion extends Model
 
     /**
      * Get the user that owns the conversion.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {

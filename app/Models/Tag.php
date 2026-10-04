@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
@@ -37,7 +38,7 @@ class Tag extends Model
     /**
      * The attributes that are mass assignable.
      *
-     * @var array<string>
+     * @var list<string>
      */
     protected $fillable = [
         'user_id',
@@ -52,14 +53,18 @@ class Tag extends Model
 
     /**
      * Get the user that owns the tag.
+     *
+     * @return BelongsTo<User, $this>
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
     /**
      * Get the files that have this tag.
+     *
+     * @return BelongsToMany<File, $this, SearchableFilePivot>
      */
     public function files(): BelongsToMany
     {
@@ -141,7 +146,7 @@ class Tag extends Model
      * @param  string  $name
      * @param  int  $userId
      * @param  string|null  $color
-     * @return static
+     * @return Tag
      */
     public static function findOrCreateByName($name, $userId, $color = null)
     {

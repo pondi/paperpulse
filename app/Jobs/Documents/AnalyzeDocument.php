@@ -107,7 +107,7 @@ class AnalyzeDocument extends BaseJob
             DB::transaction(function () use ($document, $analysis, $categoryId, $tagIds) {
                 // Update document with AI-generated metadata
                 $document->update([
-                    'title' => $analysis['title'] ?? $document->title,
+                    'title' => isset($analysis['title']) ? mb_substr($analysis['title'], 0, 255) : $document->title,
                     'summary' => $analysis['summary'] ?? null,
                     'language' => $analysis['language'] ?? 'en',
                     'document_type' => $analysis['document_type'] ?? 'general',

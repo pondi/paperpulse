@@ -38,7 +38,7 @@ describe('list tags', function () {
         $response->assertJsonCount(3, 'data');
     });
 
-    it('can search tags by name', function () {
+    it('can search tags by name', function (string $search): void {
         Tag::factory()->create([
             'user_id' => $this->user->id,
             'name' => 'Business',
@@ -49,12 +49,14 @@ describe('list tags', function () {
             'name' => 'Personal',
         ]);
 
-        $response = $this->getJson(route('api.tags.index', ['search' => 'bus']));
+        Tag::factory()->create(['name' => 'Business']);
 
-        $response->assertStatus(200);
+        $response = $this->getJson(route('api.tags.index', ['search' => $search]));
+
+        $response->assertOk();
         $response->assertJsonCount(1, 'data');
         $response->assertJsonPath('data.0.name', 'Business');
-    });
+    })->with(['bus', 'BUS', 'uSi']);
 
     it('respects per_page parameter', function () {
         Tag::factory()->count(20)->create([

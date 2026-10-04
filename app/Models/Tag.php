@@ -85,14 +85,10 @@ class Tag extends Model
 
     /**
      * Scope a query to search tags by name.
-     *
-     * @param  Builder  $query
-     * @param  string  $search
-     * @return Builder
      */
-    public function scopeSearch($query, $search)
+    public function scopeSearch(Builder $query, string $search): Builder
     {
-        return $query->where('name', 'like', '%'.$search.'%');
+        return $query->whereLike('name', '%'.$search.'%');
     }
 
     /**

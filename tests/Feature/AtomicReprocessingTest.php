@@ -20,7 +20,7 @@ beforeEach(function (): void {
     $this->file = File::factory()->create(['status' => 'completed', 's3_original_path' => 'original.pdf']);
     $this->receipt = Receipt::factory()->create(['file_id' => $this->file->id, 'user_id' => $this->file->user_id, 'total_amount' => 100]);
     $this->storage = Mockery::mock(StorageService::class);
-    $this->storage->shouldReceive('getFile')->andReturn('source');
+    $this->storage->shouldReceive('existsInStorage')->andReturnTrue();
     $this->dispatcher = Mockery::mock(FileJobChainDispatcher::class);
 });
 

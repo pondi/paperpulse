@@ -3,8 +3,10 @@
 namespace App\Services\Files;
 
 use App\Models\File;
+use App\Models\FileProcessingRequest;
 use App\Models\FileShare;
 use App\Models\JobHistory;
+use App\Services\AI\Shared\ProcessingStageCache;
 use App\Services\Jobs\JobHistoryCreator;
 use App\Services\Jobs\JobMetadataPersistence;
 use App\Services\StorageService;
@@ -14,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * Handles reprocessing of failed files.
+ * Handles retries and archive refreshes from stored originals.
  *
  * Since files are stored permanently in S3, we can safely reprocess any
  * failed file by starting a new job chain from scratch.
@@ -30,14 +32,26 @@ class FileReprocessingService
      * Reprocess a single file.
      *
      * @param  File  $file  The file to reprocess
-     * @param  bool  $force  Force reprocessing even if already processing
+     * @param  bool  $force  Reprocess completed or processing files
+     * @param  string|null  $provider  Override the previous processing provider
+     * @param  bool  $fresh  Clear cached stages before dispatching
+     * @param  bool  $skipActive  Recheck active processing while holding the file lock
      * @return array{success:bool,jobId:?string,message:string}
      */
-    public function reprocessFile(File $file, bool $force = false): array
+    public function reprocessFile(File $file, bool $force = false, ?string $provider = null, bool $fresh = false, bool $skipActive = false): array
     {
         try {
-            return $file->getConnection()->transaction(function () use ($file, $force): array {
+            return $file->getConnection()->transaction(function () use ($file, $force, $provider, $fresh, $skipActive): array {
                 $file = File::withoutGlobalScope('user')->where('user_id', $file->user_id)->lockForUpdate()->findOrFail($file->id);
+                if ($skipActive && ($file->status === 'processing'
+                    || $file->processingJobs()->whereIn('status', ['pending', 'processing', 'retrying'])->exists()
+                    || FileProcessingRequest::query()->where('file_id', $file->id)->where('user_id', $file->user_id)
+                        ->whereIn('state', ['upload_pending', 'pending', 'dispatching'])->exists())) {
+                    return ['success' => false, 'jobId' => null, 'message' => 'File already has active processing (use --force to restart)'];
+                }
+                if ($provider !== null) {
+                    new FileProcessingCapabilities($provider);
+                }
                 $validation = $this->validateReprocessing($file, $force);
                 if (! $validation['canReprocess']) {
                     return ['success' => false, 'jobId' => null, 'message' => $validation['reason']];
@@ -45,6 +59,13 @@ class FileReprocessingService
                 $jobId = (string) Str::uuid();
                 $jobName = 'Reprocess '.ucfirst($file->file_type);
                 $metadata = $this->prepareReprocessingMetadata($file, $jobId, $jobName);
+                if ($provider !== null) {
+                    $metadata['processingProvider'] = $provider;
+                    $metadata['pipeline'] = strtolower($file->fileExtension) === 'csv' ? 'csv' : $provider;
+                }
+                if ($fresh) {
+                    ProcessingStageCache::clear($file->guid);
+                }
                 $file->update(['meta' => array_merge($file->meta ?? [], ['processing_generation' => (string) Str::uuid()]), 'status' => 'pending']);
                 $metadata['processingGeneration'] = $file->meta['processing_generation'];
                 JobMetadataPersistence::store($jobId, $metadata);
@@ -156,7 +177,7 @@ class FileReprocessingService
 
         // Verify S3 file exists
         try {
-            $exists = $this->storageService->getFile($file->s3_original_path) !== null;
+            $exists = $this->storageService->existsInStorage($file->s3_original_path);
             if (! $exists) {
                 return [
                     'canReprocess' => false,
@@ -339,6 +360,22 @@ class FileReprocessingService
     public function getReprocessingStats(): array
     {
         return [
+            'completed_receipts' => File::where('status', 'completed')
+                ->where('file_type', 'receipt')
+                ->whereNotNull('s3_original_path')
+                ->count(),
+            'completed_documents' => File::where('status', 'completed')
+                ->where('file_type', 'document')
+                ->whereNotNull('s3_original_path')
+                ->count(),
+            'needs_review_receipts' => File::where('status', 'needs_review')
+                ->where('file_type', 'receipt')
+                ->whereNotNull('s3_original_path')
+                ->count(),
+            'needs_review_documents' => File::where('status', 'needs_review')
+                ->where('file_type', 'document')
+                ->whereNotNull('s3_original_path')
+                ->count(),
             'failed_receipts' => File::where('status', 'failed')
                 ->where('file_type', 'receipt')
                 ->whereNotNull('s3_original_path')

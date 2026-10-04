@@ -3,276 +3,220 @@
 namespace App\Console\Commands;
 
 use App\Models\File;
+use App\Models\FileProcessingRequest;
+use App\Services\Files\FileProcessingCapabilities;
 use App\Services\Files\FileReprocessingService;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 
 class ReprocessFiles extends Command
 {
     protected $signature = 'files:reprocess
+                            {--all : Refresh all stored files, including completed files, using the current AI pipeline and fresh AI results}
                             {--file-id=* : Reprocess specific file ID(s)}
+                            {--user= : Only reprocess files owned by this user ID}
                             {--type= : Filter by file type (receipt or document)}
-                            {--status=failed : Filter by file status (failed, pending, processing, completed)}
-                            {--force : Force reprocessing even if already completed}
+                            {--status=failed : Filter by status (failed, pending, processing, completed, needs_review, all)}
+                            {--provider= : Override the AI pipeline (gemini, textract+openai, ocr-only)}
+                            {--fresh : Clear cached processing stages before reprocessing}
+                            {--force : Reprocess completed files, restart active jobs, and skip confirmation}
                             {--limit= : Limit number of files to reprocess}
+                            {--after-id=0 : Resume after this file ID}
+                            {--chunk=100 : Number of files to load at a time}
                             {--stats : Show reprocessing statistics and exit}
-                            {--dry-run : Show what would be reprocessed without actually reprocessing}';
+                            {--dry-run : Preview the selection without changing data or dispatching jobs}';
 
-    protected $description = 'Reprocess failed or pending files from S3 (works for receipts and documents)';
+    protected $description = 'Retry files or refresh the entire archive with the latest AI processing';
 
-    protected FileReprocessingService $reprocessingService;
-
-    public function __construct(FileReprocessingService $reprocessingService)
+    public function __construct(protected FileReprocessingService $reprocessingService)
     {
         parent::__construct();
-        $this->reprocessingService = $reprocessingService;
     }
 
-    public function handle()
+    public function handle(): int
     {
-        // Show stats if requested
         if ($this->option('stats')) {
             $this->displayStats();
 
-            return 0;
+            return self::SUCCESS;
         }
 
-        $this->info('🔄 Starting file reprocessing...');
-        $this->newLine();
+        try {
+            $this->validateOptions();
+        } catch (InvalidArgumentException $exception) {
+            $this->error($exception->getMessage());
 
-        // Get files to reprocess
-        $files = $this->getFilesToReprocess();
-
-        if ($files->isEmpty()) {
-            $this->warn('No files found for reprocessing.');
-            $this->newLine();
-            $this->info('Tips:');
-            $this->line('  • Use --status=<status> to filter by status (failed, pending, processing, completed)');
-            $this->line('  • Use --type=<type> to filter by type (receipt, document)');
-            $this->line('  • Use --stats to see reprocessing statistics');
-            $this->line('  • Use --file-id=<id> to reprocess specific files');
-            $this->newLine();
-
-            return 0;
+            return self::INVALID;
         }
 
-        $this->info("Found {$files->count()} file(s) to reprocess:");
-        $this->newLine();
+        $refreshAll = $this->refreshAll();
+        $provider = $this->option('provider') ?: ($refreshAll ? config('ai.file_processing_provider', 'textract+openai') : null);
+        $fresh = $refreshAll || (bool) $this->option('fresh');
+        $query = $this->filesQuery();
+        $maxId = (clone $query)->max('id');
+        $query->where('id', '<=', $maxId ?? 0);
+        $total = min((clone $query)->count(), (int) ($this->option('limit') ?? PHP_INT_MAX));
 
-        // Display files
-        $this->displayFilesTable($files);
-        $this->newLine();
+        if ($total === 0) {
+            $this->warn('No files found for reprocessing. Use --all to include completed files or --stats to inspect the archive.');
 
-        // Dry run mode
+            return self::SUCCESS;
+        }
+
+        $this->info("Selected {$total} file(s) for reprocessing.");
+        $this->line('AI pipeline: '.($provider ?? 'previous pipeline, falling back to current configuration'));
+        $this->line('Cached processing results: '.($fresh ? 'refresh' : 'reuse when configuration matches'));
+        if ($refreshAll && ! $this->option('force')) {
+            $this->line('Files with active processing are excluded. Use --force to restart them.');
+        }
+        $this->displayFilesTable((clone $query)->with('user')->orderBy('id')->limit(min($total, 20))->get());
+        if ($total > 20) {
+            $this->line('Showing the first 20 files.');
+        }
+
         if ($this->option('dry-run')) {
-            $this->warn('🔍 DRY RUN MODE: No files will be reprocessed.');
-            $this->info('Remove --dry-run flag to actually reprocess these files.');
+            $this->info('Dry run: no data, caches, or jobs were changed.');
 
-            return 0;
+            return self::SUCCESS;
         }
 
-        // Confirm before proceeding
-        if (! $this->option('force') && ! $this->confirm('Do you want to reprocess these files?', true)) {
+        if (! $this->option('force') && $this->input->isInteractive()
+            && ! $this->confirm('Reprocess these files? This may incur AI and OCR charges.', true)) {
             $this->info('Operation cancelled.');
 
-            return 0;
+            return self::SUCCESS;
         }
 
-        $this->newLine();
-        $this->info('Starting reprocessing...');
-        $this->newLine();
+        $results = ['queued' => 0, 'failed' => 0, 'skipped' => 0];
+        $processed = 0;
+        $lastId = (int) $this->option('after-id');
+        $progress = $this->output->createProgressBar($total);
+        $progress->start();
 
-        // Create progress bar
-        $progressBar = $this->output->createProgressBar($files->count());
-        $progressBar->start();
+        foreach ($query->lazyById((int) $this->option('chunk')) as $file) {
+            $result = $this->reprocessingService->reprocessFile(
+                $file,
+                force: $refreshAll || (bool) $this->option('force'),
+                provider: $provider,
+                fresh: $fresh,
+                skipActive: $refreshAll && ! $this->option('force'),
+            );
+            if ($result['success']) {
+                $results['queued']++;
+            } elseif (str_contains($result['message'], 'already') || str_contains($result['message'], 'currently')) {
+                $results['skipped']++;
+            } else {
+                $results['failed']++;
+                $this->newLine();
+                $this->error("File {$file->id}: {$result['message']}");
+            }
+            $lastId = $file->id;
+            $progress->advance();
+            if (++$processed >= $total) {
+                break;
+            }
+        }
 
-        // Reprocess files
-        $results = $this->reprocessingService->reprocessFiles($files, $this->option('force'));
-
-        $progressBar->finish();
+        $progress->finish();
         $this->newLine(2);
-
-        // Display results
-        $this->displayResults($results);
-
-        // Log results
-        Log::info('[ReprocessFiles] Reprocessing completed', [
-            'successful' => $results['successful'],
-            'failed' => $results['failed'],
-            'skipped' => $results['skipped'],
-            'total' => $files->count(),
-            'type_filter' => $this->option('type'),
+        $this->info("Queued: {$results['queued']}; failed to queue: {$results['failed']}; skipped: {$results['skipped']}.");
+        $this->line("Last visited file ID: {$lastId}. Use --after-id={$lastId} to continue; retry failed file IDs separately.");
+        if ($results['queued'] > 0) {
+            $this->line('Queue handoff finished. Extraction, search updates, and organization continue in the workers.');
+            $this->line('Monitor with: php artisan queue:health');
+        }
+        Log::info('[ReprocessFiles] Queue handoff finished', $results + [
+            'total' => $processed, 'last_file_id' => $lastId, 'max_file_id' => $maxId,
+            'refresh_all' => $refreshAll, 'provider' => $provider, 'fresh' => $fresh,
+            'user_filter' => $this->option('user'), 'type_filter' => $this->option('type'),
             'status_filter' => $this->option('status'),
         ]);
 
-        return 0;
+        return $results['failed'] > 0 ? self::FAILURE : self::SUCCESS;
     }
 
-    /**
-     * Get files to reprocess based on options.
-     */
-    protected function getFilesToReprocess()
+    protected function refreshAll(): bool
     {
-        // Specific file IDs provided
+        return (bool) $this->option('all') || $this->option('status') === 'all';
+    }
+
+    protected function validateOptions(): void
+    {
+        if ($this->option('type') !== null && ! in_array($this->option('type'), ['receipt', 'document'], true)) {
+            throw new InvalidArgumentException('Use --type=receipt or --type=document.');
+        }
+        if (! in_array($this->option('status'), ['failed', 'pending', 'processing', 'completed', 'needs_review', 'all'], true)) {
+            throw new InvalidArgumentException('Invalid --status. Use failed, pending, processing, completed, needs_review, or all.');
+        }
+        if ($this->option('all') && $this->input->hasParameterOption('--status') && $this->option('status') !== 'all') {
+            throw new InvalidArgumentException('Use either --all or a specific --status, not both.');
+        }
+        foreach (['user', 'limit', 'chunk', 'after-id'] as $option) {
+            $value = $this->option($option);
+            $minimum = $option === 'after-id' ? 0 : 1;
+            if ($value !== null && filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => $minimum]]) === false) {
+                throw new InvalidArgumentException("--{$option} must be an integer of at least {$minimum}.");
+            }
+        }
+        if ((int) $this->option('chunk') > 1000) {
+            throw new InvalidArgumentException('--chunk must be between 1 and 1000.');
+        }
+        foreach ($this->option('file-id') as $fileId) {
+            if (filter_var($fileId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) === false) {
+                throw new InvalidArgumentException('--file-id must be a positive integer.');
+            }
+        }
+        $provider = $this->option('provider') ?? ($this->refreshAll() ? config('ai.file_processing_provider', 'textract+openai') : null);
+        if ($provider !== null) {
+            new FileProcessingCapabilities($provider);
+        }
+    }
+
+    /** @return Builder<File> */
+    protected function filesQuery(): Builder
+    {
+        $query = File::withoutGlobalScope('user')->whereNotNull('s3_original_path')->where('s3_original_path', '!=', '')
+            ->where('id', '>', (int) $this->option('after-id'));
         if ($fileIds = $this->option('file-id')) {
-            $query = File::whereIn('id', $fileIds)
-                ->whereNotNull('s3_original_path')
-                ->with('user');
-
-            if ($type = $this->option('type')) {
-                $query->where('file_type', $type);
-            }
-
-            return $query->get();
+            $query->whereIn('id', $fileIds);
+        } elseif (! $this->refreshAll()) {
+            $query->where('status', $this->option('status'));
+        }
+        if ($type = $this->option('type')) {
+            $query->where('file_type', $type);
+        }
+        if ($userId = $this->option('user')) {
+            $query->where('user_id', $userId);
+        }
+        if ($this->refreshAll() && ! $this->option('force')) {
+            $query->where('status', '!=', 'processing')
+                ->whereDoesntHave('processingJobs', fn (Builder $jobs) => $jobs->whereIn('status', ['pending', 'processing', 'retrying']))
+                ->whereNotIn('id', FileProcessingRequest::query()->select('file_id')->whereIn('state', ['upload_pending', 'pending', 'dispatching']));
         }
 
-        // Find by status and type
-        $files = $this->reprocessingService->findReprocessableFiles(
-            $this->option('type'),
-            $this->option('status')
-        );
-
-        // Apply limit if specified
-        if ($limit = $this->option('limit')) {
-            $files = $files->take((int) $limit);
-        }
-
-        return $files;
+        return $query;
     }
 
-    /**
-     * Display files in a table format.
-     */
-    protected function displayFilesTable($files): void
+    /** @param Collection<int, File> $files */
+    protected function displayFilesTable(Collection $files): void
     {
-        $tableData = $files->map(function ($file) {
-            return [
-                'ID' => $file->id,
-                'Type' => ucfirst($file->file_type),
-                'GUID' => substr($file->guid, 0, 8).'...',
-                'Filename' => strlen($file->fileName) > 25 ? substr($file->fileName, 0, 22).'...' : $file->fileName,
-                'Status' => $file->status,
-                'User' => $file->user->name ?? 'Unknown',
-                'Uploaded' => $file->uploaded_at?->format('Y-m-d H:i') ?? 'N/A',
-            ];
-        })->toArray();
-
-        $this->table(
-            ['ID', 'Type', 'GUID', 'Filename', 'Status', 'User', 'Uploaded'],
-            $tableData
-        );
+        $this->table(['ID', 'Type', 'Filename', 'Status', 'Owner'], $files->map(fn (File $file): array => [
+            $file->id, $file->file_type, $file->fileName, $file->status, $file->user->name ?? 'Unknown',
+        ])->all());
     }
 
-    /**
-     * Display reprocessing results.
-     */
-    protected function displayResults(array $results): void
-    {
-        $this->info('Reprocessing Results:');
-        $this->newLine();
-
-        // Summary
-        $this->info("  Successful: {$results['successful']}");
-        $this->info("  Failed:     {$results['failed']}");
-        $this->info("  Skipped:    {$results['skipped']}");
-        $this->newLine();
-
-        // Show failures if any
-        $failures = collect($results['results'])->filter(fn ($r) => ! $r['success'] && ! str_contains($r['message'], 'already'));
-
-        if ($failures->isNotEmpty()) {
-            $this->error('Failed files:');
-            foreach ($failures as $failure) {
-                $this->error("  File {$failure['file_id']} ({$failure['file_name']}): {$failure['message']}");
-            }
-            $this->newLine();
-        }
-
-        // Show skipped files
-        $skipped = collect($results['results'])->filter(fn ($r) => ! $r['success'] && str_contains($r['message'], 'already'));
-
-        if ($skipped->isNotEmpty() && $skipped->count() <= 10) {
-            $this->warn('Skipped files:');
-            foreach ($skipped as $skip) {
-                $this->line("  File {$skip['file_id']}: {$skip['message']}");
-            }
-            $this->newLine();
-        }
-
-        // Show successful job IDs
-        $successful = collect($results['results'])->filter(fn ($r) => $r['success']);
-
-        if ($successful->isNotEmpty()) {
-            $this->info('Started reprocessing jobs:');
-            $displayCount = min($successful->count(), 10);
-            foreach ($successful->take($displayCount) as $success) {
-                $this->line("  File {$success['file_id']}: Job {$success['job_id']}");
-            }
-
-            if ($successful->count() > $displayCount) {
-                $remaining = $successful->count() - $displayCount;
-                $this->line("  ... and {$remaining} more");
-            }
-            $this->newLine();
-        }
-
-        // Next steps
-        if ($results['successful'] > 0) {
-            $this->info('Monitor job progress:');
-            $this->line('   php artisan queue:health                         (Database queue health)');
-            $this->line('   tail -f storage/logs/laravel.log | grep Process  (Live logs)');
-            $this->line('   php artisan files:reprocess --stats              (View statistics)');
-        }
-    }
-
-    /**
-     * Display reprocessing statistics.
-     */
     protected function displayStats(): void
     {
-        $this->info('📊 File Reprocessing Statistics');
-        $this->newLine();
-
         $stats = $this->reprocessingService->getReprocessingStats();
-
-        // Receipts section
-        $this->info('Receipts:');
-        $this->line("  Failed:     {$stats['failed_receipts']}");
-        $this->line("  Pending:    {$stats['pending_receipts']}");
-        $this->line("  Processing: {$stats['processing_receipts']}");
-        $this->newLine();
-
-        // Documents section
-        $this->info('Documents:');
-        $this->line("  Failed:     {$stats['failed_documents']}");
-        $this->line("  Pending:    {$stats['pending_documents']}");
-        $this->line("  Processing: {$stats['processing_documents']}");
-        $this->newLine();
-
-        // Totals
-        $totalFailed = $stats['failed_receipts'] + $stats['failed_documents'];
-        $totalPending = $stats['pending_receipts'] + $stats['pending_documents'];
-        $totalProcessing = $stats['processing_receipts'] + $stats['processing_documents'];
-
-        $this->info('Total:');
-        $this->line("  Failed:     {$totalFailed}");
-        $this->line("  Pending:    {$totalPending}");
-        $this->line("  Processing: {$totalProcessing}");
-        $this->newLine();
-
-        // Suggestions
-        if ($totalFailed > 0) {
-            $this->warn("⚠️  You have {$totalFailed} failed file(s) that can be reprocessed.");
-            $this->newLine();
-            $this->info('Quick commands:');
-            $this->line('  php artisan files:reprocess --status=failed                (Reprocess all failed)');
-            $this->line('  php artisan files:reprocess --status=failed --type=receipt (Receipts only)');
-            $this->line('  php artisan files:reprocess --status=failed --limit=10     (Limit to 10)');
-            $this->line('  php artisan files:reprocess --status=failed --dry-run      (Preview first)');
-        } elseif ($totalPending > 0) {
-            $this->info("ℹ️  You have {$totalPending} pending file(s) that may need processing.");
-        } else {
-            $this->info('✅ No failed or pending files found.');
-        }
+        $this->table(['Type', 'Failed', 'Pending', 'Processing', 'Completed', 'Needs review'], collect(['receipts', 'documents'])
+            ->map(fn (string $type): array => [
+                ucfirst($type), $stats["failed_{$type}"], $stats["pending_{$type}"], $stats["processing_{$type}"],
+                $stats["completed_{$type}"], $stats["needs_review_{$type}"],
+            ])->all());
+        $this->line('Refresh the archive: php artisan files:reprocess --all');
+        $this->line('Preview first: php artisan files:reprocess --all --dry-run');
     }
 }

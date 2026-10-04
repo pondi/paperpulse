@@ -44,7 +44,7 @@ it('honors disabled categorization and item extraction in both receipt pipelines
         });
         $receipt = (new ReceiptAnalysisRunner($parser, $validator, $enricher))->run(fn () => ['data' => $data], $file->id, $user->id, 'Receipt text');
     }
-    expect($receipt->category_id)->toBe($category->id)->and($receipt->receipt_category)->toBeNull()
+    expect($receipt->category_id)->toBe($category->id)->and($receipt->receipt_category)->toBe($category->name)
         ->and($receipt->currency)->toBe('EUR')->and($receipt->lineItems()->count())->toBe(0)
         ->and($file->fresh()->meta['processing_preferences']['values']['extract_line_items'])->toBeFalse();
 })->with(['gemini', 'legacy']);

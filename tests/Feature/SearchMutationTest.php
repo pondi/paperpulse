@@ -77,10 +77,11 @@ it('keeps bulk category IDs and labels consistent and reindexes owned files', fu
     $user = User::factory()->create();
     $receipt = Receipt::factory()->create(['user_id' => $user->id]);
     $category = Category::create(['user_id' => $user->id, 'name' => 'Groceries', 'slug' => 'groceries']);
+    $otherCategory = Category::create(['user_id' => $user->id, 'name' => 'Other', 'slug' => 'other']);
     $foreign = Receipt::factory()->create();
     Bus::fake();
     $this->actingAs($user)->post(route('bulk.receipts.categorize'), [
-        'receipt_ids' => [$receipt->id], 'category_id' => $category->id, 'category' => 'Stale label',
+        'receipt_ids' => [$receipt->id], 'category_id' => $category->id, 'category' => $otherCategory->name,
     ])->assertRedirect()->assertSessionHasNoErrors();
     expect($receipt->fresh()->category_id)->toBe($category->id)
         ->and($receipt->fresh()->receipt_category)->toBe($category->name);

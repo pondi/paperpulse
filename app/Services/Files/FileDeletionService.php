@@ -245,7 +245,7 @@ class FileDeletionService
         $manifest = FileCleanupManifest::query()->firstOrNew(['file_id' => $file->id]);
         $objects = $manifest->objects ?? [];
         if ($deleteObjects) {
-            $columns = ['s3_original_path', 's3_processed_path', 's3_archive_path', 'file_path'];
+            $columns = ['s3_original_path', 's3_processed_path', 's3_archive_path'];
             if (! $sourceOnly) {
                 $columns[] = 's3_image_path';
             }

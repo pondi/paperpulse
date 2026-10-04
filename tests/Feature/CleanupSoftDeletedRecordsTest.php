@@ -2,6 +2,7 @@
 
 use App\Enums\DeletedReason;
 use App\Models\File;
+use App\Models\FileCleanupManifest;
 use App\Models\Receipt;
 use App\Models\User;
 use Carbon\Carbon;
@@ -18,7 +19,9 @@ test('it permanently deletes user-deleted records older than 30 days', function 
     $file = File::factory()->create([
         'user_id' => $this->user->id,
         'deleted_reason' => DeletedReason::UserDelete,
+        's3_original_path' => 'receipts/'.$this->user->id.'/original.pdf',
     ]);
+    Storage::disk('paperpulse')->put($file->s3_original_path, 'receipt');
     $file->delete();
     File::withTrashed()->where('id', $file->id)->update(['deleted_at' => Carbon::now()->subDays(31)]);
 
@@ -40,6 +43,9 @@ test('it permanently deletes user-deleted records older than 30 days', function 
     // Verify records are permanently deleted
     expect(File::onlyTrashed()->count())->toBe(0);
     expect(Receipt::onlyTrashed()->count())->toBe(0);
+    Storage::disk('paperpulse')->assertMissing($file->s3_original_path);
+    $manifest = FileCleanupManifest::where('file_id', $file->id)->firstOrFail();
+    expect($manifest->completed_at)->not->toBeNull()->and($manifest->last_error)->toBeNull();
 });
 
 test('it does not delete records newer than specified days', function () {

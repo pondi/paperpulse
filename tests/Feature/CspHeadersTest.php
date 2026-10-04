@@ -49,6 +49,15 @@ it('includes a nonce in the script-src directive', function () {
     expect($csp)->toMatch("/script-src[^;]*'nonce-[A-Za-z0-9+\/=]+'/");
 });
 
+it('exposes the style nonce to the Inertia runtime', function (): void {
+    $response = $this->get('/login');
+    $response->assertSuccessful();
+
+    preg_match("/(?<![a-z-])style-src[^;]*'nonce-([^']+)'/", $response->headers->get('Content-Security-Policy'), $matches);
+
+    $response->assertSee('<meta name="csp-nonce" content="'.$matches[1].'">', false);
+});
+
 it('does not include unsafe-inline in script-src', function () {
     $user = User::factory()->create();
 

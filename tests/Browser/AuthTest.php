@@ -169,3 +169,39 @@ test('unauthenticated users are redirected to login', function () {
             ->assertPathIs('/login');
     });
 });
+
+test('Inertia progress styles use the document CSP nonce across navigation', function (): void {
+    $this->browse(function (Browser $browser): void {
+        $browser->visit('/login')->waitFor('#email');
+        $browser->script(<<<'JS'
+            window.cspStyleViolations = [];
+            document.addEventListener('securitypolicyviolation', (event) => {
+                if (event.effectiveDirective.startsWith('style-src')) {
+                    window.cspStyleViolations.push(event.effectiveDirective);
+                }
+            });
+            document.dispatchEvent(new CustomEvent('inertia:start', {
+                detail: { visit: { showProgress: true } },
+            }));
+        JS);
+        $browser->waitFor('#nprogress .bar')
+            ->assertScript('getComputedStyle(document.querySelector("#nprogress .bar")).backgroundColor', 'rgb(75, 85, 99)')
+            ->assertScript('getComputedStyle(document.querySelector("#nprogress .bar")).position', 'fixed')
+            ->assertScript(<<<'JS'
+                Array.from(document.querySelectorAll('style')).some((style) =>
+                    style.textContent.includes('#nprogress .bar') &&
+                    style.nonce === document.querySelector('meta[name="csp-nonce"]').content &&
+                    style.sheet.cssRules.length > 0
+                )
+            JS);
+        $browser->script(<<<'JS'
+            document.dispatchEvent(new CustomEvent('inertia:finish', {
+                detail: { visit: { completed: true } },
+            }));
+        JS);
+        $browser->waitUntilMissing('#nprogress')
+            ->clickLink('Forgot your password?')
+            ->waitForLocation('/forgot-password')
+            ->assertScript('window.cspStyleViolations.length', 0);
+    });
+});

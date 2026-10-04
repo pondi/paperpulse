@@ -28,8 +28,11 @@ class AppPreset implements Preset
             ->add(Directive::OBJECT, Keyword::NONE)
             ->add(Directive::BASE, Keyword::SELF)
             ->add(Directive::FORM_ACTION, Keyword::SELF)
-            ->add(Directive::FRAME_ANCESTORS, Keyword::SELF)
-            ->add(Directive::UPGRADE_INSECURE_REQUESTS, Value::NO_VALUE);
+            ->add(Directive::FRAME_ANCESTORS, Keyword::SELF);
+
+        if (app()->environment('production') || request()->secure()) {
+            $policy->add(Directive::UPGRADE_INSECURE_REQUESTS, Value::NO_VALUE);
+        }
 
         if (config('broadcasting.connections.reverb.key')) {
             $options = config('broadcasting.connections.reverb.options');

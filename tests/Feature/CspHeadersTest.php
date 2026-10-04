@@ -8,7 +8,7 @@ use Symfony\Component\Process\Process;
 it('includes content-security-policy header on web responses', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->get('/dashboard');
+    $response = $this->actingAs($user)->get('https://localhost/dashboard');
 
     $response->assertHeader('Content-Security-Policy');
 
@@ -24,6 +24,20 @@ it('includes content-security-policy header on web responses', function () {
         ->toContain("frame-ancestors 'self'")
         ->toContain('upgrade-insecure-requests');
 });
+
+it('upgrades requests on HTTPS and production while allowing local HTTP', function (string $environment, string $scheme, bool $upgrades): void {
+    app()->detectEnvironment(fn () => $environment);
+    $response = $this->get($scheme.'://localhost/login');
+    $response->assertSuccessful();
+    expect(str_contains($response->headers->get('Content-Security-Policy'), 'upgrade-insecure-requests'))->toBe($upgrades);
+})->with([
+    ['local', 'http', false],
+    ['testing', 'http', false],
+    ['local', 'https', true],
+    ['testing', 'https', true],
+    ['production', 'http', true],
+    ['production', 'https', true],
+]);
 
 it('includes a nonce in the script-src directive', function () {
     $user = User::factory()->create();

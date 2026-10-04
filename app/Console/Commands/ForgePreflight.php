@@ -13,7 +13,7 @@ use Throwable;
 
 class ForgePreflight extends Command
 {
-    protected $signature = 'forge:preflight {--fpm-binary=php-fpm8.4} {--after-migrations : Check database tables, cache, queues and search}';
+    protected $signature = 'forge:preflight {--fpm-binary=php-fpm8.5} {--after-migrations : Check database tables, cache, queues and search}';
 
     protected $description = 'Validate the native Forge runtime before deployment';
 

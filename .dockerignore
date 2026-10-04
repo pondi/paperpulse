@@ -1,0 +1,15 @@
+/.git
+/.todo
+/node_modules
+/vendor
+/.env
+/.env.*
+!/.env.example
+/public/build
+/public/hot
+/storage
+/bootstrap/cache/*.php
+/tests/Browser/screenshots
+/tests/Browser/console
+/tests/Browser/source
+/.phpunit.cache

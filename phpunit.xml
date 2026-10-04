@@ -19,12 +19,20 @@
     </source>
     <php>
         <ini name="memory_limit" value="512M"/>
-        <env name="APP_ENV" value="testing"/>
+        <env name="APP_URL" value="http://localhost" force="true"/>
+        <env name="APP_ENV" value="testing" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+        <env name="DB_CONNECTION" value="pgsql" force="true"/>
+        <env name="DB_DATABASE" value="paperpulse_test" force="true"/>
+        <env name="DB_USERNAME" value="paperpulse_test" force="true"/>
+        <env name="DB_PASSWORD" value="paperpulse_test" force="true"/>
+        <env name="GEMINI_API_KEY" value="isolated-test" force="true"/>
+        <env name="OPENAI_API_KEY" value="isolated-test" force="true"/>
+        <env name="TEXTRACT_KEY" value="isolated-test" force="true"/>
+        <env name="TEXTRACT_SECRET" value="isolated-test" force="true"/>
+        <env name="RUN_GEMINI_INTEGRATION_TESTS" value="false" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

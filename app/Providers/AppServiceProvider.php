@@ -78,6 +78,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app['config']->set('database.connections', array_filter(
+            $this->app['config']->get('database.connections', []),
+            static fn (array $connection): bool => ($connection['driver'] ?? null) === 'pgsql',
+        ));
+
         // Register services as singletons for better performance
         $this->app->singleton(StorageService::class, function ($app) {
             return new StorageService;
@@ -213,8 +218,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if ($this->app->isProduction() && $this->app->make('db')->connection()->getDriverName() !== 'pgsql') {
-            throw new \RuntimeException('PaperPulse production requires PostgreSQL. Set DB_CONNECTION=pgsql.');
+        if (config('database.connections.'.config('database.default').'.driver') !== 'pgsql') {
+            throw new \RuntimeException('PaperPulse requires PostgreSQL. Set DB_CONNECTION=pgsql.');
         }
 
         $this->configureRateLimiting();

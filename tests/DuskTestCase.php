@@ -20,7 +20,7 @@ abstract class DuskTestCase extends BaseTestCase
     #[BeforeClass]
     public static function prepare(): void
     {
-        if (! static::runningInSail()) {
+        if (! static::runningInSail() && ! getenv('DUSK_DRIVER_URL')) {
             static::startChromeDriver(['--port=9515']);
         }
     }
@@ -49,6 +49,11 @@ abstract class DuskTestCase extends BaseTestCase
                 '--headless=new',
             ]);
         })->all());
+
+        if ($binary = getenv('DUSK_CHROME_BINARY')) {
+            $options->setBinary($binary);
+            $options->addArguments(['--no-sandbox', '--disable-dev-shm-usage']);
+        }
 
         return RemoteWebDriver::create(
             $_ENV['DUSK_DRIVER_URL'] ?? env('DUSK_DRIVER_URL') ?? 'http://localhost:9515',
@@ -93,7 +98,7 @@ abstract class DuskTestCase extends BaseTestCase
     protected function createUser(array $attributes = []): User
     {
         return User::factory()->create(array_merge([
-            'email' => 'dusk-' . uniqid() . '@example.com',
+            'email' => 'dusk-'.uniqid().'@example.com',
         ], $attributes));
     }
 }

@@ -65,11 +65,6 @@ class ReadinessCheck
     {
         $default = $this->database->connection();
         $configuration = $default->getConfig();
-        if ($default->getDriverName() === 'sqlite') {
-            $default->getPdo()->setAttribute(\PDO::ATTR_TIMEOUT, 1);
-
-            return $default;
-        }
         if ($default->getDriverName() !== 'pgsql') {
             throw new \RuntimeException('Unsupported readiness database driver.');
         }

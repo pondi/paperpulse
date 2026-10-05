@@ -63,7 +63,6 @@
                                 :show-edit="true"
                                 :show-archive="true"
                                 :show-delete="true"
-                                @click="viewCollection(collection)"
                                 @edit="editCollection(collection)"
                                 @archive="archiveCollection(collection)"
                                 @unarchive="unarchiveCollection(collection)"
@@ -274,10 +273,6 @@ const saveCollection = () => {
             onSuccess: () => closeModal()
         });
     }
-};
-
-const viewCollection = (collection) => {
-    router.visit(route('collections.show', collection.id));
 };
 
 const previewAction = async (collection, action) => {

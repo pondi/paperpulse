@@ -3,6 +3,7 @@
 use App\Models\Category;
 use App\Models\Collection;
 use App\Models\Tag;
+use Facebook\WebDriver\WebDriverKeys;
 use Laravel\Dusk\Browser;
 
 /*
@@ -379,7 +380,7 @@ test('create collection', function () {
     });
 });
 
-test('view collection show page', function () {
+test('opens a collection by keyboard and keeps edit actions independent', function () {
     $user = $this->createUser();
 
     $collection = Collection::factory()->create([
@@ -395,20 +396,14 @@ test('view collection show page', function () {
             ->waitForText('Viewable Collection')
             ->pause(500);
 
-        // Click on the collection card to navigate to show page
-        $browser->script("
-            const cards = document.querySelectorAll('[class*=\"cursor-pointer\"]');
-            for (const card of cards) {
-                if (card.textContent.includes('Viewable Collection')) {
-                    card.click();
-                    break;
-                }
-            }
-        ");
-
-        $browser->pause(1000)
-            ->waitForText('Viewable Collection')
-            ->assertPathIs('/collections/' . $collection->id);
+        $browser->script("document.querySelector('a[href$=\"/collections/{$collection->id}\"]').closest('[class*=\"border-l-4\"]').querySelector('button').click()");
+        $browser->waitFor('#collection-name')->assertPathIs('/collections');
+        $browser->keys('#collection-name', WebDriverKeys::ESCAPE)->waitUntilMissing('#collection-name');
+        $link = 'a[href$="/collections/'.$collection->id.'"]';
+        $browser->script("document.querySelector('$link').focus()");
+        $browser->assertScript('getComputedStyle(document.activeElement).outlineStyle', 'solid');
+        $browser->keys($link, WebDriverKeys::ENTER)
+            ->waitForLocation('/collections/'.$collection->id)->assertSee('Viewable Collection');
     });
 });
 
@@ -433,7 +428,7 @@ test('delete collection', function () {
         // Click the delete (trash/red) button on the collection card
         // The delete button is only shown when files_count === 0
         $browser->script("
-            const cards = document.querySelectorAll('[class*=\"cursor-pointer\"]');
+            const cards = document.querySelectorAll('[class*=\"border-l-4\"]');
             for (const card of cards) {
                 if (card.textContent.includes('Collection To Delete')) {
                     const deleteBtn = card.querySelector('button.text-red-600');

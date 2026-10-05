@@ -1,11 +1,10 @@
 <template>
     <div
-        class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-200 border-l-4 p-6 cursor-pointer"
+        class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-200 border-l-4 p-6"
         :style="{ borderLeftColor: collection.color }"
-        @click="$emit('click', collection)"
     >
         <div class="flex items-start justify-between mb-4">
-            <div class="flex items-center space-x-3">
+            <Link :href="route('collections.show', collection.id)" class="flex min-w-0 items-center gap-3 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600">
                 <div
                     class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                     :style="{ backgroundColor: collection.color }"
@@ -20,7 +19,7 @@
                         <span v-if="collection.is_archived" class="ml-2 text-xs font-normal text-zinc-500 dark:text-zinc-400">(Archived)</span>
                     </h3>
                 </div>
-            </div>
+            </Link>
             <div class="flex items-center space-x-2 flex-shrink-0">
                 <button
                     v-if="showEdit"
@@ -68,6 +67,7 @@
 </template>
 
 <script setup>
+import { Link } from '@inertiajs/vue3';
 const props = defineProps({
     collection: {
         type: Object,
@@ -87,7 +87,7 @@ const props = defineProps({
     }
 });
 
-defineEmits(['click', 'edit', 'archive', 'unarchive', 'delete']);
+defineEmits(['edit', 'archive', 'unarchive', 'delete']);
 
 const getIconPath = (iconName) => {
     const icons = {

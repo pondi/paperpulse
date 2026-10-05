@@ -471,3 +471,25 @@ it('identifies the admin processing analytics browser page', function (): void {
             ->assertTitleContains('AI Processing Analytics');
     });
 });
+
+it('reconciles the activity summary including review and pending files', function (): void {
+    $user = $this->createUser();
+    foreach (['pending', 'processing', 'completed', 'failed', 'needs_review'] as $status) {
+        File::factory()->create(['user_id' => $user->id, 'status' => $status]);
+    }
+    File::factory()->create(['status' => 'needs_review']);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/files-processing')->waitForText('Total Files');
+        $browser->assertScript(<<<'JS'
+            (() => {
+                const counts = {};
+                for (const label of document.querySelectorAll('p.text-sm.font-bold')) {
+                    counts[label.textContent] = Number(label.nextElementSibling.textContent);
+                }
+                return counts['Total Files'] === 5 && counts.Completed === 1 && counts['In Progress'] === 2
+                    && counts.Failed === 1 && counts['Needs review'] === 1;
+            })()
+            JS, true);
+    });
+});

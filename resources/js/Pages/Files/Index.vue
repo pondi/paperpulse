@@ -30,6 +30,7 @@ interface Stats {
     processing: number;
     pending: number;
     completed: number;
+    needs_review: number;
 }
 
 interface PaginationInfo {
@@ -61,6 +62,7 @@ const props = withDefaults(defineProps<Props>(), {
         processing: 0,
         pending: 0,
         completed: 0,
+        needs_review: 0,
     }),
     filters: () => ({
         status: '',
@@ -151,7 +153,7 @@ const toggleExpanded = (fileId: number) => {
                 </div>
 
                 <!-- Stats -->
-                <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
+                <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                     <div class="rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
                         <div class="flex items-center">
                             <div class="flex-shrink-0 rounded-md bg-amber-100 p-3 dark:bg-orange-900/40">
@@ -206,6 +208,10 @@ const toggleExpanded = (fileId: number) => {
                                 <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.failed }}</p>
                             </div>
                         </div>
+                    </div>
+                    <div class="rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
+                        <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Needs review</p>
+                        <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.needs_review }}</p>
                     </div>
                 </div>
 

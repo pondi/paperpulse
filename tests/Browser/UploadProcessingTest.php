@@ -86,6 +86,8 @@ function uploadBrowserFixture(Browser $browser, string $filename = 'test-image.j
         ->waitForText('Upload 1 file')
         ->click('button[type="submit"]')
         ->waitForText('Upload 0 files', 15)
+        ->assertSeeIn('[data-upload-outcome="accepted"]', '1 file queued for processing')
+        ->assertPresent('[data-upload-outcome="accepted"].bg-green-50')
         ->assertDontSee('Accepted for processing.');
 }
 
@@ -103,6 +105,7 @@ test('upload receipt image and verify it appears on files page', function (): vo
     $this->browse(function (Browser $browser): void {
         $this->loginAs($browser, $this->uploadUser);
         uploadBrowserFixture($browser);
+        $browser->screenshot('upload-accepted-alert');
         $browser->visit('/files-processing')->waitForText('test-image');
     });
 
@@ -192,7 +195,12 @@ test('duplicate browser uploads keep one file and report the existing filename',
         $browser->visit('/documents/upload')->waitForText('Upload Your Documents')
             ->attach('input[type="file"].sr-only', __DIR__.'/fixtures/test-image.jpg')
             ->waitForText('Upload 1 file')->click('button[type="submit"]')
-            ->waitForText('Already exists as "test-image.jpg"');
+            ->waitForText('Already exists as "test-image.jpg"')
+            ->assertPresent('[data-upload-outcome="duplicate"].bg-amber-50')
+            ->assertSeeIn('[data-upload-outcome="duplicate"]', '1 file already uploaded')
+            ->screenshot('upload-duplicate-alert')
+            ->click('[data-upload-outcome="duplicate"] button')
+            ->assertMissing('[data-upload-outcome="duplicate"]');
     });
 
     expect(File::query()->where('user_id', $this->uploadUser->id)->count())->toBe(1);
@@ -241,6 +249,7 @@ test('office uploads convert to PDF and display their extracted document', funct
             ->attach('input[type="file"].sr-only', base_path('tests/fixtures/office/fixture.docx'))
             ->waitForText('Upload 1 file')->click('button[type="submit"]')
             ->waitForText('Upload 0 files', 15)
+            ->assertSeeIn('[data-upload-outcome="accepted"]', '1 file queued for processing')
             ->assertDontSee('Accepted for processing.');
         runBrowserProcessingQueue();
         $file = File::query()->where('user_id', $this->uploadUser->id)->sole();

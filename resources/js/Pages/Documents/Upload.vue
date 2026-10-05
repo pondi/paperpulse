@@ -8,16 +8,29 @@
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div v-if="uploadResults.length" class="mb-4 flex flex-col gap-4" role="status">
-                    <section v-for="status in ['duplicate', 'failed']" :key="status">
-                        <template v-if="uploadResults.some(result => result.status === status)">
-                            <h3 class="font-semibold text-zinc-900 dark:text-zinc-100">{{ outcomeLabels[status] }}</h3>
-                            <ul class="flex flex-col gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                                <li v-for="result in uploadResults.filter(result => result.status === status)" :key="result.index">
-                                    {{ result.filename }}: {{ result.message }}
+                <div v-if="uploadOutcomes.length" class="mb-6 flex flex-col gap-3">
+                    <section v-for="outcome in uploadOutcomes" :key="outcome.status"
+                        :data-upload-outcome="outcome.status"
+                        :role="outcome.status === 'failed' ? 'alert' : 'status'"
+                        class="flex items-start gap-3 rounded-lg border p-4"
+                        :class="outcome.classes">
+                        <component :is="outcome.icon" class="h-5 w-5 shrink-0" aria-hidden="true" />
+                        <div class="flex min-w-0 flex-1 flex-col gap-2">
+                            <h3 class="text-sm font-semibold">{{ outcome.title }}</h3>
+                            <p v-if="outcome.status === 'accepted'" class="text-sm">
+                                Processing will continue in the background.
+                            </p>
+                            <ul v-else class="flex flex-col gap-2 text-sm">
+                                <li v-for="result in outcome.results" :key="result.index" class="break-words">
+                                    <span class="font-medium">{{ result.filename }}</span>: {{ result.message }}
                                 </li>
                             </ul>
-                        </template>
+                        </div>
+                        <button type="button" @click="dismissUploadOutcome(outcome.status)"
+                            :aria-label="'Dismiss ' + outcome.title"
+                            class="shrink-0 rounded-md p-1 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-current">
+                            <XMarkIcon class="h-5 w-5" aria-hidden="true" />
+                        </button>
                     </section>
                 </div>
 
@@ -254,8 +267,8 @@ import CollectionSelector from '@/Components/Domain/CollectionSelector.vue';
 import TagSelector from '@/Components/Domain/TagSelector.vue';
 import { Head } from '@inertiajs/vue3';
 import { useForm } from '@inertiajs/vue3';
-import { XMarkIcon, PhotoIcon, DocumentIcon, ReceiptRefundIcon } from '@heroicons/vue/20/solid'
-import { ref, watch } from 'vue';
+import { XMarkIcon, PhotoIcon, DocumentIcon, ReceiptRefundIcon, CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon } from '@heroicons/vue/20/solid'
+import { computed, ref, watch } from 'vue';
 
 interface FileObject {
     file: File;
@@ -280,10 +293,38 @@ interface UploadOutcome {
 }
 
 const uploadResults = ref<UploadOutcome[]>([]);
-const outcomeLabels: Record<string, string> = {
-    duplicate: 'Duplicates',
-    failed: 'Failed — retry these files',
-};
+const outcomeStyles = [
+    {
+        status: 'accepted' as const,
+        icon: CheckCircleIcon,
+        classes: 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-200',
+    },
+    {
+        status: 'duplicate' as const,
+        icon: ExclamationTriangleIcon,
+        classes: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200',
+    },
+    {
+        status: 'failed' as const,
+        icon: XCircleIcon,
+        classes: 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200',
+    },
+];
+const uploadOutcomes = computed(() => outcomeStyles.map(outcome => {
+    const results = uploadResults.value.filter(result => result.status === outcome.status);
+    const fileCount = `${results.length} ${results.length === 1 ? 'file' : 'files'}`;
+    const title = outcome.status === 'accepted'
+        ? `${fileCount} queued for processing`
+        : outcome.status === 'duplicate'
+            ? `${fileCount} already uploaded`
+            : `${fileCount} could not be uploaded — retry below`;
+
+    return { ...outcome, results, title };
+}).filter(outcome => outcome.results.length > 0));
+
+function dismissUploadOutcome(status: UploadOutcome['status']): void {
+    uploadResults.value = uploadResults.value.filter(result => result.status !== status);
+}
 const uploadError = ref<string | null>(null);
 const fileUpload = ref<HTMLFormElement | null>(null);
 const fileType = ref<'receipt' | 'document'>('receipt'); // Default to receipt
@@ -406,9 +447,9 @@ function submit() {
     
     try {
         uploadForm.post(route('documents.store'), {
-            preserveScroll: true,
+            preserveScroll: false,
             onSuccess: (page) => {
-                uploadResults.value = page.props.flash.upload_results.filter(result => result.status !== 'accepted');
+                uploadResults.value = page.props.flash.upload_results;
                 const failedIndexes = new Set(uploadResults.value
                     .filter(result => result.status === 'failed')
                     .map(result => result.index));

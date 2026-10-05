@@ -43,7 +43,7 @@ const requestInvite = () => {
 </script>
 
 <template>
-    <Head v-if="isMounted" title="Welcome to PaperPulse" />
+    <Head v-if="isMounted" title="Welcome" />
 
     <div class="min-h-screen bg-amber-50 dark:bg-zinc-900">
         <!-- Navigation -->

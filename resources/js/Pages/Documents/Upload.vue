@@ -1,5 +1,5 @@
 <template>
-    <Head title="PaperPulse - Upload files" />
+    <Head title="Upload files" />
 
     <AuthenticatedLayout>
         <template #header>

@@ -375,3 +375,26 @@ it('guides export creation and distinguishes empty pending and expired exports',
             ->assertMissing('a[href*="/download"]');
     });
 });
+
+it('sets distinct browser titles with exactly one product suffix', function (): void {
+    $user = $this->createUser();
+    $titles = [
+        '/analytics' => 'Reports',
+        '/invoices' => 'Invoices',
+        '/contracts' => 'Contracts',
+        '/bank-statements' => 'Bank Statements',
+        '/vouchers' => 'Vouchers',
+        '/documents/upload' => 'Upload files',
+        '/pulsedav' => 'Scanner imports',
+        '/scanner' => 'Scan a document',
+    ];
+
+    $this->browse(function (Browser $browser) use ($user, $titles): void {
+        $browser->loginAs($user);
+        foreach ($titles as $url => $title) {
+            $browser->visit($url)->waitUntil('document.title === '.json_encode($title.' - PaperPulse'))
+                ->assertTitle($title.' - PaperPulse');
+        }
+        $browser->visit('/')->waitUntil('document.title === "Welcome - PaperPulse"')->assertTitle('Welcome - PaperPulse');
+    });
+});

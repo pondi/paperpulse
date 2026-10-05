@@ -1,5 +1,6 @@
 <template>
     <AuthenticatedLayout>
+        <Head title="Scanner imports" />
         <template #header>
             <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
                 Scanner Imports (PulseDav)
@@ -341,7 +342,7 @@
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 const { formatDate } = useDateFormatter();
 import { ref, computed, onMounted } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { Link } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import TagSelector from '@/Components/Domain/TagSelector.vue';

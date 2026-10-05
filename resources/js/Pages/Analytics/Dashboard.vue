@@ -1,5 +1,6 @@
 <template>
     <AuthenticatedLayout>
+        <Head title="Reports" />
         <template #header>
             <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-100 leading-tight">Analytics Dashboard</h2>
         </template>
@@ -479,7 +480,7 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { Link } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Chart from 'chart.js/auto';

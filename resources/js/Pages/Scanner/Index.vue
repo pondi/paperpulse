@@ -1,5 +1,6 @@
 <template>
   <div class="fixed inset-0 bg-black text-white overflow-hidden flex flex-col z-50">
+    <Head title="Scan a document" />
     <!-- Header -->
     <div class="absolute top-0 left-0 right-0 z-30 p-4 flex justify-between items-center bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
       <Link :href="route('dashboard')" aria-label="Close scanner" class="text-white p-2 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition pointer-events-auto">
@@ -150,7 +151,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { XMarkIcon, PencilSquareIcon, ExclamationTriangleIcon, SparklesIcon } from '@heroicons/vue/24/outline';
 import Toast from '@/Components/Common/Toast.vue';
 import PerspectiveCropper from './PerspectiveCropper.vue';

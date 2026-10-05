@@ -19,3 +19,15 @@ it('keeps nested folder actions and breadcrumbs within narrow viewports', functi
         }
     });
 });
+
+it('returns from a nested folder to its parent while keeping all collections reachable', function (): void {
+    $user = $this->createUser();
+    $parent = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Building']);
+    $child = Collection::factory()->create(['user_id' => $user->id, 'parent_id' => $parent->id, 'name' => 'Contracts']);
+
+    $this->browse(function (Browser $browser) use ($user, $parent, $child): void {
+        $browser->loginAs($user)->visit('/collections/'.$child->id)->waitForText('Back to Building')
+            ->clickLink('Back to Building')->waitForLocation('/collections/'.$parent->id)
+            ->assertDontSee('Back to Building')->clickLink('All Collections')->waitForLocation('/collections');
+    });
+});

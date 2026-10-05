@@ -35,13 +35,20 @@
                         {{ isEditing ? 'Save Changes' : 'Edit Collection' }}
                     </button>
                     <Link
+                        v-if="collection.parent_id && breadcrumbs.length > 3"
+                        :href="breadcrumbs[breadcrumbs.length - 2].href"
+                        class="inline-flex items-center gap-2 rounded-md bg-zinc-800 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700"
+                    >
+                        Back to {{ breadcrumbs[breadcrumbs.length - 2].label }}
+                    </Link>
+                    <Link
                         :href="route('collections.index')"
                         class="inline-flex items-center gap-x-2 px-4 py-2 bg-zinc-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-zinc-700"
                     >
                         <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
-                        Back to Collections
+                        All Collections
                     </Link>
                 </div>
             </div>

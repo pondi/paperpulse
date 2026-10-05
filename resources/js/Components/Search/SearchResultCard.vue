@@ -9,7 +9,7 @@
       :class="typeStripeColor"
     />
 
-    <div class="flex gap-4 p-4 pl-5">
+    <div class="flex gap-2 sm:gap-4 p-4 pl-5">
       <!-- Selection checkbox -->
       <div class="flex-shrink-0 flex items-center">
         <input
@@ -22,7 +22,7 @@
       <!-- Thumbnail (if available) -->
       <div
         v-if="result.file?.url"
-        class="flex-shrink-0 w-16 h-20 bg-amber-100 dark:bg-zinc-700 rounded overflow-hidden border border-amber-200 dark:border-zinc-600"
+        class="flex-shrink-0 w-10 h-14 sm:w-16 sm:h-20 bg-amber-100 dark:bg-zinc-700 rounded overflow-hidden border border-amber-200 dark:border-zinc-600"
       >
         <img
           :src="result.file.previewUrl || result.file.url"
@@ -33,7 +33,7 @@
       </div>
       <div
         v-else
-        class="flex-shrink-0 w-16 h-20 bg-amber-100 dark:bg-zinc-700 rounded flex items-center justify-center border border-amber-200 dark:border-zinc-600"
+        class="flex-shrink-0 w-10 h-14 sm:w-16 sm:h-20 bg-amber-100 dark:bg-zinc-700 rounded flex items-center justify-center border border-amber-200 dark:border-zinc-600"
       >
         <ReceiptRefundIcon v-if="result.type === 'receipt'" class="size-8 text-zinc-400" />
         <BanknotesIcon v-else-if="result.type === 'invoice'" class="size-8 text-zinc-400" />
@@ -48,9 +48,9 @@
       <!-- Content -->
       <div class="flex-1 min-w-0 cursor-pointer" @click="handleClick">
         <!-- Header -->
-        <div class="flex items-start justify-between gap-2 mb-2">
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-1">
+        <div class="flex flex-col sm:flex-row items-start justify-between gap-2 mb-2">
+          <div class="w-full sm:flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-2 mb-1">
               <span
                 class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
                 :class="typeBadgeClass"
@@ -63,14 +63,14 @@
               </span>
             </div>
             <h3
-              class="text-base font-semibold text-zinc-900 dark:text-white truncate group-hover:text-amber-600 dark:group-hover:text-amber-400"
+              class="break-words text-base font-semibold text-zinc-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400"
               v-html="highlightText(result.title)"
             />
           </div>
 
           <!-- Total amount -->
-          <div v-if="result.total" class="flex-shrink-0">
-            <div class="text-right">
+          <div v-if="result.total" class="max-w-full sm:flex-shrink-0">
+            <div class="break-words text-left sm:text-right">
               <div class="text-lg font-bold text-zinc-900 dark:text-white">
                 {{ result.total }}
               </div>

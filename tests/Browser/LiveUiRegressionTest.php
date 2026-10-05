@@ -2,6 +2,8 @@
 
 use App\Models\Category;
 use App\Models\Collection;
+use App\Models\Invoice;
+use App\Models\Merchant;
 use Laravel\Dusk\Browser;
 
 it('keeps nested folder actions and breadcrumbs within narrow viewports', function (): void {
@@ -75,6 +77,38 @@ it('gives mobile folder controls separated touch targets aligned with their icon
                             && Math.abs((target.left + target.right) / 2 - (icon.left + icon.right) / 2) < 1
                             && (!index || controls[index - 1].getBoundingClientRect().right < target.left);
                     });
+                })()
+                JS, true);
+        }
+    });
+});
+
+it('keeps long invoice identities dates and amounts readable in mobile search cards', function (): void {
+    $user = $this->createUser();
+    $merchant = Merchant::create(['user_id' => $user->id, 'name' => 'DigitalOcean']);
+    Invoice::factory()->create([
+        'user_id' => $user->id,
+        'merchant_id' => $merchant->id,
+        'from_name' => 'DigitalOcean with a longer merchant identity',
+        'invoice_date' => '2026-10-05',
+        'total_amount' => 1234.56,
+        'currency' => 'USD',
+    ]);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/search?query=DigitalOcean&type=invoice')->waitForText('1,234.56 USD');
+
+        foreach ([320, 390, 1440] as $width) {
+            $browser->resize($width, 844)->assertSee('DigitalOcean with a longer merchant identity');
+            $browser->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
+            $browser->assertScript(<<<'JS'
+                (() => {
+                    const title = document.querySelector('h3[ class*="text-base"]');
+                    const heading = title.parentElement.parentElement;
+                    const date = heading.querySelector('span.text-xs.text-zinc-500').getBoundingClientRect();
+                    const amount = heading.querySelector('.text-lg.font-bold').getBoundingClientRect();
+                    const style = getComputedStyle(title);
+                    return style.textOverflow !== 'ellipsis' && (date.bottom <= amount.top || date.right <= amount.left);
                 })()
                 JS, true);
         }

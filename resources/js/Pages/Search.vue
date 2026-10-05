@@ -267,7 +267,7 @@
           </div>
 
           <!-- Results Area -->
-          <div class="flex-1">
+          <div class="min-w-0 flex-1">
             <!-- Bulk actions toolbar -->
             <div v-if="selectedCount > 0" class="mb-4 bg-amber-50 dark:bg-zinc-800 border border-amber-200 dark:border-amber-600 rounded-lg p-4">
               <div class="flex items-center justify-between">
@@ -312,8 +312,8 @@
             </div>
 
             <!-- Results header -->
-            <div v-if="results.length > 0 || searching" class="mb-4 flex items-center justify-between">
-              <div class="flex items-center gap-4">
+            <div v-if="results.length > 0 || searching" class="mb-4 flex flex-wrap items-center justify-between gap-4">
+              <div class="flex flex-wrap items-center gap-4">
                 <!-- Select all checkbox -->
                 <label v-if="results.length > 0" class="flex items-center">
                   <input

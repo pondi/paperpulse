@@ -263,3 +263,24 @@ it('shows default and legacy timezone selections without changing saved values',
     'legacy' => ['Etc/UTC', 'UTC'],
     'invalid legacy' => ['Invalid/Zone', 'UTC'],
 ]);
+
+it('discards receipt edits on cancel and saves only through Save Changes', function (): void {
+    $user = $this->createUser();
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create([
+        'user_id' => $user->id,
+        'total_amount' => 42,
+        'receipt_description' => 'Persisted description',
+    ]);
+
+    $this->browse(function (Browser $browser) use ($user, $receipt): void {
+        $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitForText('Persisted description')
+            ->press('Edit Receipt')->press('Cancel')->waitForText('Edit Receipt')
+            ->press('Edit Receipt')->type('dl input[type="number"]', '99')
+            ->press('Cancel')->waitForText('Edit Receipt');
+        expect($receipt->fresh()->total_amount)->toEqual(42);
+        $browser->press('Edit Receipt')->assertInputValue('dl input[type="number"]', '42.00')
+            ->type('dl input[type="number"]', '55')->press('Save Changes')->waitForText('Edit Receipt');
+    });
+
+    expect($receipt->fresh()->total_amount)->toEqual(55);
+});

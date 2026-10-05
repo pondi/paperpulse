@@ -34,24 +34,33 @@
         <div class="space-y-8">
           <!-- Receipt Status -->
           <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex items-center gap-x-3">
                 <div :class="[getStatusClass(receipt), 'flex-none rounded-full p-1']" aria-hidden="true">
                   <div class="size-2 rounded-full bg-current" />
                 </div>
                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200">{{ __('receipt_status') }}: {{ getStatusLabel(receipt) }}</h3>
               </div>
-              <button
-                @click="isEditing = !isEditing"
-                class="inline-flex items-center gap-x-2 px-3 py-2 text-sm font-semibold rounded-md"
-                :class="isEditing ? 'text-zinc-900 bg-amber-100 hover:bg-amber-200' : 'text-zinc-100 bg-zinc-700 hover:bg-amber-600'"
-              >
-                <PencilIcon v-if="!isEditing" class="size-4" />
-                <CheckIcon v-else class="size-4" />
-                {{ isEditing ? __('save_changes') : __('edit_receipt') }}
-              </button>
+              <div class="flex flex-wrap items-center gap-3">
+                <button v-if="isEditing" type="button" @click="cancelEditing"
+                  class="text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100">
+                  {{ __('cancel') }}
+                </button>
+                <button
+                  @click="isEditing ? saveReceipt() : startEditing()"
+                  class="inline-flex items-center gap-x-2 px-3 py-2 text-sm font-semibold rounded-md"
+                  :class="isEditing ? 'text-zinc-900 bg-amber-100 hover:bg-amber-200' : 'text-zinc-100 bg-zinc-700 hover:bg-amber-600'"
+                >
+                  <PencilIcon v-if="!isEditing" class="size-4" />
+                  <CheckIcon v-else class="size-4" />
+                  {{ isEditing ? __('save_changes') : __('edit_receipt') }}
+                </button>
+              </div>
             </div>
-            
+            <p v-if="isEditing" class="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+              Save Changes saves your edits. Cancel or leaving this page discards unsaved edits.
+            </p>
+
             <dl class="mt-6 space-y-6">
               <div v-for="(field, index) in receiptFields" :key="index" class="flex flex-col">
                 <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">{{ field.label }}</dt>
@@ -231,7 +240,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
@@ -282,12 +291,23 @@ const formatDateForInput = (date) => {
   return d.toISOString().split('T')[0];
 };
 
-// Initialize editedReceipt with properly formatted date
 const initializeEditedReceipt = () => {
   editedReceipt.value = {
     ...props.receipt,
     receipt_date: formatDateForInput(props.receipt.receipt_date)
   };
+  receiptTags.value = [...(props.receipt.tags || [])];
+  receiptCollections.value = props.receipt.collections?.map(collection => collection.id) || [];
+};
+
+const startEditing = () => {
+  initializeEditedReceipt();
+  isEditing.value = true;
+};
+
+const cancelEditing = () => {
+  initializeEditedReceipt();
+  isEditing.value = false;
 };
 const lineItemForm = ref({
   text: '',
@@ -467,26 +487,22 @@ const deleteLineItem = (id) => {
   }
 };
 
-watch(isEditing, (newValue) => {
-  if (newValue) {
-    // When entering edit mode, reinitialize the edited receipt with proper date formatting
-    initializeEditedReceipt();
+const saveReceipt = () => {
+  const originalReceipt = {
+    ...props.receipt,
+    receipt_date: formatDateForInput(props.receipt.receipt_date)
+  };
+
+  if (JSON.stringify(originalReceipt) !== JSON.stringify(editedReceipt.value) ||
+      JSON.stringify(props.receipt.tags || []) !== JSON.stringify(receiptTags.value)) {
+    router.patch(route('receipts.update', props.receipt.id), {
+      ...editedReceipt.value,
+      tags: receiptTags.value.map(tag => tag.id)
+    }, {
+      onSuccess: () => { isEditing.value = false; }
+    });
   } else {
-    // When exiting edit mode, save if there are changes
-    const originalReceipt = {
-      ...props.receipt,
-      receipt_date: formatDateForInput(props.receipt.receipt_date)
-    };
-    
-    if (JSON.stringify(originalReceipt) !== JSON.stringify(editedReceipt.value) || 
-        JSON.stringify(props.receipt.tags || []) !== JSON.stringify(receiptTags.value)) {
-      // Include tags as array of IDs
-      const dataToSave = {
-        ...editedReceipt.value,
-        tags: receiptTags.value.map(t => t.id)
-      };
-      router.patch(route('receipts.update', props.receipt.id), dataToSave);
-    }
+    isEditing.value = false;
   }
-});
-</script> 
+};
+</script>

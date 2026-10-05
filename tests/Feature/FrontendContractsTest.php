@@ -6,6 +6,7 @@ use App\Models\File;
 use App\Models\FileShare;
 use App\Models\User;
 use Illuminate\Support\Facades\File as Filesystem;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia;
 use Symfony\Component\Process\Process;
@@ -99,3 +100,33 @@ JS;
     $share->update(['expires_at' => now()->subMinute()]);
     $this->actingAs($recipient)->get(route('documents.shared'))->assertInertia(fn (AssertableInertia $page) => $page->has('documents.data', 0));
 });
+
+it('resolves expiry scanner duplicate and review copy with locale fallback and day counts', function (string $locale, string $day, string $days): void {
+    Lang::get('messages', [], 'en');
+    Lang::addLines(['messages.test_english_fallback' => 'English fallback'], 'en');
+    $response = $this->actingAs(User::factory()->create())->withSession(['locale' => $locale])->get(route('dashboard'))->assertOk();
+    $messages = $response->viewData('page')['props']['language']['messages'];
+    expect($messages['test_english_fallback'])->toBe('English fallback');
+    foreach (['expiring_vouchers', 'ending_warranties', 'view_all', 'no_expiring_vouchers', 'no_ending_warranties', 'scanner_preferences', 'ignore_duplicate', 'needs_review'] as $key) {
+        expect($messages[$key])->not->toBe($key);
+    }
+    $script = <<<'JS'
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const input = JSON.parse(fs.readFileSync(0, 'utf8'));
+const source = fs.readFileSync('resources/js/Composables/useTranslations.js', 'utf8')
+    .replace(/import[^;]+;/, '').replace('export function', 'function');
+const useTranslations = new Function('usePage', source + '; return useTranslations;')(() => ({ props: { language: { messages: input.messages } } }));
+const { __ } = useTranslations();
+assert.equal(__('expiring_within_days', { count: 1 }), input.day);
+assert.equal(__('expiring_within_days', { count: 30 }), input.days);
+assert.equal(__('test_english_fallback'), 'English fallback');
+JS;
+    $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
+    $process->setInput(json_encode(compact('messages', 'day', 'days')));
+    $process->run();
+    expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
+})->with([
+    ['en', 'Expiring within 1 day', 'Expiring within 30 days'],
+    ['nb', 'Utløper innen 1 dag', 'Utløper innen 30 dager'],
+]);

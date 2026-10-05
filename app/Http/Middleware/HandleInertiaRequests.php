@@ -74,11 +74,11 @@ class HandleInertiaRequests extends Middleware
     protected function getTranslations(): array
     {
         $locale = app()->getLocale();
-        $translations = [];
+        $translations = Lang::get('messages', [], config('app.fallback_locale'));
 
         // Load messages translations
         if (Lang::has('messages', $locale)) {
-            $translations = Lang::get('messages', [], $locale);
+            $translations = array_replace($translations, Lang::get('messages', [], $locale));
         }
 
         return $translations;

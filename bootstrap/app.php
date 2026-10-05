@@ -43,9 +43,9 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $middleware->web(append: [
+            SetLocale::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
-            SetLocale::class,
             SecurityHeaders::class,
             AddCspHeaders::class,
         ]);

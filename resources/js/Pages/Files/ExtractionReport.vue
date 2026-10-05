@@ -12,7 +12,7 @@
       <section class="rounded-lg bg-white p-6 shadow dark:bg-zinc-800">
         <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ report.file.name }}</h3>
         <dl class="mt-4 grid gap-4 text-sm sm:grid-cols-2">
-          <div><dt class="text-zinc-500 dark:text-zinc-400">Status</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ report.file.status }}</dd></div>
+          <div><dt class="text-zinc-500 dark:text-zinc-400">Status</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ report.file.status === 'needs_review' ? __('needs_review') : label(report.file.status) }}</dd></div>
           <div><dt class="text-zinc-500 dark:text-zinc-400">Document type</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ report.classification.type || report.file.file_type }}</dd></div>
           <div><dt class="text-zinc-500 dark:text-zinc-400">Classification confidence</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ confidence(report.classification.confidence) }}</dd></div>
           <div><dt class="text-zinc-500 dark:text-zinc-400">Extraction confidence</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ confidence(report.extraction.confidence_score) }}</dd></div>
@@ -50,10 +50,12 @@
 
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
+import { useTranslations } from '@/Composables/useTranslations';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
 defineProps({ report: { type: Object, required: true } });
 
+const { __ } = useTranslations();
 const confidence = value => value == null ? 'Not recorded' : `${Math.round(Number(value) * 100)}%`;
 const label = value => value.replace(/_/g, ' ');
 </script>

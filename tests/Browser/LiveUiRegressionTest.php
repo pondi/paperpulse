@@ -547,3 +547,16 @@ it('edits receipts using managed categories and an uncategorized option', functi
             ->press('Edit Receipt')->assertScript("document.querySelector('select').selectedIndex", 0);
     });
 });
+
+it('renders translated expiry scanner and review labels', function (): void {
+    $user = $this->createUser();
+    $file = File::factory()->create(['user_id' => $user->id, 'status' => 'needs_review']);
+    $this->browse(function (Browser $browser) use ($user, $file): void {
+        $browser->loginAs($user)->visit('/dashboard')->waitForText('Expiring Vouchers')
+            ->assertSee('Ending Warranties')->assertSee('Expiring within 30 days')
+            ->assertSee('No vouchers expiring soon.')->assertSee('No warranties ending soon.')
+            ->visit('/preferences')->waitForText('Scanner Preferences')
+            ->visit('/files/'.$file->id.'/extraction-report')->waitForText('Extraction report')
+            ->assertSee('Needs review')->assertDontSee('needs_review');
+    });
+});

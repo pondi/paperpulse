@@ -253,4 +253,13 @@ return [
     'receipt_shared' => 'Kvittering delt',
     'document_shared' => 'Dokument delt',
     'days_remaining' => 'dager igjen',
+    'expiring_vouchers' => 'Gavekort som utløper',
+    'ending_warranties' => 'Garantier som utløper',
+    'expiring_within_days' => 'Utløper innen :count dag|Utløper innen :count dager',
+    'view_all' => 'Vis alle',
+    'no_expiring_vouchers' => 'Ingen gavekort utløper snart.',
+    'no_ending_warranties' => 'Ingen garantier utløper snart.',
+    'scanner_preferences' => 'Skannerinnstillinger',
+    'ignore_duplicate' => 'Ignorer duplikat',
+    'needs_review' => 'Trenger gjennomgang',
 ];

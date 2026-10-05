@@ -262,4 +262,13 @@ return [
     'receipt_shared' => 'Receipt shared',
     'document_shared' => 'Document shared',
     'days_remaining' => 'days remaining',
+    'expiring_vouchers' => 'Expiring Vouchers',
+    'ending_warranties' => 'Ending Warranties',
+    'expiring_within_days' => 'Expiring within :count day|Expiring within :count days',
+    'view_all' => 'View All',
+    'no_expiring_vouchers' => 'No vouchers expiring soon.',
+    'no_ending_warranties' => 'No warranties ending soon.',
+    'scanner_preferences' => 'Scanner Preferences',
+    'ignore_duplicate' => 'Ignore Duplicate',
+    'needs_review' => 'Needs review',
 ];

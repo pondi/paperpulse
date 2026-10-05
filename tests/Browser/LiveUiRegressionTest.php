@@ -6,6 +6,7 @@ use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Merchant;
 use App\Models\Receipt;
+use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
 
@@ -193,4 +194,29 @@ it('fits notification identities and footer actions within mobile viewports', fu
             }
         }
     });
+});
+
+it('dismisses notifications with Escape from the trigger or panel and preserves unread state', function (): void {
+    $user = $this->createUser();
+    $notification = $user->notifications()->create([
+        'id' => (string) Str::uuid(),
+        'type' => 'test',
+        'data' => ['type' => 'receipt_failed', 'error_message' => 'Processing failed'],
+    ]);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $trigger = '.relative.ml-3 > div > button';
+        $browser->loginAs($user)->visit('/dashboard')->waitFor($trigger);
+
+        foreach ([$trigger, '[role="menu"]'] as $focusTarget) {
+            $browser->click($trigger)->waitFor('[role="menu"]');
+            $browser->script("document.querySelector('$focusTarget').focus()");
+            $browser->keys($focusTarget, WebDriverKeys::ESCAPE)
+                ->waitUntilMissing('[role="menu"]')
+                ->assertScript("document.activeElement === document.querySelector('$trigger')", true)
+                ->assertAttribute($trigger, 'aria-expanded', 'false');
+        }
+    });
+
+    expect($notification->fresh()->read_at)->toBeNull();
 });

@@ -1,6 +1,6 @@
 <template>
-  <Menu as="div" class="relative ml-3">
-    <div>
+  <Menu as="div" v-slot="{ close }" class="relative ml-3">
+    <div @keydown.esc.stop.prevent="close">
       <MenuButton class="relative flex rounded-full bg-white dark:bg-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-800 border border-amber-200 dark:border-transparent">
         <span class="absolute -inset-1.5" />
         <span class="sr-only">View notifications</span>

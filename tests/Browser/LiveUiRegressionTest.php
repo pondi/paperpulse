@@ -2,8 +2,10 @@
 
 use App\Models\Category;
 use App\Models\Collection;
+use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Merchant;
+use App\Models\Receipt;
 use Laravel\Dusk\Browser;
 
 it('keeps nested folder actions and breadcrumbs within narrow viewports', function (): void {
@@ -111,6 +113,32 @@ it('keeps long invoice identities dates and amounts readable in mobile search ca
                     return style.textOverflow !== 'ellipsis' && (date.bottom <= amount.top || date.right <= amount.left);
                 })()
                 JS, true);
+        }
+    });
+});
+
+it('keeps distinct visible associated labels on populated search filters', function (): void {
+    $user = $this->createUser();
+    Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id, 'total_amount' => 42, 'currency' => 'NOK']);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->resize(1440, 900)->loginAs($user)->visit('/search?type=receipt')->waitFor('#search-sort');
+        $labels = [
+            'search-date-from' => 'From date',
+            'search-date-to' => 'To date',
+            'search-amount-min' => 'Minimum amount',
+            'search-amount-max' => 'Maximum amount',
+            'search-category' => 'Category',
+            'search-collection' => 'Collection',
+        ];
+
+        $browser->assertSeeIn('label[for="search-sort"]', 'Sort by:')
+            ->assertScript("document.getElementById('search-sort').labels[0].textContent.trim()", 'Sort by:')
+            ->type('#search-amount-min', '0')->type('#search-amount-max', '100');
+
+        foreach ($labels as $id => $label) {
+            $browser->assertSeeIn('label[for="'.$id.'"]', $label);
+            $browser->assertScript("document.getElementById('$id').labels[0].textContent.trim()", $label);
         }
     });
 });

@@ -55,10 +55,10 @@
 
               <div class="space-y-4">
                 <!-- Type Filter -->
-                <div>
-                  <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                <fieldset>
+                  <legend class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                     Type
-                  </label>
+                  </legend>
                   <div class="space-y-2">
                     <label class="flex items-center">
                       <input
@@ -169,43 +169,51 @@
                       </span>
                     </label>
                   </div>
-                </div>
+                </fieldset>
 
                 <!-- Date Range Filter -->
-                <div class="border-t border-amber-200 dark:border-zinc-700 pt-4">
-                  <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                <fieldset class="border-t border-amber-200 dark:border-zinc-700 pt-4">
+                  <legend class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                     Date Range
-                  </label>
+                  </legend>
                   <div class="space-y-2">
+                    <label for="search-date-from" class="block text-sm text-zinc-700 dark:text-zinc-300">From date</label>
                     <input
+                      id="search-date-from"
                       v-model="filters.date_from"
                       type="date"
                       class="block w-full rounded-md border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
                       placeholder="From"
                     />
+                    <label for="search-date-to" class="block text-sm text-zinc-700 dark:text-zinc-300">To date</label>
                     <input
+                      id="search-date-to"
                       v-model="filters.date_to"
                       type="date"
                       class="block w-full rounded-md border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
                       placeholder="To"
                     />
                   </div>
-                </div>
+                </fieldset>
 
                 <!-- Amount Filter (for receipts) -->
-                <div v-if="['all', 'receipt', 'invoice', 'voucher', 'contract', 'bank_statement'].includes(filters.type)" class="border-t border-amber-200 dark:border-zinc-700 pt-4">
-                  <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                <fieldset v-if="['all', 'receipt', 'invoice', 'voucher', 'contract', 'bank_statement'].includes(filters.type)" class="border-t border-amber-200 dark:border-zinc-700 pt-4">
+                  <legend class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                     Amount Range
-                  </label>
+                  </legend>
                   <div class="space-y-2">
+                    <label for="search-amount-min" class="block text-sm text-zinc-700 dark:text-zinc-300">Minimum amount</label>
                     <input
+                      id="search-amount-min"
                       v-model.number="filters.amount_min"
                       type="number"
                       step="0.01"
                       class="block w-full rounded-md border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
                       placeholder="Min amount"
                     />
+                    <label for="search-amount-max" class="block text-sm text-zinc-700 dark:text-zinc-300">Maximum amount</label>
                     <input
+                      id="search-amount-max"
                       v-model.number="filters.amount_max"
                       type="number"
                       step="0.01"
@@ -213,14 +221,15 @@
                       placeholder="Max amount"
                     />
                   </div>
-                </div>
+                </fieldset>
 
                 <!-- Category Filter -->
                 <div v-if="filters.type === 'receipt'" class="border-t border-amber-200 dark:border-zinc-700 pt-4">
-                  <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  <label for="search-category" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                     Category
                   </label>
                   <select
+                    id="search-category"
                     v-model="filters.category"
                     class="block w-full rounded-md border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
                   >
@@ -235,10 +244,11 @@
 
                 <!-- Collection Filter -->
                 <div class="border-t border-amber-200 dark:border-zinc-700 pt-4">
-                  <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  <label for="search-collection" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                     Collection
                   </label>
                   <select
+                    id="search-collection"
                     v-model="filters.collection_id"
                     class="block w-full rounded-md border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
                   >
@@ -337,8 +347,9 @@
 
               <!-- Sort options -->
               <div v-if="results.length > 0" class="flex items-center gap-2">
-                <label class="text-sm text-zinc-700 dark:text-zinc-300">Sort by:</label>
+                <label for="search-sort" class="text-sm text-zinc-700 dark:text-zinc-300">Sort by:</label>
                 <select
+                  id="search-sort"
                   v-model="sortBy"
                   class="rounded-md border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
                 >

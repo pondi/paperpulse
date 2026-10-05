@@ -78,6 +78,9 @@ class ReceiptController extends BaseResourceController
 
         return Inertia::render("{$this->resource}/Show", [
             'receipt' => ReceiptInertiaResource::forShow($receipt)->toArray(request()),
+            'categories' => auth()->user()->categories()
+                ->where(fn (Builder $query) => $query->where('is_active', true)->orWhereKey($receipt->category_id))
+                ->ordered()->get(['id', 'name']),
             'meta' => $this->getShowMeta(),
             'breadcrumbs' => [
                 ['label' => 'Dashboard', 'href' => route('dashboard')],

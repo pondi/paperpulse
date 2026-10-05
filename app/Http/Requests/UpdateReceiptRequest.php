@@ -19,6 +19,7 @@ class UpdateReceiptRequest extends FormRequest
             'total_amount' => ['required', 'numeric'],
             'tax_amount' => ['nullable', 'numeric'],
             'currency' => ['required', 'string', 'size:3'],
+            'category_id' => ['sometimes', 'nullable', 'integer', new ExistsForUser('categories')],
             'receipt_category' => ['nullable', 'string', 'max:255'],
             'receipt_description' => ['nullable', 'string', 'max:1000'],
             'note' => ['nullable', 'string', 'max:1000'],

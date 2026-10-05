@@ -530,3 +530,20 @@ it('explains sparse and consecutive observed months in reports', function (): vo
         }
     });
 });
+
+it('edits receipts using managed categories and an uncategorized option', function (): void {
+    $user = $this->createUser();
+    $category = Category::create(['user_id' => $user->id, 'name' => 'Garden & Plants', 'slug' => 'garden-plants', 'is_active' => true]);
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id, 'category_id' => $category->id, 'receipt_date' => '2026-10-05', 'total_amount' => 42, 'currency' => 'NOK']);
+    $this->browse(function (Browser $browser) use ($user, $receipt, $category): void {
+        $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitForText('Edit Receipt')
+            ->press('Edit Receipt')->waitForText('Save Changes')
+            ->assertScript("document.querySelector('select').value", (string) $category->id)
+            ->assertScript("Array.from(document.querySelector('select').options).map(option => option.textContent.trim())", ['Uncategorized', 'Garden & Plants'])
+            ->type('dl input[type="number"]', '43')->press('Save Changes')->waitForText('Receipt updated successfully')
+            ->refresh()->waitForText('Edit Receipt')->press('Edit Receipt')->waitForText('Save Changes')
+            ->assertScript("document.querySelector('select').value", (string) $category->id)
+            ->select('select', 'Uncategorized')->assertScript("document.querySelector('select').selectedIndex", 0)->press('Save Changes')->waitForText('Receipt updated successfully')->refresh()->waitForText('Edit Receipt')
+            ->press('Edit Receipt')->assertScript("document.querySelector('select').selectedIndex", 0);
+    });
+});

@@ -74,6 +74,7 @@ class ReceiptInertiaResource extends JsonResource
             'id' => $this->id,
             'file_id' => $this->file_id,
             'merchant' => $this->merchant,
+            'category_id' => $this->category_id,
             'receipt_date' => $this->receipt_date,
             'tax_amount' => $this->tax_amount,
             'total_amount' => $this->total_amount,

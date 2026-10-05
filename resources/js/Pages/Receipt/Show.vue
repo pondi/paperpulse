@@ -65,7 +65,7 @@
               <div v-for="(field, index) in receiptFields" :key="index" class="flex flex-col">
                 <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">{{ field.label }}</dt>
                 <dd v-if="!isEditing" class="mt-1 text-sm text-zinc-700 dark:text-zinc-200" :class="{ 'whitespace-pre-wrap break-words': field.type === 'textarea' }">
-                  {{ formatFieldValue(receipt[field.key], field.type) }}
+                  {{ formatFieldValue(field.key === 'category_id' ? receipt.receipt_category : receipt[field.key], field.type) }}
                 </dd>
                 <div v-else class="mt-1">
                   <DatePicker
@@ -267,6 +267,10 @@ const props = defineProps({
     type: Object,
     required: true
   },
+  categories: {
+    type: Array,
+    default: () => []
+  },
   breadcrumbs: {
     type: Array,
     default: () => []
@@ -416,10 +420,9 @@ const receiptFields = computed(() => [
   { key: 'total_amount', label: __('total_amount'), type: 'number' },
   { key: 'tax_amount', label: __('tax_amount'), type: 'number' },
   { key: 'currency', label: __('currency'), type: 'text' },
-  { key: 'receipt_category', label: __('category'), type: 'select', options: [
-    { value: 'mat', label: __('food') },
-    { value: 'transport', label: __('transport') },
-    { value: null, label: __('uncategorized') }
+  { key: 'category_id', label: __('category'), type: 'select', options: [
+    { value: null, label: __('uncategorized') },
+    ...props.categories.map(category => ({ value: category.id, label: category.name }))
   ]},
   { key: 'receipt_description', label: __('description'), type: 'textarea' },
   { key: 'note', label: __('note'), type: 'textarea' }
@@ -495,7 +498,7 @@ const saveReceipt = () => {
   if (JSON.stringify(originalReceipt) !== JSON.stringify(editedReceipt.value) ||
       JSON.stringify(props.receipt.tags || []) !== JSON.stringify(receiptTags.value)) {
     router.patch(route('receipts.update', props.receipt.id), {
-      ...editedReceipt.value,
+      ...Object.fromEntries(receiptFields.value.map(field => [field.key, editedReceipt.value[field.key]])),
       tags: receiptTags.value.map(tag => tag.id)
     }, {
       onSuccess: () => { isEditing.value = false; }

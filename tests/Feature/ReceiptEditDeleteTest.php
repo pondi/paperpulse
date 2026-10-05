@@ -1,8 +1,10 @@
 <?php
 
+use App\Models\Category;
 use App\Models\File;
 use App\Models\Receipt;
 use App\Models\User;
+use Inertia\Testing\AssertableInertia;
 
 test('owners can edit and delete receipts through the web routes', function () {
     $owner = User::factory()->create();
@@ -35,4 +37,37 @@ test('invalid receipt edits return validation errors and retain existing data', 
         'receipt_date' => 'bad', 'total_amount' => 'bad', 'currency' => 'NOK',
     ])->assertSessionHasErrors(['receipt_date', 'total_amount']);
     expect($receipt->fresh()->total_amount)->toBe('10.00');
+});
+
+it('provides managed receipt categories and retains inactive current assignments', function (): void {
+    $this->withoutVite();
+    $owner = User::factory()->create();
+    $garden = Category::create(['user_id' => $owner->id, 'name' => 'Garden & Plants', 'slug' => 'garden-plants', 'is_active' => true]);
+    $current = Category::create(['user_id' => $owner->id, 'name' => 'Old category', 'slug' => 'old-category', 'is_active' => false]);
+    Category::create(['user_id' => User::factory()->create()->id, 'name' => 'Private', 'slug' => 'private', 'is_active' => true]);
+    $file = File::factory()->create(['user_id' => $owner->id]);
+    $receipt = Receipt::factory()->create(['user_id' => $owner->id, 'file_id' => $file->id, 'category_id' => $current->id]);
+
+    $this->actingAs($owner)->get(route('receipts.show', $receipt))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('categories', fn ($categories): bool => $categories->pluck('id')->sort()->values()->all() === [$garden->id, $current->id])
+            ->where('receipt.receipt_category', 'Old category'));
+    $receipt->update(['category_id' => null]);
+    $this->get(route('receipts.show', $receipt))
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('categories', 1)->where('receipt.receipt_category', null));
+});
+
+it('saves canonical category choices and rejects another owners categories', function (): void {
+    $owner = User::factory()->create();
+    $category = Category::create(['user_id' => $owner->id, 'name' => 'Garden & Plants', 'slug' => 'garden-plants']);
+    $foreign = Category::create(['user_id' => User::factory()->create()->id, 'name' => 'Private', 'slug' => 'private']);
+    $receipt = Receipt::factory()->for(File::factory()->for($owner))->create(['user_id' => $owner->id]);
+    $payload = ['receipt_date' => '2026-10-05', 'total_amount' => 42, 'currency' => 'NOK'];
+    $this->actingAs($owner)->patch(route('receipts.update', $receipt), $payload + ['category_id' => $category->id])->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('success');
+    expect($receipt->fresh()->total_amount)->toBe('42.00');
+    expect($receipt->fresh()->category_id)->toBe($category->id)->and($receipt->fresh()->receipt_category)->toBe('Garden & Plants');
+    $this->patch(route('receipts.update', $receipt), $payload + ['category_id' => $foreign->id])->assertSessionHasErrors('category_id');
+    expect($receipt->fresh()->category_id)->toBe($category->id);
+    $this->patch(route('receipts.update', $receipt), $payload + ['category_id' => null])->assertSessionHasNoErrors();
+    expect($receipt->fresh()->category_id)->toBeNull()->and($receipt->fresh()->receipt_category)->toBeNull();
 });

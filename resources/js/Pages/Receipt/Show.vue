@@ -104,11 +104,13 @@
           <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
             <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200 mb-4">Tags</h3>
             <TagManager
+              v-if="isEditing || receiptTags.length"
               v-model="receiptTags"
               :readonly="!isEditing"
               @tag-added="handleTagAdded"
               @tag-removed="handleTagRemoved"
             />
+            <p v-else class="text-sm text-zinc-500 dark:text-zinc-400">No tags added.</p>
           </div>
 
           <!-- Collections -->
@@ -123,16 +125,9 @@
               :allow-create="true"
               @update:model-value="handleCollectionsChanged"
             />
-            <div v-if="receipt.collections && receipt.collections.length > 0" class="mt-3 flex flex-wrap gap-2">
-              <CollectionBadge
-                v-for="collection in receipt.collections"
-                :key="collection.id"
-                :collection="collection"
-                :linkable="true"
-              />
-            </div>
-            <p v-else class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              {{ __('not_assigned_to_collections') || 'Not assigned to any collections' }}
+            <p v-if="!isEditing" class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Folder changes save immediately.</p>
+            <p v-if="!receiptCollections.length" class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+              Not assigned to any collections
             </p>
           </div>
 
@@ -257,7 +252,6 @@ import TagManager from '@/Components/Domain/TagManager.vue';
 import ReceiptImage from '@/Components/Domain/ReceiptImage.vue';
 import DatePicker from '@/Components/Forms/DatePicker.vue';
 import CollectionSelector from '@/Components/Domain/CollectionSelector.vue';
-import CollectionBadge from '@/Components/Domain/CollectionBadge.vue';
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -407,8 +401,6 @@ const handleCollectionsChanged = (collectionIds) => {
     });
   }
 };
-
-// formatDate and formatCurrency are now imported from useDateFormatter
 
 const formatFieldValue = (value, type) => {
   if (value === null || value === undefined) return '-'

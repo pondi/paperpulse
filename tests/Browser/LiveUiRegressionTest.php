@@ -423,3 +423,27 @@ it('keeps every theme reachable and indicates the active theme on mobile', funct
         }
     });
 });
+
+it('shows each receipt membership once and gives optional metadata clear empty states', function (): void {
+    $user = $this->createUser();
+    $file = File::factory()->for($user)->create();
+    $receipt = Receipt::factory()->for($file)->create(['user_id' => $user->id]);
+    $collection = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Needs review']);
+    $file->collections()->attach($collection);
+
+    $this->browse(function (Browser $browser) use ($user, $receipt, $file, $collection): void {
+        $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitForText('Needs review')
+            ->assertSee('No tags added.')->assertSee('Folder changes save immediately.');
+        $membershipCount = <<<'JS'
+            (() => {
+                const panel = Array.from(document.querySelectorAll('h3')).find(el => el.textContent.trim() === 'Collections').parentElement;
+                return (panel.textContent.match(/Needs review/g) || []).length;
+            })()
+            JS;
+        $browser->assertScript($membershipCount, 1)
+            ->press('Edit Receipt')->waitForText('Save Changes')->assertScript($membershipCount, 1)
+            ->press('Cancel')->waitForText('Edit Receipt')->assertScript($membershipCount, 1);
+        $file->collections()->detach($collection);
+        $browser->refresh()->waitForText('Not assigned to any collections')->assertSee('No tags added.');
+    });
+});

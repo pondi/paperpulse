@@ -1,5 +1,5 @@
 <script setup>
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import { onMounted, onUnmounted, ref } from 'vue';
 import axios from 'axios';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -39,10 +39,13 @@ onUnmounted(() => clearInterval(timer));
             <template #header><h2 class="text-xl font-semibold text-zinc-800 dark:text-zinc-200">Exports</h2></template>
             <div class="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-8">
                 <p class="text-sm text-zinc-600 dark:text-zinc-300">Downloads expire after 24 hours.</p>
+                <p class="text-sm text-zinc-600 dark:text-zinc-300">To create an export, open Receipts, select the receipts using their checkboxes, then choose Export as CSV or PDF.</p>
+                <Link :href="route('receipts.index')" class="self-start rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700">Select receipts to export</Link>
                 <p v-if="error" role="alert" class="text-red-600 dark:text-red-400">{{ error }}</p>
                 <p v-if="!exports.length" class="text-zinc-600 dark:text-zinc-300">No exports available.</p>
                 <div v-for="item in exports" :key="item.id" class="flex flex-col gap-2 rounded-lg bg-white p-4 shadow dark:bg-zinc-900 dark:text-zinc-200">
                     <p class="font-medium">{{ item.format.toUpperCase() }} export · {{ item.status }}</p>
+                    <p v-if="item.status === 'expired'" class="text-sm">This download has expired. Select the receipts again to create a new export.</p>
                     <template v-if="['pending', 'processing'].includes(item.status)">
                         <progress class="w-full" :max="item.total" :value="item.processed" />
                         <p class="text-sm">{{ item.processed }} / {{ item.total }} processed</p>

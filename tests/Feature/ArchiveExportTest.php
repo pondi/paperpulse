@@ -141,3 +141,16 @@ it('shows only the owner export records on the progress page and JSON endpoint',
         ->assertInertia(fn (AssertableInertia $page) => $page->component('Exports/Index')->has('exports', 1)->where('exports.0.id', $owned->id));
     $this->getJson(route('exports.index'))->assertOk()->assertJsonCount(1, 'exports');
 });
+
+it('lists owned pending and expired exports with distinct states and no expired download', function (): void {
+    $user = User::factory()->create();
+    $pending = ArchiveExport::factory()->create(['user_id' => $user->id, 'status' => 'pending']);
+    $expired = ArchiveExport::factory()->create(['user_id' => $user->id, 'status' => 'completed', 'expires_at' => now()->subMinute()]);
+    ArchiveExport::factory()->create(['status' => 'completed', 'expires_at' => now()->subMinute()]);
+
+    $response = $this->actingAs($user)->getJson(route('exports.index'))->assertOk()->assertJsonCount(2, 'exports');
+    $exports = collect($response->json('exports'))->keyBy('id');
+    expect($exports[$pending->id]['status'])->toBe('pending')
+        ->and($exports[$expired->id]['status'])->toBe('expired')
+        ->and($exports[$expired->id]['download_url'])->toBeNull();
+});

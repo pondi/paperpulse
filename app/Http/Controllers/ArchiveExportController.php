@@ -15,7 +15,7 @@ class ArchiveExportController extends Controller
 {
     public function index(Request $request): Response|JsonResponse
     {
-        $exports = ArchiveExport::where('user_id', $request->user()->id)->where('expires_at', '>', now())->latest()->limit(20)->get()
+        $exports = ArchiveExport::where('user_id', $request->user()->id)->latest()->limit(20)->get()
             ->map(fn ($export) => $this->details($export));
 
         return $request->expectsJson() ? response()->json(['exports' => $exports]) : Inertia::render('Exports/Index', ['exports' => $exports]);
@@ -36,7 +36,7 @@ class ArchiveExportController extends Controller
 
     private function details(ArchiveExport $export): array
     {
-        return ['id' => $export->id, 'format' => $export->format, 'status' => $export->status, 'total' => $export->total,
+        return ['id' => $export->id, 'format' => $export->format, 'status' => $export->expires_at->isPast() ? 'expired' : $export->status, 'total' => $export->total,
             'processed' => $export->processed, 'error' => $export->error, 'expires_at' => $export->expires_at->toIso8601String(),
             'download_url' => $export->status === 'completed' && $export->expires_at->isFuture()
                 ? URL::temporarySignedRoute('exports.download', $export->expires_at, ['export' => $export->id]) : null];

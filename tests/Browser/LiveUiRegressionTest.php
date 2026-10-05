@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ArchiveExport;
 use App\Models\Category;
 use App\Models\Collection;
 use App\Models\Document;
@@ -352,5 +353,25 @@ it('keeps shared upload pickers readable in both themes through focus selection 
                 $browser->click('.relative:has('.$selector.') > div > span > button');
             }
         }
+    });
+});
+
+it('guides export creation and distinguishes empty pending and expired exports', function (): void {
+    $user = $this->createUser();
+    Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/exports')->waitForText('No exports available.')
+            ->assertSee('select the receipts using their checkboxes')
+            ->clickLink('Select receipts to export')->waitForLocation('/receipts')
+            ->check('thead input[type="checkbox"]')->waitForText('Export')->press('Export')
+            ->waitForText('Export as CSV')->assertSee('Export as PDF');
+
+        ArchiveExport::factory()->create(['user_id' => $user->id, 'status' => 'pending']);
+        ArchiveExport::factory()->create(['user_id' => $user->id, 'status' => 'completed', 'expires_at' => now()->subMinute()]);
+        $browser->visit('/exports')->waitForText('PDF export · pending')
+            ->assertSee('0 / 100 processed')->assertSee('PDF export · expired')
+            ->assertSee('This download has expired')->assertDontSee('No exports available.')
+            ->assertMissing('a[href*="/download"]');
     });
 });

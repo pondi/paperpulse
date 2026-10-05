@@ -38,7 +38,7 @@ const context = {
   clearTimeout: id => timers.delete(id),
 };
 vm.createContext(context);
-vm.runInContext(descriptor.scriptSetup.content.replace(/^import .*;$/gm, '') + '\nglobalThis.state = { performSearch, searchQuery, filters, results, searching, searchError, facets, pagination, hasActiveFilters };', context);
+vm.runInContext(descriptor.scriptSetup.content.replace(/^import .*;$/gm, '') + '\nglobalThis.state = { performSearch, searchQuery, filters, results, searching, searchError, facets, pagination, hasActiveFilters, clearFilters, sortBy };', context);
 const state = context.state;
 const data = (id, status = 'available') => ({ data: { results: id ? [{ id }] : [], facets: { total: id ? 1 : 0 }, pagination: { page: 1, last_page: id ? 1 : 0, total: id ? 1 : 0 }, search_status: status } });
 const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
@@ -112,6 +112,17 @@ requests[10].resolve(data('tagged'));
 await tagged;
 assert.deepEqual(Array.from(history.at(-1).props({}).initialFilters.tags), ['Travel']);
 delete state.filters.value.tags;
+state.filters.value = { type: 'invoice', date_from: '2025-01-01', date_to: '2026-01-01', amount_min: 0, amount_max: 100, category: 'mat', collection_id: 12, tags: ['Travel'], document_type: 'plan', vendor: 'store', vendors: ['store'] };
+state.sortBy.value = 'date_desc';
+state.searchQuery.value = 'intentional query';
+state.clearFilters();
+assert.ok(!state.hasActiveFilters.value);
+assert.equal(state.searchQuery.value, 'intentional query');
+assert.equal(state.sortBy.value, 'relevance');
+assert.equal(state.filters.value.amount_min, null);
+assert.equal(state.filters.value.amount_max, null);
+assert.equal(state.filters.value.type, 'all');
+assert.equal(state.filters.value.collection_id, '');
 
 state.searchQuery.value = 'one';
 watchers.get(state.searchQuery)();

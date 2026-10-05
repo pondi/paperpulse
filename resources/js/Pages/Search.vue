@@ -37,20 +37,16 @@
           </div>
         </div>
 
-        <button type="button" @click="filtersOpen = !filtersOpen" :aria-expanded="filtersOpen" aria-controls="search-filters" class="mb-4 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-600 lg:hidden dark:border-zinc-700 dark:text-zinc-300">{{ filtersOpen ? 'Hide filters' : 'Show filters' }}</button>
+        <div class="mb-4 flex flex-wrap items-center gap-3">
+          <button type="button" @click="filtersOpen = !filtersOpen" :aria-expanded="filtersOpen" aria-controls="search-filters" class="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-600 lg:hidden dark:border-zinc-700 dark:text-zinc-300">{{ filtersOpen ? 'Hide filters' : 'Show filters' }}</button>
+          <button v-if="hasActiveFilters" type="button" @click="clearFilters" class="text-sm text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300">Clear filters (keep search)</button>
+        </div>
         <div class="flex flex-col gap-6 lg:flex-row">
           <!-- Filters Sidebar -->
           <div id="search-filters" :class="[filtersOpen ? 'block' : 'hidden lg:block', 'w-full shrink-0 lg:w-60']">
             <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 lg:sticky lg:top-20">
               <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-zinc-900 dark:text-white">Filters</h3>
-                <button
-                  v-if="hasActiveFilters"
-                  @click="clearFilters"
-                  class="text-xs text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300"
-                >
-                  Clear all
-                </button>
               </div>
 
               <div class="space-y-4">
@@ -388,6 +384,8 @@
               <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                 Try adjusting your search or filters to find what you're looking for.
               </p>
+              <button v-if="hasActiveFilters" type="button" @click="clearFilters" class="mt-3 text-sm text-amber-600 dark:text-amber-400">Clear filters (keep search)</button>
+              <button v-else type="button" @click="searchQuery = ''" class="mt-3 text-sm text-amber-600 dark:text-amber-400">Clear search</button>
             </div>
 
             <!-- Initial state -->
@@ -688,6 +686,7 @@ const changePage = (page) => {
 };
 
 const clearFilters = () => {
+  sortBy.value = 'relevance';
   filters.value = {
     type: 'all',
     date_from: '',

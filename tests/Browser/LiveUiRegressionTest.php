@@ -142,3 +142,20 @@ it('keeps distinct visible associated labels on populated search filters', funct
         }
     });
 });
+
+it('recovers from mobile no results by clearing filters while preserving the query', function (): void {
+    $user = $this->createUser();
+    $merchant = Merchant::create(['user_id' => $user->id, 'name' => 'Filter recovery']);
+    Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id, 'merchant_id' => $merchant->id]);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->resize(390, 844)->loginAs($user)->visit('/search?query=Filter%20recovery&type=invoice')
+            ->waitForText('No results found')->assertSee('Clear filters (keep search)')
+            ->press('Clear filters (keep search)')->waitForText('Found 1 result')
+            ->assertInputValue('input[aria-label="Search document contents"]', 'Filter recovery')
+            ->waitUntil("new URL(location.href).searchParams.get('type') === 'all'");
+        $browser->visit('/search?query=unmatched-search-identity')->waitForText('No results found')
+            ->press('Clear search')->waitForText('Start searching')
+            ->assertInputValue('input[aria-label="Search document contents"]', '');
+    });
+});

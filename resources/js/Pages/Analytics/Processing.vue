@@ -1,5 +1,6 @@
 <template>
     <AuthenticatedLayout>
+        <Head title="AI Processing Analytics" />
         <template #header>
             <div class="flex justify-between items-center">
                 <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
@@ -199,7 +200,7 @@
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 const { formatDate } = useDateFormatter();
 import { ref } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
 const props = defineProps({

@@ -463,3 +463,11 @@ it('shows each receipt membership once and gives optional metadata clear empty s
         $browser->refresh()->waitForText('Not assigned to any collections')->assertSee('No tags added.');
     });
 });
+
+it('identifies the admin processing analytics browser page', function (): void {
+    $user = $this->createUser(['is_admin' => true]);
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/analytics/processing')->waitForText('AI Processing Analytics')
+            ->assertTitleContains('AI Processing Analytics');
+    });
+});

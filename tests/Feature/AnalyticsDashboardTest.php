@@ -5,6 +5,7 @@ use App\Models\BankTransaction;
 use App\Models\Contract;
 use App\Models\Document;
 use App\Models\File;
+use App\Models\FileProcessingAnalytic;
 use App\Models\Invoice;
 use App\Models\Merchant;
 use App\Models\Receipt;
@@ -338,4 +339,26 @@ it('uses transaction boundaries categories and positive spending magnitudes for 
         ->where('tab_data.spending_by_category.1.total', 10)
         ->where('tab_data.top_counterparties.0.name', 'Large shop')
         ->where('tab_data.top_counterparties.0.total', 200));
+});
+
+it('renders processing analytics with PostgreSQL warning arrays', function (): void {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $this->actingAs($admin)->get(route('analytics.processing'))->assertOk();
+
+    foreach ([null, [], ['Missing invoice number']] as $warnings) {
+        FileProcessingAnalytic::create([
+            'file_id' => File::factory()->create(['user_id' => $admin->id])->id,
+            'user_id' => $admin->id,
+            'processing_type' => 'invoice',
+            'document_type' => 'invoice',
+            'processing_status' => 'completed',
+            'classification_confidence' => 0.95,
+            'validation_warnings' => $warnings,
+        ]);
+    }
+
+    $this->get(route('analytics.processing'))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('Analytics/Processing')
+            ->where('qualityMetrics.invoice.total_extractions', 3)
+            ->where('qualityMetrics.invoice.extractions_with_warnings', 1));
 });

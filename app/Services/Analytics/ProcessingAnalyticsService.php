@@ -153,7 +153,7 @@ class ProcessingAnalyticsService
 
         $validationWarnings = FileProcessingAnalytic::successfulType($documentType)
             ->whereNotNull('validation_warnings')
-            ->whereRaw('JSON_LENGTH(validation_warnings) > 0')
+            ->whereJsonLength('validation_warnings', '>', 0)
             ->count();
 
         return [
@@ -201,7 +201,7 @@ class ProcessingAnalyticsService
     {
         return FileProcessingAnalytic::successfulType($documentType)
             ->whereNotNull('validation_warnings')
-            ->whereRaw('JSON_LENGTH(validation_warnings) > 0')
+            ->whereJsonLength('validation_warnings', '>', 0)
             ->with('file:id,filename,guid')
             ->select('id', 'file_id', 'validation_warnings', 'extraction_confidence', 'created_at')
             ->orderByDesc('created_at')

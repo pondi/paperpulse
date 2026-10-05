@@ -312,3 +312,21 @@ it('wraps long receipt descriptions and preserves multiline notes while editing'
             ->assertInputValue('dl > div:last-child textarea', $note."\nSaved fourth line");
     });
 });
+
+it('explains upload modes and updates supported formats when switching modes', function (): void {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/documents/upload')->waitForText('Receipt mode accepts')
+            ->assertAttribute('button[aria-pressed="true"]', 'aria-pressed', 'true')
+            ->assertSee('Automatic classification determines the final type');
+        $browser->assertScript("document.querySelector('input[type=file]').accept.includes('.docx')", false);
+        $browser->attach('input[type=file]', base_path('tests/Browser/fixtures/test-image.jpg'))
+            ->waitForText('test-image.jpg')->press('Document')
+            ->waitForText('Document mode accepts invoices, contracts, bank statements')
+            ->assertDontSee('test-image.jpg');
+        $browser->assertScript("document.querySelector('input[type=file]').accept.includes('.docx')", true);
+        $browser->press('Receipt')->waitForText('Receipt mode accepts');
+        $browser->assertScript("document.querySelector('input[type=file]').accept.includes('.docx')", false);
+    });
+});

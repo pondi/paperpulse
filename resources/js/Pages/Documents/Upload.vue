@@ -59,10 +59,11 @@
 
                         <!-- File Type Selection -->
                         <div class="mt-8 flex justify-center">
-                            <div class="inline-flex rounded-md shadow-sm" role="group">
+                            <div class="inline-flex rounded-md shadow-sm" role="group" aria-label="Upload mode">
                                 <button
                                     type="button"
                                     @click="fileType = 'receipt'"
+                                    :aria-pressed="fileType === 'receipt'"
                                     :class="[
                                         'px-4 py-2 text-sm font-medium rounded-l-lg border',
                                         fileType === 'receipt'
@@ -76,6 +77,7 @@
                                 <button
                                     type="button"
                                     @click="fileType = 'document'"
+                                    :aria-pressed="fileType === 'document'"
                                     :class="[
                                         'px-4 py-2 text-sm font-medium rounded-r-lg border',
                                         fileType === 'document'
@@ -88,7 +90,13 @@
                                 </button>
                             </div>
                         </div>
-                        
+                        <p class="mt-4 text-sm text-zinc-600 dark:text-zinc-400" aria-live="polite">
+                            <span v-if="fileType === 'receipt'">Receipt mode accepts receipt scans and PDFs.</span>
+                            <span v-else>Document mode accepts invoices, contracts, bank statements and other documents.</span>
+                            Automatic classification determines the final type and the details to extract.
+                            Changing modes clears selected files and updates the accepted formats below.
+                        </p>
+
                         <form class="mt-6" ref="fileUpload" @submit.prevent="submit">
                             <div 
                                 class="mt-2 flex justify-center rounded-lg border border-dashed border-zinc-900/25 dark:border-zinc-700 px-6 py-10 relative"
@@ -327,7 +335,7 @@ function dismissUploadOutcome(status: UploadOutcome['status']): void {
 }
 const uploadError = ref<string | null>(null);
 const fileUpload = ref<HTMLFormElement | null>(null);
-const fileType = ref<'receipt' | 'document'>('receipt'); // Default to receipt
+const fileType = ref<'receipt' | 'document'>('receipt');
 const isUploading = ref(false);
 const uploadProgress = ref(0);
 const note = ref<string>('');

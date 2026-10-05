@@ -3,8 +3,8 @@
         class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-200 border-l-4 p-6"
         :style="{ borderLeftColor: collection.color }"
     >
-        <div class="flex items-start justify-between mb-4">
-            <Link :href="route('collections.show', collection.id)" class="flex min-w-0 items-center gap-3 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600">
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <Link :href="route('collections.show', collection.id)" class="flex min-w-0 flex-1 basis-full sm:basis-auto items-center gap-3 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600">
                 <div
                     class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                     :style="{ backgroundColor: collection.color }"
@@ -20,13 +20,13 @@
                     </h3>
                 </div>
             </Link>
-            <div class="flex items-center space-x-2 flex-shrink-0">
+            <div class="flex items-center gap-2 flex-shrink-0">
                 <button
                     v-if="showEdit"
                     :aria-label="`Edit ${collection.name}`"
                     @click.stop="$emit('edit', collection)"
                     type="button"
-                    class="text-blue-600 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-400 transition-colors duration-200"
+                    class="inline-flex h-11 w-11 items-center justify-center rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600 text-blue-600 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-400 transition-colors duration-200"
                 >
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -37,7 +37,7 @@
                     :aria-label="`${collection.is_archived ? 'Unarchive' : 'Archive'} ${collection.name}`"
                     @click.stop="$emit(collection.is_archived ? 'unarchive' : 'archive', collection)"
                     type="button"
-                    class="text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 transition-colors duration-200"
+                    class="inline-flex h-11 w-11 items-center justify-center rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600 text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 transition-colors duration-200"
                     :title="collection.is_archived ? 'Unarchive' : 'Archive'"
                 >
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,7 +49,7 @@
                     :aria-label="`Delete ${collection.name}`"
                     @click.stop="$emit('delete', collection)"
                     type="button"
-                    class="text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400 transition-colors duration-200"
+                    class="inline-flex h-11 w-11 items-center justify-center rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600 text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400 transition-colors duration-200"
                 >
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

@@ -54,3 +54,29 @@ it('names management actions with their folder or category target', function ():
             ->assertPresent('button[aria-label="Delete category: Named category"]');
     });
 });
+
+it('gives mobile folder controls separated touch targets aligned with their icons', function (): void {
+    $user = $this->createUser();
+    Collection::factory()->create(['user_id' => $user->id, 'name' => 'Long folder name for mobile management']);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/collections')->waitForText('Long folder name for mobile management');
+
+        foreach ([320, 390] as $width) {
+            $browser->resize($width, 844);
+            $browser->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
+            $browser->assertScript(<<<'JS'
+                (() => {
+                    const controls = Array.from(document.querySelectorAll('button[aria-label$="mobile management"]'));
+                    return controls.length === 3 && controls.every((button, index) => {
+                        const target = button.getBoundingClientRect();
+                        const icon = button.querySelector('svg').getBoundingClientRect();
+                        return target.width >= 44 && target.height >= 44 && target.right <= window.innerWidth
+                            && Math.abs((target.left + target.right) / 2 - (icon.left + icon.right) / 2) < 1
+                            && (!index || controls[index - 1].getBoundingClientRect().right < target.left);
+                    });
+                })()
+                JS, true);
+        }
+    });
+});

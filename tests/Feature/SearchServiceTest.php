@@ -5,6 +5,7 @@ use App\Models\Contract;
 use App\Models\Document;
 use App\Models\File;
 use App\Models\Invoice;
+use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Models\ReturnPolicy;
 use App\Models\User;
@@ -383,3 +384,21 @@ it('retries facet failures without caching an empty success', function () {
         ->and($facets->buildFacets('retry facets', []))->toBe(['total' => 1, 'receipts' => 1])
         ->and($facets->buildFacets('retry facets', []))->toBe(['total' => 1, 'receipts' => 1]);
 });
+
+it('finds invoices by displayed sender with or without a linked merchant', function (bool $hasMerchant): void {
+    $merchant = $hasMerchant ? Merchant::create(['user_id' => $this->user->id, 'name' => 'Billing intermediary']) : null;
+    $invoice = Invoice::factory()->create([
+        'user_id' => $this->user->id,
+        'merchant_id' => $merchant?->id,
+        'from_name' => 'Distinct sender name',
+    ]);
+    $other = User::factory()->create();
+    $otherFile = File::factory()->create(['user_id' => $other->id]);
+    Invoice::factory()->create(['user_id' => $other->id, 'file_id' => $otherFile->id, 'from_name' => 'Distinct sender name']);
+
+    $result = $this->searchService->search('Distinct sender name', ['type' => 'invoice']);
+    expect($result['results'])->toHaveCount(1)
+        ->and($result['results'][0]['id'])->toBe($invoice->id)
+        ->and($invoice->toSearchableArray()['from_name'])->toBe('Distinct sender name')
+        ->and(config('scout.meilisearch.index-settings.'.Invoice::class.'.searchableAttributes'))->toContain('from_name');
+})->with([true, false]);

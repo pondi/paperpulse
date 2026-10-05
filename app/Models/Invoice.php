@@ -129,6 +129,7 @@ class Invoice extends Model implements Taggable
             'due_date' => $this->due_date?->format('Y-m-d'),
             'total_amount' => $this->total_amount === null ? null : (float) $this->total_amount,
             'payment_status' => $this->payment_status,
+            'from_name' => $this->from_name,
             'merchant_name' => $this->merchant?->name,
             'category_name' => $this->category?->name,
             'tags' => $this->tags?->pluck('name')->toArray() ?? [],

@@ -213,6 +213,7 @@ return [
                 'sortableAttributes' => ['invoice_date', 'due_date', 'total_amount', 'created_at', 'id'],
                 'searchableAttributes' => [
                     'invoice_number',
+                    'from_name',
                     'merchant_name',
                     'category_name',
                     'tags',

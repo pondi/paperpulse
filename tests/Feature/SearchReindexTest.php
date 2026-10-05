@@ -4,6 +4,7 @@ use App\Console\Commands\ReindexMeilisearch;
 use App\Jobs\Search\ReindexFile;
 use App\Models\Document;
 use App\Models\File;
+use App\Models\Invoice;
 use App\Models\Receipt;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -110,4 +111,19 @@ it('includes the receipt owner and matching text field in line item payloads', f
     expect($item->toSearchableArray())->toMatchArray([
         'id' => $item->id, 'receipt_id' => $receipt->id, 'user_id' => $receipt->user_id, 'description' => 'Coffee',
     ]);
+});
+
+it('reindexes existing invoice sender names', function (): void {
+    $file = File::factory()->create(['status' => 'completed']);
+    $invoice = Invoice::factory()->create(['user_id' => $file->user_id, 'file_id' => $file->id, 'from_name' => 'Existing sender']);
+    $engine = Mockery::mock(Engine::class);
+    $engine->shouldReceive('update')->once()->withArgs(function ($models) use ($invoice): bool {
+        expect($models->modelKeys())->toBe([$invoice->id])
+            ->and($models->first()->toSearchableArray()['from_name'])->toBe('Existing sender');
+
+        return true;
+    });
+    $this->mock(EngineManager::class)->shouldReceive('engine')->andReturn($engine);
+    config(['scout.queue' => false]);
+    (new ReindexFile($file->id))->handle();
 });

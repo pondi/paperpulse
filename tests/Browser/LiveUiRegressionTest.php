@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Category;
 use App\Models\Collection;
 use Laravel\Dusk\Browser;
 
@@ -29,5 +30,27 @@ it('returns from a nested folder to its parent while keeping all collections rea
         $browser->loginAs($user)->visit('/collections/'.$child->id)->waitForText('Back to Building')
             ->clickLink('Back to Building')->waitForLocation('/collections/'.$parent->id)
             ->assertDontSee('Back to Building')->clickLink('All Collections')->waitForLocation('/collections');
+    });
+});
+
+it('names management actions with their folder or category target', function (): void {
+    $user = $this->createUser();
+    Collection::factory()->create(['user_id' => $user->id, 'name' => 'Named folder']);
+    Collection::factory()->create(['user_id' => $user->id, 'name' => 'Archived folder', 'is_archived' => true]);
+    Category::create(['user_id' => $user->id, 'name' => 'Named category', 'slug' => 'named-category', 'is_active' => true]);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/collections')->waitForText('Named folder')
+            ->assertPresent('button[aria-label="Edit Named folder"]')
+            ->assertPresent('button[aria-label="Archive Named folder"]')
+            ->assertPresent('button[aria-label="Delete Named folder"]')
+            ->visit('/collections?archived=1')->waitForText('Archived folder')
+            ->assertPresent('button[aria-label="Unarchive Archived folder"]')
+            ->visit('/categories')->waitForText('Named category')
+            ->assertPresent('button[aria-label="Edit Category: Named category"]')
+            ->assertPresent('button[aria-label="Delete Category: Named category"]')
+            ->visit('/documents/categories')->waitForText('Named category')
+            ->assertPresent('button[aria-label="Edit category: Named category"]')
+            ->assertPresent('button[aria-label="Delete category: Named category"]');
     });
 });

@@ -74,6 +74,7 @@
                   <div class="flex items-center space-x-2 flex-shrink-0">
                     <button
                       @click="editCategory(category)"
+                      :aria-label="`${__('edit_category')}: ${category.name}`"
                       type="button"
                       class="text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 transition-colors duration-200"
                     >
@@ -82,6 +83,7 @@
                     <button
                       v-if="category.receipt_count === 0"
                       @click="deleteCategory(category)"
+                      :aria-label="`${__('delete_category')}: ${category.name}`"
                       type="button"
                       class="text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400 transition-colors duration-200"
                     >

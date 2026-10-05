@@ -186,12 +186,14 @@ const openDeleteModal = (category: Category) => {
                                     <div v-if="category.can_edit" class="flex items-center space-x-2">
                                         <button
                                             @click="openEditModal(category)"
+                                            :aria-label="`Edit category: ${category.name}`"
                                             class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
                                         >
                                             <PencilIcon class="h-5 w-5" />
                                         </button>
                                         <button
                                             @click="openDeleteModal(category)"
+                                            :aria-label="`Delete category: ${category.name}`"
                                             class="text-red-400 hover:text-red-600 dark:hover:text-red-300"
                                         >
                                             <TrashIcon class="h-5 w-5" />

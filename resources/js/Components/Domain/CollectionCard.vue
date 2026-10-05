@@ -23,6 +23,7 @@
             <div class="flex items-center space-x-2 flex-shrink-0">
                 <button
                     v-if="showEdit"
+                    :aria-label="`Edit ${collection.name}`"
                     @click.stop="$emit('edit', collection)"
                     type="button"
                     class="text-blue-600 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-400 transition-colors duration-200"
@@ -33,6 +34,7 @@
                 </button>
                 <button
                     v-if="showArchive"
+                    :aria-label="`${collection.is_archived ? 'Unarchive' : 'Archive'} ${collection.name}`"
                     @click.stop="$emit(collection.is_archived ? 'unarchive' : 'archive', collection)"
                     type="button"
                     class="text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 transition-colors duration-200"
@@ -44,6 +46,7 @@
                 </button>
                 <button
                     v-if="showDelete && collection.files_count === 0"
+                    :aria-label="`Delete ${collection.name}`"
                     @click.stop="$emit('delete', collection)"
                     type="button"
                     class="text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400 transition-colors duration-200"

@@ -21,7 +21,7 @@ interface Category {
     id: number;
     name: string;
     color: string;
-    document_count: number;
+    documents_count: number;
     can_edit: boolean;
 }
 
@@ -168,7 +168,7 @@ const openDeleteModal = (category: Category) => {
                                                 {{ category.name }}
                                             </h3>
                                             <p class="text-sm text-zinc-500 dark:text-zinc-400">
-                                                {{ category.document_count }} document{{ category.document_count !== 1 ? 's' : '' }}
+                                                {{ category.documents_count }} document{{ category.documents_count !== 1 ? 's' : '' }}
                                             </p>
                                         </div>
                                     </div>

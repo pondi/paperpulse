@@ -4,6 +4,7 @@ use App\Models\ArchiveExport;
 use App\Models\Category;
 use App\Models\Collection;
 use App\Models\Document;
+use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Merchant;
@@ -13,6 +14,24 @@ use App\Models\UserPreference;
 use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
+
+it('shows actual document category counts including zero and singular usage', function (): void {
+    $user = $this->createUser();
+    foreach ([0, 1, 2] as $count) {
+        $category = Category::create(['user_id' => $user->id, 'name' => 'Category '.$count, 'slug' => 'category-'.$count]);
+        for ($number = 0; $number < $count; $number++) {
+            $file = File::factory()->for($user)->create(['file_type' => 'document', 'status' => 'completed']);
+            $document = Document::factory()->create(['user_id' => $user->id, 'file_id' => $file->id, 'category_id' => $category->id]);
+            ExtractableEntity::create(['user_id' => $user->id, 'file_id' => $file->id, 'entity_type' => 'document', 'entity_id' => $document->id, 'is_primary' => true, 'extracted_at' => now()]);
+        }
+    }
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/documents/categories')->waitForText('Category 0')
+            ->assertSee('0 documents')->assertSee('1 document')->assertSee('2 documents');
+        $browser->click('div.group:has(h3) a')->waitForLocation('/documents')->waitForText('No documents found');
+    });
+});
 
 it('keeps failed file recovery actions visible on narrow activity pages', function (): void {
     $user = $this->createUser();

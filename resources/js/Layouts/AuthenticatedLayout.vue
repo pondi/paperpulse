@@ -73,14 +73,13 @@ const addActions = [
                             </MenuItem>
                         </MenuItems>
                     </Menu>
-                    <div class="hidden sm:block"><ThemeToggle /></div>
+                    <ThemeToggle />
                     <NotificationBell />
                     <Menu as="div" class="relative">
                         <MenuButton aria-label="Account menu" class="flex items-center gap-2 rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"><UserCircleIcon class="h-7 w-7" /><span class="hidden text-sm text-zinc-700 xl:inline dark:text-zinc-300">{{ page.props.auth.user.name }}</span></MenuButton>
                         <MenuItems class="absolute right-0 mt-2 w-48 rounded-xl border border-zinc-200 bg-white p-1.5 shadow-lg focus:outline-none dark:border-zinc-700 dark:bg-zinc-900">
                             <MenuItem v-slot="{ active }"><Link :href="route('profile.edit')" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'block rounded-lg px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300']">Your profile</Link></MenuItem>
                             <MenuItem v-slot="{ active }"><Link :href="route('preferences.index')" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'block rounded-lg px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300']">Settings</Link></MenuItem>
-                            <div class="px-3 py-2 sm:hidden"><ThemeToggle /></div>
                             <MenuItem v-slot="{ active }"><button type="button" @click="logout" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'block w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300']">Log out</button></MenuItem>
                         </MenuItems>
                     </Menu>

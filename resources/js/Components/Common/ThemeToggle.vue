@@ -1,7 +1,8 @@
 <template>
   <button
     type="button"
-    :aria-label="`Switch to ${nextLabel} mode`"
+    :aria-label="`${label} theme. Switch to ${nextLabel} mode`"
+    :title="`${label} theme`"
     class="relative flex rounded-full bg-white dark:bg-zinc-800 p-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-800 border border-amber-200 dark:border-transparent hover:bg-amber-50 dark:hover:bg-zinc-700"
     @click="toggleTheme"
   >
@@ -38,8 +39,6 @@ const load = () => {
   try {
     const saved = localStorage.getItem('theme');
     if (saved === 'light' || saved === 'dark' || saved === 'system') {
-      mode.value = saved;
-    } else if (saved === 'light' || saved === 'dark') {
       mode.value = saved;
     } else if (saved) {
       // Back-compat for older values
@@ -81,4 +80,3 @@ onMounted(() => {
   } catch {}
 });
 </script>
-

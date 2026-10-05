@@ -398,3 +398,28 @@ it('sets distinct browser titles with exactly one product suffix', function (): 
         $browser->visit('/')->waitUntil('document.title === "Welcome - PaperPulse"')->assertTitle('Welcome - PaperPulse');
     });
 });
+
+it('keeps every theme reachable and indicates the active theme on mobile', function (): void {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/dashboard')->waitFor('header');
+        foreach ([320, 390] as $width) {
+            $browser->resize($width, 844);
+            $browser->script('localStorage.setItem("theme", "system")');
+            $browser->refresh()->waitFor('button[title="System theme"]');
+            foreach (['System' => 'Dark', 'Dark' => 'Light', 'Light' => 'System'] as $current => $next) {
+                $selector = 'button[title="'.$current.' theme"]';
+                $browser->assertVisible($selector)
+                    ->assertAttribute($selector, 'aria-label', $current.' theme. Switch to '.strtolower($next).' mode');
+                $browser->assertScript("(() => { const r = document.querySelector('$selector').getBoundingClientRect(); return r.left >= 0 && r.right <= window.innerWidth; })()", true);
+                $browser->click($selector)->waitFor('button[title="'.$next.' theme"]')
+                    ->assertScript('localStorage.getItem("theme")', strtolower($next));
+                if ($next !== 'System') {
+                    $browser->assertScript('document.documentElement.classList.contains("dark")', $next === 'Dark');
+                }
+            }
+            $browser->refresh()->waitFor('button[title="System theme"]');
+        }
+    });
+});

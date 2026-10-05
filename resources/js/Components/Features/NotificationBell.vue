@@ -18,11 +18,11 @@
       leave-from-class="transform opacity-100 scale-100"
       leave-to-class="transform opacity-0 scale-95"
     >
-      <MenuItems class="absolute right-0 z-10 mt-2 w-96 origin-top-right rounded-md bg-white dark:bg-zinc-800 py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+      <MenuItems class="fixed left-4 right-4 top-16 z-10 mt-2 origin-top-right sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:w-96 rounded-md bg-white dark:bg-zinc-800 py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
         <div class="px-4 py-2 border-b border-amber-200 dark:border-zinc-700">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-2">
             <h3 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('notifications') }}</h3>
-            <div class="flex items-center space-x-2">
+            <div class="flex flex-wrap items-center gap-2">
               <button
                 v-if="unreadCount > 0"
                 @click="markAllAsRead"
@@ -64,7 +64,7 @@
                 <div class="flex-shrink-0">
                   <component :is="getNotificationIcon(notification)" class="h-6 w-6" :class="getNotificationIconClass(notification)" />
                 </div>
-                <div class="ml-3 flex-1">
+                <div class="ml-3 min-w-0 flex-1 break-words">
                   <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     {{ getNotificationTitle(notification) }}
                   </p>

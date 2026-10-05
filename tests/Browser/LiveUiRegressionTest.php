@@ -6,6 +6,7 @@ use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Merchant;
 use App\Models\Receipt;
+use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
 
 it('keeps nested folder actions and breadcrumbs within narrow viewports', function (): void {
@@ -157,5 +158,39 @@ it('recovers from mobile no results by clearing filters while preserving the que
         $browser->visit('/search?query=unmatched-search-identity')->waitForText('No results found')
             ->press('Clear search')->waitForText('Start searching')
             ->assertInputValue('input[aria-label="Search document contents"]', '');
+    });
+});
+
+it('fits notification identities and footer actions within mobile viewports', function (): void {
+    $user = $this->createUser();
+    $user->notifications()->create([
+        'id' => (string) Str::uuid(),
+        'type' => 'test',
+        'data' => ['type' => 'receipt_failed', 'error_message' => str_repeat('long-source-filename-', 15).'.pdf'],
+    ]);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->resize(390, 844)->loginAs($user)->visit('/dashboard')
+            ->waitFor('.relative.ml-3 > div > button')->click('.relative.ml-3 > div > button')
+            ->waitFor('[role="menu"] a[href$="/preferences"]');
+
+        foreach ([320, 390] as $width) {
+            $browser->resize($width, 844);
+            $browser->script('const bell = document.querySelector(".relative.ml-3"); bell.style.position = "absolute"; bell.style.left = "80px";');
+
+            foreach ([false, true] as $dark) {
+                $browser->script('document.documentElement.classList.toggle("dark", '.($dark ? 'true' : 'false').')');
+                $browser->assertScript(<<<'JS'
+                    (() => {
+                        const menu = document.querySelector('[role="menu"]');
+                        const rect = menu.getBoundingClientRect();
+                        const footer = menu.querySelector('a').getBoundingClientRect();
+                        return rect.left >= 16 && rect.right <= window.innerWidth - 16
+                            && menu.scrollWidth <= menu.clientWidth
+                            && footer.left >= rect.left && footer.right <= rect.right;
+                    })()
+                    JS, true);
+            }
+        }
     });
 });

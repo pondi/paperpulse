@@ -1,11 +1,11 @@
 <template>
     <div class="relative">
-        <div class="flex flex-wrap gap-2 p-2 border rounded-md border-zinc-300 dark:border-zinc-600 min-h-[42px] cursor-text bg-white dark:bg-zinc-700" @click="focusInput">
+        <div class="flex flex-wrap gap-2 p-2 border rounded-md border-zinc-300 dark:border-zinc-700 min-h-[42px] cursor-text bg-white dark:bg-zinc-900 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500" @click="focusInput">
             <span
                 v-for="collection in selectedCollections"
                 :key="collection.id"
-                class="inline-flex items-center px-2 py-1 rounded text-xs font-medium"
-                :style="{ backgroundColor: collection.color + '20', color: collection.color }"
+                class="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-zinc-900 dark:text-zinc-100"
+                :style="{ backgroundColor: collection.color + '20' }"
             >
                 <svg v-if="collection.icon" class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getIconPath(collection.icon)" />
@@ -31,7 +31,7 @@
                 @focus="showDropdown = true"
                 @blur="handleBlur"
                 type="text"
-                class="flex-1 outline-none text-sm min-w-[100px] bg-transparent text-zinc-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-gray-500"
+                class="flex-1 outline-none border-0 focus:ring-0 text-sm min-w-[100px] bg-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-400"
                 :placeholder="placeholder"
             />
         </div>
@@ -39,13 +39,13 @@
         <!-- Dropdown -->
         <div
             v-if="showDropdown && (filteredCollections.length > 0 || searchQuery)"
-            class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-700 rounded-md shadow-lg border border-blue-200 dark:border-blue-600 max-h-48 overflow-y-auto"
+            class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 rounded-md shadow-lg border border-zinc-300 dark:border-zinc-700 max-h-48 overflow-y-auto"
         >
             <div
                 v-for="collection in filteredCollections"
                 :key="collection.id"
                 @mousedown.prevent="selectCollection(collection)"
-                class="px-3 py-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-600 flex items-center justify-between"
+                class="px-3 py-2 cursor-pointer hover:bg-amber-50 dark:hover:bg-zinc-800 flex items-center justify-between"
             >
                 <span class="flex items-center">
                     <span
@@ -65,7 +65,7 @@
             <div
                 v-if="searchQuery && !exactMatch && allowCreate"
                 @mousedown.prevent="createNewCollection"
-                class="px-3 py-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-600 border-t border-blue-200 dark:border-blue-600"
+                class="px-3 py-2 cursor-pointer hover:bg-amber-50 dark:hover:bg-zinc-800 border-t border-zinc-300 dark:border-zinc-700"
             >
                 <span class="text-sm text-zinc-600 dark:text-zinc-400">Create new collection:</span>
                 <span class="ml-1 font-medium text-zinc-900 dark:text-zinc-100">{{ searchQuery }}</span>

@@ -1,11 +1,11 @@
 <template>
     <div class="relative">
-        <div class="flex flex-wrap gap-2 p-2 border rounded-md border-zinc-300 dark:border-zinc-600 min-h-[42px] cursor-text bg-white dark:bg-zinc-700" @click="focusInput">
+        <div class="flex flex-wrap gap-2 p-2 border rounded-md border-zinc-300 dark:border-zinc-700 min-h-[42px] cursor-text bg-white dark:bg-zinc-900 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500" @click="focusInput">
             <span
                 v-for="tag in selectedTags"
                 :key="tag.id"
-                class="inline-flex items-center px-2 py-1 rounded text-xs font-medium"
-                :style="{ backgroundColor: tag.color + '20', color: tag.color }"
+                class="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-zinc-900 dark:text-zinc-100"
+                :style="{ backgroundColor: tag.color + '20' }"
             >
                 {{ tag.name }}
                 <button
@@ -28,7 +28,7 @@
                 @focus="showDropdown = true"
                 @blur="handleBlur"
                 type="text"
-                class="flex-1 outline-none text-sm min-w-[100px] bg-transparent text-zinc-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-gray-500"
+                class="flex-1 outline-none border-0 focus:ring-0 text-sm min-w-[100px] bg-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-400"
                 :placeholder="placeholder"
             />
         </div>
@@ -36,13 +36,13 @@
         <!-- Dropdown -->
         <div
             v-if="showDropdown && (filteredTags.length > 0 || searchQuery)"
-            class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-700 rounded-md shadow-lg border border-amber-200 dark:border-amber-600 max-h-48 overflow-y-auto"
+            class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 rounded-md shadow-lg border border-zinc-300 dark:border-zinc-700 max-h-48 overflow-y-auto"
         >
             <div
                 v-for="tag in filteredTags"
                 :key="tag.id"
                 @mousedown.prevent="selectTag(tag)"
-                class="px-3 py-2 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-600 flex items-center justify-between"
+                class="px-3 py-2 cursor-pointer hover:bg-amber-50 dark:hover:bg-zinc-800 flex items-center justify-between"
             >
                 <span class="flex items-center">
                     <span
@@ -59,7 +59,7 @@
             <div
                 v-if="searchQuery && !exactMatch && allowCreate"
                 @mousedown.prevent="createNewTag"
-                class="px-3 py-2 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-600 border-t border-amber-200 dark:border-amber-600"
+                class="px-3 py-2 cursor-pointer hover:bg-amber-50 dark:hover:bg-zinc-800 border-t border-zinc-300 dark:border-zinc-700"
             >
                 <span class="text-sm text-zinc-600 dark:text-zinc-400">Create new tag:</span>
                 <span class="ml-1 font-medium text-zinc-900 dark:text-zinc-100">{{ searchQuery }}</span>

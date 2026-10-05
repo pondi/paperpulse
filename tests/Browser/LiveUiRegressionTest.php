@@ -7,6 +7,7 @@ use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Merchant;
 use App\Models\Receipt;
+use App\Models\Tag;
 use App\Models\UserPreference;
 use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Str;
@@ -328,5 +329,28 @@ it('explains upload modes and updates supported formats when switching modes', f
         $browser->assertScript("document.querySelector('input[type=file]').accept.includes('.docx')", true);
         $browser->press('Receipt')->waitForText('Receipt mode accepts');
         $browser->assertScript("document.querySelector('input[type=file]').accept.includes('.docx')", false);
+    });
+});
+
+it('keeps shared upload pickers readable in both themes through focus selection and menus', function (): void {
+    $user = $this->createUser();
+    Collection::factory()->create(['user_id' => $user->id, 'name' => 'Picker folder', 'color' => '#18181b']);
+    Tag::factory()->create(['user_id' => $user->id, 'name' => 'Picker tag', 'color' => '#18181b']);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/documents/upload')->waitFor('input[placeholder="Search or create collections..."]');
+        foreach ([false, true] as $dark) {
+            $browser->script('document.documentElement.classList.toggle("dark", '.($dark ? 'true' : 'false').')');
+            foreach (['collections' => 'Picker folder', 'tags' => 'Picker tag'] as $kind => $name) {
+                $selector = 'input[placeholder="Search or create '.$kind.'..."]';
+                $browser->assertScript("getComputedStyle(document.querySelector('$selector').parentElement).backgroundColor", $dark ? 'rgb(24, 24, 27)' : 'rgb(255, 255, 255)');
+                $browser->type($selector, 'Picker')->waitFor('.relative:has('.$selector.') > .absolute');
+                $browser->assertScript("getComputedStyle(document.querySelector('$selector'), '::placeholder').color", $dark ? 'rgb(161, 161, 170)' : 'rgb(113, 113, 122)');
+                $browser->assertScript("getComputedStyle(document.querySelector('$selector').parentElement.nextElementSibling).color", $dark ? 'rgb(244, 244, 245)' : 'rgb(24, 24, 27)');
+                $browser->click('.relative:has('.$selector.') > .absolute > div:first-child')->assertSee($name);
+                $browser->assertScript("getComputedStyle(document.querySelector('$selector').parentElement.querySelector('span')).color", $dark ? 'rgb(244, 244, 245)' : 'rgb(24, 24, 27)');
+                $browser->click('.relative:has('.$selector.') > div > span > button');
+            }
+        }
     });
 });

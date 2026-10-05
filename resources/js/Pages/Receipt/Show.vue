@@ -495,11 +495,15 @@ const saveReceipt = () => {
     receipt_date: formatDateForInput(props.receipt.receipt_date)
   };
 
-  if (JSON.stringify(originalReceipt) !== JSON.stringify(editedReceipt.value) ||
+  const collectionsChanged = JSON.stringify(props.receipt.collections?.map(collection => collection.id) || []) !==
+    JSON.stringify(receiptCollections.value);
+
+  if (collectionsChanged || JSON.stringify(originalReceipt) !== JSON.stringify(editedReceipt.value) ||
       JSON.stringify(props.receipt.tags || []) !== JSON.stringify(receiptTags.value)) {
     router.patch(route('receipts.update', props.receipt.id), {
       ...Object.fromEntries(receiptFields.value.map(field => [field.key, editedReceipt.value[field.key]])),
-      tags: receiptTags.value.map(tag => tag.id)
+      tags: receiptTags.value.map(tag => tag.id),
+      ...(collectionsChanged ? { collection_ids: receiptCollections.value } : {})
     }, {
       onSuccess: () => { isEditing.value = false; }
     });

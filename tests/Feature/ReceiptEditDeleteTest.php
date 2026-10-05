@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\Category;
+use App\Models\Collection;
 use App\Models\File;
+use App\Models\FileShare;
 use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Models\User;
@@ -84,4 +86,48 @@ it('retains merchant context and isolates merchant receipt listings', function (
             ->where('merchant.id', $merchant->id)->where('merchant.name', 'Eik Senteret')
             ->has('receipts', 1)->where('receipts.0.id', $receipt->id));
     $this->actingAs(User::factory()->create())->get(route('receipts.byMerchant', $merchant))->assertNotFound();
+});
+
+it('saves added removed and empty canonical receipt folder memberships', function (): void {
+    $owner = User::factory()->create();
+    $file = File::factory()->for($owner)->create();
+    $receipt = Receipt::factory()->create(['user_id' => $owner->id, 'file_id' => $file->id]);
+    $old = Collection::factory()->for($owner)->create();
+    $new = Collection::factory()->for($owner)->create();
+    $file->collections()->attach($old);
+    $payload = ['receipt_date' => '2026-10-05', 'total_amount' => 42, 'currency' => 'NOK'];
+
+    $this->actingAs($owner)->patch(route('receipts.update', $receipt), $payload + ['collection_ids' => [$new->id]])->assertRedirect()->assertSessionHasNoErrors();
+    expect($file->fresh()->collections->modelKeys())->toBe([$new->id]);
+    $this->patch(route('receipts.update', $receipt), $payload)->assertRedirect()->assertSessionHasNoErrors();
+    expect($file->fresh()->collections->modelKeys())->toBe([$new->id]);
+    $this->patch(route('receipts.update', $receipt), $payload + ['collection_ids' => []])->assertRedirect()->assertSessionHasNoErrors();
+    expect($file->fresh()->collections)->toBeEmpty();
+});
+
+it('rejects foreign folders without changing receipt data or memberships', function (): void {
+    $owner = User::factory()->create();
+    $file = File::factory()->for($owner)->create();
+    $receipt = Receipt::factory()->create(['user_id' => $owner->id, 'file_id' => $file->id, 'total_amount' => 10]);
+    $folder = Collection::factory()->for($owner)->create();
+    $file->collections()->attach($folder);
+    $foreign = Collection::factory()->create();
+    $this->actingAs($owner)->patch(route('receipts.update', $receipt), [
+        'receipt_date' => '2026-10-05', 'total_amount' => 42, 'currency' => 'NOK', 'collection_ids' => [$foreign->id],
+    ])->assertSessionHasErrors('collection_ids.0');
+    expect($file->fresh()->collections->modelKeys())->toBe([$folder->id])->and($receipt->fresh()->total_amount)->toBe('10.00');
+});
+
+it('retains owner folders when a shared editor changes receipt fields', function (): void {
+    $owner = User::factory()->create();
+    $editor = User::factory()->create();
+    $file = File::factory()->for($owner)->create();
+    $receipt = Receipt::factory()->create(['user_id' => $owner->id, 'file_id' => $file->id]);
+    $folder = Collection::factory()->for($owner)->create();
+    $file->collections()->attach($folder);
+    FileShare::create(['file_id' => $file->id, 'file_type' => 'receipt', 'shared_by_user_id' => $owner->id, 'shared_with_user_id' => $editor->id, 'permission' => 'edit', 'shared_at' => now()]);
+    $payload = ['receipt_date' => '2026-10-05', 'total_amount' => 42, 'currency' => 'NOK'];
+    $this->actingAs($editor)->patch(route('receipts.update', $receipt), $payload)->assertRedirect()->assertSessionHasNoErrors();
+    $this->patch(route('receipts.update', $receipt), $payload + ['collection_ids' => []])->assertForbidden();
+    expect($file->collections()->withoutGlobalScope('user')->pluck('collections.id')->all())->toBe([$folder->id]);
 });

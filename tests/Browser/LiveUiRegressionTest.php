@@ -575,3 +575,28 @@ it('keeps merchant receipt context when inspecting details and returning from al
         $browser->back()->waitForLocation($path)->waitForText('Receipts · Eik Senteret');
     });
 });
+
+it('saves receipt folder edits and cancels them without changing saved memberships', function (): void {
+    $user = $this->createUser();
+    $file = File::factory()->for($user)->create();
+    $receipt = Receipt::factory()->create(['user_id' => $user->id, 'file_id' => $file->id, 'receipt_date' => '2026-10-05', 'total_amount' => 42, 'currency' => 'NOK']);
+    $old = Collection::factory()->for($user)->create(['name' => 'Old Folder']);
+    $new = Collection::factory()->for($user)->create(['name' => 'New Folder']);
+    $file->collections()->attach($old);
+    $this->browse(function (Browser $browser) use ($user, $receipt, $file, $old, $new): void {
+        $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitForText('Old Folder');
+        foreach (['Cancel', 'Save Changes'] as $action) {
+            $browser->press('Edit Receipt')->waitForText('Save Changes')
+                ->click('div:has(> input[placeholder="Add to collections..."]) > span > button')
+                ->type('input[placeholder="Add to collections..."]', 'New Folder')->waitForText('New Folder')
+                ->click('div.absolute.z-10 div.cursor-pointer:has(> span.flex)')->press($action);
+            if ($action === 'Save Changes') {
+                $browser->waitForText('Receipt updated successfully');
+            } else {
+                $browser->waitForText('Edit Receipt');
+            }
+            expect($file->fresh()->collections->modelKeys())->toBe([$action === 'Cancel' ? $old->id : $new->id]);
+            $browser->refresh()->waitForText($action === 'Cancel' ? 'Old Folder' : 'New Folder');
+        }
+    });
+});

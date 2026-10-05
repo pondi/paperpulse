@@ -24,6 +24,8 @@ class UpdateReceiptRequest extends FormRequest
             'receipt_description' => ['nullable', 'string', 'max:1000'],
             'note' => ['nullable', 'string', 'max:1000'],
             'merchant_id' => ['nullable', new ExistsForUser('merchants')],
+            'collection_ids' => ['sometimes', 'array'],
+            'collection_ids.*' => ['integer', new ExistsForUser('collections')],
             'tags' => ['sometimes', 'array'],
             'tags.*' => ['integer', new ExistsForUser('tags')],
         ];
@@ -34,6 +36,7 @@ class UpdateReceiptRequest extends FormRequest
         return [
             'receipt_date.required' => 'A receipt date is required.',
             'total_amount.numeric' => 'The total must be a valid amount.',
+            'collection_ids.array' => 'Choose folders from the available list.',
             'currency.size' => 'Use a three-letter currency code.',
         ];
     }

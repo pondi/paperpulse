@@ -347,15 +347,20 @@ class ReceiptController extends BaseResourceController
 
         $validated = app(UpdateReceiptRequest::class)->validated();
 
-        // Sanitize string inputs
+        if (isset($validated['collection_ids'])) {
+            abort_unless($receipt->user_id === $request->user()->id, 403);
+        }
+
         $validated = $this->sanitizeData($validated, ['receipt_category', 'receipt_description', 'note']);
 
-        // Update receipt
-        $receipt->update(array_diff_key($validated, ['tags' => '']));
+        $receipt->update(array_diff_key($validated, ['tags' => '', 'collection_ids' => '']));
 
-        // Sync tags if provided
         if (isset($validated['tags'])) {
             TagAttachmentService::syncTags($receipt, $validated['tags']);
+        }
+
+        if (isset($validated['collection_ids'])) {
+            $receipt->file?->collections()->sync($validated['collection_ids']);
         }
 
         return redirect()->back()->with('success', 'Receipt updated successfully');

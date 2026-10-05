@@ -14,6 +14,22 @@ use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
 
+it('keeps failed file recovery actions visible on narrow activity pages', function (): void {
+    $user = $this->createUser();
+    File::factory()->create(['user_id' => $user->id, 'status' => 'failed', 'fileName' => str_repeat('Long filename ', 15).'.pdf']);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/files-processing?status=failed')->waitForText('CHANGE TYPE & RETRY');
+        foreach ([320, 390] as $width) {
+            $browser->resize($width, 844)->assertSee('RETRY PROCESSING')->assertSee('CHANGE TYPE & RETRY');
+            $browser->assertScript("Array.from(document.querySelectorAll('button')).filter(el => /Retry Processing|Change Type & Retry/.test(el.textContent)).every(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })", true);
+            $browser->press('CHANGE TYPE & RETRY')->waitForText('APPLY & RETRY');
+            $browser->assertScript("Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Apply & Retry')).getBoundingClientRect().right <= innerWidth", true);
+            $browser->press('CHANGE TYPE & RETRY');
+        }
+    });
+});
+
 it('renders document metadata and navigation with populated and nullable dates', function (): void {
     $user = $this->createUser();
 

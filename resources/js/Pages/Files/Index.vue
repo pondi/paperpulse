@@ -370,7 +370,7 @@ const toggleExpanded = (fileId: number) => {
                             </div>
 
                             <!-- Actions -->
-                            <div class="mt-4 flex items-center gap-3">
+                            <div class="mt-4 flex flex-wrap items-center gap-3">
                                 <Link :href="route('files.extraction-report', file.id)" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                                     Extraction report
                                 </Link>
@@ -418,7 +418,7 @@ const toggleExpanded = (fileId: number) => {
                                 <p class="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
                                     If processing failed, try changing the file type. This may help if the file was incorrectly classified.
                                 </p>
-                                <div class="mt-3 flex items-center gap-3">
+                                <div class="mt-3 flex flex-wrap items-center gap-3">
                                     <label class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Process as:</label>
                                     <div class="flex gap-4">
                                         <label class="flex items-center">

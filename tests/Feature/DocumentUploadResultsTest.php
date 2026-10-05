@@ -116,6 +116,7 @@ callbacks.onSuccess({ props: { flash: { upload_results: [
     { index: 2, filename: 'same.png', status: 'failed', message: 'Failed' },
 ] } } });
 callbacks.onFinish();
+assert.deepEqual(page.uploadResults.value.map(result => result.status), ['duplicate', 'failed']);
 assert.deepEqual(page.selectedFiles.value.map(entry => entry.file.index), [2]);
 assert.deepEqual(revoked, ['blob:0', 'blob:1']);
 assert.equal(page.note.value, 'Keep this note');
@@ -128,6 +129,7 @@ callbacks.onSuccess({ props: { flash: { upload_results: [
     { index: 0, filename: 'same.png', status: 'accepted', message: 'Accepted' },
 ] } } });
 callbacks.onFinish();
+assert.deepEqual(page.uploadResults.value, []);
 assert.equal(page.selectedFiles.value.length, 0);
 assert.equal(page.note.value, '');
 assert.deepEqual(page.collectionIds.value, []);

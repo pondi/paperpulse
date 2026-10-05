@@ -9,7 +9,7 @@
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div v-if="uploadResults.length" class="mb-4 flex flex-col gap-4" role="status">
-                    <section v-for="status in ['accepted', 'duplicate', 'failed']" :key="status">
+                    <section v-for="status in ['duplicate', 'failed']" :key="status">
                         <template v-if="uploadResults.some(result => result.status === status)">
                             <h3 class="font-semibold text-zinc-900 dark:text-zinc-100">{{ outcomeLabels[status] }}</h3>
                             <ul class="flex flex-col gap-2 text-sm text-zinc-700 dark:text-zinc-300">
@@ -281,7 +281,6 @@ interface UploadOutcome {
 
 const uploadResults = ref<UploadOutcome[]>([]);
 const outcomeLabels: Record<string, string> = {
-    accepted: 'Accepted',
     duplicate: 'Duplicates',
     failed: 'Failed — retry these files',
 };
@@ -409,7 +408,7 @@ function submit() {
         uploadForm.post(route('documents.store'), {
             preserveScroll: true,
             onSuccess: (page) => {
-                uploadResults.value = page.props.flash.upload_results;
+                uploadResults.value = page.props.flash.upload_results.filter(result => result.status !== 'accepted');
                 const failedIndexes = new Set(uploadResults.value
                     .filter(result => result.status === 'failed')
                     .map(result => result.index));

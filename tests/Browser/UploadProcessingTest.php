@@ -85,7 +85,8 @@ function uploadBrowserFixture(Browser $browser, string $filename = 'test-image.j
     $browser->attach('input[type="file"].sr-only', __DIR__.'/fixtures/'.$filename)
         ->waitForText('Upload 1 file')
         ->click('button[type="submit"]')
-        ->waitForText('Accepted for processing.', 15);
+        ->waitForText('Upload 0 files', 15)
+        ->assertDontSee('Accepted for processing.');
 }
 
 function runBrowserProcessingQueue(): void
@@ -239,7 +240,8 @@ test('office uploads convert to PDF and display their extracted document', funct
             ->click('button[class*="rounded-r-lg"]')
             ->attach('input[type="file"].sr-only', base_path('tests/fixtures/office/fixture.docx'))
             ->waitForText('Upload 1 file')->click('button[type="submit"]')
-            ->waitForText('Accepted for processing.', 15);
+            ->waitForText('Upload 0 files', 15)
+            ->assertDontSee('Accepted for processing.');
         runBrowserProcessingQueue();
         $file = File::query()->where('user_id', $this->uploadUser->id)->sole();
         expect($file->status)->toBe('completed');

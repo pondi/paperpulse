@@ -269,6 +269,8 @@ it('discards receipt edits on cancel and saves only through Save Changes', funct
     $receipt = Receipt::factory()->for(File::factory()->for($user))->create([
         'user_id' => $user->id,
         'total_amount' => 42,
+        'receipt_date' => '2026-10-05',
+        'currency' => 'NOK',
         'receipt_description' => 'Persisted description',
     ]);
 
@@ -283,4 +285,30 @@ it('discards receipt edits on cancel and saves only through Save Changes', funct
     });
 
     expect($receipt->fresh()->total_amount)->toEqual(55);
+});
+
+it('wraps long receipt descriptions and preserves multiline notes while editing', function (): void {
+    $user = $this->createUser();
+    $description = str_repeat('A readable sentence describing the receipt. ', 5);
+    $note = "First line\nSecond line\nThird line";
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create([
+        'user_id' => $user->id, 'receipt_description' => $description, 'note' => $note,
+        'receipt_date' => '2026-10-05', 'currency' => 'NOK', 'total_amount' => 42,
+    ]);
+
+    $this->browse(function (Browser $browser) use ($user, $receipt, $description, $note): void {
+        $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitForText('Edit Receipt')->press('Edit Receipt')
+            ->assertInputValue('textarea[aria-label="Description"]', $description)
+            ->assertInputValue('dl > div:last-child textarea', $note);
+        foreach ([320, 390, 1440] as $width) {
+            $browser->resize($width, 844)->assertScript(<<<'JS'
+                Array.from(document.querySelectorAll('dl textarea')).every(el =>
+                    el.rows >= 4 && el.scrollWidth <= el.clientWidth && getComputedStyle(el).whiteSpace === 'pre-wrap')
+                JS, true);
+        }
+        $browser->type('dl > div:last-child textarea', $note."\nSaved fourth line")
+            ->press('Save Changes')->waitForText('Edit Receipt')
+            ->refresh()->waitForText('Saved fourth line')->press('Edit Receipt')
+            ->assertInputValue('dl > div:last-child textarea', $note."\nSaved fourth line");
+    });
 });

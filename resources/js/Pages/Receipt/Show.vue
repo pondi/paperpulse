@@ -64,7 +64,7 @@
             <dl class="mt-6 space-y-6">
               <div v-for="(field, index) in receiptFields" :key="index" class="flex flex-col">
                 <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">{{ field.label }}</dt>
-                <dd v-if="!isEditing" class="mt-1 text-sm text-zinc-700 dark:text-zinc-200">
+                <dd v-if="!isEditing" class="mt-1 text-sm text-zinc-700 dark:text-zinc-200" :class="{ 'whitespace-pre-wrap break-words': field.type === 'textarea' }">
                   {{ formatFieldValue(receipt[field.key], field.type) }}
                 </dd>
                 <div v-else class="mt-1">
@@ -72,6 +72,13 @@
                     v-if="field.type === 'date'"
                     v-model="editedReceipt[field.key]"
                     :placeholder="`Select ${field.label.toLowerCase()}...`"
+                  />
+                  <textarea
+                    v-else-if="field.type === 'textarea'"
+                    v-model="editedReceipt[field.key]"
+                    :aria-label="field.label"
+                    rows="4"
+                    class="block w-full resize-y rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600 sm:text-sm"
                   />
                   <input
                     v-else-if="field.type === 'text' || field.type === 'number'"
@@ -422,8 +429,8 @@ const receiptFields = computed(() => [
     { value: 'transport', label: __('transport') },
     { value: null, label: __('uncategorized') }
   ]},
-  { key: 'receipt_description', label: __('description'), type: 'text' },
-  { key: 'note', label: __('note'), type: 'text' }
+  { key: 'receipt_description', label: __('description'), type: 'textarea' },
+  { key: 'note', label: __('note'), type: 'textarea' }
 ]);
 
 const lineItemFields = computed(() => [

@@ -3,8 +3,8 @@
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex justify-between items-center">
-                <div class="flex items-center gap-x-4">
+            <div class="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
+                <div class="flex min-w-0 items-center gap-4">
                     <div
                         class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                         :style="{ backgroundColor: collection.color }"
@@ -13,12 +13,12 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getIconPath(collection.icon)" />
                         </svg>
                     </div>
-                    <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
+                    <h2 class="min-w-0 break-words font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
                         {{ collection.name }}
                         <span v-if="collection.is_archived" class="ml-2 text-sm font-normal text-zinc-500 dark:text-zinc-400">(Archived)</span>
                     </h2>
                 </div>
-                <div class="flex items-center gap-x-4">
+                <div class="flex flex-wrap items-center gap-4">
                     <Link v-if="isOwner" :href="route('collections.organization.index')" class="text-orange-600 dark:text-orange-400">Review recommendations</Link>
                     <button
                         v-if="isOwner"

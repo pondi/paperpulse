@@ -13,12 +13,12 @@ defineProps<{
 
 <template>
     <nav aria-label="Breadcrumb" class="mb-4">
-        <ol class="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-            <li v-for="(crumb, i) in crumbs" :key="`${i}-${crumb.label}`" class="flex items-center gap-2">
+        <ol class="flex flex-wrap items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+            <li v-for="(crumb, i) in crumbs" :key="`${i}-${crumb.label}`" class="flex min-w-0 items-center gap-2">
                 <Link
                     v-if="crumb.href"
                     :href="crumb.href"
-                    class="hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+                    class="min-w-0 break-words hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
                 >
                     {{ crumb.label }}
                 </Link>

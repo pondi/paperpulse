@@ -5,6 +5,7 @@ use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\URL;
 
 beforeEach(fn () => $this->withoutVite());
@@ -63,6 +64,39 @@ test('unverified existing accounts can resend and recover web access', function 
     Notification::assertSentTo($user, VerifyEmail::class);
     $this->artisan('users:send-verification', ['--user' => $user->id])->assertSuccessful();
     Notification::assertSentToTimes($user, VerifyEmail::class, 2);
+});
+
+test('verification emails can be resent using PostgreSQL cache without Redis', function (): void {
+    config(['cache.default' => 'database']);
+    Redis::shouldReceive('connection')->never();
+    Notification::fake();
+    $user = User::factory()->unverified()->create();
+
+    $this->actingAs($user)
+        ->from(route('verification.notice'))
+        ->post(route('verification.send'))
+        ->assertRedirect(route('verification.notice'))
+        ->assertSessionHas('status', 'verification-link-sent');
+
+    Notification::assertSentToTimes($user, VerifyEmail::class, 1);
+});
+
+test('verification email resends remain rate limited using PostgreSQL cache', function (): void {
+    config(['cache.default' => 'database']);
+    Redis::shouldReceive('connection')->never();
+    Notification::fake();
+    $user = User::factory()->unverified()->create();
+    $this->actingAs($user);
+
+    for ($attempt = 0; $attempt < 6; $attempt++) {
+        $this->post(route('verification.send'))
+            ->assertRedirect()
+            ->assertSessionHas('status', 'verification-link-sent');
+    }
+
+    $this->post(route('verification.send'))->assertTooManyRequests();
+
+    Notification::assertSentToTimes($user, VerifyEmail::class, 6);
 });
 
 test('unverified accounts cannot get API tokens or access protected API resources', function () {

@@ -4,7 +4,7 @@ This guide covers the installed package baseline, development practices and nati
 
 | Component | Supported baseline |
 | --- | --- |
-| PHP | 8.5; ZIP and other extensions checked by `forge:preflight` |
+| PHP | 8.5; ZIP and other extensions checked by `runtime:check` |
 | Laravel | 13 |
 | Inertia server/client | 3 |
 | Vue | 3.5 |
@@ -15,7 +15,7 @@ This guide covers the installed package baseline, development practices and nati
 | Larastan | 3 |
 | PostgreSQL | 17 |
 
-Use `docker compose up --build -d` for shared development and testing. The application image installs locked Composer/npm dependencies, builds assets, and bundles local services and processing tools; PostgreSQL 17 and Garage S3 storage run in the two separate service containers. See [Getting Started](getting-started.md) for tests, live editing and native Forge production.
+Use `docker compose up --build -d` for shared development and testing. The application image installs locked Composer/npm dependencies, builds assets, and bundles local services and processing tools; PostgreSQL 17 and Garage S3 storage run in the two separate service containers. See [Getting Started](getting-started.md) for tests, live editing and native Ubuntu production.
 
 ## Code Organization
 
@@ -440,7 +440,7 @@ Critical production variables:
 ```env
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://paperpulse.test
+APP_URL=http://localhost:8080
 
 DB_CONNECTION=pgsql
 QUEUE_CONNECTION=database
@@ -456,7 +456,7 @@ REVERB_SCALING_ENABLED=false
 
 ### Queue Worker Configuration
 
-Use the standard database workers, installer and deployment script in [Getting Started](getting-started.md#native-forge-production). The supported queues are `default,receipts,documents,conversions,files,exports`. Operation timeout must remain below job timeout, worker timeout, and queue retry window. Use `queue:restart` for graceful worker restarts.
+Use the [README Ubuntu setup](../README.md#native-ubuntu-with-external-postgresql-and-meilisearch) for local binaries and external database/search configuration. One database worker can process all supported queues: `default,receipts,documents,conversions,files,exports`. A single cron entry runs the scheduler every minute. Operation timeout must remain below job timeout, worker timeout, and queue retry window. Use `queue:restart` for graceful worker restarts.
 
 ## Troubleshooting Development
 

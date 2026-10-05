@@ -106,14 +106,14 @@ php artisan scout:reindex-all --fresh
 ## Native runtime and queue management
 
 ```bash
-php8.4 artisan forge:preflight --no-interaction
-php8.4 artisan forge:preflight --after-migrations --no-interaction
-php8.4 artisan queue:work database --queue=default,receipts,documents,conversions,files,exports --timeout=3660 --tries=3
-php8.4 artisan queue:restart --no-interaction
-php8.4 artisan schedule:run --no-interaction
+php8.5 artisan runtime:check --no-interaction
+php8.5 artisan runtime:check --after-migrations --no-interaction
+php8.5 artisan queue:work database --queue=default,receipts,documents,conversions,files,exports --timeout=3660 --tries=3
+php8.5 artisan queue:restart --no-interaction
+php8.5 artisan schedule:run --no-interaction
 ```
 
-Use Forge or Supervisor to monitor and restart worker processes. `queue:health` reports database backlog and failed jobs. The scheduler recovers abandoned processing/conversion/scanner work and removes expired exports.
+`runtime:check` is optional. Run one worker for all the listed queues under Supervisor or another process manager, and run `schedule:run` from cron every minute. `queue:health` reports database backlog and failed jobs. The scheduler recovers abandoned processing/conversion/scanner work and removes expired exports. See the [README Ubuntu setup](../README.md#native-ubuntu-with-external-postgresql-and-meilisearch).
 
 ```bash
 php artisan files:recover-processing --limit=100

@@ -47,7 +47,7 @@ Paperpulse is a comprehensive document management system built with Laravel that
 - [Console Commands](cli.md) - Managing the system via CLI
 
 ### For Administrators
-- [Native Forge setup](getting-started.md#native-forge-production) - Services, workers and scheduler
+- [Native Ubuntu setup](../README.md#native-ubuntu-with-external-postgresql-and-meilisearch) - Local binaries, external services, one worker and scheduler cron
 
 ### For Developers
 - [Developer Guide](developer.md) - Building and extending Paperpulse
@@ -55,7 +55,7 @@ Paperpulse is a comprehensive document management system built with Laravel that
 
 ## System Requirements
 
-- PHP 8.4 with required extensions, including ZIP
+- PHP 8.5 with required extensions, including ZIP
 - Composer for dependency management
 - Node.js 20.19+ or 22.12+ for Vite 8 frontend builds
 - PostgreSQL 17

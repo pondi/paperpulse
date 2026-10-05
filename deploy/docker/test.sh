@@ -17,7 +17,7 @@ case "$mode" in
         export SCOUT_DRIVER=collection SCOUT_PREFIX=browser_ MAIL_MAILER=array BROADCAST_CONNECTION=log
         export GEMINI_API_KEY=isolated-test OPENAI_API_KEY=isolated-test TEXTRACT_KEY=isolated-test TEXTRACT_SECRET=isolated-test
         gosu www-data php artisan migrate --force --no-interaction
-        exec gosu www-data php vendor/bin/pest --configuration=phpunit.dusk.xml --exclude-group=processing "$@"
+        exec gosu www-data php vendor/bin/pest --configuration=phpunit.dusk.xml "$@"
         ;;
     *)
         echo 'Usage: test.sh backend [Pest options] | browser [Dusk options]' >&2

@@ -514,3 +514,19 @@ it('explains empty direct folder contents and links to populated subfolders', fu
         $browser->refresh()->waitForText('No files directly in this collection')->assertSee('Upload to this collection');
     });
 });
+
+it('explains sparse and consecutive observed months in reports', function (): void {
+    $user = $this->createUser();
+    foreach (['2021-09-01', '2022-11-01', '2024-04-01', '2024-05-01'] as $date) {
+        Receipt::factory()->create(['user_id' => $user->id, 'receipt_date' => $date, 'currency' => 'NOK']);
+        Invoice::factory()->create(['user_id' => $user->id, 'invoice_date' => $date, 'currency' => 'NOK']);
+        Document::factory()->create(['user_id' => $user->id, 'created_at' => $date]);
+    }
+    $this->browse(function (Browser $browser) use ($user): void {
+        foreach (['overview', 'receipts', 'invoices', 'documents'] as $tab) {
+            $browser->loginAs($user)->visit('/analytics?tab='.$tab)->waitForText('Observed Month')
+                ->assertSee('Only months with records are shown.')
+                ->assertSee('Missing months are omitted; spacing does not represent elapsed time.');
+        }
+    });
+});

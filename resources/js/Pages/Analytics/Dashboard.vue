@@ -93,7 +93,8 @@
                     <!-- Combined Monthly Trend -->
                     <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
                         <div class="px-4 py-5 sm:p-6">
-                            <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Monthly Spending Trend</h3>
+                            <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Spending by Observed Month</h3>
+                            <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
                             <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
                                 <canvas ref="overviewChart"></canvas>
                             </div>
@@ -153,8 +154,9 @@
                         <!-- Monthly Trend -->
                         <div class="bg-white dark:bg-zinc-800 shadow rounded-lg lg:col-span-2">
                             <div class="px-4 py-5 sm:p-6">
-                                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Monthly Spending Trend</h3>
-                                <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
+                                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Spending by Observed Month</h3>
+                                <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
+                            <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
                                     <canvas ref="receiptChart"></canvas>
                                 </div>
                                 <EmptyState v-else />
@@ -254,8 +256,9 @@
                         <!-- Monthly Trend -->
                         <div class="bg-white dark:bg-zinc-800 shadow rounded-lg lg:col-span-2">
                             <div class="px-4 py-5 sm:p-6">
-                                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Monthly Invoice Trend</h3>
-                                <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
+                                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Invoices by Observed Month</h3>
+                                <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
+                            <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
                                     <canvas ref="invoiceChart"></canvas>
                                 </div>
                                 <EmptyState v-else />
@@ -464,8 +467,9 @@
                         <!-- Monthly Trend -->
                         <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
-                                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Monthly Uploads</h3>
-                                <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
+                                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Uploads by Observed Month</h3>
+                                <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
+                            <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
                                     <canvas ref="documentChart"></canvas>
                                 </div>
                                 <EmptyState v-else />

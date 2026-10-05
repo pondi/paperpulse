@@ -2,6 +2,7 @@
 
 use App\Models\Category;
 use App\Models\File;
+use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
@@ -70,4 +71,17 @@ it('saves canonical category choices and rejects another owners categories', fun
     expect($receipt->fresh()->category_id)->toBe($category->id);
     $this->patch(route('receipts.update', $receipt), $payload + ['category_id' => null])->assertSessionHasNoErrors();
     expect($receipt->fresh()->category_id)->toBeNull()->and($receipt->fresh()->receipt_category)->toBeNull();
+});
+
+it('retains merchant context and isolates merchant receipt listings', function (): void {
+    $this->withoutVite();
+    $owner = User::factory()->create();
+    $merchant = Merchant::create(['user_id' => $owner->id, 'name' => 'Eik Senteret']);
+    $receipt = Receipt::factory()->for(File::factory()->for($owner))->create(['user_id' => $owner->id, 'merchant_id' => $merchant->id]);
+    Receipt::factory()->for(File::factory()->for($owner))->create(['user_id' => $owner->id]);
+    $this->actingAs($owner)->get(route('receipts.byMerchant', $merchant))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('merchant.id', $merchant->id)->where('merchant.name', 'Eik Senteret')
+            ->has('receipts', 1)->where('receipts.0.id', $receipt->id));
+    $this->actingAs(User::factory()->create())->get(route('receipts.byMerchant', $merchant))->assertNotFound();
 });

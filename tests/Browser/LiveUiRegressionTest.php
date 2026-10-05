@@ -560,3 +560,18 @@ it('renders translated expiry scanner and review labels', function (): void {
             ->assertSee('Needs review')->assertDontSee('needs_review');
     });
 });
+
+it('keeps merchant receipt context when inspecting details and returning from all receipts', function (): void {
+    $user = $this->createUser();
+    $merchant = Merchant::create(['user_id' => $user->id, 'name' => 'Eik Senteret']);
+    Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id, 'merchant_id' => $merchant->id, 'receipt_date' => '2026-10-05', 'total_amount' => 42, 'currency' => 'NOK']);
+    $this->browse(function (Browser $browser) use ($user, $merchant): void {
+        $path = '/receipts/merchant/'.$merchant->id;
+        $browser->loginAs($user)->visit($path)->waitForText('Receipts · Eik Senteret')
+            ->assertTitleContains('Eik Senteret')->click('tbody tr td:nth-child(3)')->waitFor('div.fixed.right-0')
+            ->assertPathIs($path)->assertSee('Receipts · Eik Senteret')
+            ->waitUntil("document.querySelector('div.fixed.right-0 button').getBoundingClientRect().right <= innerWidth")
+            ->click('div.fixed.right-0 button')->waitUntilMissing('div.fixed.right-0')->clickLink('All Receipts')->waitForLocation('/receipts');
+        $browser->back()->waitForLocation($path)->waitForText('Receipts · Eik Senteret');
+    });
+});

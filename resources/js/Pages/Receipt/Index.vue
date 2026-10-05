@@ -1,9 +1,12 @@
 <template>
-  <Head :title="__('receipts')" />
+  <Head :title="merchant ? `${__('receipts')} · ${merchant.name}` : __('receipts')" />
 
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-100 leading-tight">{{ __('receipts') }}</h2>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-100 leading-tight">{{ __('receipts') }}<span v-if="merchant"> · {{ merchant.name }}</span></h2>
+        <Link v-if="merchant" :href="route('receipts.index')" class="text-sm font-semibold text-amber-700 hover:underline dark:text-amber-400">{{ __('all_receipts') }}</Link>
+      </div>
     </template>
 
     <div class="py-12">
@@ -434,6 +437,10 @@ const props = defineProps({
   receipts: {
     type: Array,
     required: true
+  },
+  merchant: {
+    type: Object,
+    default: null
   },
   categories: {
     type: Array,

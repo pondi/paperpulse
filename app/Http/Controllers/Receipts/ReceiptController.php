@@ -333,6 +333,7 @@ class ReceiptController extends BaseResourceController
 
         return Inertia::render('Receipt/Index', [
             'receipts' => $receipts,
+            'merchant' => $merchantModel->only(['id', 'name']),
         ]);
     }
 

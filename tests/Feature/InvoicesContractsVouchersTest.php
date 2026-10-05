@@ -16,6 +16,25 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
+it('infers the invoice factory owner independently of the authenticated user', function (bool $supplyFile): void {
+    $viewer = User::factory()->create();
+    $owner = User::factory()->create();
+    $this->actingAs($viewer);
+
+    $attributes = $supplyFile
+        ? ['file_id' => File::factory()->create(['user_id' => $owner->id])->id]
+        : [];
+    $invoice = Invoice::factory()->create($attributes);
+    $file = File::withoutGlobalScope('user')->findOrFail($invoice->file_id);
+
+    expect($invoice->user_id)->toBe($file->user_id)
+        ->and($invoice->user_id)->not->toBe($viewer->id);
+
+    if ($supplyFile) {
+        expect($invoice->user_id)->toBe($owner->id);
+    }
+})->with([false, true]);
+
 it('renders invoices index with structured data', function () {
     $user = User::factory()->create();
     $file = File::factory()->create([

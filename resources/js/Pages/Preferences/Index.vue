@@ -92,10 +92,14 @@
                   v-model="form.timezone"
                   class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
                 >
+                  <option v-if="!timezones.some(timezone => timezone.value === form.timezone)" :value="form.timezone">
+                    {{ form.timezone }} (saved value)
+                  </option>
                   <option v-for="timezone in timezones" :key="timezone.value" :value="timezone.value">
                     {{ timezone.label }}
                   </option>
                 </select>
+                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Effective timezone: {{ page.props.auth.user.preferences.timezone }}</p>
                 <InputError class="mt-2" :message="form.errors.timezone" />
               </div>
 

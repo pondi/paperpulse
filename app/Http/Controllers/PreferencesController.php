@@ -115,9 +115,9 @@ class PreferencesController extends Controller
     /**
      * Get list of timezones grouped by region.
      */
-    private function getTimezones()
+    private function getTimezones(): array
     {
-        $timezones = [];
+        $timezones = [['value' => 'UTC', 'label' => 'UTC']];
         $regions = [
             'Africa' => DateTimeZone::AFRICA,
             'America' => DateTimeZone::AMERICA,

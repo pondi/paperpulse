@@ -7,6 +7,7 @@ use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Merchant;
 use App\Models\Receipt;
+use App\Models\UserPreference;
 use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
@@ -241,3 +242,24 @@ it('dismisses notifications with Escape from the trigger or panel and preserves 
 
     expect($notification->fresh()->read_at)->toBeNull();
 });
+
+it('shows default and legacy timezone selections without changing saved values', function (?string $timezone, string $effective): void {
+    $user = $this->createUser();
+    if ($timezone !== null) {
+        UserPreference::create(['user_id' => $user->id, 'timezone' => $timezone]);
+    }
+
+    $this->browse(function (Browser $browser) use ($user, $timezone, $effective): void {
+        $browser->loginAs($user)->visit('/preferences')->waitFor('#timezone')
+            ->assertSelected('#timezone', $timezone ?? 'UTC')
+            ->assertSee('Effective timezone: '.$effective);
+    });
+
+    expect($user->fresh()->preferences?->timezone)->toBe($timezone);
+})->with([
+    'absent' => [null, 'UTC'],
+    'default' => ['UTC', 'UTC'],
+    'supported' => ['Europe/Oslo', 'Europe/Oslo'],
+    'legacy' => ['Etc/UTC', 'UTC'],
+    'invalid legacy' => ['Invalid/Zone', 'UTC'],
+]);

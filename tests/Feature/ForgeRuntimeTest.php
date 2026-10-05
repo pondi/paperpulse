@@ -18,9 +18,31 @@ it('reports pending and reserved database jobs across every supported queue with
     expect(Artisan::call('queue:health', ['--format' => 'json']))->toBe(0);
     $output = json_decode(Artisan::output(), true);
     foreach (config('queue.worker_queues') as $queue) {
-        expect($output['queues'][$queue])->toBe(['pending' => 1, 'processing' => 1]);
+        expect($output['queues'][$queue])->toBe(['pending' => 1, 'ready' => 1, 'delayed' => 0, 'processing' => 1]);
     }
 });
+
+it('distinguishes delayed jobs from ready jobs until their scheduled time', function (int $delay): void {
+    $this->freezeTime();
+    config()->set('queue.default', 'database');
+    $queue = Queue::connection('database');
+    $reservedId = $queue->push(function (): void {}, queue: 'documents');
+    DB::table('jobs')->where('id', $reservedId)->update(['reserved_at' => now()->timestamp]);
+    $queue->push(function (): void {}, queue: 'documents');
+    $queue->later(now()->addSeconds($delay), function (): void {}, queue: 'documents');
+
+    expect(Artisan::call('queue:health', ['--format' => 'json']))->toBe(0);
+    $output = json_decode(Artisan::output(), true);
+    expect($output['queues']['documents'])->toBe(['pending' => 2, 'ready' => 1, 'delayed' => 1, 'processing' => 1]);
+    expect(Artisan::call('queue:health'))->toBe(0);
+    expect(Artisan::output())->toContain('Ready', 'Delayed');
+
+    $this->travel($delay)->seconds();
+
+    expect(Artisan::call('queue:health', ['--format' => 'json']))->toBe(0);
+    $output = json_decode(Artisan::output(), true);
+    expect($output['queues']['documents'])->toBe(['pending' => 2, 'ready' => 2, 'delayed' => 0, 'processing' => 1]);
+})->with([1, 300, 86400]);
 
 it('reports failed database jobs without relying on worker dashboards', function (): void {
     config()->set('queue.default', 'database');

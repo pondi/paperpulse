@@ -23,10 +23,16 @@ class QueueHealthCheck extends Command
         try {
             $connection = $database->connection(config('queue.connections.database.connection'));
             $queues = [];
+            $timestamp = now()->timestamp;
             foreach (config('queue.worker_queues') as $queue) {
                 $jobs = $connection->table(config('queue.connections.database.table'))->where('queue', $queue);
+                $unreserved = (clone $jobs)->whereNull('reserved_at');
+                $ready = (clone $unreserved)->where('available_at', '<=', $timestamp)->count();
+                $delayed = (clone $unreserved)->where('available_at', '>', $timestamp)->count();
                 $queues[$queue] = [
-                    'pending' => (clone $jobs)->whereNull('reserved_at')->count(),
+                    'pending' => $ready + $delayed,
+                    'ready' => $ready,
+                    'delayed' => $delayed,
                     'processing' => (clone $jobs)->whereNotNull('reserved_at')->count(),
                 ];
             }
@@ -44,7 +50,7 @@ class QueueHealthCheck extends Command
         if ($this->option('format') === 'json') {
             $this->line(json_encode($health, JSON_THROW_ON_ERROR));
         } else {
-            $this->table(['Queue', 'Pending', 'Processing'], collect($queues)->map(fn ($stats, $queue) => [$queue, $stats['pending'], $stats['processing']])->all());
+            $this->table(['Queue', 'Pending', 'Ready', 'Delayed', 'Processing'], collect($queues)->map(fn ($stats, $queue) => [$queue, $stats['pending'], $stats['ready'], $stats['delayed'], $stats['processing']])->all());
             $this->info('Failed jobs: '.$health['failed_jobs']['total']);
         }
         if ($critical && $this->option('alert')) {

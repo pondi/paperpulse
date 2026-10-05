@@ -12,6 +12,29 @@ use App\Models\Warranty;
 use App\Services\Files\FileUploadConfigService;
 use Laravel\Dusk\Browser;
 
+it('renders disabled document pagination without null URL errors', function (): void {
+    $user = $this->createUser();
+    $documents = [];
+    foreach (range(1, 21) as $number) {
+        $file = File::factory()->for($user)->create(['file_type' => 'document', 'status' => 'completed']);
+        $document = Document::factory()->create(['user_id' => $user->id, 'file_id' => $file->id, 'title' => 'Document '.$number, 'document_date' => null]);
+        ExtractableEntity::create(['user_id' => $user->id, 'file_id' => $file->id, 'entity_type' => 'document', 'entity_id' => $document->id, 'is_primary' => true, 'extracted_at' => now()]);
+        $documents[] = $document;
+    }
+
+    $this->browse(function (Browser $browser) use ($user, $documents): void {
+        $browser->loginAs($user)->visit('/documents')->waitFor('input[type="checkbox"]')
+            ->click('div.flex.items-center.space-x-2 > button:last-child')->waitFor('nav.relative span[aria-disabled="true"]')
+            ->assertMissing('nav a[aria-disabled="true"]')
+            ->click('nav.relative a[href*="page=2"]')->waitUntil("location.search === '?page=2'")
+            ->click('div.flex.items-center.space-x-2 > button:last-child')->waitFor('nav.relative span[aria-disabled="true"]');
+        $browser->visit('/documents/'.$documents[0]->id)->waitForText('Document 1');
+
+        $errors = array_filter($browser->driver->manage()->getLog('browser'), fn (array $entry): bool => str_contains($entry['message'], 'toString') || str_contains($entry['message'], '[Vue error]'));
+        expect($errors)->toBeEmpty();
+    });
+});
+
 test('upload page loads', function () {
     $user = $this->createUser();
 

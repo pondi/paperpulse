@@ -744,10 +744,11 @@ const getEntityTypeBadge = (entityType?: string) => {
                     <div v-if="documents.links.length > 3" class="px-6 py-4 border-t border-amber-200 dark:border-zinc-700">
                         <nav class="flex items-center justify-between">
                             <div class="flex-1 flex justify-between sm:hidden">
-                                <Link
+                                <component
                                     v-for="link in documents.links"
                                     :key="link.label"
-                                    :href="link.url"
+                                    :is="link.url ? Link : 'span'"
+                                    :href="link.url || undefined"
                                     :class="[
                                         'relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md',
                                         link.active 
@@ -755,7 +756,7 @@ const getEntityTypeBadge = (entityType?: string) => {
                                             : 'text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-800 hover:bg-amber-50 dark:hover:bg-zinc-700',
                                         !link.url && 'opacity-50 cursor-not-allowed'
                                     ]"
-                                    :disabled="!link.url"
+                                    :aria-disabled="!link.url || undefined"
                                     v-html="link.label"
                                 />
                             </div>
@@ -773,10 +774,11 @@ const getEntityTypeBadge = (entityType?: string) => {
                                 </div>
                                 <div>
                                     <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                                        <Link
+                                        <component
                                             v-for="link in documents.links"
                                             :key="link.label"
-                                            :href="link.url"
+                                            :is="link.url ? Link : 'span'"
+                                            :href="link.url || undefined"
                                             :class="[
                                                 'relative inline-flex items-center px-4 py-2 text-sm font-medium',
                                                 link.active 
@@ -786,7 +788,7 @@ const getEntityTypeBadge = (entityType?: string) => {
                                                 documents.links.indexOf(link) === 0 && 'rounded-l-md',
                                                 documents.links.indexOf(link) === documents.links.length - 1 && 'rounded-r-md'
                                             ]"
-                                            :disabled="!link.url"
+                                            :aria-disabled="!link.url || undefined"
                                             v-html="link.label"
                                         />
                                     </nav>

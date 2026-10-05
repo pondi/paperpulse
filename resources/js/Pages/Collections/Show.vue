@@ -176,14 +176,18 @@
 
                     <Pagination v-if="filePagination" :links="filePagination" class="mt-4" />
                     <!-- Empty State -->
-                    <div v-else class="text-center py-12">
+                    <div v-if="!collection.files?.length" class="text-center py-12">
                         <svg class="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                         </svg>
-                        <h3 class="mt-4 text-sm font-medium text-zinc-900 dark:text-zinc-100">No files</h3>
+                        <h3 class="mt-4 text-sm font-medium text-zinc-900 dark:text-zinc-100">No files directly in this collection</h3>
                         <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                            This collection doesn't have any files yet. Add files by uploading new documents or editing existing ones.
+                            Files in subfolders are listed separately. Upload a file here or browse a subfolder below.
                         </p>
+                        <div class="mt-4 flex flex-wrap justify-center gap-3">
+                            <Link v-for="child in children.data" :key="child.id" :href="route('collections.show', child.id)" class="text-blue-600 hover:underline dark:text-blue-400">Browse {{ child.name }}</Link>
+                            <Link v-if="isOwner" :href="route('documents.upload', { collection_ids: [collection.id] })" class="text-blue-600 hover:underline dark:text-blue-400">Upload to this collection</Link>
+                        </div>
                     </div>
                 </div>
             </div>

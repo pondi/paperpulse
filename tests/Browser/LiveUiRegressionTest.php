@@ -493,3 +493,24 @@ it('reconciles the activity summary including review and pending files', functio
             JS, true);
     });
 });
+
+it('explains empty direct folder contents and links to populated subfolders', function (): void {
+    $user = $this->createUser();
+    $parent = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Building']);
+    $child = Collection::factory()->create(['user_id' => $user->id, 'parent_id' => $parent->id, 'name' => 'Contracts']);
+    $file = File::factory()->create(['user_id' => $user->id, 'fileName' => 'contract.pdf', 'status' => 'completed']);
+    $child->files()->attach($file);
+
+    $this->browse(function (Browser $browser) use ($user, $parent, $child, $file): void {
+        $browser->loginAs($user)->visit('/collections/'.$parent->id)->waitForText('Building');
+        foreach ([390, 1440] as $width) {
+            $browser->resize($width, 900)->assertSee('No files directly in this collection')
+                ->assertSee('Files in subfolders are listed separately')->assertSee('Upload to this collection')
+                ->assertPresent('a[href$="/collections/'.$child->id.'"]');
+        }
+        $browser->clickLink('Browse Contracts')->waitForLocation('/collections/'.$child->id)->waitForText('contract.pdf')
+            ->assertDontSee('No files directly in this collection');
+        $child->files()->detach($file);
+        $browser->refresh()->waitForText('No files directly in this collection')->assertSee('Upload to this collection');
+    });
+});

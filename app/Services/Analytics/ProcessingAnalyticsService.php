@@ -41,12 +41,11 @@ class ProcessingAnalyticsService
      * Find low-confidence classifications that may need prompt refinement.
      *
      * @param  float  $threshold  Confidence threshold (default 0.7)
-     * @return Collection
      */
-    public function findLowConfidenceClassifications(float $threshold = 0.7, int $limit = 50)
+    public function findLowConfidenceClassifications(float $threshold = 0.7, int $limit = 50): Collection
     {
         return FileProcessingAnalytic::lowConfidence($threshold)
-            ->with('file:id,filename,guid')
+            ->with('file:id,fileName,guid')
             ->select(
                 'id',
                 'file_id',
@@ -194,15 +193,13 @@ class ProcessingAnalyticsService
      * Get validation warnings for a document type.
      *
      * Identifies common validation issues to improve schema.
-     *
-     * @return Collection
      */
-    public function getValidationWarningsByType(string $documentType, int $limit = 20)
+    public function getValidationWarningsByType(string $documentType, int $limit = 20): Collection
     {
         return FileProcessingAnalytic::successfulType($documentType)
             ->whereNotNull('validation_warnings')
             ->whereJsonLength('validation_warnings', '>', 0)
-            ->with('file:id,filename,guid')
+            ->with('file:id,fileName,guid')
             ->select('id', 'file_id', 'validation_warnings', 'extraction_confidence', 'created_at')
             ->orderByDesc('created_at')
             ->limit($limit)

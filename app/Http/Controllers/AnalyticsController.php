@@ -116,7 +116,7 @@ class AnalyticsController extends Controller
             'lowConfidence' => $lowConfidence->map(function ($item) {
                 return [
                     'file_id' => $item->file_id,
-                    'filename' => $item->file?->filename ?? 'N/A',
+                    'filename' => $item->file?->fileName ?? 'N/A',
                     'document_type' => $item->document_type,
                     'confidence' => round($item->classification_confidence, 4),
                     'reasoning' => $item->classification_reasoning,

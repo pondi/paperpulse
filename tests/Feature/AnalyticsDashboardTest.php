@@ -10,6 +10,7 @@ use App\Models\Invoice;
 use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Models\User;
+use App\Services\Analytics\ProcessingAnalyticsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -361,4 +362,33 @@ it('renders processing analytics with PostgreSQL warning arrays', function (): v
         ->assertInertia(fn (Assert $page) => $page->component('Analytics/Processing')
             ->where('qualityMetrics.invoice.total_extractions', 3)
             ->where('qualityMetrics.invoice.extractions_with_warnings', 1));
+});
+
+it('loads processing analytic file identities and retains records for missing files', function (): void {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $this->actingAs($admin);
+    $file = File::factory()->create(['user_id' => $admin->id, 'fileName' => 'source-invoice.pdf']);
+    $analytic = FileProcessingAnalytic::create([
+        'file_id' => $file->id,
+        'user_id' => $admin->id,
+        'processing_type' => 'invoice',
+        'document_type' => 'invoice',
+        'processing_status' => 'completed',
+        'classification_confidence' => 0.5,
+        'validation_warnings' => ['Missing invoice number'],
+    ]);
+    $service = app(ProcessingAnalyticsService::class);
+
+    expect($service->findLowConfidenceClassifications()->sole()->file->fileName)->toBe('source-invoice.pdf')
+        ->and($service->getValidationWarningsByType('invoice')->sole()->file->guid)->toBe($file->guid);
+    $this->get(route('analytics.processing'))->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('lowConfidence.0.filename', 'source-invoice.pdf'));
+
+    $file->delete();
+
+    foreach ([$service->findLowConfidenceClassifications(), $service->getValidationWarningsByType('invoice')] as $records) {
+        expect($records->sole()->id)->toBe($analytic->id)->and($records->sole()->file)->toBeNull();
+    }
+    $this->get(route('analytics.processing'))->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('lowConfidence.0.filename', 'N/A'));
 });

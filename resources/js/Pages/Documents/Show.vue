@@ -9,6 +9,7 @@ import DocumentImage from '@/Components/Domain/DocumentImage.vue';
 import CollectionSelector from '@/Components/Domain/CollectionSelector.vue';
 import CollectionBadge from '@/Components/Domain/CollectionBadge.vue';
 import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 import {
     DocumentIcon,
     FolderIcon,
@@ -93,6 +94,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const isEditing = ref(false);
+const { formatDate } = useDateFormatter();
 const showDeleteModal = ref(false);
 const documentTags = ref(props.document.tags);
 const documentCollections = ref<number[]>(props.document.collections?.map(c => c.id) || []);

@@ -2,6 +2,7 @@
 
 use App\Models\Category;
 use App\Models\Collection;
+use App\Models\Document;
 use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Merchant;
@@ -9,6 +10,26 @@ use App\Models\Receipt;
 use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
+
+it('renders document metadata and navigation with populated and nullable dates', function (): void {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        foreach (['2026-10-05', null] as $date) {
+            $document = Document::factory()->for(File::factory()->for($user))->create([
+                'user_id' => $user->id,
+                'title' => 'Electrical plan',
+                'document_date' => $date,
+                'created_at' => $date,
+                'updated_at' => $date,
+            ]);
+            $browser->loginAs($user)->visit('/documents/'.$document->id)
+                ->waitForText('Electrical plan')->assertSee('File Information')
+                ->assertSee('Last Updated in PaperPulse')->assertPresent('a[href$="/documents"]');
+            $browser->assertScript("Array.from(document.querySelectorAll('dt')).find(el => el.textContent === 'Last Updated in PaperPulse').nextElementSibling.textContent.trim()", $date ?? '');
+        }
+    });
+});
 
 it('keeps nested folder actions and breadcrumbs within narrow viewports', function (): void {
     $user = $this->createUser();

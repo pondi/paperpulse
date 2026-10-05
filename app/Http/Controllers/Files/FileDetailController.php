@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Files;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Files\FileWorkspaceRequest;
 use App\Http\Resources\Api\V1\WarrantyResource;
 use App\Http\Resources\FileExtractionReportResource;
 use App\Http\Resources\Inertia\BankStatementInertiaResource;
@@ -17,13 +18,12 @@ use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Receipt;
 use App\Services\Files\FileDetailService;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class FileDetailController extends Controller
 {
-    public function show(Request $request, File $file, FileDetailService $details): Response
+    public function show(FileWorkspaceRequest $request, File $file, FileDetailService $details): Response
     {
         $this->authorize('view', $file);
         $details->loadExtractedEntities($file);
@@ -32,7 +32,7 @@ class FileDetailController extends Controller
                 $entity = $extraction->entity;
                 $data = match ($entity->getMorphClass()) {
                     'receipt' => ReceiptInertiaResource::forIndex($entity)->toArray($request),
-                    'document' => DocumentInertiaResource::forIndex($entity)->toArray($request),
+                    'document' => [...DocumentInertiaResource::forIndex($entity)->toArray($request), ...$entity->only(['description', 'summary', 'document_type', 'document_date'])],
                     'invoice' => InvoiceInertiaResource::forIndex($entity)->toArray($request),
                     'contract' => ContractInertiaResource::forIndex($entity)->toArray($request),
                     'voucher' => VoucherInertiaResource::forIndex($entity)->toArray($request),
@@ -49,6 +49,10 @@ class FileDetailController extends Controller
             })->values();
         $fileData = FileInertiaResource::forShow($file)->toArray($request);
         $fileData['can_view_extraction_report'] = $file->user_id === $request->user()->id;
+        $fileData['back_url'] = $request->validated('return_to') ?: route('library.index');
+        $fileData['back_label'] = str_starts_with($request->validated('return_to') ?? '', '/search') ? 'Back to search' : 'Back to Library';
+        $fileData['note'] = $file->note;
+        $fileData['collections'] = $file->collections()->accessibleBy($request->user())->get(['collections.id', 'collections.name']);
         if ($fileData['can_view_extraction_report']) {
             $fileData['extraction'] = (new FileExtractionReportResource($file))->toArray($request)['extraction'];
         }

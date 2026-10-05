@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\File;
+use App\Models\SavedSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Lang;
 use Inertia\Middleware;
@@ -44,6 +46,11 @@ class HandleInertiaRequests extends Middleware
             'language' => [
                 'messages' => $this->getTranslations(),
             ],
+            'navigation' => fn (): array => $request->user() ? [
+                'attention_count' => File::query()->where('user_id', $request->user()->id)->whereIn('status', ['needs_review', 'failed'])->count(),
+                'saved_views' => SavedSearch::query()->where('user_id', $request->user()->id)->where('is_pinned', true)
+                    ->orderBy('name')->limit(8)->get(['id', 'name', 'scope']),
+            ] : ['attention_count' => 0, 'saved_views' => []],
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),

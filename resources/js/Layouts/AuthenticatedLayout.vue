@@ -1,354 +1,98 @@
-<template>
-    <div>
-      <TransitionRoot as="template" :show="sidebarOpen">
-        <Dialog class="relative z-50 xl:hidden" @close="sidebarOpen = false">
-          <TransitionChild as="template" enter="transition-opacity ease-linear duration-300" enter-from="opacity-0" enter-to="opacity-100" leave="transition-opacity ease-linear duration-300" leave-from="opacity-100" leave-to="opacity-0">
-            <div class="fixed inset-0 bg-zinc-900/80" />
-          </TransitionChild>
-
-          <div class="fixed inset-0 flex">
-            <TransitionChild as="template" enter="transition ease-in-out duration-300 transform" enter-from="-translate-x-full" enter-to="translate-x-0" leave="transition ease-in-out duration-300 transform" leave-from="translate-x-0" leave-to="-translate-x-full">
-              <DialogPanel class="relative mr-16 flex w-full max-w-xs flex-1">
-                <TransitionChild as="template" enter="ease-in-out duration-300" enter-from="opacity-0" enter-to="opacity-100" leave="ease-in-out duration-300" leave-from="opacity-100" leave-to="opacity-0">
-                  <div class="absolute left-full top-0 flex w-16 justify-center pt-5">
-                    <button type="button" class="-m-2.5 p-2.5" @click="sidebarOpen = false">
-                      <span class="sr-only">Close sidebar</span>
-                      <XMarkIcon class="size-6 text-white" aria-hidden="true" />
-                    </button>
-                  </div>
-                </TransitionChild>
-                <!-- Sidebar component, swap this element with another sidebar if you like -->
-                <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-zinc-900 px-6 ring-1 ring-zinc-900/5 dark:ring-white/10 border-r-4 border-amber-600 dark:border-amber-500">
-                  <div class="flex h-16 shrink-0 items-center">
-                    <Link :href="route('dashboard')" class="flex items-center gap-2">
-                      <ApplicationLogo class="h-10 w-10" />
-                      <span class="text-xl font-bold text-zinc-900 dark:text-zinc-100">PaperPulse</span>
-                    </Link>
-                  </div>
-                  <nav class="flex flex-1 flex-col">
-                    <ul role="list" class="flex flex-1 flex-col gap-y-7">
-                      <li>
-                        <ul role="list" class="-mx-2 space-y-1">
-                          <li v-for="item in navigation" :key="item.name">
-                            <Link :href="item.href" :class="[item.current ? 'bg-amber-100 text-zinc-900 dark:bg-amber-600 dark:text-white border-l-4 border-amber-600 dark:border-amber-400' : 'text-zinc-600 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white border-l-4 border-transparent', 'group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold transition-all duration-200']">
-                              <component :is="item.icon" class="size-6 shrink-0" aria-hidden="true" />
-                              {{ __(item.name.toLowerCase()) }}
-                            </Link>
-                            <div v-if="item.children" class="space-y-1 mt-1">
-                              <Link
-                                v-for="child in item.children"
-                                :key="child.name"
-                                :href="child.href"
-                                :class="[child.current ? 'bg-amber-100 text-zinc-900 dark:bg-amber-600 dark:text-white' : 'text-zinc-600 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white', 'group flex gap-x-3 rounded-md py-1 pl-11 pr-2 text-sm/6 font-medium transition-all duration-200']"
-                              >
-                                {{ __(child.name.toLowerCase()) }}
-                              </Link>
-                            </div>
-                          </li>
-                        </ul>
-                      </li>
-                      <li class="-mx-6 mt-auto">
-                        <Menu as="div" class="relative w-full">
-                          <MenuButton class="flex w-full items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-zinc-700 hover:bg-amber-50 dark:text-white dark:hover:bg-zinc-800 transition-all duration-200">
-                            <span class="sr-only">Open user menu</span>
-                            <span class="flex items-center gap-x-4">
-                              <span class="flex-1">{{ $page.props.auth.user.name }}</span>
-                              <ChevronDownIcon class="size-5 text-zinc-400" aria-hidden="true" />
-                            </span>
-                          </MenuButton>
-                          <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
-                            <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-white dark:bg-zinc-800 py-2 shadow-xl ring-1 ring-zinc-900/5 dark:ring-zinc-700 focus:outline-none">
-                              <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
-                                <Link :href="item.href" @click="item.name === 'logout' && clearScannerCache()" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-amber-100 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100' : 'text-zinc-700 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-700 dark:hover:text-zinc-100', 'block px-3 py-1 text-sm/6 transition-all duration-200', item.method ? 'w-full text-left' : '']">
-                                  {{ __(item.name.toLowerCase()) }}
-                                </Link>
-                              </MenuItem>
-                            </MenuItems>
-                          </transition>
-                        </Menu>
-                      </li>
-                    </ul>
-                  </nav>
-                </div>
-              </DialogPanel>
-            </TransitionChild>
-          </div>
-        </Dialog>
-      </TransitionRoot>
-
-      <!-- Static sidebar for desktop -->
-      <div class="hidden xl:fixed xl:inset-y-0 xl:z-50 xl:flex xl:w-72 xl:flex-col">
-        <!-- Sidebar component, swap this element with another sidebar if you like -->
-        <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-zinc-900 px-6 ring-1 ring-zinc-900/5 dark:ring-white/10 border-r-4 border-amber-600 dark:border-amber-500">
-          <div class="flex h-16 shrink-0 items-center">
-            <Link :href="route('dashboard')" class="flex items-center gap-2">
-              <ApplicationLogo class="h-10 w-10" />
-              <span class="text-xl font-bold text-zinc-900 dark:text-zinc-100">PaperPulse</span>
-            </Link>
-          </div>
-          <nav class="flex flex-1 flex-col">
-            <ul role="list" class="flex flex-1 flex-col gap-y-7">
-              <li>
-                <ul role="list" class="-mx-2 space-y-1">
-                  <li v-for="item in navigation" :key="item.name">
-                    <Link :href="item.href" :class="[item.current ? 'bg-amber-100 text-zinc-900 dark:bg-amber-600 dark:text-white border-l-4 border-amber-600 dark:border-amber-400' : 'text-zinc-600 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white border-l-4 border-transparent', 'group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold transition-all duration-200']">
-                      <component :is="item.icon" class="size-6 shrink-0" aria-hidden="true" />
-                      {{ __(item.name.toLowerCase()) }}
-                    </Link>
-                    <div v-if="item.children" class="space-y-1 mt-1">
-                      <Link
-                        v-for="child in item.children"
-                        :key="child.name"
-                        :href="child.href"
-                        :class="[child.current ? 'bg-amber-100 text-zinc-900 dark:bg-amber-600 dark:text-white' : 'text-zinc-600 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white', 'group flex gap-x-3 rounded-md py-1 pl-11 pr-2 text-sm/6 font-medium transition-all duration-200']"
-                      >
-                        {{ __(child.name.toLowerCase()) }}
-                      </Link>
-                    </div>
-                  </li>
-                </ul>
-              </li>
-              <li class="-mx-6 mt-auto">
-                <Menu as="div" class="relative w-full">
-                  <MenuButton class="flex w-full items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-zinc-700 hover:bg-amber-50 dark:text-white dark:hover:bg-zinc-800 transition-all duration-200">
-                    <span class="sr-only">Open user menu</span>
-                    <span class="flex items-center gap-x-4">
-                      <span class="flex-1">{{ $page.props.auth.user.name }}</span>
-                      <ChevronDownIcon class="size-5 text-zinc-400" aria-hidden="true" />
-                    </span>
-                  </MenuButton>
-                  <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
-                    <MenuItems class="absolute bottom-full left-0 right-0 mb-2 w-full origin-bottom-right rounded-md bg-white dark:bg-zinc-800 py-2 shadow-xl ring-1 ring-zinc-900/5 dark:ring-zinc-700 focus:outline-none">
-                      <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
-                        <Link :href="item.href" @click="item.name === 'logout' && clearScannerCache()" :method="item.method" :as="item.method ? 'button' : 'a'" :class="[active ? 'bg-amber-100 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100' : 'text-zinc-700 hover:bg-amber-50 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-700 dark:hover:text-zinc-100', 'block px-3 py-1 text-sm/6 transition-all duration-200', item.method ? 'w-full text-left' : '']">
-                          {{ __(item.name.toLowerCase()) }}
-                        </Link>
-                      </MenuItem>
-                    </MenuItems>
-                  </transition>
-                </Menu>
-              </li>
-            </ul>
-          </nav>
-        </div>
-      </div>
-
-      <div class="xl:pl-72 bg-amber-50 dark:bg-zinc-900">
-        <!-- Sticky search header -->
-        <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-6 border-b-2 border-amber-200 bg-white/90 backdrop-blur-sm px-4 shadow-lg sm:px-6 lg:px-8 dark:border-zinc-700/50 dark:bg-zinc-900/90">
-          <button type="button" class="-m-2.5 p-2.5 text-zinc-700 xl:hidden dark:text-white hover:text-amber-600 dark:hover:text-amber-500 transition-colors duration-200" @click="sidebarOpen = true">
-            <span class="sr-only">Open sidebar</span>
-            <Bars3Icon class="size-5" aria-hidden="true" />
-          </button>
-
-          <div class="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-            <div class="flex flex-1 items-center">
-              <SearchBar @preview="openPreview" />
-            </div>
-            <div class="flex items-center gap-x-4 lg:gap-x-6">
-              <Link :href="route('scanner')" class="-m-2.5 p-2.5 text-zinc-400 hover:text-zinc-500 dark:hover:text-zinc-300">
-                <span class="sr-only">Open scanner</span>
-                <QrCodeIcon class="size-6" aria-hidden="true" />
-              </Link>
-              <NotificationBell />
-              <ThemeToggle />
-              <!-- Profile dropdown -->
-              <Menu as="div" class="relative">
-                <MenuButton class="-m-1.5 flex items-center p-1.5">
-                  <span class="sr-only">Open user menu</span>
-                  <div class="flex items-center">
-                    <span class="hidden lg:flex lg:items-center">
-                      <span class="text-sm font-semibold text-zinc-700 dark:text-zinc-300" aria-hidden="true">{{ $page.props.auth.user.name }}</span>
-                      <ChevronDownIcon class="ml-2 h-5 w-5 text-zinc-400" aria-hidden="true" />
-                    </span>
-                    <span class="lg:hidden">
-                      <UserCircleIcon class="h-6 w-6 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
-                    </span>
-                  </div>
-                </MenuButton>
-                <transition
-                  enter-active-class="transition ease-out duration-100"
-                  enter-from-class="transform opacity-0 scale-95"
-                  enter-to-class="transform opacity-100 scale-100"
-                  leave-active-class="transition ease-in duration-75"
-                  leave-from-class="transform opacity-100 scale-100"
-                  leave-to-class="transform opacity-0 scale-95"
-                >
-                  <MenuItems class="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white dark:bg-zinc-800 py-2 shadow-xl ring-1 ring-zinc-900/5 dark:ring-zinc-700 focus:outline-none">
-                    <MenuItem v-for="item in userNavigation" :key="item.name" v-slot="{ active }">
-                      <Link
-                        :href="item.href"
-                        :method="item.method"
-                        @click="item.name === 'logout' && clearScannerCache()"
-                        :as="item.method ? 'button' : 'a'"
-                        :class="[active ? 'bg-amber-50 dark:bg-zinc-700' : '', 'block px-3 py-1 text-sm text-zinc-900 dark:text-zinc-100 transition-all duration-200', item.method ? 'w-full text-left' : '']"
-                      >
-                        {{ __(item.name.toLowerCase()) }}
-                      </Link>
-                    </MenuItem>
-                  </MenuItems>
-                </transition>
-              </Menu>
-            </div>
-          </div>
-        </div>
-
-        <main class="py-10">
-          <!-- Page Heading -->
-          <header v-if="$slots.header" class="mb-8 px-4 sm:px-6 lg:px-8">
-            <slot name="header" />
-          </header>
-          
-          <!-- Page Content -->
-          <div class="px-4 sm:px-6 lg:px-8">
-            <slot />
-          </div>
-        </main>
-      </div>
-
-      <!-- Global Preview Modal -->
-      <FilePreviewModal
-        :show="showPreviewModal"
-        :item="previewItem"
-        @close="closePreview"
-      />
-
-      <!-- Global Toast Notifications -->
-      <Toast />
-    </div>
-</template>
-
 <script setup>
-import { ref } from 'vue'
-import {
-  Dialog,
-  DialogPanel,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
-  TransitionChild,
-  TransitionRoot,
-} from '@headlessui/vue'
-import {
-  Bars3Icon,
-  MagnifyingGlassIcon,
-  ChartPieIcon,
-  DocumentDuplicateIcon,
-  FolderIcon,
-  HomeIcon,
-  UsersIcon,
-  XMarkIcon,
-  CloudArrowDownIcon,
-  CloudArrowUpIcon,
-  ChartBarIcon,
-  UserCircleIcon,
-  TagIcon,
-  DocumentTextIcon,
-  ShieldCheckIcon,
-  QrCodeIcon,
-  RectangleStackIcon,
-} from '@heroicons/vue/24/outline'
-import { ChevronDownIcon } from '@heroicons/vue/20/solid'
-import ApplicationLogo from '@/Components/Common/ApplicationLogo.vue';
+import { ref } from 'vue';
+import { Dialog, DialogPanel, Menu, MenuButton, MenuItem, MenuItems, TransitionChild, TransitionRoot } from '@headlessui/vue';
+import { Bars3Icon, XMarkIcon, PlusIcon, ArrowUpTrayIcon, CameraIcon, ArrowDownTrayIcon, UserCircleIcon, ChevronDownIcon } from '@heroicons/vue/24/outline';
+import { Link, router, usePage } from '@inertiajs/vue3';
+import AppSidebar from '@/Components/Navigation/AppSidebar.vue';
+import WorkspaceNavigation from '@/Components/Navigation/WorkspaceNavigation.vue';
 import SearchBar from '@/Components/Features/SearchBar.vue';
 import NotificationBell from '@/Components/Features/NotificationBell.vue';
 import ThemeToggle from '@/Components/Common/ThemeToggle.vue';
 import FilePreviewModal from '@/Components/Common/FilePreviewModal.vue';
 import Toast from '@/Components/Common/Toast.vue';
-import { Link, usePage } from '@inertiajs/vue3';
 
-const sidebarOpen = ref(false)
-const showPreviewModal = ref(false)
-const previewItem = ref(null)
 const page = usePage();
-const __ = (key) => page.props.language.messages[key] || key;
-
-const openPreview = (item) => {
-  previewItem.value = item
-  showPreviewModal.value = true
-}
-
-const closePreview = () => {
-  showPreviewModal.value = false
-  previewItem.value = null
-}
-
-const navigationItems = [
-  // Core Navigation
-  { name: 'dashboard', href: route('dashboard'), icon: HomeIcon, current: route().current('dashboard') },
-  { name: 'search', href: route('search'), icon: MagnifyingGlassIcon, current: route().current('search') },
-
-  // Financial Documents
-  {
-    name: 'receipts',
-    href: route('receipts.index'),
-    icon: DocumentDuplicateIcon,
-    current: route().current('receipts.*')
-      || route().current('merchants.*')
-      || route().current('vendors.*')
-      || route().current('vouchers.*'),
-    children: [
-      { name: 'all_receipts', href: route('receipts.index'), current: route().current('receipts.index') },
-      { name: 'merchants', href: route('merchants.index'), current: route().current('merchants.*') },
-      { name: 'vendors', href: route('vendors.index'), current: route().current('vendors.index') },
-      { name: 'vouchers', href: route('vouchers.index'), current: route().current('vouchers.*') },
-    ]
-  },
-
-  // General Documents
-  {
-    name: 'documents',
-    href: route('documents.index'),
-    icon: FolderIcon,
-    current: (route().current('documents.*') && !route().current('documents.upload'))
-      || route().current('invoices.*')
-      || route().current('contracts.*')
-      || route().current('bank-statements.*'),
-    children: [
-      { name: 'all_documents', href: route('documents.index'), current: route().current('documents.index') },
-      { name: 'shared_with_me', href: route('documents.shared'), current: route().current('documents.shared') },
-      { name: 'categories', href: route('documents.categories'), current: route().current('documents.categories') },
-      { name: 'invoices', href: route('invoices.index'), current: route().current('invoices.*') },
-      { name: 'contracts', href: route('contracts.index'), current: route().current('contracts.*') },
-      { name: 'bank_statements', href: route('bank-statements.index'), current: route().current('bank-statements.*') },
-    ]
-  },
-
-  // Organization
-  { name: 'tags', href: route('tags.index'), icon: TagIcon, current: route().current('tags.*') },
-  { name: 'collections', href: route('collections.index'), icon: RectangleStackIcon, current: route().current('collections.*') },
-
-  // Tools
-  { name: 'upload', href: route('documents.upload'), icon: CloudArrowUpIcon, current: route().current('documents.upload') },
-  { name: 'analytics', href: route('analytics.index'), icon: ChartBarIcon, current: route().current('analytics.*') },
-  { name: 'exports', href: route('exports.index'), icon: DocumentDuplicateIcon, current: route().current('exports.*') },
-  { name: 'scanner_imports', href: route('pulsedav.index'), icon: CloudArrowDownIcon, current: route().current('pulsedav.*') },
-
-  // Admin (conditionally added)
-  { name: 'job_status', href: route('jobs.index'), icon: ChartPieIcon, current: route().current('jobs.index'), adminOnly: true },
-  { name: 'file_processing', href: route('files.index'), icon: DocumentTextIcon, current: route().current('files.*') }
-];
-
-// Filter navigation based on user permissions
-const navigation = navigationItems.filter(item => {
-  // If item is admin-only, check if user is admin
-  if (item.adminOnly && (!page.props.auth.user || !page.props.auth.user.is_admin)) {
-    return false;
-  }
-  return true;
-});
-
+const sidebarOpen = ref(false);
+const showPreviewModal = ref(false);
+const previewItem = ref(null);
+const openPreview = item => { previewItem.value = item; showPreviewModal.value = true; };
 const clearScannerCache = async () => {
-  if ('caches' in window) {
-    const names = await caches.keys();
-    await Promise.all(names.filter(name => name.startsWith('paperpulse-scanner-')).map(name => caches.delete(name)));
-  }
+    if ('caches' in window) {
+        const names = await caches.keys();
+        await Promise.all(names.filter(name => name.startsWith('paperpulse-scanner-')).map(name => caches.delete(name)));
+    }
 };
-
-const userNavigation = [
-  { name: 'profile', href: route('profile.edit') },
-  { name: 'preferences', href: route('preferences.index') },
-  { name: 'logout', href: route('logout'), method: 'post' }
-]
+const logout = async () => {
+    try {
+        await clearScannerCache();
+    } finally {
+        router.post(route('logout'));
+    }
+};
+const addActions = [
+    { label: 'Upload files', description: 'PDFs, images and Office files', href: route('documents.upload'), icon: ArrowUpTrayIcon },
+    { label: 'Scan a document', description: 'Capture with your camera', href: route('scanner'), icon: CameraIcon },
+    { label: 'Import from scanner', description: 'Browse your connected files', href: route('pulsedav.index'), icon: ArrowDownTrayIcon },
+];
 </script>
+
+<template>
+    <div class="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+        <TransitionRoot as="template" :show="sidebarOpen">
+            <Dialog class="relative z-50 lg:hidden" @close="sidebarOpen = false">
+                <TransitionChild as="template" enter="transition-opacity duration-200" enter-from="opacity-0" enter-to="opacity-100" leave="transition-opacity duration-200" leave-from="opacity-100" leave-to="opacity-0">
+                    <div class="fixed inset-0 bg-zinc-950/60" />
+                </TransitionChild>
+                <div class="fixed inset-0 flex">
+                    <TransitionChild as="template" enter="transition duration-200" enter-from="-translate-x-full" enter-to="translate-x-0" leave="transition duration-200" leave-from="translate-x-0" leave-to="-translate-x-full">
+                        <DialogPanel class="relative w-72 max-w-[85vw]">
+                            <button type="button" aria-label="Close navigation" class="absolute right-3 top-5 z-10 rounded p-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white" @click="sidebarOpen = false"><XMarkIcon class="h-5 w-5" /></button>
+                            <AppSidebar @navigate="sidebarOpen = false" />
+                        </DialogPanel>
+                    </TransitionChild>
+                </div>
+            </Dialog>
+        </TransitionRoot>
+        <aside class="fixed inset-y-0 left-0 z-40 hidden w-60 lg:block"><AppSidebar /></aside>
+
+        <div class="lg:pl-60">
+            <header class="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-zinc-200 bg-white/95 px-4 backdrop-blur sm:gap-5 sm:px-6 lg:px-8 dark:border-zinc-800 dark:bg-zinc-900/95">
+                <button type="button" aria-label="Open navigation" class="rounded-lg p-2 text-zinc-600 hover:bg-zinc-100 lg:hidden dark:text-zinc-300 dark:hover:bg-zinc-800" @click="sidebarOpen = true"><Bars3Icon class="h-5 w-5" /></button>
+                <div class="flex min-w-0 flex-1 items-center"><SearchBar @preview="openPreview" /></div>
+                <div class="flex shrink-0 items-center gap-2 sm:gap-3">
+                    <Menu as="div" class="relative">
+                        <MenuButton dusk="add-document" class="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600">
+                            <PlusIcon class="h-4 w-4" aria-hidden="true" /><span class="hidden sm:inline">Add document</span><span class="sr-only sm:hidden">Add document</span><ChevronDownIcon class="hidden h-3.5 w-3.5 sm:block" aria-hidden="true" />
+                        </MenuButton>
+                        <MenuItems class="absolute right-0 mt-2 w-72 rounded-xl border border-zinc-200 bg-white p-1.5 shadow-lg focus:outline-none dark:border-zinc-700 dark:bg-zinc-900">
+                            <MenuItem v-for="action in addActions" :key="action.label" v-slot="{ active }">
+                                <Link :href="action.href" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'flex gap-3 rounded-lg px-3 py-3']">
+                                    <component :is="action.icon" class="mt-0.5 h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                                    <span><span class="block text-sm font-medium text-zinc-900 dark:text-white">{{ action.label }}</span><span class="block text-xs text-zinc-500 dark:text-zinc-400">{{ action.description }}</span></span>
+                                </Link>
+                            </MenuItem>
+                        </MenuItems>
+                    </Menu>
+                    <div class="hidden sm:block"><ThemeToggle /></div>
+                    <NotificationBell />
+                    <Menu as="div" class="relative">
+                        <MenuButton aria-label="Account menu" class="flex items-center gap-2 rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"><UserCircleIcon class="h-7 w-7" /><span class="hidden text-sm text-zinc-700 xl:inline dark:text-zinc-300">{{ page.props.auth.user.name }}</span></MenuButton>
+                        <MenuItems class="absolute right-0 mt-2 w-48 rounded-xl border border-zinc-200 bg-white p-1.5 shadow-lg focus:outline-none dark:border-zinc-700 dark:bg-zinc-900">
+                            <MenuItem v-slot="{ active }"><Link :href="route('profile.edit')" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'block rounded-lg px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300']">Your profile</Link></MenuItem>
+                            <MenuItem v-slot="{ active }"><Link :href="route('preferences.index')" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'block rounded-lg px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300']">Settings</Link></MenuItem>
+                            <div class="px-3 py-2 sm:hidden"><ThemeToggle /></div>
+                            <MenuItem v-slot="{ active }"><button type="button" @click="logout" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'block w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300']">Log out</button></MenuItem>
+                        </MenuItems>
+                    </Menu>
+                </div>
+            </header>
+            <WorkspaceNavigation />
+            <main class="mx-auto max-w-screen-2xl px-4 py-6 sm:px-6 lg:px-8">
+                <header v-if="$slots.header" class="mb-6"><slot name="header" /></header>
+                <div class="workspace-page"><slot /></div>
+            </main>
+        </div>
+        <FilePreviewModal :show="showPreviewModal" :item="previewItem" @close="showPreviewModal = false" />
+        <Toast />
+    </div>
+</template>

@@ -21,6 +21,7 @@ const watchers = new Map();
 const timers = new Map();
 let timerId = 0;
 let unmount;
+const history = [];
 const context = {
   ref: value => ({ value }),
   computed: getter => ({ get value() { return getter(); } }),
@@ -31,11 +32,13 @@ const context = {
   axios: { get: (url, options) => new Promise((resolve, reject) => requests.push({ resolve, reject, ...options })) },
   AbortController,
   console,
+  router: { replace: options => history.push(options) },
+  route: () => '/search',
   setTimeout: callback => { timers.set(++timerId, callback); return timerId; },
   clearTimeout: id => timers.delete(id),
 };
 vm.createContext(context);
-vm.runInContext(descriptor.scriptSetup.content.replace(/^import .*;$/gm, '') + '\nglobalThis.state = { performSearch, searchQuery, filters, results, searching, searchError, facets, pagination };', context);
+vm.runInContext(descriptor.scriptSetup.content.replace(/^import .*;$/gm, '') + '\nglobalThis.state = { performSearch, searchQuery, filters, results, searching, searchError, facets, pagination, hasActiveFilters };', context);
 const state = context.state;
 const data = (id, status = 'available') => ({ data: { results: id ? [{ id }] : [], facets: { total: id ? 1 : 0 }, pagination: { page: 1, last_page: id ? 1 : 0, total: id ? 1 : 0 }, search_status: status } });
 const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
@@ -97,6 +100,18 @@ await beforeClear;
 assert.equal(state.results.value.length, 0);
 assert.equal(state.searching.value, false);
 assert.equal(state.pagination.value.total, 0);
+await state.performSearch();
+assert.equal(history.at(-1).props({}).query, '');
+assert.equal(history.at(-1).props({}).initialResults.length, 0);
+
+state.filters.value.tags = ['Travel'];
+assert.ok(state.hasActiveFilters.value);
+const tagged = state.performSearch();
+assert.deepEqual(Array.from(requests[10].params.tags), ['Travel']);
+requests[10].resolve(data('tagged'));
+await tagged;
+assert.deepEqual(Array.from(history.at(-1).props({}).initialFilters.tags), ['Travel']);
+delete state.filters.value.tags;
 
 state.searchQuery.value = 'one';
 watchers.get(state.searchQuery)();
@@ -108,8 +123,8 @@ assert.equal(timers.size, 0);
 watchers.get(state.searchQuery)();
 unmount();
 assert.equal(timers.size, 0);
-assert.equal(requests[10].signal.aborted, true);
-requests[10].resolve(data('unmounted'));
+assert.equal(requests[11].signal.aborted, true);
+requests[11].resolve(data('unmounted'));
 await latest;
 assert.equal(state.results.value.length, 0);
 JS;

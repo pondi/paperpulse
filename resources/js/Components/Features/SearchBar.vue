@@ -5,9 +5,8 @@
                 type="search"
                 v-model="searchQuery"
                 @input="handleSearch"
-                @keydown.enter="goToFullSearch"
-                placeholder="Search receipts and documents..."
-                aria-label="Search receipts and documents"
+                placeholder="Search your library…"
+                aria-label="Search your library"
                 class="col-start-1 row-start-1 block size-full bg-transparent pl-8 text-base text-zinc-900 dark:text-white outline-none border-0 focus:outline-none focus:ring-0 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 sm:text-sm/6"
             />
             <MagnifyingGlassIcon
@@ -19,10 +18,10 @@
             </div>
 
             <!-- Search Results Dropdown -->
-            <div v-if="showResults && results.length > 0" class="absolute left-0 right-0 top-full mt-2 w-[700px] max-w-[90vw] bg-white/95 dark:bg-zinc-800/95 backdrop-blur-sm rounded-lg shadow-xl max-h-96 overflow-y-auto ring-1 ring-zinc-200 dark:ring-white/20 z-50">
+            <div v-if="showResults && results.length > 0" class="fixed left-4 right-4 top-16 mt-2 sm:absolute sm:left-0 sm:right-auto sm:top-full sm:w-[600px] sm:max-w-[80vw] bg-white/95 dark:bg-zinc-800/95 backdrop-blur-sm rounded-lg shadow-xl max-h-96 overflow-y-auto ring-1 ring-zinc-200 dark:ring-white/20 z-50">
                 <ul class="py-2" role="listbox" aria-label="Search results">
                     <li v-for="result in results.slice(0, 5)" :key="`${result.type}-${result.id}`" role="option" class="group">
-                        <div class="block px-4 py-3 hover:bg-amber-100 dark:hover:bg-zinc-700/90 transition-colors cursor-pointer" @click="handleResultClick(result)">
+                        <button type="button" class="block w-full px-4 py-3 text-left hover:bg-amber-100 dark:hover:bg-zinc-700/90 transition-colors cursor-pointer" @click="handleResultClick(result)">
                             <div class="flex items-start gap-x-3">
                                 <!-- Type indicator -->
                                 <div class="flex-shrink-0 mt-1">
@@ -72,14 +71,14 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </button>
                     </li>
                 </ul>
 
                 <!-- View all results footer -->
                 <div class="border-t border-amber-200 dark:border-zinc-700">
                     <Link
-                        :href="`/search?query=${encodeURIComponent(searchQuery)}`"
+                        :href="route('search', { query: searchQuery })"
                         class="block px-4 py-3 text-center text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-zinc-700/50 transition-colors"
                         @click="showResults = false"
                     >
@@ -90,7 +89,7 @@
             </div>
 
             <!-- No Results Message -->
-            <div v-if="showResults && results.length === 0 && searchQuery" class="absolute left-0 right-0 top-full mt-2 w-[600px] max-w-[90vw] bg-white/95 dark:bg-zinc-800/95 backdrop-blur-sm rounded-lg shadow-xl p-4 ring-1 ring-zinc-200 dark:ring-white/20 z-50">
+            <div v-if="showResults && results.length === 0 && searchQuery" class="fixed left-4 right-4 top-16 mt-2 sm:absolute sm:left-0 sm:right-auto sm:top-full sm:w-[600px] sm:max-w-[80vw] bg-white/95 dark:bg-zinc-800/95 backdrop-blur-sm rounded-lg shadow-xl p-4 ring-1 ring-zinc-200 dark:ring-white/20 z-50">
                 <div class="text-center">
                     <MagnifyingGlassIcon class="mx-auto h-8 w-8 text-zinc-400 mb-2" />
                     <p class="text-sm text-zinc-600 dark:text-zinc-300">No results found</p>
@@ -157,7 +156,7 @@ const handleSearch = _.debounce(async () => {
 const goToFullSearch = () => {
     if (searchQuery.value.trim()) {
         showResults.value = false;
-        router.visit(`/search?query=${encodeURIComponent(searchQuery.value)}`);
+        router.visit(route('search', { query: searchQuery.value }));
     }
 };
 
@@ -186,6 +185,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    handleSearch.cancel();
     document.removeEventListener('click', handleClickOutside);
     document.removeEventListener('keydown', handleEscape);
 });

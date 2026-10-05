@@ -16,3 +16,20 @@
     @apply border-amber-200 dark:border-zinc-700;
   }
 }
+
+@layer components {
+  .workspace-scroll {
+    scrollbar-width: none;
+  }
+  .workspace-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .workspace-page > .py-12,
+  .workspace-page > .py-8 {
+    @apply py-0;
+  }
+  .workspace-page > .py-12 > .max-w-7xl,
+  .workspace-page > .py-8 > .max-w-7xl {
+    @apply max-w-none px-0;
+  }
+}

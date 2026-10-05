@@ -30,7 +30,7 @@ class DashboardController extends Controller
             ->orderBy('receipt_date', 'desc')
             ->take(5)
             ->get()->map(fn (Receipt $receipt): array => [
-                'id' => $receipt->id, 'receipt_date' => $receipt->receipt_date?->toDateString(),
+                'id' => $receipt->id, 'file_id' => $receipt->file_id, 'receipt_date' => $receipt->receipt_date?->toDateString(),
                 'merchant' => $receipt->merchant, 'total_amount' => $receipt->total_amount,
                 'currency' => $receipt->currency, 'receipt_category' => $receipt->receipt_category,
             ]);

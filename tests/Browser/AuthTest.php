@@ -144,14 +144,17 @@ test('logout works', function () {
     $this->browse(function (Browser $browser) use ($user) {
         $this->loginAs($browser, $user);
 
-        $browser->waitForText($user->name)
-            ->click('div.xl\\:pl-72 button[class*="flex"][class*="items-center"]')
-            ->waitForText('Log Out')
-            ->press('Log Out')
+        $browser->script('return Promise.all([caches.open("paperpulse-scanner-logout-test"), caches.open("logout-unrelated-test")]);');
+        $browser->click('button[aria-label="Account menu"]')
+            ->waitForText('Log out')
+            ->press('Log out')
             ->waitForLocation('/')
+            ->assertScript('caches.keys().then(keys => !keys.some(name => name.startsWith("paperpulse-scanner-")))', true)
+            ->assertScript('caches.keys().then(keys => keys.includes("logout-unrelated-test"))', true)
             ->visit('/dashboard')
             ->waitForLocation('/login')
             ->assertPathIs('/login');
+        $browser->script('return caches.delete("logout-unrelated-test");');
     });
 });
 

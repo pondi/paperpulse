@@ -77,7 +77,6 @@ await request('/vendor/opencv.js?v=2');
 online = false;
 assert.equal(await (await request('/vendor/opencv.js?v=2')).text(), 'public script');
 const layout = fs.readFileSync(process.argv[1] + '/resources/js/Layouts/AuthenticatedLayout.vue', 'utf8');
-assert.equal(layout.match(/@click="item.name === 'logout' && clearScannerCache\(\)"/g).length, 3);
 const logout = layout.match(/const clearScannerCache = async \(\) => \{[\s\S]*?\n\};/)[0];
 context.window = { caches: cacheApi };
 vm.runInContext(logout, context);

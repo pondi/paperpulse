@@ -1,8 +1,8 @@
 <template>
   <Modal :show="show" @close="close" max-width="6xl">
-    <div class="flex h-[80vh]">
+    <div class="flex h-[80vh] flex-col overflow-y-auto md:flex-row md:overflow-hidden">
       <!-- Left Panel - File Preview -->
-      <div class="flex-1 bg-amber-50 dark:bg-zinc-900 overflow-auto border-r border-amber-200 dark:border-zinc-700">
+      <div class="order-2 min-h-[40vh] shrink-0 bg-zinc-100 dark:bg-zinc-950 overflow-auto border-t border-zinc-200 md:order-1 md:min-h-0 md:flex-1 md:border-r md:border-t-0 dark:border-zinc-700">
         <!-- PDF Viewer -->
         <template v-if="item?.file?.pdfUrl">
           <iframe
@@ -44,7 +44,7 @@
       </div>
 
       <!-- Right Panel - Details -->
-      <div class="w-96 bg-white dark:bg-zinc-800 overflow-y-auto">
+      <div class="order-1 w-full shrink-0 bg-white dark:bg-zinc-800 md:order-2 md:w-96 md:overflow-y-auto">
         <div class="sticky top-0 bg-white dark:bg-zinc-800 border-b border-amber-200 dark:border-zinc-700 p-4 flex justify-between items-start z-10">
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-2">
@@ -156,11 +156,12 @@
           <!-- Actions -->
           <div class="pt-4 border-t border-amber-200 dark:border-zinc-700 space-y-2">
             <Link
-              :href="item?.url || '#'"
+              :href="workspaceUrl"
+              @click="close"
               class="w-full inline-flex justify-center items-center gap-x-2 px-4 py-2 bg-zinc-900 dark:bg-amber-600 border border-transparent rounded-md font-bold text-sm text-white hover:bg-zinc-800 dark:hover:bg-amber-700 shadow-sm hover:shadow focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-all duration-200"
             >
               <ArrowTopRightOnSquareIcon class="size-4" />
-              Open Full View
+              {{ item?.file_id || item?.file?.id ? 'Open document workspace' : 'Open full view' }}
             </Link>
           </div>
         </div>
@@ -171,7 +172,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import Modal from '@/Components/Common/Modal.vue';
 import ReceiptImage from '@/Components/Domain/ReceiptImage.vue';
 import DocumentImage from '@/Components/Domain/DocumentImage.vue';
@@ -194,6 +195,12 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close']);
+const page = usePage();
+const workspaceUrl = computed(() => {
+  const fileId = props.item?.file_id || props.item?.file?.id;
+  const returnTo = /^\/(library|search)(\?|$)/.test(page.url) && page.url.length <= 2048 ? page.url : undefined;
+  return fileId ? route('files.show', { file: fileId, return_to: returnTo }) : props.item?.url || '#';
+});
 
 const close = () => {
   emit('close');

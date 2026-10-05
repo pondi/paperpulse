@@ -5,6 +5,7 @@ import AuthenticatedLayout from './AuthenticatedLayout.vue'
 
 <template>
   <AuthenticatedLayout>
+    <template v-if="$slots.header" #header><slot name="header" /></template>
     <slot />
   </AuthenticatedLayout>
 </template>

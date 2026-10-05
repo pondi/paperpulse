@@ -54,3 +54,4 @@ require __DIR__.'/web/collections.php';
 require __DIR__.'/web/duplicates.php';
 require __DIR__.'/web/bank-statements.php';
 require __DIR__.'/web/shared.php';
+require __DIR__.'/web/library.php';

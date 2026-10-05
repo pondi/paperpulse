@@ -1,18 +1,19 @@
 <template>
-  <Head title="Search" />
-
   <AuthenticatedLayout>
+    <Head title="Search library" />
     <template #header>
-      <div class="flex justify-between items-center">
-        <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2">
-          <MagnifyingGlassIcon class="size-6" />
-          Search
-        </h2>
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p v-if="activeView" class="mb-1 text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">Saved view</p>
+          <h1 class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">{{ activeView?.name || 'Search library' }}</h1>
+          <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Search extracted text and narrow your results by date, amount or collection.</p>
+        </div>
+        <SaveViewButton scope="search" :filters="{ query: searchQuery, ...filters }" :active-view="activeView" />
       </div>
     </template>
 
-    <div class="py-6">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div>
+      <div class="mx-auto">
         <!-- Search Input -->
         <div class="mb-6">
           <div class="relative">
@@ -22,6 +23,7 @@
             <input
               v-model="searchQuery"
               type="text"
+              aria-label="Search document contents"
               placeholder="Search receipts, documents, invoices, and more..."
               class="block w-full pl-10 pr-3 py-3 border border-zinc-300 dark:border-zinc-600 rounded-lg leading-5 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
               @keyup.enter="performSearch"
@@ -35,10 +37,11 @@
           </div>
         </div>
 
-        <div class="flex gap-6">
+        <button type="button" @click="filtersOpen = !filtersOpen" :aria-expanded="filtersOpen" aria-controls="search-filters" class="mb-4 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-600 lg:hidden dark:border-zinc-700 dark:text-zinc-300">{{ filtersOpen ? 'Hide filters' : 'Show filters' }}</button>
+        <div class="flex flex-col gap-6 lg:flex-row">
           <!-- Filters Sidebar -->
-          <div class="w-64 flex-shrink-0">
-            <div class="bg-white dark:bg-zinc-800 rounded-lg border border-amber-200 dark:border-zinc-700 p-4 sticky top-6">
+          <div id="search-filters" :class="[filtersOpen ? 'block' : 'hidden lg:block', 'w-full shrink-0 lg:w-60']">
+            <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 lg:sticky lg:top-20">
               <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-zinc-900 dark:text-white">Filters</h3>
                 <button
@@ -467,6 +470,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
+import SaveViewButton from '@/Components/Search/SaveViewButton.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import SearchResultCard from '@/Components/Search/SearchResultCard.vue';
 import FilePreviewModal from '@/Components/Common/FilePreviewModal.vue';
@@ -476,6 +480,8 @@ import axios from 'axios';
 
 // Props from controller
 const props = defineProps({
+  initialFilters: { type: Object, default: () => ({}) },
+  activeView: { type: Object, default: null },
   query: {
     type: String,
     default: ''
@@ -513,6 +519,7 @@ const facets = ref(props.initialFacets || { total: 0, receipts: 0, documents: 0,
 const collections = ref([]);
 const pagination = ref(props.initialPagination);
 const currentPage = ref(props.initialPagination.page);
+const filtersOpen = ref(false);
 
 // Filter state
 const filters = ref({
@@ -522,7 +529,8 @@ const filters = ref({
   amount_min: null,
   amount_max: null,
   category: '',
-  collection_id: ''
+  collection_id: '',
+  ...props.initialFilters
 });
 
 // Sort state
@@ -546,7 +554,11 @@ const hasActiveFilters = computed(() => {
     filters.value.amount_min !== null ||
     filters.value.amount_max !== null ||
     filters.value.category ||
-    filters.value.collection_id;
+    filters.value.collection_id ||
+    filters.value.tags?.length ||
+    filters.value.document_type ||
+    filters.value.vendor ||
+    filters.value.vendors?.length;
 });
 
 const sortedResults = computed(() => {
@@ -604,6 +616,14 @@ const performSearch = async () => {
   invalidateSearch();
   const requestId = requestSequence;
   if (!searching.value) {
+    router.replace({
+      url: route('search', props.activeView ? { saved_search: props.activeView.id } : {}),
+      preserveState: true,
+      preserveScroll: true,
+      props: current => ({ ...current, query: '', initialFilters: { ...filters.value },
+        initialResults: [], initialPagination: pagination.value, initialFacets: emptyFacets,
+        initialSearchStatus: 'available' }),
+    });
     return;
   }
   searchController = new AbortController();
@@ -628,6 +648,14 @@ const performSearch = async () => {
     pagination.value = response.data.pagination;
     facets.value = response.data.facets || emptyFacets;
     searchError.value = searchMessages[response.data.search_status] || '';
+    router.replace({
+      url: route('search', { ...params, ...(props.activeView ? { saved_search: props.activeView.id } : {}) }),
+      preserveState: true,
+      preserveScroll: true,
+      props: current => ({ ...current, query: searchQuery.value, initialFilters: { ...filters.value },
+        initialResults: results.value, initialPagination: pagination.value, initialFacets: facets.value,
+        initialSearchStatus: response.data.search_status }),
+    });
   } catch (error) {
     if (requestId !== requestSequence) {
       return;

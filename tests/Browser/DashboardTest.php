@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 use Laravel\Dusk\Browser;
 
+beforeEach(function (): void {
+    $this->browse(fn (Browser $browser) => $browser->resize(1440, 1000));
+});
+
 test('dashboard page loads after login', function () {
     $user = $this->createUser();
 
@@ -38,39 +42,42 @@ test('sidebar navigation links are visible', function () {
             ->waitFor('nav')
             ->assertPresent('a[href$="/dashboard"]')
             ->assertPresent('a[href$="/search"]')
-            ->assertPresent('a[href$="/receipts"]')
-            ->assertPresent('a[href$="/documents"]')
-            ->assertPresent('a[href$="/tags"]')
+            ->assertPresent('aside a[href$="/library"]')
+            ->assertPresent('aside a[href$="/saved-views"]')
             ->assertPresent('a[href$="/collections"]')
-            ->assertPresent('a[href$="/documents/upload"]')
+            ->assertPresent('@add-document')
             ->assertPresent('a[href$="/analytics"]')
             ->assertPresent('a[href$="/files-processing"]');
     });
 });
 
-test('clicking receipts link navigates to receipts page', function () {
+test('library receipts tab filters the document workspace', function () {
     $user = $this->createUser();
 
     $this->browse(function (Browser $browser) use ($user) {
         $this->loginAs($browser, $user)
             ->assertPathIs('/dashboard')
             ->waitFor('nav')
-            ->click('div.hidden.xl\\:fixed a[href$="/receipts"]')
-            ->waitForLocation('/receipts')
-            ->assertPathIs('/receipts');
+            ->click('aside a[href$="/library"]')
+            ->waitFor('@library-query')
+            ->click('nav[aria-label="Workspace navigation"] a[href$="type=receipt"]')
+            ->waitUsing(5, 100, fn (): bool => str_contains($browser->driver->getCurrentURL(), 'type=receipt'))
+            ->assertPathIs('/library')->assertQueryStringHas('type', 'receipt');
     });
 });
 
-test('clicking documents link navigates to documents page', function () {
+test('library documents tab filters the document workspace', function () {
     $user = $this->createUser();
 
     $this->browse(function (Browser $browser) use ($user) {
         $this->loginAs($browser, $user)
             ->assertPathIs('/dashboard')
             ->waitFor('nav')
-            ->click('div.hidden.xl\\:fixed a[href$="/documents"]')
-            ->waitForLocation('/documents')
-            ->assertPathIs('/documents');
+            ->click('aside a[href$="/library"]')
+            ->waitFor('@library-query')
+            ->click('nav[aria-label="Workspace navigation"] a[href$="type=document"]')
+            ->waitUsing(5, 100, fn (): bool => str_contains($browser->driver->getCurrentURL(), 'type=document'))
+            ->assertPathIs('/library')->assertQueryStringHas('type', 'document');
     });
 });
 
@@ -81,7 +88,9 @@ test('clicking upload link navigates to upload page', function () {
         $this->loginAs($browser, $user)
             ->assertPathIs('/dashboard')
             ->waitFor('nav')
-            ->click('div.hidden.xl\\:fixed a[href$="/documents/upload"]')
+            ->click('@add-document')
+            ->waitFor('a[href$="/documents/upload"]')
+            ->click('a[href$="/documents/upload"]')
             ->waitForLocation('/documents/upload')
             ->assertPathIs('/documents/upload');
     });
@@ -94,7 +103,9 @@ test('clicking tags link navigates to tags page', function () {
         $this->loginAs($browser, $user)
             ->assertPathIs('/dashboard')
             ->waitFor('nav')
-            ->click('div.hidden.xl\\:fixed a[href$="/tags"]')
+            ->click('aside a[href$="/collections"]')
+            ->waitForLocation('/collections')
+            ->click('nav[aria-label="Workspace navigation"] a[href$="/tags"]')
             ->waitForLocation('/tags')
             ->assertPathIs('/tags');
     });
@@ -107,61 +118,69 @@ test('clicking collections link navigates to collections page', function () {
         $this->loginAs($browser, $user)
             ->assertPathIs('/dashboard')
             ->waitFor('nav')
-            ->click('div.hidden.xl\\:fixed a[href$="/collections"]')
+            ->click('aside a[href$="/collections"]')
             ->waitForLocation('/collections')
             ->assertPathIs('/collections');
     });
 });
 
-test('clicking vouchers child link navigates to vouchers page', function () {
+test('library document type selector includes vouchers', function () {
     $user = $this->createUser();
 
     $this->browse(function (Browser $browser) use ($user) {
         $this->loginAs($browser, $user)
             ->assertPathIs('/dashboard')
             ->waitFor('nav')
-            ->click('div.hidden.xl\\:fixed a[href$="/vouchers"]')
-            ->waitForLocation('/vouchers')
-            ->assertPathIs('/vouchers');
+            ->click('aside a[href$="/library"]')
+            ->waitFor('@library-query')
+            ->select('select[aria-label="Document type"]', 'voucher')
+            ->waitUsing(5, 100, fn (): bool => str_contains($browser->driver->getCurrentURL(), 'type=voucher'))
+            ->assertPathIs('/library')->assertQueryStringHas('type', 'voucher');
     });
 });
 
-test('clicking invoices child link navigates to invoices page', function () {
+test('library invoices tab filters the document workspace', function () {
     $user = $this->createUser();
 
     $this->browse(function (Browser $browser) use ($user) {
         $this->loginAs($browser, $user)
             ->assertPathIs('/dashboard')
             ->waitFor('nav')
-            ->click('div.hidden.xl\\:fixed a[href$="/invoices"]')
-            ->waitForLocation('/invoices')
-            ->assertPathIs('/invoices');
+            ->click('aside a[href$="/library"]')
+            ->waitFor('@library-query')
+            ->click('nav[aria-label="Workspace navigation"] a[href$="type=invoice"]')
+            ->waitUsing(5, 100, fn (): bool => str_contains($browser->driver->getCurrentURL(), 'type=invoice'))
+            ->assertPathIs('/library')->assertQueryStringHas('type', 'invoice');
     });
 });
 
-test('clicking contracts child link navigates to contracts page', function () {
+test('library contracts tab filters the document workspace', function () {
     $user = $this->createUser();
 
     $this->browse(function (Browser $browser) use ($user) {
         $this->loginAs($browser, $user)
             ->assertPathIs('/dashboard')
             ->waitFor('nav')
-            ->click('div.hidden.xl\\:fixed a[href$="/contracts"]')
-            ->waitForLocation('/contracts')
-            ->assertPathIs('/contracts');
+            ->click('aside a[href$="/library"]')
+            ->waitFor('@library-query')
+            ->click('nav[aria-label="Workspace navigation"] a[href$="type=contract"]')
+            ->waitUsing(5, 100, fn (): bool => str_contains($browser->driver->getCurrentURL(), 'type=contract'))
+            ->assertPathIs('/library')->assertQueryStringHas('type', 'contract');
     });
 });
 
-test('clicking bank statements child link navigates to bank statements page', function () {
+test('library bank statements tab filters the document workspace', function () {
     $user = $this->createUser();
 
     $this->browse(function (Browser $browser) use ($user) {
         $this->loginAs($browser, $user)
             ->assertPathIs('/dashboard')
             ->waitFor('nav')
-            ->click('div.hidden.xl\\:fixed a[href$="/bank-statements"]')
-            ->waitForLocation('/bank-statements')
-            ->assertPathIs('/bank-statements');
+            ->click('aside a[href$="/library"]')
+            ->waitFor('@library-query')
+            ->click('nav[aria-label="Workspace navigation"] a[href$="type=bank_statement"]')
+            ->waitUsing(5, 100, fn (): bool => str_contains($browser->driver->getCurrentURL(), 'type=bank_statement'))
+            ->assertPathIs('/library')->assertQueryStringHas('type', 'bank_statement');
     });
 });
 
@@ -172,7 +191,9 @@ test('clicking categories child link navigates to categories page', function () 
         $this->loginAs($browser, $user)
             ->assertPathIs('/dashboard')
             ->waitFor('nav')
-            ->click('div.hidden.xl\\:fixed a[href$="/documents/categories"]')
+            ->click('aside a[href$="/collections"]')
+            ->waitForLocation('/collections')
+            ->click('nav[aria-label="Workspace navigation"] a[href$="/documents/categories"]')
             ->waitForLocation('/documents/categories')
             ->assertPathIs('/documents/categories');
     });
@@ -196,7 +217,7 @@ test('user menu shows profile and preferences links', function () {
         $this->loginAs($browser, $user)
             ->assertPathIs('/dashboard')
             ->waitForText($user->name)
-            ->click('div.xl\\:pl-72 button[class*="flex"][class*="items-center"]')
+            ->click('button[aria-label="Account menu"]')
             ->pause(500)
             ->waitFor('a[href$="/profile"]')
             ->assertPresent('a[href$="/profile"]')

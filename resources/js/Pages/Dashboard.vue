@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import ExpiringVouchersWidget from '@/Components/Widgets/ExpiringVouchersWidget.vue';
 import EndingWarrantiesWidget from '@/Components/Widgets/EndingWarrantiesWidget.vue';
 import { useTranslations } from '@/Composables/useTranslations';
@@ -95,7 +95,7 @@ const { formatDate, formatCurrency } = useDateFormatter();
                                             {{ formatDate(receipt.receipt_date) }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                            {{ receipt.merchant?.name }}
+                                            <Link :href="receipt.file_id ? route('files.show', receipt.file_id) : route('receipts.show', receipt.id)" class="hover:text-amber-700 dark:hover:text-amber-400">{{ receipt.merchant?.name || 'Open receipt' }}</Link>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-zinc-900 dark:text-zinc-100">
                                             {{ formatCurrency(receipt.total_amount, receipt.currency) }}

@@ -18,7 +18,7 @@ it('creates ZIP output across all named queues using one database worker', funct
         }, queue: $queue);
     }
     $this->artisan('queue:work', ['connection' => 'database', '--queue' => implode(',', config('queue.worker_queues')),
-        '--stop-when-empty' => true, '--sleep' => 0, '--no-interaction' => true])->assertSuccessful();
+        '--stop-when-empty' => true, '--sleep' => 0, '--memory' => 512, '--no-interaction' => true])->assertSuccessful();
 
     foreach (config('queue.worker_queues') as $queue) {
         $path = 'private/exports/'.$user->id.'/'.$queue.'.zip';

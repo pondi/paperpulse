@@ -15,6 +15,7 @@ use App\Models\InvoiceLineItem;
 use App\Models\LineItem;
 use App\Models\Merchant;
 use App\Models\OrganizationRun;
+use App\Models\PulseDavFile;
 use App\Models\Receipt;
 use App\Models\Tag;
 use App\Models\UserPreference;
@@ -1107,7 +1108,6 @@ it('renders both duplicate candidates including files with missing extracted met
     });
 });
 
-
 it('keeps scanner folder navigation usable for empty lists and failed requests', function (bool $fails): void {
     $user = $this->createUser();
     $this->browse(function (Browser $browser) use ($user, $fails): void {
@@ -1121,3 +1121,22 @@ it('keeps scanner folder navigation usable for empty lists and failed requests',
         }
     });
 })->with([false, true]);
+
+it('opens named scanner folder tags and discards canceled edits while saving confirmed tags', function (): void {
+    $user = $this->createUser();
+    $tag = Tag::create(['user_id' => $user->id, 'name' => 'scanner-tax', 'color' => '#123456']);
+    $this->browse(function (Browser $browser) use ($user, $tag): void {
+        $this->loginAs($browser, $user);
+        $browser->visit('/pulsedav')->waitForText('FOLDER VIEW');
+        $browser->script('const originalFetch = window.fetch; window.fetch = (url, options) => String(url).endsWith("/pulsedav/folders") ? Promise.resolve(new Response(JSON.stringify({hierarchy:[{path:"Taxes", name:"Taxes", is_folder:true, folder_tag_ids:[]}]}), {status:200, headers:{"Content-Type":"application/json"}})) : originalFetch(url, options)');
+        $browser->press('FOLDER VIEW')->waitFor('button[title="Manage folder tags"]')->click('button[title="Manage folder tags"]')
+            ->waitFor('[role="dialog"] h2')->assertSeeIn('[role="dialog"]', 'Manage Folder Tags: Taxes');
+        $browser->assertScript('document.querySelector("[role=dialog]").getAttribute("aria-labelledby") === document.querySelector("[role=dialog] h2").id', true);
+        $browser->type('[role="dialog"] input', 'scanner-tax')->pause(200)->keys('[role="dialog"] input', WebDriverKeys::ENTER)
+            ->assertSeeIn('[role="dialog"]', 'scanner-tax')->press('Cancel')->waitUntilMissing('[role="dialog"]')
+            ->click('button[title="Manage folder tags"]')->waitFor('[role="dialog"] h2')->assertScript("document.querySelector('[role=dialog] input').parentElement.querySelectorAll('span.inline-flex').length", 0)
+            ->type('[role="dialog"] input', 'scanner-tax')->pause(200)->keys('[role="dialog"] input', WebDriverKeys::ENTER)->press('Save Tags')->waitUntilMissing('[role="dialog"]');
+        $browser->waitUsing(5, 100, fn (): bool => PulseDavFile::where('user_id', $user->id)->where('folder_path', 'Taxes')->exists());
+        expect(PulseDavFile::where('user_id', $user->id)->where('folder_path', 'Taxes')->firstOrFail()->folder_tag_ids)->toBe([$tag->id]);
+    });
+});

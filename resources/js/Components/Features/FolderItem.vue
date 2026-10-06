@@ -1,4 +1,5 @@
 <template>
+    <div>
     <div
         class="flex items-center p-3 hover:bg-amber-50 dark:hover:bg-zinc-700 rounded-lg cursor-pointer border border-transparent hover:border-amber-200 dark:hover:border-zinc-600"
         @click="handleClick"
@@ -54,7 +55,7 @@
             <!-- Folder actions -->
             <div v-if="item.is_folder" class="ml-4">
                 <button
-                    @click.stop="showTagModal = true"
+                    @click.stop="openTagModal"
                     class="text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
                     title="Manage folder tags"
                 >
@@ -67,11 +68,9 @@
     </div>
     
     <!-- Tag Management Modal -->
-    <Modal v-if="showTagModal" @close="showTagModal = false">
-        <template #title>
-            Manage Folder Tags: {{ item.name || item.filename }}
-        </template>
-        
+    <Modal :show="showTagModal" @close="showTagModal = false" v-slot="{ titleId }">
+        <div class="p-6">
+        <h2 :id="titleId" class="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">Manage Folder Tags: {{ item.name || item.filename }}</h2>
         <div class="space-y-4">
             <p class="text-sm text-zinc-600 dark:text-zinc-400">
                 Tags applied to this folder will be inherited by all files within it during import.
@@ -81,8 +80,6 @@
                 <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Folder Tags</label>
                 <TagSelector
                     v-model="folderTagIds"
-                    :tags="availableTags"
-                    @create-tag="createTag"
                 />
             </div>
             
@@ -101,11 +98,13 @@
                 </button>
             </div>
         </div>
+        </div>
     </Modal>
+    </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import Modal from '../Common/Modal.vue';
 import TagSelector from '../Domain/TagSelector.vue';
 
@@ -123,10 +122,12 @@ const props = defineProps({
 const emit = defineEmits(['toggle-selection', 'navigate', 'update-tags']);
 
 const showTagModal = ref(false);
-const folderTagIds = ref(props.item.folder_tag_ids || []);
+const folderTagIds = ref([]);
 
-// This would normally come from props or be fetched
-const availableTags = ref([]);
+const openTagModal = () => {
+    folderTagIds.value = [...(props.item.folder_tag_ids || [])];
+    showTagModal.value = true;
+};
 
 const handleClick = () => {
     if (props.item.is_folder) {
@@ -137,11 +138,6 @@ const handleClick = () => {
 const saveFolderTags = () => {
     emit('update-tags', props.item.folder_path || props.item.path, folderTagIds.value);
     showTagModal.value = false;
-};
-
-const createTag = (tagName) => {
-    // This would be handled by parent component
-    if (import.meta.env.DEV) console.log('Create tag:', tagName);
 };
 
 const formatFileSize = (bytes) => {

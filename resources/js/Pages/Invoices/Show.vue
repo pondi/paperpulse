@@ -121,6 +121,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const isEditing = ref(false);
+const showPreview = ref(true);
 const showDeleteModal = ref(false);
 const invoiceTags = ref(props.invoice.tags);
 const invoiceCollections = ref<number[]>(props.invoice.collections?.map(c => c.id) || []);
@@ -271,6 +272,10 @@ const getInvoiceTypeClass = () => {
                         <ArrowDownTrayIcon class="h-4 w-4" />
                         Download
                     </button>
+                    <button type="button" @click="showPreview = !showPreview" :aria-expanded="showPreview"
+                      class="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-600 dark:text-zinc-200">
+                      {{ showPreview ? 'Hide source preview' : 'Show source preview' }}
+                    </button>
                     <SharingControls
                         :file-id="invoice.id"
                         file-type="invoice"
@@ -290,9 +295,9 @@ const getInvoiceTypeClass = () => {
 
         <Breadcrumbs v-if="breadcrumbs?.length" :crumbs="breadcrumbs" class="px-6 pt-4" />
 
-        <div class="flex flex-col xl:flex-row xl:h-[calc(100vh-9rem)] xl:overflow-hidden">
-            <!-- Left Panel - Invoice Details -->
-            <div class="w-full min-w-0 break-words p-3 sm:p-6 xl:w-1/2 xl:overflow-y-auto xl:border-r border-amber-200 dark:border-zinc-700">
+        <div class="flex flex-col xl:flex-row items-start">
+            <!-- Invoice details -->
+            <div class="w-full min-w-0 break-words p-3 sm:p-6" :class="showPreview ? 'xl:w-2/3' : 'xl:w-full'">
                 <div class="space-y-8">
                     <!-- Invoice Status Badge -->
                     <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
@@ -593,8 +598,8 @@ const getInvoiceTypeClass = () => {
                 </div>
             </div>
 
-            <!-- Right Panel - Invoice Preview -->
-            <div class="w-full min-w-0 min-h-64 xl:w-1/2 bg-amber-50 dark:bg-zinc-900 overflow-auto">
+            <!-- Source preview -->
+            <div v-if="showPreview" class="w-full min-w-0 min-h-64 xl:w-1/3 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] bg-amber-50 dark:bg-zinc-900 overflow-auto">
                 <DocumentImage
                     :file="invoice.file"
                     :alt-text="`Invoice ${invoice.invoice_number}`"

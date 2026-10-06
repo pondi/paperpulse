@@ -7,6 +7,7 @@ use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Invoice;
+use App\Models\InvoiceLineItem;
 use App\Models\LineItem;
 use App\Models\Merchant;
 use App\Models\OrganizationRun;
@@ -851,6 +852,33 @@ it('stacks entity details and keeps actions within phone and tablet widths', fun
                     ->press('Share')->waitFor('[role="dialog"]')->keys('[role="dialog"] input', '{escape}')
                     ->waitUntilMissing('[role="dialog"] input');
             }
+        }
+    });
+});
+
+it('uses page scrolling for long details and expands tables when hiding the source', function (): void {
+    $user = $this->createUser();
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
+    LineItem::create(['receipt_id' => $receipt->id, 'text' => 'Short receipt item', 'qty' => 1, 'price' => 10, 'total' => 10]);
+    $invoice = Invoice::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
+    InvoiceLineItem::factory()->count(50)->create(['invoice_id' => $invoice->id, 'description' => 'Long invoice line description']);
+    $this->browse(function (Browser $browser) use ($user, $receipt, $invoice): void {
+        foreach (['/receipts/'.$receipt->id, '/invoices/'.$invoice->id] as $path) {
+            $browser->resize(1440, 900)->loginAs($user)->visit($path)->waitForText('Hide source preview');
+            $browser->assertScript(<<<'JS'
+                (() => {
+                    const table = document.querySelector('table');
+                    for (let el = table.parentElement; el && el !== document.body; el = el.parentElement) {
+                        if (el.scrollHeight > el.clientHeight && ['auto', 'scroll', 'hidden'].includes(getComputedStyle(el).overflowY)) return false;
+                    }
+                    return true;
+                })()
+                JS, true)
+                ->press('Hide source preview')->waitForText('Show source preview')
+                ->assertScript("document.querySelector('table').parentElement.clientWidth > 950", true);
+            $browser->scrollIntoView('table')->keys('div[tabindex="0"]', '{end}');
+            $browser->script('window.scrollTo(0, 0)');
+            $browser->press('Show source preview')->waitForText('Hide source preview');
         }
     });
 });

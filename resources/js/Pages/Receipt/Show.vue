@@ -9,6 +9,10 @@
           {{ receipt.merchant?.name || __('unknown_merchant') }}
         </h2>
         <div class="flex flex-wrap items-center gap-2">
+          <button type="button" @click="showPreview = !showPreview" :aria-expanded="showPreview"
+            class="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-600 dark:text-zinc-200">
+            {{ showPreview ? 'Hide source preview' : 'Show source preview' }}
+          </button>
           <SharingControls
             :file-id="receipt.id"
             file-type="receipt"
@@ -28,9 +32,9 @@
 
     <Breadcrumbs v-if="breadcrumbs.length" :crumbs="breadcrumbs" class="px-6 pt-4" />
 
-    <div class="flex flex-col xl:flex-row xl:h-[calc(100vh-9rem)] xl:overflow-hidden">
-      <!-- Left Panel - Receipt Details -->
-      <div class="w-full min-w-0 break-words p-3 sm:p-6 xl:w-1/2 xl:overflow-y-auto xl:border-r border-amber-200 dark:border-zinc-700">
+    <div class="flex flex-col xl:flex-row items-start">
+      <!-- Receipt details -->
+      <div class="w-full min-w-0 break-words p-3 sm:p-6" :class="showPreview ? 'xl:w-2/3' : 'xl:w-full'">
         <div class="space-y-8">
           <!-- Receipt Status -->
           <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
@@ -158,7 +162,7 @@
                 </thead>
                 <tbody class="divide-y divide-amber-200 dark:divide-zinc-700">
                   <tr v-for="item in receipt.lineItems" :key="item.id" class="hover:bg-amber-50 dark:hover:bg-zinc-700/50">
-                    <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-700 dark:text-zinc-300">{{ item.text }}</td>
+                    <td class="min-w-48 break-words px-3 py-4 text-sm text-zinc-700 dark:text-zinc-300">{{ item.text }}</td>
                     <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-700 dark:text-zinc-300">{{ item.sku }}</td>
                     <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-700 dark:text-zinc-300">{{ item.qty }}</td>
                     <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-700 dark:text-zinc-300">{{ formatCurrency(item.price, receipt.currency) }}</td>
@@ -187,8 +191,8 @@
         </div>
       </div>
 
-      <!-- Right Panel - Receipt Image -->
-      <div class="w-full min-w-0 min-h-64 xl:w-1/2 bg-amber-50 dark:bg-zinc-900 overflow-auto">
+      <!-- Source preview -->
+      <div v-if="showPreview" class="w-full min-w-0 min-h-64 xl:w-1/3 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] bg-amber-50 dark:bg-zinc-900 overflow-auto">
         <ReceiptImage
           :file="receipt.file"
           :alt-text="__('receipt_image')"
@@ -281,6 +285,7 @@ const page = usePage();
 const __ = (key) => page.props.language?.messages?.[key] || key;
 const { formatDate, formatCurrency } = useDateFormatter();
 
+const showPreview = ref(true);
 const isEditing = ref(false);
 const showAddLineItem = ref(false);
 const editingLineItem = ref(null);

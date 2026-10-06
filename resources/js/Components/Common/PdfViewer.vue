@@ -90,7 +90,7 @@ const handleClose = () => {
                         <div class="flex-1 overflow-hidden bg-amber-100 dark:bg-zinc-900">
                             <div v-if="pdfUrl" class="h-full w-full">
                                 <iframe
-                                    :src="pdfUrl"
+                                    :src="`${pdfUrl}#navpanes=0&amp;view=Fit`"
                                     class="h-full w-full border-0"
                                     title="PDF Document Viewer"
                                 ></iframe>

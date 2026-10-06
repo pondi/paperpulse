@@ -6,7 +6,7 @@
         <!-- PDF Viewer -->
         <template v-if="item?.file?.pdfUrl">
           <iframe
-            :src="item.file.pdfUrl"
+            :src="`${item.file.pdfUrl}#navpanes=0&amp;view=Fit`"
             class="w-full h-full border-0"
             title="Document Viewer"
           ></iframe>

@@ -59,7 +59,9 @@ async function render(file, props) {
     app.config.globalProperties.$page = page;
     app.config.globalProperties.route = route;
     app.config.warnHandler = message => warnings.push(message);
-    return renderToString(app);
+    const context = {};
+    const html = await renderToString(app, context);
+    return html + Object.values(context.teleports || {}).join('');
 }
 
 if (scenario === 'original downloads') {
@@ -199,13 +201,26 @@ if (scenario === 'report navigation') {
         assert.ok(html.includes('Open file workspace'));
     }
 }
+if (scenario === 'pdf initial fit') {
+    for (const [file, props] of [
+        ['Components/Domain/DocumentPreview.vue', { file: { id: 1, name: 'Scan', pdfUrl: '/scan.pdf?variant=original', url: '/scan.pdf', extension: 'pdf' } }],
+        ['Components/Common/PdfViewer.vue', { show: true, pdfUrl: '/scan.pdf?variant=original' }],
+        ['Components/Common/FilePreviewModal.vue', { show: true, item: { title: 'Scan', type: 'invoice', file_id: 1, file: { pdfUrl: '/scan.pdf?variant=original' } } }]
+    ]) {
+        const html = await render(file, props);
+        assert.ok(html.includes('/scan.pdf?variant=original#navpanes=0&amp;view=Fit'), file);
+    }
+    const image = await render('Components/Domain/DocumentPreview.vue', { file: { id: 1, name: 'Portrait', url: '/scan.jpg', extension: 'jpg' } });
+    assert.ok(image.includes('src="/scan.jpg"'));
+    assert.ok(!image.includes('<iframe'));
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

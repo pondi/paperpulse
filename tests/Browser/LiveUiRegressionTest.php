@@ -14,9 +14,13 @@ use App\Models\Receipt;
 use App\Models\Tag;
 use App\Models\UserPreference;
 use App\Models\Vendor;
+use App\Services\Files\StoragePathBuilder;
+use Dompdf\Dompdf;
 use Facebook\WebDriver\WebDriverKeys;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
+use Smalot\PdfParser\Parser;
 
 it('distinguishes recommendation generation failures pending work and successful empty reviews', function (string $status, string $message): void {
     $user = $this->createUser();
@@ -764,4 +768,34 @@ it('reaches common settings through labelled sections on mobile and desktop', fu
             }
         }
     });
+});
+
+it('fits portrait and multipage PDF sources in previews at different widths', function (): void {
+    $user = $this->createUser();
+    $multiPage = new Dompdf;
+    $multiPage->loadHtml('<p>First page</p><p style="page-break-before: always">Second page</p>');
+    $multiPage->render();
+    expect((new Parser)->parseContent($multiPage->output())->getPages())->toHaveCount(2);
+    foreach ([
+        'real-receipt.pdf' => file_get_contents(base_path('tests/Browser/fixtures/real-receipt.pdf')),
+        'real-invoice.pdf' => file_get_contents(base_path('tests/Browser/fixtures/real-invoice.pdf')),
+        'multipage.pdf' => $multiPage->output(),
+    ] as $fixture => $contents) {
+        $file = File::factory()->for($user)->create(['fileName' => $fixture, 'file_type' => 'document', 'fileExtension' => 'pdf', 'status' => 'completed']);
+        $path = StoragePathBuilder::storagePath($user->id, $file->guid, 'document', 'original', 'pdf');
+        Storage::disk('paperpulse')->put($path, $contents);
+        $file->update(['s3_original_path' => $path]);
+        try {
+            $this->browse(function (Browser $browser) use ($user, $file): void {
+                foreach ([1440, 768, 390] as $width) {
+                    $browser->resize($width, 900)->loginAs($user)->visit('/files/'.$file->id)->waitFor('iframe')
+                        ->assertScript("document.querySelector('iframe').src.endsWith('#navpanes=0&view=Fit')", true)
+                        ->assertScript("document.querySelector('iframe').getBoundingClientRect().width <= innerWidth", true)
+                        ->assertPresent('a[target="_blank"]');
+                }
+            });
+        } finally {
+            Storage::disk('paperpulse')->delete($path);
+        }
+    }
 });

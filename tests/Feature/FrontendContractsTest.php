@@ -34,6 +34,7 @@ const route = (name, params) => ziggyRoute(name, params, true, input.ziggy);
 const page = { props: { flash: {}, auth: { user: { preferences: { timezone: 'UTC' } } }, language: { messages: {} } } };
 const stub = (props, { slots }) => props.show === false ? null : vue.h('div', [slots.header?.(), slots.default?.({ active: false })]);
 const warnings = [];
+const pollCalls = [];
 async function render(file, props) {
     const { descriptor } = parse(fs.readFileSync('resources/js/' + file, 'utf8'));
     const compiled = compileScript(descriptor, { id: file, genDefaultAs: 'ContractPage', inlineTemplate: true });
@@ -47,7 +48,7 @@ async function render(file, props) {
                 : name === 'useForm' ? data => vue.reactive({ ...data, processing: false, errors: {} })
                 : name === 'useDateFormatter' ? () => ({ formatDate: value => value, formatDateTime: value => value, formatCurrency: (value, currency) => `${value} ${currency}` })
                 : name === 'useTranslations' ? () => ({ __: key => key })
-                : name === 'router' ? {} : stub;
+                : name === 'usePoll' ? () => ({ start: () => pollCalls.push('start'), stop: () => pollCalls.push('stop') }) : name === 'router' ? {} : stub;
         }
         return '';
     }).replace(/import\s+(\w+)\s+from\s+['"][^'"]+['"];?/g, (_, name) => {
@@ -242,13 +243,29 @@ if (scenario === 'receipt totals review') {
     const receipt = await render('Pages/Receipt/Show.vue', { receipt: { id: 1246, file_id: 391, file: { id: 391, needs_review: true }, currency: 'EUR', total_amount: '21.56', reconciliation, lineItems: [] }, categories: [] });
     for (const text of ['Source discount', '1.14 EUR', 'Final amount', '21.56 EUR', '/files/391/extraction-report']) assert.ok(receipt.includes(text), text);
 }
+if (scenario === 'processing timing') {
+    for (const status of ['pending', 'processing', 'completed', 'failed']) {
+        await render('Pages/Files/Show.vue', { file: { id: 402, name: 'Upload.pdf', status }, extractedEntities: [] });
+        assert.equal(pollCalls.at(-1), ['pending', 'processing'].includes(status) ? 'start' : 'stop');
+    }
+    for (const [state, label] of [['pending', 'Queued'], ['processing', 'Active'], ['retrying', 'Waiting to retry'], ['completed', 'Completed'], ['failed', 'Failed']]) {
+        const html = await render('Components/Domain/ProcessingProgress.vue', { processing: { state, stage: 'Extract text',
+            queued_at: '2026-10-06T10:00:00Z', started_at: state === 'pending' ? null : '2026-10-06T10:01:00Z',
+            finished_at: ['completed', 'failed'].includes(state) ? '2026-10-06T10:03:00Z' : null, elapsed_seconds: 120, attempt: state === 'retrying' ? 2 : 1, progress: 40 } });
+        assert.ok(html.includes(label), state);
+        assert.ok(html.includes('Stage: Extract text'), state);
+        assert.equal(html.includes('2 min 0 sec elapsed'), state !== 'pending');
+        assert.equal(html.includes('Attempt 2'), state === 'retrying');
+        assert.equal(html.includes('Finished'), ['completed', 'failed'].includes(state));
+    }
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts', 'receipt totals review']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts', 'receipt totals review', 'processing timing']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {
@@ -305,6 +322,7 @@ let code = compiled.content.replace(/import\s+\{([\s\S]*?)\}\s+from\s+['"]([^'"]
 code = stripTypeScriptTypes(code, { mode: 'strip' });
 const component = new Function(...Object.keys(bindings), code + '; return SharedPage;')(...Object.values(bindings));
 const warnings = [];
+const pollCalls = [];
 async function render(props) {
     const app = vue.createSSRApp(component, props);
     app.config.globalProperties.$page = { props };

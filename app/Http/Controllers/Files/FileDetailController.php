@@ -27,6 +27,7 @@ class FileDetailController extends Controller
     {
         $this->authorize('view', $file);
         $details->loadExtractedEntities($file);
+        $file->load(['processingJobs' => fn ($query) => $query->latest('id')->limit(1)->with('tasks')]);
         $entities = $file->extractableEntities->filter(fn (ExtractableEntity $extraction): bool => $extraction->entity !== null)
             ->map(function (ExtractableEntity $extraction) use ($request): array {
                 $entity = $extraction->entity;

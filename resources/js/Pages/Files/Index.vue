@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { onBeforeUnmount, reactive, ref, watch } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePoll } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
 import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
+import ProcessingProgress from '@/Components/Domain/ProcessingProgress.vue';
 import Pagination from '@/Pages/Jobs/Components/Pagination.vue';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 
@@ -14,6 +15,7 @@ type FileItem = {
     guid: string;
     name: string;
     file_type: string;
+    processing?: Record<string, any>;
     review?: { reason: string; confidence?: number; reasoning?: string };
     status: 'pending' | 'processing' | 'failed' | 'completed' | string;
     uploaded_at: string | null;
@@ -78,6 +80,9 @@ const props = withDefaults(defineProps<Props>(), {
         total: 0,
     }),
 });
+
+const { start, stop } = usePoll(5000, { only: ['files', 'stats'] }, { autoStart: false });
+watch(() => props.files.data.some(file => ['pending', 'processing'].includes(file.status)), active => active ? start() : stop(), { immediate: true });
 
 const form = reactive({
     query: props.filters?.query ?? '',
@@ -369,6 +374,7 @@ const toggleExpanded = (fileId: number) => {
                                 </div>
                             </div>
 
+                            <ProcessingProgress v-if="file.processing" :processing="file.processing" class="mt-3" />
                             <div v-if="selectedFileId === file.id && file.status === 'needs_review'" class="mt-4 rounded-lg bg-amber-50 p-4 dark:bg-zinc-900">
                                 <p class="text-sm text-zinc-800 dark:text-zinc-200">{{ file.review?.reasoning || 'This file needs review before processing can finish.' }}</p>
                                 <p v-if="file.review?.confidence != null" class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Classification confidence: {{ Math.round(file.review.confidence * 100) }}%</p>

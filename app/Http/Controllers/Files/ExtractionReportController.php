@@ -25,7 +25,7 @@ class ExtractionReportController extends BaseApiController
     private function report(Request $request, int $file): FileExtractionReportResource
     {
         $ownedFile = File::query()->where('user_id', $request->user()->id)
-            ->with(['extractableEntities' => fn ($query) => $query->where('user_id', $request->user()->id)->orderByDesc('is_primary')->orderBy('id')])
+            ->with(['processingJobs' => fn ($query) => $query->latest('id')->limit(1)->with('tasks'), 'extractableEntities' => fn ($query) => $query->where('user_id', $request->user()->id)->orderByDesc('is_primary')->orderBy('id')])
             ->findOrFail($file);
 
         return new FileExtractionReportResource($ownedFile);

@@ -100,6 +100,26 @@ class File extends Model
         return $this->hasMany(JobHistory::class)->whereNull('parent_uuid');
     }
 
+    public function processingSummary(): ?array
+    {
+        $job = $this->processingJobs->first();
+        if ($job === null) {
+            return null;
+        }
+        $tasks = $job->tasks->sortByDesc('updated_at');
+        $task = $tasks->firstWhere('status', 'processing') ?? $tasks->firstWhere('status', 'retrying')
+            ?? $tasks->firstWhere('status', 'failed') ?? $tasks->first();
+        $startedAt = $job->started_at ?? $job->tasks->whereNotNull('started_at')->min('started_at');
+        $finishedAt = $job->finished_at;
+        $active = in_array($this->status, ['pending', 'processing'], true);
+
+        return ['state' => $active ? ($task?->status ?? $job->status) : $this->status,
+            'stage' => $task?->name, 'queued_at' => $job->created_at?->toIso8601String(),
+            'started_at' => $startedAt?->toIso8601String(), 'finished_at' => $finishedAt?->toIso8601String(),
+            'elapsed_seconds' => $startedAt && ($active || $finishedAt) ? (int) $startedAt->diffInSeconds($finishedAt ?? now()) : null,
+            'attempt' => $task?->attempt, 'progress' => $task?->progress ?? $job->progress];
+    }
+
     public function scopeRetainable(Builder $query, Carbon $cutoff): Builder
     {
         return $query->where('status', 'completed')

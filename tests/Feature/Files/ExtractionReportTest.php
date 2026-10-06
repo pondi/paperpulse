@@ -4,6 +4,7 @@ use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\FileShare;
+use App\Models\JobHistory;
 use App\Models\User;
 use App\Models\Voucher;
 use Illuminate\Support\Facades\File as Filesystem;
@@ -92,4 +93,30 @@ it('registers every literal frontend route name', function (): void {
         }
     }
     expect($missing)->toBe([]);
+});
+
+it('shows durable queued active retry and terminal job timing in workspace activity and reports', function (): void {
+    $this->freezeTime();
+    $file = File::factory()->create(['user_id' => $this->owner->id, 'status' => 'pending']);
+    $job = JobHistory::create(['uuid' => 'timing-parent', 'file_id' => $file->id, 'name' => 'Extract document', 'queue' => 'files',
+        'status' => 'pending', 'created_at' => now()->subMinutes(3)]);
+    $this->actingAs($this->owner)->getJson(route('api.files.extraction-report', $file))->assertOk()
+        ->assertJsonPath('data.processing.state', 'pending')->assertJsonPath('data.processing.started_at', null);
+    $task = JobHistory::create(['uuid' => 'timing-task', 'parent_uuid' => $job->uuid, 'name' => 'Extract text', 'queue' => 'files',
+        'status' => 'processing', 'attempt' => 1, 'progress' => 40, 'started_at' => now()->subMinutes(2),
+        'exception' => 'secret provider details']);
+    $file->update(['status' => 'processing']);
+    $this->get(route('files.show', $file))->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('file.processing.stage', 'Extract text')->where('file.processing.elapsed_seconds', 120)->where('file.processing.state', 'processing'));
+    $this->get(route('files.index', ['file_id' => $file->id]))->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('files.data.0.processing.progress', 40)->where('files.data.0.processing.elapsed_seconds', 120));
+    $task->update(['status' => 'retrying', 'attempt' => 2]);
+    $this->getJson(route('api.files.extraction-report', $file))->assertJsonPath('data.processing.state', 'retrying')
+        ->assertJsonPath('data.processing.attempt', 2)->assertDontSee('secret provider details');
+    $task->update(['status' => 'completed', 'progress' => 100, 'finished_at' => now()]);
+    $job->update(['status' => 'completed', 'finished_at' => now()]);
+    $file->update(['status' => 'completed']);
+    $this->travel(10)->minutes();
+    $this->getJson(route('api.files.extraction-report', $file))->assertJsonPath('data.processing.state', 'completed')
+        ->assertJsonPath('data.processing.elapsed_seconds', 120)->assertJsonPath('data.processing.progress', 100);
 });

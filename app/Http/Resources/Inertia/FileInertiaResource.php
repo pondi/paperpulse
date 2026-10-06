@@ -67,6 +67,10 @@ class FileInertiaResource extends JsonResource
             ]),
         ];
 
+        if ($this->relationLoaded('processingJobs')) {
+            $data['processing'] = $this->resource->processingSummary();
+        }
+
         if ($this->status === 'needs_review') {
             $review = $this->meta['review'] ?? [];
             $data['review'] = array_intersect_key($review, array_flip(['reason', 'confidence', 'reasoning']));

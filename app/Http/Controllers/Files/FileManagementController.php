@@ -39,7 +39,7 @@ class FileManagementController extends Controller
         };
         $filesQuery->orderByDesc('id');
 
-        $files = $filesQuery
+        $files = $filesQuery->with(['processingJobs' => fn ($query) => $query->latest('id')->limit(1)->with('tasks')])
             ->paginate($perPage)
             ->through(fn (File $file) => FileInertiaResource::forIndex($file)->toArray(request()));
 

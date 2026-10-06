@@ -25,6 +25,7 @@ class FileExtractionReportResource extends JsonResource
 
         return [
             'file' => ['id' => $this->id, 'name' => $this->fileName, 'status' => $this->status, 'file_type' => $this->file_type, 'processing_provider' => $this->processing_type],
+            'processing' => $this->resource->processingSummary(),
             'classification' => Arr::only(data_get($this->meta, 'gemini.classification', []), ['type', 'confidence', 'reasoning']),
             'extraction' => [
                 'confidence_score' => data_get($this->meta, 'gemini.extraction.confidence_score'),

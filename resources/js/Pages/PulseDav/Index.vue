@@ -71,8 +71,6 @@
                                 <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Tags</label>
                                 <TagSelector
                                     v-model="importOptions.tagIds"
-                                    :tags="tags"
-                                    @create-tag="createTag"
                                 />
                             </div>
                         </div>
@@ -803,32 +801,6 @@ const deleteFile = async (file) => {
         }
     } catch (error) {
         console.error('Failed to delete file:', error);
-    }
-};
-
-const createTag = async (tagName) => {
-    try {
-        const response = await fetch(route('pulsedav.tags.create'), {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                name: tagName,
-            }),
-        });
-
-        const data = await response.json();
-        
-        if (response.ok) {
-            // Add the new tag to the list and select it
-            props.tags.push(data.tag);
-            importOptions.value.tagIds.push(data.tag.id);
-        }
-    } catch (error) {
-        console.error('Failed to create tag:', error);
     }
 };
 

@@ -7,7 +7,43 @@ use App\Models\ReturnPolicy;
 use App\Services\AI\Extractors\EntityExtractorFactory;
 use App\Services\AI\Extractors\ReturnPolicy\ReturnPolicyValidator;
 use App\Services\EntityFactory;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+
+it('requests calendar deadlines and persists relative terms without inventing dates', function (string $type, array $policy): void {
+    config(['ai.providers.gemini.api_key' => 'test']);
+    $data = $type === 'receipt' ? [
+        'merchant_name' => 'Shop', 'total_amount' => 10, 'receipt_date' => '2025-02-16',
+        'description' => 'Purchase', 'category' => 'Other', 'return_policies' => [$policy],
+    ] : $policy;
+    Http::fake(['*' => Http::response(['totalTokens' => 100, 'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => json_encode($data)]]]]]])]);
+    $file = File::factory()->create(['fileType' => 'application/pdf']);
+    $extracted = EntityExtractorFactory::create($type)->extract('https://gemini.test/file', $file);
+    app(EntityFactory::class)->createEntitiesFromParsedData([
+        'entities' => array_merge([$extracted], $extracted['supplemental_entities'] ?? []),
+    ], $file, $type);
+
+    $stored = ReturnPolicy::firstOrFail();
+    expect($stored->conditions)->toBe($policy['conditions'])
+        ->and($stored->return_deadline?->format('Y-m-d'))->toBe($policy['return_deadline'] ?? null)
+        ->and($stored->exchange_deadline?->format('Y-m-d'))->toBe($policy['exchange_deadline'] ?? null);
+    Http::assertSent(function (Request $request) use ($type): bool {
+        if (! str_contains($request->url(), ':generateContent')) {
+            return false;
+        }
+        $schema = $request['generationConfig']['responseJsonSchema'];
+        $properties = $type === 'receipt' ? $schema['properties']['return_policies']['items']['properties'] : $schema['properties'];
+
+        return $properties['return_deadline']['format'] === 'date'
+            && $properties['exchange_deadline']['format'] === 'date'
+            && str_contains($request['contents'][0]['parts'][0]['text'], 'relative durations');
+    });
+})->with([
+    'receipt relative terms' => ['receipt', ['conditions' => 'Return within 30 days']],
+    'standalone relative terms' => ['return_policy', ['conditions' => 'Return within 30 days']],
+    'receipt explicit dates' => ['receipt', ['conditions' => 'Return or exchange by the printed date', 'return_deadline' => '2025-03-18', 'exchange_deadline' => '2025-03-25']],
+    'standalone explicit dates' => ['return_policy', ['conditions' => 'Return or exchange by the printed date', 'return_deadline' => '2025-03-18', 'exchange_deadline' => '2025-03-25']],
+]);
 
 it('extracts and persists a standalone return policy as a primary entity', function () {
     config(['ai.providers.gemini.api_key' => 'test']);

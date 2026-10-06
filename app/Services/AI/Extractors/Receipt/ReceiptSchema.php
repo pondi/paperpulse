@@ -147,6 +147,7 @@ class ReceiptSchema
     {
         return <<<'PROMPT'
 Extract all receipt information from this document. Include explicitly stated supplemental return policies in return_policies and warranty certificates in warranties. The receipt is the primary entity; these supplemental entries remain linked to it.
+For return policies, return_deadline and exchange_deadline must be explicitly stated calendar dates in YYYY-MM-DD format. Keep relative durations such as "30 days" in conditions and omit the deadline fields. Do not calculate a deadline from the receipt date. Omit absent dates instead of returning placeholders or empty strings.
 
 ## IMPORTANT: Verify this is actually a receipt
 

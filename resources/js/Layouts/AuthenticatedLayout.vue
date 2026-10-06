@@ -58,7 +58,7 @@ const addActions = [
         <div class="lg:pl-60">
             <header class="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-zinc-200 bg-white/95 px-4 backdrop-blur sm:gap-5 sm:px-6 lg:px-8 dark:border-zinc-800 dark:bg-zinc-900/95">
                 <button type="button" aria-label="Open navigation" class="rounded-lg p-2 text-zinc-600 hover:bg-zinc-100 lg:hidden dark:text-zinc-300 dark:hover:bg-zinc-800" @click="sidebarOpen = true"><Bars3Icon class="h-5 w-5" /></button>
-                <div class="flex min-w-0 flex-1 items-center"><SearchBar @preview="openPreview" /></div>
+                <div class="flex min-w-0 flex-1 items-center"><SearchBar v-if="page.url.split('?')[0] !== '/library'" @preview="openPreview" /></div>
                 <div class="flex shrink-0 items-center gap-2 sm:gap-3">
                     <Menu as="div" class="relative">
                         <MenuButton dusk="add-document" class="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600">

@@ -56,8 +56,12 @@ for (const [name, active, tab] of [
     const main = await render(sidebar);
     assert.match(main, new RegExp('aria-current="page"[^>]*>[\\s\\S]*?' + active));
     const tabs = await render(workspace);
-    assert.ok(tabs.includes(tab), name);
-    assert.ok(tabs.includes('aria-current="page"'), name);
+    if (name === 'library.index') {
+        assert.ok(!tabs.includes('Workspace navigation'));
+    } else {
+        assert.ok(tabs.includes(tab), name);
+        assert.ok(tabs.includes('aria-current="page"'), name);
+    }
     assert.ok(!tabs.includes('Job status'), name);
 }
 current = 'library.index';

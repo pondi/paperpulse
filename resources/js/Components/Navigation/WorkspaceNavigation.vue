@@ -13,6 +13,7 @@ const fileId = computed(() => {
     return entity?.file_id || entity?.file?.id;
 });
 const tabs = computed(() => {
+    if (currentRoute.value === 'library.index') return [];
     if (isLibrary.value) {
         return documentTypes.slice(0, 6).map(type => ({
             label: type.label,

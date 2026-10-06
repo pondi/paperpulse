@@ -65,11 +65,11 @@ test('document workspace previews the original beside extracted information and 
                 ->screenshot('library-mobile');
             expect($browser->script('return document.documentElement.scrollWidth <= window.innerWidth')[0])->toBeTrue();
             $browser->click('@add-document')->waitForText('Upload files')->assertSee('Scan a document')->assertSee('Import from scanner');
-            $browser->click('@add-document')->waitUntilMissing('[role="menu"]')->type('input[aria-label="Search your library"]', 'Northstar')
+            $browser->click('@add-document')->waitUntilMissing('[role="menu"]')->visit('/dashboard')->waitFor('input[aria-label="Search your library"]')->type('input[aria-label="Search your library"]', 'Northstar')
                 ->waitFor('ul[aria-label="Search results"] button')->click('ul[aria-label="Search results"] button')
                 ->waitForText('Open document workspace')->assertSee('Northstar Studio service agreement');
             expect($browser->script('return document.documentElement.scrollWidth <= window.innerWidth')[0])->toBeTrue();
-            $browser->click('[role="dialog"] a[href*="/files/'.$file->id.'?"]')->waitForText('Document information');
+            $browser->click('[role="dialog"] a[href*="/files/'.$file->id.'"]')->waitForText('Document information');
         });
     } finally {
         Storage::disk('paperpulse')->delete($path);

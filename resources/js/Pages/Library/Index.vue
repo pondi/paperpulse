@@ -42,7 +42,7 @@ function visit(page = 1, keepSavedView = true) {
 }
 watch(() => form.query, () => { clearTimeout(timer); cancelVisit?.cancel(); timer = setTimeout(() => visit(), 300); });
 function apply() { visit(); }
-function chooseView(value) { Object.assign(form, defaults, { view: value, display: form.display }); visit(1, false); }
+function chooseView(value) { form.view = value; visit(1, false); }
 function clear() { Object.assign(form, defaults, { display: form.display }); visit(1, false); }
 function label(type) { return documentTypes.find(item => item.value === type)?.label || type.replaceAll('_', ' '); }
 watch(() => props.filters, value => { Object.assign(form, defaults, value); });
@@ -65,20 +65,23 @@ onBeforeUnmount(() => { clearTimeout(timer); cancelVisit?.cancel(); });
 
         <div class="flex flex-col gap-5">
             <p v-if="form.type === 'receipt'" class="text-xs text-zinc-500 dark:text-zinc-400">Library uses the view and sort controls below and 24 files per page. Receipt table defaults in Settings apply to the separate receipt overview.</p>
-            <nav aria-label="Smart views" class="workspace-scroll flex gap-2 overflow-x-auto pb-1">
-                <button type="button" @click="chooseView('all')" :aria-pressed="form.view === 'all'" :class="[form.view === 'all' ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300', 'shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium']">All files</button>
-                <button v-for="item in smartViews" :key="item.value" type="button" @click="chooseView(item.value)" :aria-pressed="form.view === item.value" :class="[form.view === item.value ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300', 'shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium']">{{ item.label }}</button>
-            </nav>
-
             <section aria-label="Library filters" class="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-                <form @submit.prevent="apply" class="flex flex-wrap items-center gap-3 p-4">
-                    <div class="relative min-w-[180px] flex-1">
+                <form @submit.prevent="apply" class="grid grid-cols-2 items-end gap-2 p-3 sm:flex sm:flex-wrap sm:items-center sm:gap-3 sm:p-4">
+                    <div class="relative col-span-2 min-w-0 sm:min-w-[180px] sm:flex-1">
                         <MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-2.5 h-5 w-5 text-zinc-400" aria-hidden="true" />
                         <input dusk="library-query" v-model="form.query" type="search" maxlength="200" aria-label="Find documents" placeholder="Find by name, merchant or content…" class="w-full rounded-lg border-zinc-200 bg-zinc-50 py-2 pl-10 text-sm focus:border-amber-500 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white" />
                     </div>
-                    <select v-model="form.type" @change="apply" aria-label="Document type" class="rounded-lg border-zinc-200 py-2 text-sm focus:border-amber-500 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
-                        <option v-for="type in documentTypes" :key="type.value" :value="type.value">{{ type.label }}</option>
-                    </select>
+                    <label class="flex min-w-0 flex-col gap-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">Type
+                        <select v-model="form.type" @change="apply" aria-label="Document type" class="rounded-lg border-zinc-200 py-2 text-sm focus:border-amber-500 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+                            <option v-for="type in documentTypes" :key="type.value" :value="type.value">{{ type.label }}</option>
+                        </select>
+                    </label>
+                    <label class="flex min-w-0 flex-col gap-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">View
+                        <select :value="form.view" @change="chooseView($event.target.value)" aria-label="Library view" class="rounded-lg border-zinc-200 py-2 text-sm focus:border-amber-500 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+                            <option value="all">All files</option>
+                            <option v-for="item in smartViews" :key="item.value" :value="item.value">{{ item.label }}</option>
+                        </select>
+                    </label>
                     <button type="button" @click="expanded = !expanded" :aria-expanded="expanded" aria-controls="library-more-filters" class="inline-flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">
                         <AdjustmentsHorizontalIcon class="h-4 w-4" aria-hidden="true" />Filters<span v-if="filterCount" class="rounded bg-amber-100 px-1.5 text-xs text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">{{ filterCount }}</span>
                     </button>

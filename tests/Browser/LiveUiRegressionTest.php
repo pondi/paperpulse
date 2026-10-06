@@ -1157,3 +1157,18 @@ it('retains nested folder context in upload library and search selectors', funct
         $browser->visit('/search')->waitFor('#search-collection')->assertSeeIn('#search-collection', 'Building → Contracts → Hønsfaret');
     });
 });
+
+
+it('uses one library type and view control and keeps mobile file content visible', function (): void {
+    $user = $this->createUser();
+    $file = File::factory()->create(['user_id' => $user->id, 'status' => 'processing', 'file_type' => 'receipt', 'fileName' => 'Mobile visible scan.pdf']);
+    $this->browse(function (Browser $browser) use ($user, $file): void {
+        $this->loginAs($browser, $user);
+        $browser->resize(390, 844)->visit('/library')->waitFor('@library-query')->assertMissing('[aria-label="Workspace navigation"]')
+            ->assertMissing('[aria-label="Smart views"]')->assertMissing('input[aria-label="Search your library"]')
+            ->select('select[aria-label="Document type"]', 'receipt')->waitFor('@library-file-'.$file->id)
+            ->select('select[aria-label="Library view"]', 'processing')->waitForText('In progress')->assertSelected('select[aria-label="Document type"]', 'receipt');
+        $browser->assertScript("document.querySelector('[dusk=library-file-".$file->id."]').getBoundingClientRect().bottom < window.innerHeight", true);
+        $browser->press('Filters')->waitFor('#library-more-filters')->select('select[aria-label="Document type"]', 'invoice')->waitForText('No matching documents');
+    });
+});

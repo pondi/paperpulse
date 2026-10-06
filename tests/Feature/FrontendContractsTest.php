@@ -54,7 +54,7 @@ async function render(file, props) {
         }
         return '';
     }).replace(/import\s+(\w+)\s+from\s+['"][^'"]+['"];?/g, (_, name) => {
-        bindings[name] = name === 'Checkbox' ? props => vue.h('input', { ...props, type: 'checkbox' }) : stub;
+        bindings[name] = name.endsWith('Widget') ? props => vue.h('div', { 'data-widget': name }) : name === 'Checkbox' ? props => vue.h('input', { ...props, type: 'checkbox' }) : stub;
         return '';
     });
     code = stripTypeScriptTypes(code.replaceAll('import.meta.env.DEV', 'false'), { mode: 'strip' });
@@ -227,7 +227,7 @@ if (scenario === 'scanner onboarding') {
     }
 }
 if (scenario === 'mobile dashboard amounts') {
-    const html = await render('Pages/Dashboard.vue', { expiringVouchers: { items: [], total: 0 }, endingWarranties: { items: [], total: 0 },
+    const html = await render('Pages/Dashboard.vue', { receiptCount: 1, expiringVouchers: { items: [], total: 0 }, endingWarranties: { items: [], total: 0 },
         recentReceipts: [{ id: 5, merchant: { name: 'Long merchant name' }, receipt_date: '2026-10-06', total_amount: 42, currency: 'EUR', receipt_category: 'Groceries' }] });
     assert.ok(html.includes('Long merchant name'));
     assert.ok(html.includes('42 EUR'));
@@ -309,13 +309,31 @@ if (scenario === 'state semantics') {
     const missing = await render('Pages/Receipt/Show.vue', { receipt: { id: 1246, total_amount: 21.56, lineItems: [] }, categories: [] });
     assert.ok(missing.includes('Receipt data: Merchant missing'));
 }
+if (scenario === 'archive home') {
+    const props = { archiveStats: { total: 67, processing: 3, failed: 39, needs_review: 2 },
+        recentUploads: [{ id: 10, name: 'New invoice.pdf', file_type: 'invoice', status: 'failed', uploaded_at: '2026-10-06T10:00:00Z' },
+            { id: 11, name: 'New contract.pdf', file_type: 'contract', status: 'completed', uploaded_at: '2026-10-06T09:00:00Z' }],
+        receiptCount: 6, recentReceipts: [], expiringVouchers: { total: 0, items: [] }, endingWarranties: { total: 0, items: [] } };
+    const html = await render('Pages/Dashboard.vue', props);
+    for (const text of ['Archive overview', 'Recent uploads', 'New invoice.pdf', 'New contract.pdf', '/files/10', '/files/11', 'Receipt overview', 'Needs review', 'Failed']) assert.ok(html.includes(text), text);
+    assert.ok(html.indexOf('Recent uploads') < html.indexOf('Receipt overview'));
+    assert.match(html, /<details[^>]*>/);
+    assert.ok(!html.includes('data-widget'));
+    assert.ok(html.includes('view=attention&amp;status=failed'));
+    const empty = await render('Pages/Dashboard.vue', { ...props, receiptCount: 0, recentUploads: [] });
+    assert.ok(empty.includes('Upload your first files'));
+    assert.ok(!empty.includes('Receipt overview'));
+    const expiry = await render('Pages/Dashboard.vue', { ...props, expiringVouchers: { total: 1, items: [{ id: 1 }] } });
+    assert.ok(expiry.includes('data-widget="ExpiringVouchersWidget"'));
+    assert.ok(!expiry.includes('data-widget="EndingWarrantiesWidget"'));
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts', 'receipt totals review', 'processing timing', 'failure diagnostics', 'processing limits', 'state semantics']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts', 'receipt totals review', 'processing timing', 'failure diagnostics', 'processing limits', 'state semantics', 'archive home']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

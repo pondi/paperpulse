@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Models\File;
 use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -86,4 +88,27 @@ it('isolates dashboard data by user', function () {
             ->where('receiptCount', 2)
             ->where('totalAmount', 100)
         );
+});
+
+it('shows recent mixed archive uploads and outstanding work without exposing foreign files', function (): void {
+    $owner = User::factory()->create();
+    $files = collect(['receipt', 'invoice', 'document', 'contract', 'voucher', 'bank_statement', 'warranty'])->map(function (string $type, int $index) use ($owner): File {
+        return File::factory()->create(['user_id' => $owner->id, 'file_type' => $type,
+            'fileName' => $type.'.pdf', 'uploaded_at' => now()->subMinutes(7 - $index),
+            'status' => ['completed', 'failed', 'pending', 'processing', 'needs_review', 'completed', 'completed'][$index]]);
+    });
+    File::factory()->create(['fileName' => 'Foreign private file', 'uploaded_at' => now(), 'status' => 'failed']);
+    $files->last()->delete();
+    $this->actingAs($owner)->get(route('dashboard'))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('archiveStats', ['total' => 6, 'processing' => 2, 'failed' => 1, 'needs_review' => 1])
+            ->has('recentUploads', 6)->where('recentUploads.0.name', 'bank_statement.pdf')
+            ->where('recentUploads.5.name', 'receipt.pdf')->where('receiptCount', 0));
+});
+
+it('provides an empty archive overview for new accounts', function (): void {
+    $this->actingAs(User::factory()->create())->get(route('dashboard'))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('archiveStats', ['total' => 0, 'processing' => 0, 'failed' => 0, 'needs_review' => 0])
+            ->has('recentUploads', 0));
 });

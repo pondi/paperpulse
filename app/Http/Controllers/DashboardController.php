@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\File;
 use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Models\Voucher;
@@ -15,6 +16,17 @@ class DashboardController extends Controller
     public function index()
     {
         $userId = auth()->id();
+
+        $fileCounts = File::query()->where('user_id', $userId)->select('status')
+            ->selectRaw('count(*) as total')->groupBy('status')->pluck('total', 'status');
+        $archiveStats = ['total' => $fileCounts->sum(),
+            'processing' => ($fileCounts['pending'] ?? 0) + ($fileCounts['processing'] ?? 0),
+            'failed' => $fileCounts['failed'] ?? 0, 'needs_review' => $fileCounts['needs_review'] ?? 0];
+        $recentUploads = File::query()->where('user_id', $userId)->orderByDesc('uploaded_at')->orderByDesc('id')->limit(6)
+            ->get(['id', 'fileName', 'file_type', 'status', 'uploaded_at', 'meta'])
+            ->map(fn (File $file): array => ['id' => $file->id, 'name' => $file->fileName, 'file_type' => $file->file_type,
+                'status' => $file->status, 'uploaded_at' => $file->uploaded_at?->toIso8601String(),
+                'review' => $file->status === 'needs_review' ? ['reason' => $file->meta['review']['reason'] ?? null] : null]);
 
         $currency = auth()->user()->preference('currency', 'NOK');
         $summary = app(MonetarySummaryService::class)->aggregate(
@@ -60,6 +72,8 @@ class DashboardController extends Controller
         ];
 
         return Inertia::render('Dashboard', [
+            'archiveStats' => $archiveStats,
+            'recentUploads' => $recentUploads,
             ...$stats,
             ...$expiryWidgets,
             'recentReceipts' => $recentReceipts,

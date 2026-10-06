@@ -3,12 +3,12 @@
 
   <AuthenticatedLayout>
     <template #header>
-      <div class="flex justify-between items-center">
-        <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2">
+      <div class="flex flex-wrap justify-between items-center gap-3">
+        <h2 class="min-w-0 break-words font-black text-xl sm:text-2xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2">
           <ReceiptRefundIcon class="size-6" />
           {{ receipt.merchant?.name || __('unknown_merchant') }}
         </h2>
-        <div class="flex items-center gap-x-4">
+        <div class="flex flex-wrap items-center gap-2">
           <SharingControls
             :file-id="receipt.id"
             file-type="receipt"
@@ -28,9 +28,9 @@
 
     <Breadcrumbs v-if="breadcrumbs.length" :crumbs="breadcrumbs" class="px-6 pt-4" />
 
-    <div class="flex h-[calc(100vh-9rem)] overflow-hidden">
+    <div class="flex flex-col xl:flex-row xl:h-[calc(100vh-9rem)] xl:overflow-hidden">
       <!-- Left Panel - Receipt Details -->
-      <div class="w-1/2 p-6 overflow-y-auto border-r border-amber-200 dark:border-zinc-700">
+      <div class="w-full min-w-0 break-words p-3 sm:p-6 xl:w-1/2 xl:overflow-y-auto xl:border-r border-amber-200 dark:border-zinc-700">
         <div class="space-y-8">
           <!-- Receipt Status -->
           <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
@@ -133,7 +133,7 @@
 
           <!-- Line Items -->
           <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
-            <div class="flex items-center justify-between mb-6">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
               <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200">{{ __('line_items') }}</h3>
               <button
                 @click="showAddLineItem = true"
@@ -144,7 +144,7 @@
               </button>
             </div>
 
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" tabindex="0" aria-label="Line items, scroll horizontally to see all columns">
               <table class="min-w-full divide-y divide-amber-200 dark:divide-zinc-700">
                 <thead>
                   <tr>
@@ -188,14 +188,14 @@
       </div>
 
       <!-- Right Panel - Receipt Image -->
-      <div class="w-1/2 bg-amber-50 dark:bg-zinc-900 overflow-auto">
+      <div class="w-full min-w-0 min-h-64 xl:w-1/2 bg-amber-50 dark:bg-zinc-900 overflow-auto">
         <ReceiptImage
           :file="receipt.file"
           :alt-text="__('receipt_image')"
           :error-message="__('receipt_image_load_error')"
           :no-image-message="__('no_receipt_image')"
           :show-pdf-button="true"
-          pdf-button-position="fixed bottom-6 right-6"
+          pdf-button-position="absolute top-4 right-4"
         />
       </div>
     </div>

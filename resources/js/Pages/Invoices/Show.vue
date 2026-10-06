@@ -258,12 +258,12 @@ const getInvoiceTypeClass = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex justify-between items-center">
-                <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2">
+            <div class="flex flex-wrap justify-between items-center gap-3">
+                <h2 class="min-w-0 break-words font-black text-xl sm:text-2xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2">
                     <DocumentIcon class="size-6" />
                     Invoice #{{ invoice.invoice_number }}
                 </h2>
-                <div class="flex items-center gap-x-4">
+                <div class="flex flex-wrap items-center gap-2">
                     <button
                         @click="downloadInvoice"
                         class="inline-flex items-center gap-x-2 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md text-sm font-medium text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-800 hover:bg-amber-50 dark:hover:bg-zinc-700"
@@ -290,9 +290,9 @@ const getInvoiceTypeClass = () => {
 
         <Breadcrumbs v-if="breadcrumbs?.length" :crumbs="breadcrumbs" class="px-6 pt-4" />
 
-        <div class="flex h-[calc(100vh-9rem)] overflow-hidden">
+        <div class="flex flex-col xl:flex-row xl:h-[calc(100vh-9rem)] xl:overflow-hidden">
             <!-- Left Panel - Invoice Details -->
-            <div class="w-1/2 p-6 overflow-y-auto border-r border-amber-200 dark:border-zinc-700">
+            <div class="w-full min-w-0 break-words p-3 sm:p-6 xl:w-1/2 xl:overflow-y-auto xl:border-r border-amber-200 dark:border-zinc-700">
                 <div class="space-y-8">
                     <!-- Invoice Status Badge -->
                     <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
@@ -330,7 +330,7 @@ const getInvoiceTypeClass = () => {
                     <!-- Parties Information -->
                     <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
                         <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200 mb-4">Parties</h3>
-                        <div class="grid grid-cols-2 gap-6">
+                        <div class="grid grid-cols-1 2xl:grid-cols-2 gap-6">
                             <!-- From -->
                             <div>
                                 <h4 class="text-xs font-medium text-zinc-500 mb-2">From</h4>
@@ -417,7 +417,7 @@ const getInvoiceTypeClass = () => {
                     <!-- Line Items -->
                     <div v-if="invoice.line_items && invoice.line_items.length > 0" class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
                         <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200 mb-4">Line Items</h3>
-                        <div class="overflow-x-auto">
+                        <div class="overflow-x-auto" tabindex="0" aria-label="Line items, scroll horizontally to see all columns">
                             <table class="min-w-full divide-y divide-amber-200 dark:divide-zinc-700">
                                 <thead class="bg-amber-50 dark:bg-zinc-700">
                                     <tr>
@@ -594,14 +594,14 @@ const getInvoiceTypeClass = () => {
             </div>
 
             <!-- Right Panel - Invoice Preview -->
-            <div class="w-1/2 bg-amber-50 dark:bg-zinc-900 overflow-auto">
+            <div class="w-full min-w-0 min-h-64 xl:w-1/2 bg-amber-50 dark:bg-zinc-900 overflow-auto">
                 <DocumentImage
                     :file="invoice.file"
                     :alt-text="`Invoice ${invoice.invoice_number}`"
                     error-message="Failed to load invoice preview"
                     no-image-message="No invoice preview available"
                     :show-pdf-button="true"
-                    pdf-button-position="fixed bottom-6 right-6"
+                    pdf-button-position="absolute top-4 right-4"
                 />
             </div>
         </div>

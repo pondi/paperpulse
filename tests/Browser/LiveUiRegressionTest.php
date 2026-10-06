@@ -827,3 +827,30 @@ it('keeps recent receipt merchant and amount pairs visible at phone widths', fun
         }
     });
 });
+
+it('stacks entity details and keeps actions within phone and tablet widths', function (): void {
+    $user = $this->createUser();
+    $file = File::factory()->for($user)->create();
+    $receipt = Receipt::factory()->for($file)->create(['user_id' => $user->id]);
+    $invoice = Invoice::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id,
+        'invoice_number' => 'LONG-INVOICE-1234567890',
+        'from_name' => 'A long supplier name', 'from_email' => str_repeat('supplier', 8).'@example.com',
+        'to_name' => 'A long customer name', 'to_address' => 'An extended street address',
+    ]);
+    $this->browse(function (Browser $browser) use ($user, $receipt, $invoice): void {
+        foreach (['/receipts/'.$receipt->id, '/invoices/'.$invoice->id] as $path) {
+            foreach ([320, 390, 768] as $width) {
+                $browser->resize($width, 844)->loginAs($user)->visit($path)->waitForText('Share');
+                $browser->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+                    ->assertScript(<<<'JS'
+                        Array.from(document.querySelectorAll('header button, header a')).filter(el => el.getBoundingClientRect().width).every(el => {
+                            const r = el.getBoundingClientRect();
+                            return r.left >= 0 && r.right <= innerWidth;
+                        })
+                        JS, true)
+                    ->press('Share')->waitFor('[role="dialog"]')->keys('[role="dialog"] input', '{escape}')
+                    ->waitUntilMissing('[role="dialog"] input');
+            }
+        }
+    });
+});

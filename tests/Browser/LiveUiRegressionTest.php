@@ -721,3 +721,17 @@ it('saves receipt folder edits and cancels them without changing saved membershi
         }
     });
 });
+
+it('keeps folder content ahead of collapsed public sharing at desktop and mobile widths', function (): void {
+    $user = $this->createUser();
+    $folder = Collection::factory()->for($user)->create(['name' => 'Building', 'description' => null]);
+    Collection::factory()->for($user)->create(['name' => 'Contracts', 'parent_id' => $folder->id]);
+    $this->browse(function (Browser $browser) use ($user, $folder): void {
+        foreach ([1440, 390] as $width) {
+            $browser->resize($width, 900)->loginAs($user)->visit('/collections/'.$folder->id)->waitForText('Subfolders');
+            $browser->assertScript("Array.from(document.querySelectorAll('h3')).find(el => el.textContent === 'Subfolders').getBoundingClientRect().bottom < innerHeight", true)
+                ->assertScript("document.querySelector('details').open", false)
+                ->click('summary')->assertSee('Public Sharing');
+        }
+    });
+});

@@ -138,13 +138,29 @@ if (scenario === 'recommendation states') {
         }
     }
 }
+if (scenario === 'folder content priority') {
+    for (const populated of [false, true]) {
+        const html = await render('Pages/Collections/Show.vue', {
+            collection: { id: 1, name: 'Building', color: '#123456', icon: 'folder', files: populated ? [{ id: 5, fileName: 'contract.pdf', created_at: '2026-10-06' }] : [] },
+            stats: { total_files: populated ? 1 : 0, documents_count: populated ? 1 : 0, receipts_count: 0 },
+            children: { data: [{ id: 2, name: 'Contracts' }] }, isOwner: true
+        });
+        assert.ok(html.includes('Contracts'));
+        assert.ok(html.indexOf('Subfolders') < html.indexOf('<details'));
+        assert.ok(html.indexOf('Files in this Collection') < html.indexOf('<details'));
+        assert.ok(html.includes('<summary class="cursor-pointer'));
+        assert.ok(!html.includes('<details open'));
+        assert.ok(!html.includes('sm:grid-cols-3'));
+        assert.ok(html.includes(populated ? 'contract.pdf' : 'No files directly in this collection'));
+    }
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

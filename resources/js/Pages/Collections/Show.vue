@@ -56,7 +56,7 @@
 
         <Breadcrumbs v-if="breadcrumbs.length" :crumbs="breadcrumbs" class="px-6 pt-4 max-w-7xl mx-auto" />
 
-        <div class="py-12">
+        <div class="py-6">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <!-- Collection Details Card -->
                 <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg border-l-4 p-6 mb-6" :style="{ borderLeftColor: collection.color }">
@@ -93,32 +93,13 @@
                             />
                         </div>
 
-                        <!-- Stats -->
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                                <dt class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Total Files</dt>
-                                <dd class="mt-2 text-2xl font-black text-zinc-900 dark:text-zinc-100">{{ stats.total_files }}</dd>
-                            </div>
-                            <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-4">
-                                <dt class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Documents</dt>
-                                <dd class="mt-2 text-2xl font-black text-zinc-900 dark:text-zinc-100">{{ stats.documents_count }}</dd>
-                            </div>
-                            <div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4">
-                                <dt class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Receipts</dt>
-                                <dd class="mt-2 text-2xl font-black text-zinc-900 dark:text-zinc-100">{{ stats.receipts_count }}</dd>
-                            </div>
-                        </div>
+                        <dl class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-600 dark:text-zinc-300">
+                            <div class="flex gap-2"><dt>Total Files</dt><dd class="font-bold">{{ stats.total_files }}</dd></div>
+                            <div class="flex gap-2"><dt>Documents</dt><dd class="font-bold">{{ stats.documents_count }}</dd></div>
+                            <div class="flex gap-2"><dt>Receipts</dt><dd class="font-bold">{{ stats.receipts_count }}</dd></div>
+                        </dl>
                     </div>
                 </div>
-
-                <!-- Public Sharing -->
-                <PublicLinkManager
-                    v-if="isOwner"
-                    :collection-id="collection.id"
-                    :public-links="publicLinks"
-                    :flash-public-link="$page.props.flash?.publicLink"
-                    class="mb-6"
-                />
 
                 <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg p-6 mb-6">
                     <div class="flex items-center justify-between gap-3 mb-4">
@@ -182,7 +163,7 @@
                         </svg>
                         <h3 class="mt-4 text-sm font-medium text-zinc-900 dark:text-zinc-100">No files directly in this collection</h3>
                         <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                            Files in subfolders are listed separately. Upload a file here or browse a subfolder below.
+                            Files in subfolders are listed separately. Upload a file here or browse a subfolder above.
                         </p>
                         <div class="mt-4 flex flex-wrap justify-center gap-3">
                             <Link v-for="child in children.data" :key="child.id" :href="route('collections.show', child.id)" class="text-blue-600 hover:underline dark:text-blue-400">Browse {{ child.name }}</Link>
@@ -190,6 +171,15 @@
                         </div>
                     </div>
                 </div>
+                <details v-if="isOwner" class="mt-6 rounded-lg bg-white p-6 shadow dark:bg-zinc-800">
+                    <summary class="cursor-pointer font-bold text-zinc-900 dark:text-zinc-100">Public sharing</summary>
+                    <PublicLinkManager
+                        :collection-id="collection.id"
+                        :public-links="publicLinks"
+                        :flash-public-link="$page.props.flash?.publicLink"
+                        class="mt-4"
+                    />
+                </details>
             </div>
         </div>
     </AuthenticatedLayout>

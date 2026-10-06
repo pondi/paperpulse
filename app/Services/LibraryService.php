@@ -13,6 +13,7 @@ use App\Models\Tag;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Models\Warranty;
+use App\Support\AuthorizedEntityRelations;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -32,7 +33,8 @@ class LibraryService
         $query = $view === 'shared'
             ? File::query()->accessibleBy($user)->where('files.user_id', '!=', $user->id)
             : File::query()->where('files.user_id', $user->id);
-        $query->with(['extractableEntities', 'primaryFolder', 'user:id,name']);
+        $query->with(['extractableEntities', 'primaryFolder', 'user:id,name',
+            'primaryEntity.entity' => fn ($relation) => AuthorizedEntityRelations::load($relation)]);
 
         $type = $filters['type'] ?? 'all';
         if ($type !== 'all') {

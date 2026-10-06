@@ -20,7 +20,7 @@ const loading = ref(false);
 let timer;
 let cancelVisit;
 let sequence = 0;
-const { formatDate } = useDateFormatter();
+const { formatDate, formatCurrency } = useDateFormatter();
 const view = computed(() => smartViews.find(item => item.value === form.view));
 const title = computed(() => props.activeView?.name || view.value?.label || 'Library');
 const description = computed(() => view.value?.description || 'Every document, one place. Filter, find and open your files.');
@@ -119,9 +119,14 @@ onBeforeUnmount(() => { clearTimeout(timer); cancelVisit?.cancel(); });
                         <DocumentIcon v-else :class="[display === 'grid' ? 'h-10 w-10' : 'h-5 w-5', 'text-zinc-300 dark:text-zinc-600']" aria-hidden="true" />
                     </div>
                     <div class="min-w-0 flex-1">
-                        <h2 class="truncate text-sm font-semibold text-zinc-800 group-hover:text-amber-700 dark:text-zinc-100 dark:group-hover:text-amber-400">{{ file.name || 'Untitled document' }}</h2>
+                        <h2 class="break-words text-sm font-semibold text-zinc-800 group-hover:text-amber-700 dark:text-zinc-100 dark:group-hover:text-amber-400">{{ file.identity?.title || file.name || 'Untitled document' }}</h2>
+                        <p v-if="file.identity?.title" class="mt-0.5 break-words text-xs text-zinc-500 dark:text-zinc-400">{{ file.name }}</p>
+                        <div v-if="file.identity?.date || file.identity?.amount != null" class="mt-1 flex flex-wrap gap-2 text-xs text-zinc-600 dark:text-zinc-300">
+                            <span v-if="file.identity.date">{{ formatDate(file.identity.date) }}</span>
+                            <span v-if="file.identity.amount != null">{{ formatCurrency(file.identity.amount, file.identity.currency) }}</span>
+                        </div>
                         <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-400 dark:text-zinc-500">
-                            <span class="uppercase">{{ file.extension }}</span><span>{{ formatDate(file.uploaded_at) }}</span>
+                            <span class="uppercase">{{ file.extension }}</span><span>Uploaded {{ formatDate(file.uploaded_at) }}</span>
                             <span v-if="file.folder" class="truncate">{{ file.folder.name }}</span><span v-if="file.is_shared">Shared by {{ file.owner }}</span>
                         </div>
                         <div v-if="display === 'grid'" class="mt-3 flex flex-wrap gap-1.5"><span v-for="type in file.entity_types.length ? file.entity_types : [file.file_type]" :key="type" class="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">{{ label(type) }}</span></div>

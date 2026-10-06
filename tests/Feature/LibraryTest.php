@@ -3,6 +3,7 @@
 use App\Models\Collection;
 use App\Models\Contract;
 use App\Models\Document;
+use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\FileShare;
 use App\Models\Invoice;
@@ -159,4 +160,24 @@ it('keeps the current filters when returning from a document workspace', functio
         ->assertInertia(fn (Assert $page) => $page->where('file.back_url', '/search?query=travel')->where('file.back_label', 'Back to search'));
     $this->getJson(route('files.show', ['file' => $file->id, 'return_to' => 'https://example.com']))
         ->assertUnprocessable()->assertJsonValidationErrors('return_to');
+});
+
+it('exposes extracted library identities and keeps unfinished file names', function (): void {
+    $file = File::factory()->create(['user_id' => $this->owner->id, 'fileName' => 'Generic scan.pdf', 'status' => 'completed']);
+    $merchant = Merchant::create(['user_id' => $this->owner->id, 'name' => 'Distinct merchant']);
+    $receipt = Receipt::factory()->create(['user_id' => $this->owner->id, 'file_id' => $file->id, 'merchant_id' => $merchant->id, 'receipt_date' => '2026-02-10', 'total_amount' => 21.56, 'currency' => 'EUR']);
+    ExtractableEntity::create(['user_id' => $this->owner->id, 'file_id' => $file->id, 'entity_type' => 'receipt', 'entity_id' => $receipt->id, 'is_primary' => true, 'extracted_at' => now()]);
+    foreach (['processing', 'failed'] as $status) {
+        File::factory()->create(['user_id' => $this->owner->id, 'fileName' => $status.'.pdf', 'status' => $status]);
+    }
+    $this->actingAs($this->owner)->get(route('library.index'))->assertOk()->assertInertia(function (Assert $page) use ($file): void {
+        $page->where('files.data', function ($files) use ($file): bool {
+            $files = collect($files)->keyBy('id');
+            expect($files[$file->id]['identity'])->toMatchArray(['title' => 'Distinct merchant', 'date' => '2026-02-10', 'amount' => '21.56', 'currency' => 'EUR']);
+            expect($files->pluck('name')->all())->toContain('Generic scan.pdf', 'processing.pdf', 'failed.pdf');
+            expect($files->whereIn('status', ['processing', 'failed'])->pluck('identity')->all())->toBe([null, null]);
+
+            return true;
+        });
+    });
 });

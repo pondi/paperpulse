@@ -1158,7 +1158,6 @@ it('retains nested folder context in upload library and search selectors', funct
     });
 });
 
-
 it('uses one library type and view control and keeps mobile file content visible', function (): void {
     $user = $this->createUser();
     $file = File::factory()->create(['user_id' => $user->id, 'status' => 'processing', 'file_type' => 'receipt', 'fileName' => 'Mobile visible scan.pdf']);
@@ -1170,5 +1169,21 @@ it('uses one library type and view control and keeps mobile file content visible
             ->select('select[aria-label="Library view"]', 'processing')->waitForText('In progress')->assertSelected('select[aria-label="Document type"]', 'receipt');
         $browser->assertScript("document.querySelector('[dusk=library-file-".$file->id."]').getBoundingClientRect().bottom < window.innerHeight", true);
         $browser->press('Filters')->waitFor('#library-more-filters')->select('select[aria-label="Document type"]', 'invoice')->waitForText('No matching documents');
+    });
+});
+
+it('identifies library scans by extracted titles while retaining readable filenames and unfinished identities', function (): void {
+    $user = $this->createUser();
+    $file = File::factory()->create(['user_id' => $user->id, 'fileName' => 'Scan 16 Feb 2025 at 14.53 distinguishing suffix.pdf', 'status' => 'completed']);
+    $invoice = Invoice::factory()->create(['user_id' => $user->id, 'file_id' => $file->id, 'from_name' => 'Identifiable vendor', 'invoice_date' => '2026-02-10', 'total_amount' => 21.56, 'currency' => 'EUR']);
+    ExtractableEntity::create(['user_id' => $user->id, 'file_id' => $file->id, 'entity_type' => 'invoice', 'entity_id' => $invoice->id, 'is_primary' => true, 'extracted_at' => now()]);
+    foreach (['processing', 'failed'] as $status) {
+        File::factory()->create(['user_id' => $user->id, 'fileName' => $status.' scan.pdf', 'status' => $status]);
+    }
+    $this->browse(function (Browser $browser) use ($user, $file): void {
+        $this->loginAs($browser, $user);
+        $browser->resize(390, 844)->visit('/library')->waitFor('@library-file-'.$file->id)->assertSee('Identifiable vendor')
+            ->assertSee('distinguishing suffix.pdf')->assertSee('processing scan.pdf')->assertSee('failed scan.pdf')->assertSee('21.56');
+        $browser->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
     });
 });

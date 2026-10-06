@@ -903,3 +903,24 @@ it('identifies independent settings save scopes and tracks their pending changes
             ->assertSelected('#currency', 'EUR')->assertInputValue('#preferences-organization input', 'Properties');
     });
 });
+
+it('explains archive work limits and the disabled organize prerequisite in both themes', function (): void {
+    $user = $this->createUser();
+    UserPreference::create(['user_id' => $user->id, 'auto_organize_documents' => false]);
+    File::factory()->count(15)->for($user)->create(['status' => 'completed', 'organization_summary' => null]);
+    $this->browse(function (Browser $browser) use ($user): void {
+        foreach (['light', 'dark'] as $theme) {
+            $browser->loginAs($user)->visit('/preferences')->waitFor('#preferences-archive');
+            $browser->script("document.documentElement.classList.toggle('dark', '".$theme."' === 'dark'); document.querySelector('#preferences-archive').scrollIntoView({block: 'start'})");
+            $browser->assertSee('Preview the archive before organizing it.')
+                ->assertScript("document.querySelector('#preferences-archive details').open", false)
+                ->assertScript("document.querySelector('#preferences-archive button[aria-describedby]').disabled", true)
+                ->assertSee('With AI off, organizing saved information uses no paid AI requests.');
+            $browser->click('#preferences-archive button')->waitForText('15 eligible documents')->assertSee('0 paid AI requests')
+                ->assertSee('Enable automatic organization and save application preferences first.')
+                ->click('#preferences-archive > label input')->waitForText('AI can attempt up to 10 documents')
+                ->assertSee('Provider prices vary; this limit caps work, not a monetary charge.')
+                ->click('#preferences-archive summary')->assertSee('Maximum reserved tokens');
+        }
+    });
+});

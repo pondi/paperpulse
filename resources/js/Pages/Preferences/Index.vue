@@ -549,22 +549,29 @@
         <p class="text-sm text-zinc-600 dark:text-zinc-400">Preview reads your archive without saving settings or moving files. Organize this archive applies the saved organization choices using the limits below.</p>
         <p>Preview first. Saved summaries require no paid extraction. Manual placements and pinned folders are preserved; pending recommendations must be resolved first.</p>
         <label class="flex items-center gap-2"><input v-model="backfill.extract_missing" type="checkbox" />Extract missing grouping evidence from stored text using AI</label>
-        <label class="flex flex-col gap-2">Maximum provider calls<input v-model.number="backfill.max_calls" type="number" min="1" max="100" class="rounded dark:bg-zinc-700" /></label>
-        <label class="flex flex-col gap-2">Maximum reserved tokens<input v-model.number="backfill.max_tokens" type="number" min="10000" max="1000000" class="rounded dark:bg-zinc-700" /></label>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">With AI off, organizing saved information uses no paid AI requests. With AI on, each document needing evidence can use one paid request. Provider prices vary; this limit caps work, not a monetary charge. The run pauses when a request, text or daily limit is reached.</p>
+        <details>
+          <summary class="cursor-pointer text-sm font-medium">Advanced AI limits</summary>
+          <div class="mt-3 flex flex-col gap-3">
+            <label class="flex flex-col gap-2">Maximum provider calls<input v-model.number="backfill.max_calls" type="number" min="1" max="100" class="rounded dark:bg-zinc-700" /></label>
+            <label class="flex flex-col gap-2">Maximum reserved tokens<input v-model.number="backfill.max_tokens" type="number" min="10000" max="1000000" class="rounded dark:bg-zinc-700" /></label>
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">Tokens measure the text sent to and returned by AI. Reservations include the maximum response size, so this is a processing allowance rather than actual billed usage.</p>
+          </div>
+        </details>
         <p v-if="previewError" role="alert" class="text-red-600 dark:text-red-400">{{ previewError }}</p>
         <p v-for="(message, field) in backfill.errors" :key="field" role="alert" class="text-red-600 dark:text-red-400">{{ message }}</p>
         <div v-if="backfillPreview" class="flex flex-col gap-2">
-          <p>{{ backfillPreview.eligible }} eligible documents · {{ backfillPreview.missing_metadata }} need grouping metadata · {{ backfill.extract_missing ? `up to ${backfillPreview.maximum_calls_with_extraction} provider calls, within your budget` : '0 paid provider calls' }}</p>
-          <p v-if="!backfillPreview.can_start">Enable automatic organization and finish pending recommendations to continue.</p>
+          <p>{{ backfillPreview.eligible }} eligible documents · {{ backfillPreview.missing_metadata }} need grouping metadata · {{ backfill.extract_missing ? `AI can attempt up to ${Math.min(backfillPreview.maximum_calls_with_extraction, backfill.max_calls)} documents with this request limit; text and daily limits may allow fewer` : '0 paid AI requests' }}</p>
           <ul class="flex flex-col gap-2"><li v-for="file in backfillPreview.sample" :key="file.id">{{ file.name }} · {{ file.current_folder ?? 'Unfiled' }} → {{ file.group }}{{ file.role ? ` / ${file.role}` : '' }}</li></ul>
         </div>
         <div v-if="organizationBackfill" class="flex flex-col gap-2">
           <p>{{ organizationBackfill.status }} · {{ organizationBackfill.processed }} processed · {{ organizationBackfill.skipped }} skipped · {{ organizationBackfill.calls }} provider calls · {{ organizationBackfill.tokens }} reserved tokens</p>
           <p v-if="organizationBackfill.error" role="alert" class="text-amber-700 dark:text-amber-300">{{ organizationBackfill.error }}</p>
         </div>
+        <p v-if="organizePrerequisite" id="organize-prerequisite" role="status" class="text-sm text-amber-800 dark:text-amber-300">{{ organizePrerequisite }}</p>
         <div class="flex flex-wrap gap-3">
           <SecondaryButton :disabled="previewBusy" @click="previewBackfill">Preview archive and budget</SecondaryButton>
-          <PrimaryButton :disabled="!backfillPreview?.can_start || backfill.processing || ['queued', 'running', 'paused', 'failed'].includes(organizationBackfill?.status)" @click="startBackfill">Organize this archive</PrimaryButton>
+          <PrimaryButton :disabled="Boolean(organizePrerequisite) || backfill.processing" aria-describedby="organize-prerequisite" class="disabled:opacity-50 disabled:cursor-not-allowed" @click="startBackfill">Organize this archive</PrimaryButton>
           <SecondaryButton v-if="['paused', 'failed'].includes(organizationBackfill?.status)" :disabled="!backfillPreview?.can_start || backfill.processing" @click="resumeBackfill">Resume with this budget</SecondaryButton>
           <SecondaryButton v-if="organizationBackfill" @click="router.reload({ only: ['organizationBackfill'] })">Refresh progress</SecondaryButton>
         </div>
@@ -575,7 +582,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import axios from 'axios';
 import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -636,6 +643,14 @@ const backfill = useForm({ extract_missing: false, max_calls: 10, max_tokens: 16
 const backfillPreview = ref(null);
 const previewError = ref('');
 const previewBusy = ref(false);
+const organizePrerequisite = computed(() => {
+  if (!backfillPreview.value) return 'Preview the archive before organizing it.';
+  if (!props.preferences.auto_organize_documents) return 'Enable automatic organization and save application preferences first.';
+  if (!backfillPreview.value.can_start) return 'Finish pending folder recommendations before organizing the archive.';
+  if (['queued', 'running'].includes(props.organizationBackfill?.status)) return 'An archive organization run is already in progress.';
+  if (['paused', 'failed'].includes(props.organizationBackfill?.status)) return 'Use Resume with this budget to continue the existing run.';
+  return '';
+});
 const previewBackfill = async () => {
   previewBusy.value = true;
   previewError.value = '';

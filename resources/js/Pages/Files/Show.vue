@@ -22,7 +22,7 @@ const props = defineProps({
     hasLegacyData: { type: Boolean, default: false },
 });
 const { start, stop } = usePoll(5000, { only: ['file', 'extractedEntities'] }, { autoStart: false });
-watch(() => ['pending', 'processing'].includes(props.file.status), active => active ? start() : stop(), { immediate: true });
+watch(() => ['pending', 'processing'].includes(props.file.status) || props.file.preview_pending, active => active ? start() : stop(), { immediate: true });
 const { formatDate, formatDateTime, formatCurrency } = useDateFormatter();
 const components = { voucher: VoucherCard, warranty: WarrantyCard, return_policy: ReturnPolicyCard, invoice: InvoiceCard, contract: ContractCard, bank_statement: BankStatementCard };
 const entityProps = extraction => ({ [extraction.entity_type === 'bank_statement' ? 'statement' : extraction.entity_type === 'return_policy' ? 'returnPolicy' : extraction.entity_type]: extraction.entity });

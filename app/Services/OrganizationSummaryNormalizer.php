@@ -17,6 +17,7 @@ class OrganizationSummaryNormalizer
         $employer = $this->text($data['employer_name'] ?? null, 120);
 
         return [
+            'collection_id' => is_int($data['collection_id'] ?? null) && $data['collection_id'] > 0 ? $data['collection_id'] : null,
             'group_path' => $this->groupPath(array_key_exists('group_path', $data) ? $data['group_path'] : []),
             'subject' => $this->text($data['subject'] ?? null, 160),
             'property_address' => $property,
@@ -73,6 +74,8 @@ class OrganizationSummaryNormalizer
             'version' => self::VERSION,
             'document_type' => $this->text($subtype, 50) ?? $type,
             'title' => $this->text($title, 120) ?? ucfirst($type),
+            'abstract' => $this->text($data['summary'] ?? ($metadata['content']['summary'] ?? null) ?? $data['description'] ?? $data['content'] ?? null, 400),
+            'collection_id' => $evidence['collection_id'],
             'group_path' => $evidence['group_path'],
             'subject' => $evidence['subject'],
             'property_address' => $evidence['property_address'],

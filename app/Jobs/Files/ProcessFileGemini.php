@@ -26,6 +26,8 @@ use App\Services\DuplicateDetectionService;
 use App\Services\EntityFactory;
 use App\Services\Files\FilePreviewManager;
 use App\Services\Files\ImagePreviewGenerator;
+use App\Services\OrganizationEvidenceSchema;
+use App\Services\OrganizationFolderContext;
 use App\Services\Receipts\Analysis\UserPreferencesLoader;
 use App\Services\Workers\WorkerFileManager;
 use Exception;
@@ -236,10 +238,22 @@ class ProcessFileGemini extends BaseJob
                     }
 
                     $extractor = EntityExtractorFactory::create($classification->type);
+                    $folderContext = app(OrganizationFolderContext::class);
+                    $folders = $folderContext->candidates($file->user_id, $file->fileName.' '.$classification->reasoning.' '.($textContext['excerpt'] ?? ''));
+                    $schema = $extractor->getSchema();
+                    $schema['responseSchema']['properties']['organization'] = OrganizationEvidenceSchema::get();
+                    if ($folders !== []) {
+                        $schema['responseSchema']['properties']['organization']['properties']['collection_id']['enum'] = array_column($folders, 'id');
+                    } else {
+                        unset($schema['responseSchema']['properties']['organization']['properties']['collection_id']);
+                    }
+                    $schema['responseSchema']['required'] = array_values(array_unique([...($schema['responseSchema']['required'] ?? []), 'organization']));
+                    $prompt = $extractor->getPrompt().$folderContext->prompt($folders);
                     $extracted = ProcessingStageCache::remember($file->user_id, $contentHash, 'extraction:'.$classification->type, [
-                        ...$version, 'prompt' => $extractor->getPrompt(), 'schema' => $extractor->getSchema(), 'normalizer_version' => 1,
+                        ...$version, 'prompt' => $prompt, 'schema' => $schema, 'normalizer_version' => 2,
                     ], fn () => ProcessingUsageBudget::run($file->user_id, $this->jobID, 'extraction', fn () => $extractor->extract($fileUri, $file, [
                         'classification' => $classification, 'mime_type' => $uploadResult['mimeType'],
+                        'extraction_schema' => $schema, 'extraction_prompt' => $prompt,
                     ])), $file->guid);
 
                     $this->updateProgress(70);

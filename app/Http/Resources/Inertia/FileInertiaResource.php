@@ -51,7 +51,8 @@ class FileInertiaResource extends JsonResource
         $data = [
             'id' => $this->id,
             'guid' => $this->guid,
-            'name' => $this->fileName,
+            'name' => $this->displayTitle(),
+            'original_name' => $this->fileName,
             'file_type' => $this->file_type,
             'status' => $this->status,
             'uploaded_at' => $this->uploaded_at,
@@ -109,5 +110,24 @@ class FileInertiaResource extends JsonResource
         }
 
         return $data;
+    }
+
+    private function displayTitle(): string
+    {
+        $entity = null;
+        if ($this->relationLoaded('primaryEntity') && $this->primaryEntity?->relationLoaded('entity')) {
+            $entity = $this->primaryEntity->entity;
+        } elseif ($this->relationLoaded('extractableEntities')) {
+            $extraction = $this->extractableEntities->firstWhere('is_primary', true);
+            $entity = $extraction?->relationLoaded('entity') ? $extraction->entity : null;
+        }
+        $title = $entity?->getAttribute('title') ?? $entity?->getAttribute('contract_title')
+            ?? ($this->organization_summary['title'] ?? null)
+            ?? data_get($this->meta, 'gemini.entities.0.data.metadata.title');
+        if (! is_string($title) || trim($title) === '' || in_array(mb_strtolower(trim($title)), ['document', 'detected document', 'receipt', 'invoice', 'contract', 'file'], true)) {
+            return $this->fileName;
+        }
+
+        return trim($title);
     }
 }

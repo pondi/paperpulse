@@ -35,8 +35,8 @@ class DocumentExtractor implements EntityExtractorContract
      */
     public function extract(string $fileUri, File $file, array $context = []): array
     {
-        $schema = $this->getSchema();
-        $prompt = $this->getPrompt();
+        $schema = $context['extraction_schema'] ?? $this->getSchema();
+        $prompt = $context['extraction_prompt'] ?? $this->getPrompt();
 
         Log::info('[DocumentExtractor] Extracting document data', [
             'file_id' => $file->id,
@@ -84,6 +84,7 @@ class DocumentExtractor implements EntityExtractorContract
 
             // Normalize to EntityFactory format
             $normalized = $this->normalizer->normalize($rawData);
+            $normalized['organization'] = $rawData['organization'] ?? [];
 
             Log::info('[DocumentExtractor] Extraction complete', [
                 'file_id' => $file->id,

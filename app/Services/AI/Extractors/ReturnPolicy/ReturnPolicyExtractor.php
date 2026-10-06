@@ -13,14 +13,15 @@ class ReturnPolicyExtractor implements EntityExtractorContract
 
     public function extract(string $fileUri, File $file, array $context = []): array
     {
-        $response = $this->provider->analyzeFileByUri($fileUri, $this->getSchema(), $this->getPrompt(), [], $context['mime_type'] ?? $file->fileType ?? 'application/pdf');
+        $response = $this->provider->analyzeFileByUri($fileUri, $context['extraction_schema'] ?? $this->getSchema(), $context['extraction_prompt'] ?? $this->getPrompt(), [], $context['mime_type'] ?? $file->fileType ?? 'application/pdf');
         $data = $this->normalizer->normalizeRelativeDeadlines($response['data']);
         $validation = $this->validator->validate($data);
         if (! $validation['valid']) {
             throw new AIResponseException('Return policy validation failed');
         }
 
-        return ['type' => 'return_policy', 'confidence_score' => $data['confidence_score'] ?? 0.85, 'data' => $this->normalizer->normalize($data)];
+        return ['type' => 'return_policy', 'confidence_score' => $data['confidence_score'] ?? 0.85,
+            'data' => [...$this->normalizer->normalize($data), 'organization' => $data['organization'] ?? []]];
     }
 
     public function getSchema(): array

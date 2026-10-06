@@ -10,7 +10,7 @@ use App\Models\UserPreference;
 
 class FolderOrganizationService
 {
-    public const GROUPING_VERSION = 3;
+    public const GROUPING_VERSION = 4;
 
     public function __construct(private FolderTreeService $tree, private PropertyGroupingService $properties) {}
 
@@ -46,6 +46,14 @@ class FolderOrganizationService
             if ($path === null) {
                 return $this->review($locked);
             }
+            if (! empty($summary['collection_id'])) {
+                $target = Collection::withoutGlobalScope('user')->where('user_id', $locked->user_id)->find($summary['collection_id']);
+                if (! $target || ($summary['confidence'] ?? 0) < 0.8 || ! $this->usableBranch($target)) {
+                    return $this->review($locked);
+                }
+
+                return $this->placeContextPath($locked, $summary, $path, $target);
+            }
             if ($path !== []) {
                 return $this->placeContextPath($locked, $summary, $path);
             }
@@ -60,9 +68,9 @@ class FolderOrganizationService
             $targetName = $rules['role_labels'][$role] ?? ($role === 'other' ? 'Documents' : ucfirst($role));
             $targetType = 'document_role';
             if (! $property && ! $employer) {
-                $target = $this->tree->ensureFolder($locked->user_id, $targetName, type: $targetType, source: 'system');
+                $target = $this->reusableFolder($locked->user_id, $targetName, null, $targetType);
 
-                return $target->is_archived || $target->is_pinned || $target->organization_source !== 'system' || $this->tree->hasSharing($target)
+                return $this->protectedFolder($target)
                     ? $this->review($locked) : $this->tree->place($locked, $target, 'system');
             }
             if ($employer && ($rules['work_structure'] ?? 'role') === 'year') {
@@ -75,13 +83,13 @@ class FolderOrganizationService
                 $targetType = 'document_year';
             }
             $rootName = $property ? ($rules['building_root'] ?? 'Building') : ($rules['work_root'] ?? 'Work');
-            $root = $this->tree->ensureFolder($locked->user_id, $rootName, type: 'group_root', source: 'system');
+            $root = $this->reusableFolder($locked->user_id, $rootName, null, 'group_root');
             if ($this->protectedFolder($root)) {
                 return $this->review($locked);
             }
             $identity = $property ?? (empty($employer['registration']) ? $employer['name'] : 'registration:'.$employer['registration']);
             $label = $property ? $this->properties->canonicalName($locked->user_id, $property) : $this->canonicalName($locked->user_id, 'employer', $identity, $employer['name']);
-            $group = $this->tree->ensureFolder($locked->user_id, $label, $root->id, $property ? 'property' : 'employer', 'system');
+            $group = $this->reusableFolder($locked->user_id, $label, $root->id, $property ? 'property' : 'employer');
             if ($this->protectedFolder($group)) {
                 return $this->review($locked);
             }
@@ -89,8 +97,8 @@ class FolderOrganizationService
                 $this->properties->consolidate($group);
                 $locked->refresh();
             }
-            $target = $this->tree->ensureFolder($locked->user_id, $targetName, $group->id, $targetType, 'system');
-            if ($target->is_archived || $target->is_pinned || $target->organization_source !== 'system' || $this->tree->hasSharing($target)) {
+            $target = $this->reusableFolder($locked->user_id, $targetName, $group->id, $targetType);
+            if ($this->protectedFolder($target)) {
                 return $this->review($locked);
             }
 
@@ -98,14 +106,13 @@ class FolderOrganizationService
         });
     }
 
-    private function placeContextPath(File $file, array $summary, array $path): File
+    private function placeContextPath(File $file, array $summary, array $path, ?Collection $parent = null): File
     {
         foreach ($path as $node) {
             if ($node['confidence'] < 0.8) {
                 return $this->review($file);
             }
         }
-        $parent = null;
         foreach ($path as $node) {
             $kind = $node['kind'];
             $identity = $node['identifier'] ?? $node['name'];
@@ -113,9 +120,10 @@ class FolderOrganizationService
                 : $this->contextName($file->user_id, $parent?->id, $node);
             $type = $kind === 'property' && ! $node['identifier'] ? 'property'
                 : ($node['identifier'] ? 'context_'.substr(hash('sha256', $kind.':'.$identity), 0, 22) : 'context_'.$kind);
-            $existing = $node['identifier'] ? null : Collection::withoutGlobalScope('user')->where('user_id', $file->user_id)
+            $existing = Collection::withoutGlobalScope('user')->where('user_id', $file->user_id)
                 ->where('parent_id', $parent?->id)->where('normalized_name', Collection::normalizeIdentity($name))
-                ->whereIn('folder_type', [$type, 'folder', 'group_root', 'document_role'])->orderBy('id')->first();
+                ->when($node['identifier'], fn ($query) => $query->where('folder_type', $type))
+                ->orderBy('id')->first();
             $parent = $existing ?? $this->tree->ensureFolder($file->user_id, $name, $parent?->id, $type, 'system');
             if ($this->protectedFolder($parent)) {
                 return $this->review($file);
@@ -126,11 +134,11 @@ class FolderOrganizationService
             }
         }
         $role = $summary['role'] ?? 'other';
-        if (in_array($role, OrganizationSummaryNormalizer::ROLES, true) && $role !== 'other') {
+        if (empty($summary['collection_id']) && in_array($role, OrganizationSummaryNormalizer::ROLES, true) && $role !== 'other') {
             $rules = app(OrganizationFeedbackService::class)->rules($file->user_id);
             $roleName = $rules['role_labels'][$role] ?? ucfirst($role);
             if (Collection::normalizeIdentity($parent->name) !== Collection::normalizeIdentity($roleName)) {
-                $parent = $this->tree->ensureFolder($file->user_id, $roleName, $parent->id, 'document_role', 'system');
+                $parent = $this->reusableFolder($file->user_id, $roleName, $parent->id, 'document_role');
             }
             if ($this->protectedFolder($parent)) {
                 return $this->review($file);
@@ -151,7 +159,34 @@ class FolderOrganizationService
 
     private function protectedFolder(Collection $folder): bool
     {
-        return $folder->is_archived || $folder->is_pinned || $folder->organization_source !== 'system' || $this->tree->hasSharing($folder);
+        return $folder->is_archived || $folder->is_pinned || $this->tree->hasSharing($folder);
+    }
+
+    private function reusableFolder(int $userId, string $name, ?int $parentId, string $type): Collection
+    {
+        return Collection::withoutGlobalScope('user')->where('user_id', $userId)->where('parent_id', $parentId)
+            ->where('normalized_name', Collection::normalizeIdentity($name))->orderBy('id')->first()
+            ?? $this->tree->ensureFolder($userId, $name, $parentId, $type, 'system');
+    }
+
+    private function usableBranch(Collection $folder): bool
+    {
+        $visited = [];
+        while (! in_array($folder->id, $visited, true) && count($visited) < 64) {
+            if ($this->protectedFolder($folder) || in_array($folder->folder_type, ['inbox', 'needs_review'], true)) {
+                return false;
+            }
+            $visited[] = $folder->id;
+            if ($folder->parent_id === null) {
+                return true;
+            }
+            $folder = Collection::withoutGlobalScope('user')->where('user_id', $folder->user_id)->find($folder->parent_id);
+            if (! $folder) {
+                return false;
+            }
+        }
+
+        return false;
     }
 
     private function enabled(int $userId): bool

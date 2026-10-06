@@ -15,7 +15,8 @@ class FileOrganizationSummaryService
         if ((int) $entity->getAttribute('user_id') !== (int) $file->user_id || (int) $entity->getAttribute('file_id') !== (int) $file->id) {
             throw ValidationException::withMessages(['file' => 'Organization evidence must belong to this file and owner.']);
         }
-        $summary = $this->summarize($entity);
+        $evidence = data_get($file->meta, 'gemini.entities.0.data.organization', []);
+        $summary = $this->summarize($entity, is_array($evidence) ? $evidence : []);
 
         return $file->getConnection()->transaction(function () use ($file, $summary): File {
             $locked = File::withoutGlobalScope('user')->where('user_id', $file->user_id)->lockForUpdate()->findOrFail($file->id);

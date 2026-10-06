@@ -508,14 +508,14 @@ const StatCard = {
         value: [String, Number],
         alert: { type: Boolean, default: false },
     },
-    template: `
-        <div class="bg-white dark:bg-zinc-800 overflow-hidden shadow rounded-lg">
-            <div class="px-4 py-5 sm:p-6">
-                <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400 truncate">{{ label }}</dt>
-                <dd class="mt-1 text-3xl font-semibold" :class="alert ? 'text-red-600 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100'">{{ value ?? 0 }}</dd>
-            </div>
-        </div>
-    `,
+    render() {
+        return h('div', { class: 'bg-white dark:bg-zinc-800 overflow-hidden shadow rounded-lg' }, [
+            h('div', { class: 'px-4 py-5 sm:p-6' }, [
+                h('dt', { class: 'text-sm font-bold text-zinc-500 dark:text-zinc-400 truncate' }, this.label),
+                h('dd', { class: ['mt-1 text-3xl font-semibold', this.alert ? 'text-red-600 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100'] }, this.value ?? 0),
+            ]),
+        ]);
+    },
 };
 
 const EmptyState = {

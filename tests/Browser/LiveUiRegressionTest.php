@@ -5,6 +5,7 @@ use App\Models\BankStatement;
 use App\Models\BankTransaction;
 use App\Models\Category;
 use App\Models\Collection;
+use App\Models\Contract;
 use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
@@ -1068,3 +1069,24 @@ it('distinguishes banking report loading missing sources empty periods and faile
             ->assertScript("document.querySelector('canvas').height > 0", true);
     });
 });
+
+it('renders report statistic labels and zero or populated values with the production runtime', function (bool $populated): void {
+    $user = $this->createUser();
+    if ($populated) {
+        Receipt::factory()->create(['user_id' => $user->id]);
+        Invoice::factory()->create(['user_id' => $user->id]);
+        $statement = BankStatement::factory()->create(['user_id' => $user->id]);
+        BankTransaction::factory()->create(['user_id' => $user->id, 'bank_statement_id' => $statement->id]);
+        Contract::factory()->create(['user_id' => $user->id]);
+        Document::factory()->create(['user_id' => $user->id]);
+    }
+    $this->browse(function (Browser $browser) use ($user, $populated): void {
+        $this->loginAs($browser, $user);
+        foreach (['receipts' => 'Receipts', 'invoices' => 'Invoices', 'banking' => 'Statements', 'contracts' => 'Total Contracts', 'documents' => 'Total Documents'] as $tab => $label) {
+            $browser->visit('/analytics?tab='.$tab)->waitFor('dt')->assertSee($label);
+            $browser->assertScript('document.querySelector("dt + dd").textContent', $populated ? '1' : '0');
+        }
+        $logs = $browser->driver->manage()->getLog('browser');
+        expect(collect($logs)->pluck('message')->implode(' '))->not->toContain('runtime compilation');
+    });
+})->with([false, true]);

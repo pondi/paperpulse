@@ -62,9 +62,10 @@
         </p>
         <div class="border-t border-blue-200 dark:border-zinc-700 pt-4 space-y-2">
             <div class="flex items-center justify-between">
-                <span class="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Files</span>
+                <span class="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Direct files</span>
                 <span class="text-sm font-black text-zinc-900 dark:text-zinc-100">{{ collection.files_count || 0 }}</span>
             </div>
+            <p v-if="collection.children_count" class="text-xs text-zinc-600 dark:text-zinc-400">{{ collection.children_count }} subfolder{{ collection.children_count === 1 ? '' : 's' }} · Open this folder to browse their files.</p>
         </div>
     </div>
 </template>

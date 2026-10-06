@@ -94,9 +94,11 @@
                         </div>
 
                         <dl class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-600 dark:text-zinc-300">
-                            <div class="flex gap-2"><dt>Total Files</dt><dd class="font-bold">{{ stats.total_files }}</dd></div>
-                            <div class="flex gap-2"><dt>Documents</dt><dd class="font-bold">{{ stats.documents_count }}</dd></div>
-                            <div class="flex gap-2"><dt>Receipts</dt><dd class="font-bold">{{ stats.receipts_count }}</dd></div>
+                            <div class="flex gap-2"><dt>Files directly here</dt><dd class="font-bold">{{ stats.total_files }}</dd></div>
+                            <div class="flex gap-2"><dt>Documents directly here</dt><dd class="font-bold">{{ stats.documents_count }}</dd></div>
+                            <div class="flex gap-2"><dt>Receipts directly here</dt><dd class="font-bold">{{ stats.receipts_count }}</dd></div>
+                            <div class="flex gap-2"><dt>Invoices directly here</dt><dd class="font-bold">{{ stats.invoices_count }}</dd></div>
+                            <div v-if="treePreview" class="flex gap-2"><dt>Files including subfolders</dt><dd class="font-bold">{{ treePreview.files }}</dd></div>
                         </dl>
                     </div>
                 </div>

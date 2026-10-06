@@ -939,3 +939,31 @@ it('explains the receipt table and library display scopes without offering an un
             ->click('button[aria-label="List view"]')->waitUntil("document.querySelector('button[aria-label=\"List view\"]').getAttribute('aria-pressed') === 'true'");
     });
 });
+
+it('distinguishes direct mixed file counts from the folder subtree total', function (): void {
+    $user = $this->createUser();
+    $root = Collection::factory()->for($user)->create(['name' => 'Building']);
+    $child = Collection::factory()->for($user)->create(['name' => 'Contracts', 'parent_id' => $root->id]);
+    $leaf = Collection::factory()->for($user)->create(['name' => 'Hønsfaret', 'parent_id' => $child->id]);
+    $document = Document::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
+    $invoice = Invoice::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
+    foreach ([$document, $receipt, $invoice] as $entity) {
+        $entity->file->extractableEntities()->create(['user_id' => $user->id, 'entity_type' => $entity->getMorphClass(), 'entity_id' => $entity->id, 'is_primary' => true, 'extracted_at' => now()]);
+        $leaf->files()->attach($entity->file_id);
+    }
+    $this->browse(function (Browser $browser) use ($user, $root, $leaf): void {
+        $browser->loginAs($user)->visit('/collections')->waitForText('Building')
+            ->assertSee('DIRECT FILES')->assertSee('1 subfolder');
+        $browser->visit('/collections/'.$root->id)->waitForText('Files including subfolders')
+            ->assertScript("Object.fromEntries(Array.from(document.querySelectorAll('dl > div')).map(el => [el.querySelector('dt')?.textContent, el.querySelector('dd')?.textContent]))['Files including subfolders']", '3')
+            ->assertScript("Array.from(document.querySelectorAll('dt')).find(el => el.textContent === 'Files directly here').nextElementSibling.textContent", '0')
+            ->visit('/collections/'.$leaf->id)->waitForText('Documents directly here');
+        foreach (['Documents directly here', 'Receipts directly here', 'Invoices directly here'] as $label) {
+            $browser->assertScript("Array.from(document.querySelectorAll('dt')).find(el => el.textContent === '".$label."').nextElementSibling.textContent", '1');
+        }
+        $leaf->files()->detach();
+        $browser->refresh()->waitForText('Files including subfolders')
+            ->assertScript("Array.from(document.querySelectorAll('dt')).find(el => el.textContent === 'Files including subfolders').nextElementSibling.textContent", '0');
+    });
+});

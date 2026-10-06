@@ -35,7 +35,7 @@ class CollectionController extends Controller
     {
         $query = Collection::where('user_id', auth()->id())
             ->where('parent_id', $request->input('parent_id'))
-            ->withCount('files');
+            ->withCount(['files', 'children']);
 
         // Apply search filter
         if ($request->filled('search')) {

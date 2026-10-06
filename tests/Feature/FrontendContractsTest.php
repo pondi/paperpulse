@@ -26,10 +26,10 @@ import { parse, compileScript } from '@vue/compiler-sfc';
 import { renderToString } from '@vue/server-renderer';
 import { Link } from '@inertiajs/vue3';
 import { route as ziggyRoute } from './vendor/tightenco/ziggy/dist/index.js';
-import { Ziggy } from './resources/js/ziggy.js';
 
-const scenario = JSON.parse(fs.readFileSync(0, 'utf8'));
-const route = (name, params) => ziggyRoute(name, params, true, Ziggy);
+const input = JSON.parse(fs.readFileSync(0, 'utf8'));
+const scenario = input.scenario;
+const route = (name, params) => ziggyRoute(name, params, true, input.ziggy);
 const page = { props: { flash: {}, language: { messages: {} } } };
 const stub = (props, { slots }) => props.show === false ? null : vue.h('div', [slots.header?.(), slots.default?.({ active: false })]);
 const warnings = [];
@@ -118,13 +118,33 @@ if (scenario === 'row names') {
     }
     assert.ok(receipts.includes('aria-label="Select all receipts"'));
 }
+if (scenario === 'recommendation states') {
+    for (const status of ['queued', 'running', 'failed', 'completed', 'awaiting_decisions']) {
+        const data = status === 'awaiting_decisions' ? [{ id: 1, status: 'pending', current_paths: ['Building'], proposed_path: 'Home', affected_count: 1, confidence: 0.95, reason: 'Rename Building to Home', preview_items: [] }] : [];
+        const html = await render('Pages/Collections/Recommendations.vue', { run: { id: 1, status, attempts: 1, created_at: '2026-10-06', started_at: '2026-10-06', updated_at: '2026-10-06' },
+            recommendations: { data, last_page: 1 }, pending_count: data.length, enabled: true, can_start: false });
+        assert.ok(html.includes('Archive folder review'));
+        if (status === 'failed') {
+            assert.ok(html.includes('Folder recommendation generation failed'));
+            assert.ok(html.includes('Dismiss failed run'));
+            assert.ok(!html.includes('No folder changes to review'));
+        } else if (status === 'completed') {
+            assert.ok(html.includes('No folder changes to review'));
+        } else if (status === 'awaiting_decisions') {
+            assert.ok(html.includes('Rename Building to Home'));
+        } else {
+            assert.ok(html.includes('Your recommendations are being prepared.'));
+            assert.ok(!html.includes('No folder changes to review'));
+        }
+    }
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
-    $process->setInput(json_encode($scenario));
+    $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

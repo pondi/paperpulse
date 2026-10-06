@@ -54,7 +54,7 @@ class OrganizationController extends Controller
         $state = $revisions->state($userId);
         $enabled = UserPreference::query()->where('user_id', $userId)->value('auto_organize_documents') !== false;
         $backfilling = OrganizationBackfill::query()->where('active_user_id', $userId)->exists();
-        $data = ['backfill_waiting' => $backfilling, 'run' => $run?->only(['id', 'status', 'attempts', 'calls', 'tokens', 'error']),
+        $data = ['backfill_waiting' => $backfilling, 'run' => $run?->only(['id', 'status', 'attempts', 'calls', 'tokens', 'error', 'created_at', 'started_at', 'updated_at', 'completed_at']),
             'recommendations' => $recommendations,
             'pending_count' => $run?->recommendations()->whereIn('status', ['pending', 'conflict'])->count() ?? 0,
             'changes_waiting' => $state->revision > ($run?->input_revision ?? $state->analyzed_revision),

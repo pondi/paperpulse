@@ -42,7 +42,8 @@ it('validates selected recommendation ownership and exposes failed run recovery'
     $run = $runs->start($user->id);
     $runs->fail($runs->begin($user->id, $run->id));
     $this->actingAs($user)->get(route('collections.organization.index'))->assertInertia(fn ($page) => $page
-        ->where('run.status', 'failed')->where('can_start', false));
+        ->where('run.status', 'failed')->where('can_start', false)
+        ->has('run.created_at')->has('run.started_at')->has('run.updated_at'));
     $this->postJson(route('api.organization.decide'), ['recommendation_ids' => [9999], 'decision' => 'apply'])->assertUnprocessable();
     $this->post(route('collections.organization.retry', $run->id))->assertRedirect();
     expect($run->fresh()->status)->toBe('queued');

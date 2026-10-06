@@ -9,6 +9,7 @@ use App\Models\File;
 use App\Models\Invoice;
 use App\Models\LineItem;
 use App\Models\Merchant;
+use App\Models\OrganizationRun;
 use App\Models\Receipt;
 use App\Models\Tag;
 use App\Models\UserPreference;
@@ -16,6 +17,33 @@ use App\Models\Vendor;
 use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
+
+it('distinguishes recommendation generation failures pending work and successful empty reviews', function (string $status, string $message): void {
+    $user = $this->createUser();
+    $run = OrganizationRun::create(['user_id' => $user->id, 'active_user_id' => $status === 'completed' ? null : $user->id,
+        'input_revision' => 0, 'input_fingerprint' => str_repeat('a', 64), 'status' => $status, 'attempts' => 1,
+        'started_at' => $status === 'queued' ? null : now(), 'error' => $status === 'failed' ? 'Recommendations could not be generated. Retry this run or dismiss it.' : null]);
+    if ($status === 'awaiting_decisions') {
+        $folder = Collection::factory()->for($user)->create(['name' => 'Building']);
+        $run->recommendations()->create(['user_id' => $user->id, 'operation' => ['type' => 'rename', 'folder_id' => $folder->id, 'parent_id' => null, 'file_ids' => [], 'name' => 'Home'],
+            'before_state' => ['files' => [], 'folders' => [$folder->id => ['members_count' => 0, 'parent_id' => null]]],
+            'signature' => str_repeat('b', 64), 'confidence' => 0.95, 'reason' => 'Rename Building to Home']);
+    }
+    $this->browse(function (Browser $browser) use ($user, $status, $message): void {
+        $browser->loginAs($user)->visit('/collections/recommendations')->waitForText($message)->assertSee('Archive folder review');
+        if ($status === 'failed') {
+            $browser->assertDontSee('No folder changes to review')->assertSee('Failed')->assertSee('Retry')->assertSee('Dismiss failed run');
+        } else {
+            $browser->assertDontSee('Folder recommendation generation failed');
+        }
+    });
+})->with([
+    ['queued', 'Your recommendations are being prepared.'],
+    ['running', 'Your recommendations are being prepared.'],
+    ['failed', 'Folder recommendation generation failed'],
+    ['completed', 'No folder changes to review.'],
+    ['awaiting_decisions', 'Rename Building to Home'],
+]);
 
 it('keeps scanner error exits visible and provides file upload recovery', function (string $failure, string $message): void {
     $user = $this->createUser();

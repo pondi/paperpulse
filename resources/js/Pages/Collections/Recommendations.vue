@@ -6,11 +6,13 @@ import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
 import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
 import Pagination from '@/Components/Common/Pagination.vue';
 import FilePreviewModal from '@/Components/Common/FilePreviewModal.vue';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 const props = defineProps({
     run: Object, recommendations: Object, pending_count: Number,
     changes_waiting: Boolean, can_start: Boolean, enabled: Boolean, backfill_waiting: Boolean,
 });
+const { formatDateTime } = useDateFormatter();
 const selected = ref([]);
 const reason = ref('');
 const removeEmpty = ref(false);
@@ -43,12 +45,15 @@ const decide = (decision, ids) => post(route('collections.organization.decide'),
         <div class="mx-auto flex max-w-7xl flex-col gap-6 p-6 text-zinc-900 dark:text-zinc-100">
             <Link :href="route('collections.index')" class="text-orange-600 dark:text-orange-400">Back to collections</Link>
             <section class="flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800">
-                <p>{{ pending_count }} decisions remaining · {{ run?.status?.replaceAll('_', ' ') ?? 'No recommendations yet' }}</p>
+                <p v-if="run?.status === 'failed'" class="font-semibold text-red-600 dark:text-red-400">Folder recommendation generation failed</p>
+                <p v-else>{{ pending_count }} decisions remaining · {{ run?.status?.replaceAll('_', ' ') ?? 'No recommendations yet' }}</p>
+                <p v-if="run" class="text-sm text-zinc-600 dark:text-zinc-400">Archive folder review · Requested {{ formatDateTime(run.created_at) }}<span v-if="run.started_at"> · Started {{ formatDateTime(run.started_at) }}</span><span v-if="run.status === 'failed'"> · Failed {{ formatDateTime(run.updated_at) }}</span></p>
                 <p v-if="!enabled">Automatic organization is turned off in preferences.</p>
                 <p v-else-if="pending_count">Apply or decline every suggestion before starting another review.</p>
                 <p v-if="backfill_waiting">An archive backfill is still active. Resume or finish it in preferences before starting another review.</p>
                 <p v-if="changes_waiting">New changes are waiting for the next review.</p>
                 <p v-if="run?.error" role="alert" class="text-red-600 dark:text-red-400">{{ run.error }}</p>
+                <p v-if="run?.status === 'failed'">This review of your archive could not finish. <span v-if="run.attempts < 3">Retry to generate suggestions again, or </span><span v-else>The retry limit has been reached. </span>Dismiss this run to start a new review. No folder changes were applied by generation.</p>
                 <p v-if="error" role="alert" class="text-red-600 dark:text-red-400">{{ error }}</p>
                 <div class="flex flex-wrap gap-3">
                     <PrimaryButton :disabled="!can_start || busy" @click="post(route('collections.organization.start'))">Generate recommendations</PrimaryButton>
@@ -81,7 +86,7 @@ const decide = (decision, ids) => post(route('collections.organization.decide'),
                     <SecondaryButton v-for="file in item.preview_items" :key="file.id" @click="preview = file">Preview {{ file.title }}</SecondaryButton>
                 </div>
             </article>
-            <p v-if="!recommendations?.data.length" class="rounded-lg bg-white p-6 dark:bg-zinc-800">{{ ['queued', 'running'].includes(run?.status) ? 'Your recommendations are being prepared.' : 'No folder changes to review.' }}</p>
+            <p v-if="!recommendations?.data.length && run?.status !== 'failed'" class="rounded-lg bg-white p-6 dark:bg-zinc-800">{{ ['queued', 'running'].includes(run?.status) ? 'Your recommendations are being prepared.' : run?.status === 'completed' ? 'No folder changes to review.' : 'Generate recommendations to review folder changes.' }}</p>
             <Pagination v-if="recommendations?.last_page > 1" :links="recommendations.links" :from="recommendations.from" :to="recommendations.to" :total="recommendations.total" />
             <FilePreviewModal :show="!!preview" :item="preview" @close="preview = null" />
         </div>

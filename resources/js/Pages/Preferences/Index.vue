@@ -367,27 +367,13 @@
               {{ __('display_preferences') }}
             </h2>
             <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              {{ __('display_preferences_description') }}
+              Page size and sorting apply to the receipt table, including merchant and category views. Library has its own list/grid and sort controls and shows 24 files per page.
             </p>
           </header>
 
           <div class="mt-6 space-y-6">
             <div>
-              <InputLabel for="receipt_list_view" :value="__('receipt_list_view')" />
-              <select
-                id="receipt_list_view"
-                v-model="form.receipt_list_view"
-                class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
-              >
-                <option v-for="(label, value) in options.list_views" :key="value" :value="value">
-                  {{ label }}
-                </option>
-              </select>
-              <InputError class="mt-2" :message="form.errors.receipt_list_view" />
-            </div>
-
-            <div>
-              <InputLabel for="receipts_per_page" :value="__('receipts_per_page')" />
+              <InputLabel for="receipts_per_page" value="Receipts per page in the receipt table" />
               <select
                 id="receipts_per_page"
                 v-model="form.receipts_per_page"
@@ -401,7 +387,7 @@
             </div>
 
             <div>
-              <InputLabel for="default_sort" :value="__('default_sort')" />
+              <InputLabel for="default_sort" value="Default sort for the receipt table" />
               <select
                 id="default_sort"
                 v-model="form.default_sort"
@@ -698,7 +684,6 @@ const form = useForm({
   email_notify_scanner_import: props.preferences.email_notify_scanner_import ?? false,
   email_notify_weekly_summary: props.preferences.email_notify_weekly_summary ?? false,
   weekly_summary_day: props.preferences.weekly_summary_day || 'monday',
-  receipt_list_view: props.preferences.receipt_list_view || 'grid',
   receipts_per_page: props.preferences.receipts_per_page || 20,
   default_sort: props.preferences.default_sort || 'date_desc',
   auto_process_scanner_uploads: props.preferences.auto_process_scanner_uploads ?? false,

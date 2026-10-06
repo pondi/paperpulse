@@ -24,6 +24,7 @@
             </div>
           </div>
 
+          <p class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">Receipt overview · Table view. Page size and default sort come from Settings. Choose list or grid separately in <Link :href="route('library.index', { type: 'receipt' })" class="text-amber-700 underline dark:text-amber-400">Library</Link>.</p>
           <template v-if="receipts.length > 0">
             <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-amber-600 dark:border-amber-500">
               <div class="overflow-x-auto">

@@ -140,7 +140,6 @@ class ReceiptController extends BaseResourceController
             'user_preferences' => [
                 'receipts_per_page' => $this->perPage,
                 'default_sort' => $sortOption,
-                'receipt_list_view' => $user->preference('receipt_list_view', 'grid'),
             ],
             'filters' => $this->getFilters($request),
         ]);

@@ -44,7 +44,6 @@ class UpdatePreferencesRequest extends FormRequest
             'email_notify_weekly_summary' => 'boolean',
             'weekly_summary_day' => 'required|string|in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
 
-            'receipt_list_view' => 'required|string|in:grid,list',
             'receipts_per_page' => 'required|integer|in:10,20,50,100',
             'default_sort' => ['required', 'string', Rule::in(array_keys(UserPreference::getOptions()['sort_options']))],
 

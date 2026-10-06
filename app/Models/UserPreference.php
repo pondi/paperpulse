@@ -39,7 +39,6 @@ class UserPreference extends Model
         'email_notify_scanner_import',
         'email_notify_weekly_summary',
         'weekly_summary_day',
-        'receipt_list_view',
         'receipts_per_page',
         'default_sort',
         'auto_process_scanner_uploads',
@@ -124,7 +123,6 @@ class UserPreference extends Model
             'email_notify_scanner_import' => false,
             'email_notify_weekly_summary' => false,
             'weekly_summary_day' => 'monday',
-            'receipt_list_view' => 'grid',
             'receipts_per_page' => 20,
             'default_sort' => 'date_desc',
             'auto_process_scanner_uploads' => false,
@@ -169,10 +167,6 @@ class UserPreference extends Model
                 'friday' => 'Friday',
                 'saturday' => 'Saturday',
                 'sunday' => 'Sunday',
-            ],
-            'list_views' => [
-                'grid' => 'Grid View',
-                'list' => 'List View',
             ],
             'sort_options' => [
                 'date_desc' => 'Date (Newest First)',

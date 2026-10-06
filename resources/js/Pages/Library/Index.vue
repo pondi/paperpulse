@@ -64,6 +64,7 @@ onBeforeUnmount(() => { clearTimeout(timer); cancelVisit?.cancel(); });
         </template>
 
         <div class="flex flex-col gap-5">
+            <p v-if="form.type === 'receipt'" class="text-xs text-zinc-500 dark:text-zinc-400">Library uses the view and sort controls below and 24 files per page. Receipt table defaults in Settings apply to the separate receipt overview.</p>
             <nav aria-label="Smart views" class="workspace-scroll flex gap-2 overflow-x-auto pb-1">
                 <button type="button" @click="chooseView('all')" :aria-pressed="form.view === 'all'" :class="[form.view === 'all' ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300', 'shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium']">All files</button>
                 <button v-for="item in smartViews" :key="item.value" type="button" @click="chooseView(item.value)" :aria-pressed="form.view === item.value" :class="[form.view === item.value ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300', 'shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium']">{{ item.label }}</button>

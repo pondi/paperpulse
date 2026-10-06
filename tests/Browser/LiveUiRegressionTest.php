@@ -924,3 +924,18 @@ it('explains archive work limits and the disabled organize prerequisite in both 
         }
     });
 });
+
+it('explains the receipt table and library display scopes without offering an unused grid default', function (): void {
+    $user = $this->createUser();
+    UserPreference::create(['user_id' => $user->id, 'receipts_per_page' => 10, 'default_sort' => 'date_asc']);
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/preferences')->waitFor('#receipts_per_page')
+            ->assertMissing('#receipt_list_view')->assertSelected('#receipts_per_page', '10')
+            ->assertSelected('#default_sort', 'date_asc')->assertSee('Page size and sorting apply to the receipt table')
+            ->visit('/receipts')->waitForText('Receipt overview · Table view.')
+            ->click('a[href$="/library?type=receipt"]')->waitForLocation('/library')->waitForText('Library uses the view and sort controls below')
+            ->click('button[aria-label="Grid view"]')->waitUntil("document.querySelector('button[aria-label=\"Grid view\"]').getAttribute('aria-pressed') === 'true'")
+            ->refresh()->waitUntil("document.querySelector('button[aria-label=\"Grid view\"]').getAttribute('aria-pressed') === 'true'")
+            ->click('button[aria-label="List view"]')->waitUntil("document.querySelector('button[aria-label=\"List view\"]').getAttribute('aria-pressed') === 'true'");
+    });
+});

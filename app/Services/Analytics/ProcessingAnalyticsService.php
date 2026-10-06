@@ -45,7 +45,7 @@ class ProcessingAnalyticsService
     public function findLowConfidenceClassifications(float $threshold = 0.7, int $limit = 50): Collection
     {
         return FileProcessingAnalytic::lowConfidence($threshold)
-            ->with('file:id,fileName,guid')
+            ->with(['file' => fn ($query) => $query->withoutGlobalScope('user')->select('id', 'fileName', 'guid')])
             ->select(
                 'id',
                 'file_id',
@@ -199,7 +199,7 @@ class ProcessingAnalyticsService
         return FileProcessingAnalytic::successfulType($documentType)
             ->whereNotNull('validation_warnings')
             ->whereJsonLength('validation_warnings', '>', 0)
-            ->with('file:id,fileName,guid')
+            ->with(['file' => fn ($query) => $query->withoutGlobalScope('user')->select('id', 'fileName', 'guid')])
             ->select('id', 'file_id', 'validation_warnings', 'extraction_confidence', 'created_at')
             ->orderByDesc('created_at')
             ->limit($limit)

@@ -367,10 +367,11 @@ it('renders processing analytics with PostgreSQL warning arrays', function (): v
 it('loads processing analytic file identities and retains records for missing files', function (): void {
     $admin = User::factory()->create(['is_admin' => true]);
     $this->actingAs($admin);
-    $file = File::factory()->create(['user_id' => $admin->id, 'fileName' => 'source-invoice.pdf']);
+    $owner = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $owner->id, 'fileName' => 'source-invoice.pdf']);
     $analytic = FileProcessingAnalytic::create([
         'file_id' => $file->id,
-        'user_id' => $admin->id,
+        'user_id' => $owner->id,
         'processing_type' => 'invoice',
         'document_type' => 'invoice',
         'processing_status' => 'completed',
@@ -384,6 +385,9 @@ it('loads processing analytic file identities and retains records for missing fi
     $this->get(route('analytics.processing'))->assertOk()->assertInertia(fn (Assert $page) => $page
         ->where('lowConfidence.0.filename', 'source-invoice.pdf'));
 
+    expect(File::query()->find($file->id))->toBeNull();
+    $this->actingAs($owner)->get(route('analytics.processing'))->assertForbidden();
+    $this->actingAs($admin);
     $file->delete();
 
     foreach ([$service->findLowConfidenceClassifications(), $service->getValidationWarningsByType('invoice')] as $records) {

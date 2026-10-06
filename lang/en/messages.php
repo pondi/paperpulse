@@ -230,6 +230,7 @@ return [
     'no_notifications' => 'No notifications',
     'clear_all_notifications_confirm' => 'Are you sure you want to clear all notifications?',
     'notification_settings' => 'Notification Settings',
+    'document_processed' => 'Document Processed',
     'receipt_processed' => 'Receipt Processed',
     'receipt_processing_failed' => 'Processing Failed',
     'bulk_operation_completed' => 'Bulk Operation Complete',

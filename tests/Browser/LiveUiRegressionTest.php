@@ -763,14 +763,14 @@ it('names the target parent when managing and creating empty subfolders', functi
     $user = $this->createUser();
     $root = Collection::factory()->for($user)->create(['name' => 'Building']);
     $parent = Collection::factory()->for($user)->create(['name' => 'Contracts', 'parent_id' => $root->id]);
-    $leaf = Collection::factory()->for($user)->create(['name' => 'Hønsfaret', 'parent_id' => $parent->id]);
+    $leaf = Collection::factory()->for($user)->create(['name' => 'Eksempelveien', 'parent_id' => $parent->id]);
     $this->browse(function (Browser $browser) use ($user, $leaf): void {
         $browser->loginAs($user)->visit('/collections/'.$leaf->id)->clickLink('Manage subfolders')
-            ->waitForText('No subfolders in Hønsfaret')->assertSee('Building')->assertSee('Contracts')
-            ->press('Create Subfolder')->waitForText('Create subfolder in Hønsfaret')
+            ->waitForText('No subfolders in Eksempelveien')->assertSee('Building')->assertSee('Contracts')
+            ->press('Create Subfolder')->waitForText('Create subfolder in Eksempelveien')
             ->type('#collection-name', 'Plans')->press('Create')->waitUntilMissing('#collection-name')
             ->assertSee('Plans');
-        $browser->clickLink('Back to Hønsfaret')->waitForLocation('/collections/'.$leaf->id);
+        $browser->clickLink('Back to Eksempelveien')->waitForLocation('/collections/'.$leaf->id);
         expect(Collection::where('name', 'Plans')->sole()->parent_id)->toBe($leaf->id);
     });
 });
@@ -962,7 +962,7 @@ it('distinguishes direct mixed file counts from the folder subtree total', funct
     $user = $this->createUser();
     $root = Collection::factory()->for($user)->create(['name' => 'Building']);
     $child = Collection::factory()->for($user)->create(['name' => 'Contracts', 'parent_id' => $root->id]);
-    $leaf = Collection::factory()->for($user)->create(['name' => 'Hønsfaret', 'parent_id' => $child->id]);
+    $leaf = Collection::factory()->for($user)->create(['name' => 'Eksempelveien', 'parent_id' => $child->id]);
     $document = Document::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
     $receipt = Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
     $invoice = Invoice::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
@@ -990,16 +990,16 @@ it('browses compact folder rows with visible child paths at desktop and mobile w
     $user = $this->createUser();
     $root = Collection::factory()->for($user)->create(['name' => 'Building']);
     $child = Collection::factory()->for($user)->create(['name' => 'Contracts', 'parent_id' => $root->id]);
-    $leaf = Collection::factory()->for($user)->create(['name' => 'Hønsfaret', 'parent_id' => $child->id]);
+    $leaf = Collection::factory()->for($user)->create(['name' => 'Eksempelveien', 'parent_id' => $child->id]);
     $this->browse(function (Browser $browser) use ($user, $root, $child, $leaf): void {
         foreach ([1440, 390] as $width) {
             $browser->resize($width, 900)->loginAs($user)->visit('/collections')->waitForText('Building → Contracts')
                 ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
                 ->assertPresent('button[aria-label="Edit Building"]')
-                ->clickLink('Building → Contracts')->waitForLocation('/collections/'.$child->id)->waitForText('Hønsfaret')
+                ->clickLink('Building → Contracts')->waitForLocation('/collections/'.$child->id)->waitForText('Eksempelveien')
                 ->assertSee('Building')->click('a[href$="/collections/'.$leaf->id.'"]')->waitForLocation('/collections/'.$leaf->id)
-                ->assertSee('Building')->assertSee('Contracts')->assertSee('Hønsfaret');
-            $browser->visit('/collections?parent_id='.$root->id)->waitForText('Contracts → Hønsfaret')
+                ->assertSee('Building')->assertSee('Contracts')->assertSee('Eksempelveien');
+            $browser->visit('/collections?parent_id='.$root->id)->waitForText('Contracts → Eksempelveien')
                 ->assertPresent('button[aria-label="Edit Contracts"]')
                 ->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
         }
@@ -1158,16 +1158,16 @@ it('retains nested folder context in upload library and search selectors', funct
     $user = $this->createUser();
     $root = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Building']);
     $parent = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Contracts', 'parent_id' => $root->id]);
-    $leaf = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Hønsfaret', 'parent_id' => $parent->id]);
+    $leaf = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Eksempelveien', 'parent_id' => $parent->id]);
     $this->browse(function (Browser $browser) use ($user): void {
         $this->loginAs($browser, $user);
         $browser->visit('/documents/upload')->waitFor('input[placeholder="Search or create collections..."]')
             ->type('input[placeholder="Search or create collections..."]', 'Building')->pause(200)
-            ->assertSee('Building → Contracts → Hønsfaret')->keys('input[placeholder="Search or create collections..."]', WebDriverKeys::ARROW_DOWN);
-        $browser->type('input[placeholder="Search or create collections..."]', 'Hønsfaret')->keys('input[placeholder="Search or create collections..."]', WebDriverKeys::ENTER)
-            ->assertSee('Building → Contracts → Hønsfaret');
-        $browser->visit('/library')->waitFor('@library-query')->press('Filters')->assertSee('Building → Contracts → Hønsfaret');
-        $browser->visit('/search')->waitFor('#search-collection')->assertSeeIn('#search-collection', 'Building → Contracts → Hønsfaret');
+            ->assertSee('Building → Contracts → Eksempelveien')->keys('input[placeholder="Search or create collections..."]', WebDriverKeys::ARROW_DOWN);
+        $browser->type('input[placeholder="Search or create collections..."]', 'Eksempelveien')->keys('input[placeholder="Search or create collections..."]', WebDriverKeys::ENTER)
+            ->assertSee('Building → Contracts → Eksempelveien');
+        $browser->visit('/library')->waitFor('@library-query')->press('Filters')->assertSee('Building → Contracts → Eksempelveien');
+        $browser->visit('/search')->waitFor('#search-collection')->assertSeeIn('#search-collection', 'Building → Contracts → Eksempelveien');
     });
 });
 

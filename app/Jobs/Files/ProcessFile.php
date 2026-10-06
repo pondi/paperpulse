@@ -117,14 +117,6 @@ class ProcessFile extends BaseJob
             if (! $capabilities->requiresOcr()) {
                 $metadata['pipeline_stages']['ocr'] = ['provider' => null, 'status' => 'skipped_native'];
                 $this->storeMetadata($metadata);
-            } elseif ($fileType === 'receipt' && $capabilities->provider !== 'ocr-only') {
-                // For receipts, convert to image if PDF (existing behavior)
-                if ($metadata['fileExtension'] === 'pdf') {
-                    Log::debug("[ProcessFile] [{$jobName}] Converting PDF to image for receipt processing");
-
-                    // This will be handled by ProcessReceipt job
-                    // Just ensure the file is ready
-                }
             } else {
                 // For documents, we keep the original format
                 // The file is already stored in S3 by FileProcessingService
@@ -170,13 +162,6 @@ class ProcessFile extends BaseJob
 
                     Log::debug("[ProcessFile] [{$jobName}] Text pre-extracted for document", [
                         'text_length' => strlen($text),
-                    ]);
-                } catch (Exception $e) {
-                    if ($capabilities->provider === 'ocr-only') {
-                        throw $e;
-                    }
-                    Log::warning("[ProcessFile] [{$jobName}] Text pre-extraction failed, will retry in ProcessDocument", [
-                        'error' => $e->getMessage(),
                     ]);
                 } finally {
                     // Clean up local file

@@ -7,6 +7,7 @@ use App\Models\OrganizationBackfill;
 use App\Models\OrganizationRun;
 use App\Models\User;
 use App\Models\UserPreference;
+use DateTimeInterface;
 use Illuminate\Validation\ValidationException;
 
 class OrganizationRunService
@@ -75,6 +76,15 @@ class OrganizationRunService
             }
             $locked->update(['status' => 'completed', 'active_user_id' => null, 'completed_at' => now()]);
             $this->revisions->markAnalyzed($locked->user_id, $locked->input_revision, $locked->input_fingerprint);
+        });
+    }
+
+    public function continue(OrganizationRun $run, ?DateTimeInterface $delay = null): void
+    {
+        $run->getConnection()->transaction(function () use ($run, $delay): void {
+            User::query()->lockForUpdate()->findOrFail($run->user_id);
+            $run->update(['status' => 'queued', 'attempts' => 0, 'error' => null]);
+            GenerateOrganizationRecommendations::dispatch($run->user_id, $run->id)->delay($delay)->afterCommit();
         });
     }
 

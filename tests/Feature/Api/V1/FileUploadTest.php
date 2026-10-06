@@ -1,9 +1,8 @@
 <?php
 
+use App\Jobs\Files\ClassifyFile;
 use App\Jobs\Files\ProcessFile;
 use App\Jobs\Maintenance\DeleteWorkingFiles;
-use App\Jobs\Receipts\MatchMerchant;
-use App\Jobs\Receipts\ProcessReceipt;
 use App\Models\File;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -39,8 +38,7 @@ it('uploads a receipt image and dispatches the receipt job chain', function () {
 
     Bus::assertChained([
         fn (ProcessFile $job) => true,
-        fn (ProcessReceipt $job) => true,
-        fn (MatchMerchant $job) => true,
+        fn (ClassifyFile $job) => true,
         fn (DeleteWorkingFiles $job) => true,
     ]);
 });
@@ -69,8 +67,7 @@ it('uploads a receipt PDF and dispatches the receipt job chain', function () {
 
     Bus::assertChained([
         fn (ProcessFile $job) => true,
-        fn (ProcessReceipt $job) => true,
-        fn (MatchMerchant $job) => true,
+        fn (ClassifyFile $job) => true,
         fn (DeleteWorkingFiles $job) => true,
     ]);
 });

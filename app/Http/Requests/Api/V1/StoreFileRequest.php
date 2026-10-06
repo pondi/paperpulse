@@ -17,9 +17,14 @@ class StoreFileRequest extends FormRequest
         return auth()->check();
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['file_type' => $this->input('file_type') ?? 'document']);
+    }
+
     public function rules(): array
     {
-        $fileType = $this->input('file_type', 'receipt');
+        $fileType = $this->input('file_type', 'document');
 
         return [
             'file' => ['bail', 'required', 'file', function (string $attribute, UploadedFile $value, Closure $fail) use ($fileType): void {

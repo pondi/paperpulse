@@ -47,6 +47,7 @@ it('only includes destinations for currently accessible notification targets', f
     [Receipt::class, 'receipt_shared', 'receipt_id', 'receipts.show'],
     [Document::class, 'document_shared', 'document_id', 'documents.show'],
     [Voucher::class, 'voucher_expiring', 'voucher_id', 'vouchers.show'],
+    [File::class, 'document_processed', 'file_id', 'files.show'],
     [File::class, 'warranty_ending', 'file_id', 'files.show'],
     [File::class, 'duplicate_file_detected', 'existing_file_id', 'files.show'],
 ]);

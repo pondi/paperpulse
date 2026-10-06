@@ -7,6 +7,7 @@ use App\Models\Receipt;
 use App\Models\ReturnPolicy;
 use App\Models\User;
 use App\Services\AI\FileManager\GeminiFileManager;
+use App\Services\AI\TypeClassification\AutomaticTypeResolver;
 use App\Services\AI\TypeClassification\ClassificationResult;
 use App\Services\AI\TypeClassification\GeminiTypeClassifier;
 use App\Services\Files\FilePreviewManager;
@@ -16,7 +17,13 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 
-it('retains uncertain classification for owner review without automatic provider retries', function () {
+it('automatically resolves uncertain classification and extracts without asking the owner for a type', function () {
+    config(['ai.providers.gemini.api_key' => 'test']);
+    Http::fake(['*' => Http::response([
+        'totalTokens' => 100, 'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => '{"conditions":"Unopened items accepted"}']]]]],
+    ])]);
+    $this->mock(AutomaticTypeResolver::class)->shouldReceive('resolve')->once()->andReturn(new ClassificationResult('return_policy', .95, 'Automatically resolved'));
+    $this->mock(FilePreviewManager::class)->shouldReceive('generatePreviewForFile')->once()->andReturnFalse();
     $path = tempnam(sys_get_temp_dir(), 'review_').'.txt';
     file_put_contents($path, 'A short uncertain document');
     $file = File::factory()->create(['fileExtension' => 'txt']);
@@ -46,6 +53,8 @@ it('retains uncertain classification for owner review without automatic provider
 
         protected function updateProgress(int $progress): void {}
 
+        protected function storeMetadata(array $metadata): void {}
+
         public function process(): void
         {
             $this->handleJob();
@@ -54,10 +63,9 @@ it('retains uncertain classification for owner review without automatic provider
     try {
         $job->process();
         $job->process();
-        expect($file->fresh()->status)->toBe('needs_review')
-            ->and($file->fresh()->meta['review']['confidence'])->toBe(0.3)
-            ->and($file->fresh()->meta['review']['classification']['document_type'])->toBe('unknown')
-            ->and($file->extractableEntities()->count())->toBe(0);
+        expect($file->fresh()->status)->toBe('completed')
+            ->and($file->fresh()->meta)->not->toHaveKey('review')
+            ->and($file->extractableEntities()->count())->toBe(1);
     } finally {
         unlink($path);
     }

@@ -47,6 +47,7 @@ class FolderTreeService
             if (! $locked->collections()->withoutGlobalScope('user')->whereKey($target->id)->exists()) {
                 $locked->collections()->attach($target->id, ['is_primary_placement' => true]);
             }
+            $locked->collections()->updateExistingPivot($target->id, ['is_primary_placement' => true]);
             $locked->update(['primary_folder_id' => $target->id, 'placement_source' => $source,
                 'placement_version' => $locked->placement_version + 1]);
 

@@ -347,15 +347,15 @@ it('labels nested selector folders with distinct ancestor paths and excludes for
     $user = User::factory()->create();
     $root = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Building']);
     $contracts = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Contracts', 'parent_id' => $root->id]);
-    $leaf = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Hønsfaret', 'parent_id' => $contracts->id]);
+    $leaf = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Eksempelveien', 'parent_id' => $contracts->id]);
     $otherRoot = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Home']);
-    $otherLeaf = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Hønsfaret', 'parent_id' => $otherRoot->id]);
+    $otherLeaf = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Eksempelveien', 'parent_id' => $otherRoot->id]);
     $foreign = Collection::factory()->create();
     $options = $this->collectionService->getActiveCollectionsForSelector($user->id)->keyBy('id');
-    expect($options[$leaf->id]->path)->toBe('Building → Contracts → Hønsfaret')
-        ->and($options[$otherLeaf->id]->path)->toBe('Home → Hønsfaret')->and($options->has($foreign->id))->toBeFalse();
-    $this->actingAs($user)->getJson(route('collections.all'))->assertOk()->assertJsonFragment(['path' => 'Building → Contracts → Hønsfaret']);
-    expect(app(LibraryService::class)->options($user)['collections']->keyBy('id')[$leaf->id]->path)->toBe('Building → Contracts → Hønsfaret');
+    expect($options[$leaf->id]->path)->toBe('Building → Contracts → Eksempelveien')
+        ->and($options[$otherLeaf->id]->path)->toBe('Home → Eksempelveien')->and($options->has($foreign->id))->toBeFalse();
+    $this->actingAs($user)->getJson(route('collections.all'))->assertOk()->assertJsonFragment(['path' => 'Building → Contracts → Eksempelveien']);
+    expect(app(LibraryService::class)->options($user)['collections']->keyBy('id')[$leaf->id]->path)->toBe('Building → Contracts → Eksempelveien');
 });
 
 it('clears primary placement when removing membership and preserves other memberships', function (): void {

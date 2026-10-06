@@ -110,7 +110,7 @@
             <div class="flex items-center justify-between gap-4">
               <label for="auto_organize_documents" class="flex flex-col">
                 <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Organize documents automatically</span>
-                <span class="text-sm text-zinc-500 dark:text-zinc-400">New files start in Inbox. Clear property or employer evidence places them in Building or Work folders; uncertain documents need review. Manual placements are kept.</span>
+                <span class="text-sm text-zinc-500 dark:text-zinc-400">New files start in Inbox. Clear subject evidence groups them by people, properties, projects, categories and related subgroups; ambiguous relationships need review. Manual placements are kept.</span>
               </label>
               <input id="auto_organize_documents" v-model="form.auto_organize_documents" type="checkbox" class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500" />
             </div>
@@ -517,7 +517,7 @@
             <label class="flex flex-col gap-2">{{ role }} folder name<input :value="organization.naming_rules.role_labels[role] ?? role[0].toUpperCase() + role.slice(1)" @input="organization.naming_rules.role_labels[role] = $event.target.value" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
           </div>
           <div v-for="(alias, index) in organization.aliases" :key="alias.id ?? index" class="flex flex-wrap items-center gap-3">
-            <label>Kind<select v-model="alias.kind" class="rounded dark:bg-zinc-700"><option value="property">Property address</option><option value="employer">Company</option></select></label>
+            <label>Kind<input v-model="alias.kind" type="text" maxlength="22" placeholder="person, property, project…" class="rounded dark:bg-zinc-700" /></label>
             <label v-if="!alias.id">Recognize<input v-model="alias.alias" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
             <label>Use this label<input v-model="alias.canonical_name" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
             <SecondaryButton type="button" @click="removeAlias(index)">Remove alias</SecondaryButton>

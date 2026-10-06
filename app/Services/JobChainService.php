@@ -6,6 +6,7 @@ use App\Jobs\BankStatements\ProcessCsvImport;
 use App\Jobs\BaseJob;
 use App\Jobs\Documents\AnalyzeDocument;
 use App\Jobs\Documents\ProcessDocument;
+use App\Jobs\Files\ClassifyFile;
 use App\Jobs\Files\ConvertOfficeFile;
 use App\Jobs\Files\ProcessFile;
 use App\Jobs\Files\ProcessFileGemini;
@@ -85,6 +86,7 @@ class JobChainService
     private function restoreStep(array $step, string $jobId, array $metadata, File $file): BaseJob
     {
         return match ($step['class']) {
+            ClassifyFile::class => new ClassifyFile($jobId),
             ProcessFile::class => new ProcessFile($jobId),
             ProcessFileGemini::class => new ProcessFileGemini($jobId),
             ProcessReceipt::class => new ProcessReceipt($jobId),

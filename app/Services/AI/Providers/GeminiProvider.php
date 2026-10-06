@@ -257,7 +257,8 @@ class GeminiProvider
         array $schema,
         string $prompt,
         array $conversationHistory = [],
-        string $mimeType = 'application/pdf'
+        string $mimeType = 'application/pdf',
+        ?int $maxOutputTokens = null
     ): array {
         GeminiMimeType::validate($mimeType);
         [$model, $apiKey] = $this->resolveModelAndKey();
@@ -270,6 +271,9 @@ class GeminiProvider
         ]);
 
         $generationConfig = $this->buildGenerationConfig(0.2, $schema['responseSchema'] ?? null);
+        if ($maxOutputTokens !== null) {
+            $generationConfig['maxOutputTokens'] = max(256, min($generationConfig['maxOutputTokens'], $maxOutputTokens));
+        }
 
         $contents = $conversationHistory;
         $contents[] = [

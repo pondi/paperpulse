@@ -57,17 +57,6 @@
                         <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Import Selected Items</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">File Type</label>
-                                <select
-                                    v-model="importOptions.fileType"
-                                    class="w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50"
-                                >
-                                    <option value="receipt">Receipt</option>
-                                    <option value="document">Document</option>
-                                </select>
-                            </div>
-                            
-                            <div>
                                 <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Tags</label>
                                 <TagSelector
                                     v-model="importOptions.tagIds"
@@ -390,7 +379,6 @@ const importing = ref(false);
 
 // Import options
 const importOptions = ref({
-    fileType: 'receipt',
     tagIds: [],
     notes: '',
 });
@@ -684,7 +672,7 @@ const importSelections = async () => {
 
         const requestBody = {
             selections: selections,
-            file_type: importOptions.value.fileType,
+            file_type: 'document',
             tag_ids: importOptions.value.tagIds,
             notes: importOptions.value.notes,
         };

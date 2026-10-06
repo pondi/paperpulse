@@ -11,6 +11,7 @@ use App\Services\OrganizationFeedbackService;
 use App\Services\OrganizationPlanner;
 use App\Services\OrganizationRevisionService;
 use App\Services\OrganizationRunService;
+use App\Services\OrganizationSummaryNormalizer;
 
 beforeEach(fn () => $this->withoutVite());
 
@@ -79,4 +80,16 @@ it('preserves manual placements and pinned primary folders without LLM calls', f
     UserPreference::query()->updateOrCreate(['user_id' => $owner->id], ['auto_organize_documents' => false]);
     File::factory()->create(['user_id' => $owner->id]);
     expect(app(OrganizationRunService::class)->start($owner->id))->toBeNull();
+});
+
+it('accepts aliases for generic context kinds and applies them during automatic placement', function (): void {
+    $owner = User::factory()->create();
+    $this->actingAs($owner)->patch(route('preferences.organization'), ['naming_rules' => [],
+        'aliases' => [['kind' => 'person', 'alias' => 'Alex Example', 'canonical_name' => 'Alex documents']],
+    ])->assertRedirect()->assertSessionHasNoErrors();
+    $summary = app(OrganizationSummaryNormalizer::class)->normalize('document', ['organization' => ['group_path' => [
+        ['kind' => 'person', 'name' => 'Alex Example', 'relationship' => 'subject', 'confidence' => .95],
+    ]]]);
+    $file = File::factory()->create(['user_id' => $owner->id, 'organization_summary' => $summary]);
+    expect(app(FolderOrganizationService::class)->placeFromSummary($file)->primaryFolder->name)->toBe('Alex documents');
 });

@@ -52,50 +52,12 @@
 
                 <div class="bg-white dark:bg-zinc-800 px-6 py-24 sm:py-32 rounded-lg shadow-sm">
                     <div class="mx-auto max-w-2xl text-center">
-                        <h2 class="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-5xl">Upload Your Documents</h2>
+                        <h2 class="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-5xl">Upload files</h2>
                         <p class="mt-6 text-lg leading-8 text-zinc-600 dark:text-zinc-400">
                             Upload your receipts and documents. They will be automatically processed and organized for you.
                         </p>
 
-                        <!-- File Type Selection -->
-                        <div class="mt-8 flex justify-center">
-                            <div class="inline-flex rounded-md shadow-sm" role="group" aria-label="Upload mode">
-                                <button
-                                    type="button"
-                                    @click="fileType = 'receipt'"
-                                    :aria-pressed="fileType === 'receipt'"
-                                    :class="[
-                                        'px-4 py-2 text-sm font-medium rounded-l-lg border',
-                                        fileType === 'receipt'
-                                            ? 'bg-zinc-900 dark:bg-amber-600 text-white border-amber-600 z-10'
-                                            : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-600 hover:bg-amber-50 dark:hover:bg-zinc-700'
-                                    ]"
-                                >
-                                    <ReceiptRefundIcon class="h-5 w-5 inline-block mr-2" aria-hidden="true" />
-                                    Receipt
-                                </button>
-                                <button
-                                    type="button"
-                                    @click="fileType = 'document'"
-                                    :aria-pressed="fileType === 'document'"
-                                    :class="[
-                                        'px-4 py-2 text-sm font-medium rounded-r-lg border',
-                                        fileType === 'document'
-                                            ? 'bg-zinc-900 dark:bg-amber-600 text-white border-amber-600 z-10'
-                                            : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-600 hover:bg-amber-50 dark:hover:bg-zinc-700'
-                                    ]"
-                                >
-                                    <DocumentIcon class="h-5 w-5 inline-block mr-2" aria-hidden="true" />
-                                    Document
-                                </button>
-                            </div>
-                        </div>
-                        <p class="mt-4 text-sm text-zinc-600 dark:text-zinc-400" aria-live="polite">
-                            <span v-if="fileType === 'receipt'">Receipt mode accepts receipt scans and PDFs.</span>
-                            <span v-else>Document mode accepts invoices, contracts, bank statements and other documents.</span>
-                            Automatic classification determines the final type and the details to extract.
-                            Changing modes clears selected files and updates the accepted formats below.
-                        </p>
+                        <p class="mt-4 text-sm text-zinc-600 dark:text-zinc-400">We detect the file type and extract the relevant details automatically.</p>
 
                         <form class="mt-6" ref="fileUpload" @submit.prevent="submit">
                             <div 
@@ -278,8 +240,8 @@ import CollectionSelector from '@/Components/Domain/CollectionSelector.vue';
 import TagSelector from '@/Components/Domain/TagSelector.vue';
 import { Head } from '@inertiajs/vue3';
 import { useForm } from '@inertiajs/vue3';
-import { XMarkIcon, PhotoIcon, DocumentIcon, ReceiptRefundIcon, CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon } from '@heroicons/vue/20/solid'
-import { computed, ref, watch } from 'vue';
+import { XMarkIcon, PhotoIcon, DocumentIcon, CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon } from '@heroicons/vue/20/solid'
+import { computed, ref } from 'vue';
 
 interface FileObject {
     file: File;
@@ -339,7 +301,7 @@ function dismissUploadOutcome(status: UploadOutcome['status']): void {
 }
 const uploadError = ref<string | null>(null);
 const fileUpload = ref<HTMLFormElement | null>(null);
-const fileType = ref<'receipt' | 'document'>('receipt');
+const fileType = 'document' as const;
 const isUploading = ref(false);
 const uploadProgress = ref(0);
 const note = ref<string>('');
@@ -360,7 +322,7 @@ function formatFileSize(bytes: number): string {
 
 function validateFile(file: File): boolean {
     const extension = file.name.split('.').pop()?.toLowerCase() || '';
-    const capability = props.uploadConfig.capabilities[fileType.value][extension];
+    const capability = props.uploadConfig.capabilities[fileType][extension];
     if (!capability) {
         uploadError.value = `File ${file.name} has an unsupported extension.`;
         return false;
@@ -436,11 +398,6 @@ function resetFiles() {
     selectedFiles.value = [];
 }
 
-// Watch fileType changes and clear selected files to avoid validation issues
-watch(fileType, () => {
-    resetFiles();
-});
-
 function submit() {
     if (!selectedFiles.value.length) return;
     
@@ -451,7 +408,7 @@ function submit() {
     const submittedFiles = [...selectedFiles.value];
     const uploadForm = useForm({
         files: submittedFiles.map(f => f.file),
-        file_type: fileType.value,
+        file_type: fileType,
         note: note.value || null,
         collection_ids: collectionIds.value.length > 0 ? collectionIds.value : null,
         tag_ids: tagIds.value.length > 0 ? tagIds.value : null,

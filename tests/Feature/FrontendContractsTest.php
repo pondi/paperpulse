@@ -163,8 +163,8 @@ if (scenario === 'folder content priority') {
 }
 if (scenario === 'subfolder context') {
     const html = await render('Pages/Collections/Index.vue', { collections: { data: [] }, filters: { parent_id: 3 },
-        breadcrumbs: [{ label: 'Building', href: route('collections.show', 1) }, { label: 'Contracts', href: route('collections.show', 2) }, { label: 'Hønsfaret', href: route('collections.show', 3) }] });
-    for (const text of ['Subfolders in Hønsfaret', 'No subfolders in Hønsfaret', 'Create Subfolder', 'Back to Hønsfaret', '/collections/3']) assert.ok(html.includes(text), text);
+        breadcrumbs: [{ label: 'Building', href: route('collections.show', 1) }, { label: 'Contracts', href: route('collections.show', 2) }, { label: 'Eksempelveien', href: route('collections.show', 3) }] });
+    for (const text of ['Subfolders in Eksempelveien', 'No subfolders in Eksempelveien', 'Create Subfolder', 'Back to Eksempelveien', '/collections/3']) assert.ok(html.includes(text), text);
     const root = await render('Pages/Collections/Index.vue', { collections: { data: [] }, filters: {}, breadcrumbs: [] });
     assert.ok(root.includes('No collections'));
     assert.ok(root.includes('Create Collection'));
@@ -263,7 +263,7 @@ if (scenario === 'processing timing') {
 }
 if (scenario === 'failure diagnostics') {
     for (const [category, cause, recovery] of [['unsupported_format', 'source format is not supported', 'Upload a supported'],
-        ['api_timeout', 'extraction service timed out', 'Retry processing'], ['unknown_error', 'failure cause was not recorded', 'contact support']]) {
+        ['api_timeout', 'extraction service timed out', 'retried automatically'], ['unknown_error', 'failure cause was not recorded', 'Contact support']]) {
         const html = await render('Components/Domain/ProcessingFailure.vue', { fileId: 402, failure: { category, timestamp: '2026-10-06T10:00:00Z' }, processing: { stage: 'Extract text' } });
         for (const text of [cause, recovery, 'Failed stage: Extract text', 'Failed at 2026-10-06T10:00:00Z', '/files-processing?file_id=402']) assert.ok(html.includes(text), text);
         assert.ok(!html.includes('unknown error'));
@@ -284,6 +284,10 @@ if (scenario === 'processing limits') {
     for (const text of ['No pages were extracted', '25 pages or fewer', 'Upload split files', '/documents/upload', 'Retrying this unchanged file will not remove the limit']) assert.ok(recovery.includes(text), text);
     const upload = await render('Pages/Documents/Upload.vue', { uploadConfig: { processingLimits: { pdfPages: 25, textBytes: 200000 }, capabilities: { receipt: { pdf: {} }, document: { pdf: {} } }, maxFileSizeMb: { receipt: 50, document: 50 } } });
     assert.ok(upload.includes('25 pages per PDF'));
+    assert.ok(upload.includes('detect the file type'));
+    assert.ok(!upload.includes('Upload mode'));
+    assert.ok(!upload.includes('Receipt mode'));
+    assert.ok(!upload.includes('Document mode'));
     assert.ok(upload.includes('Split longer files'));
     assert.equal(fileStatus.fileStatusLabel({ status: 'needs_review', review }), 'Blocked: processing limit');
     assert.equal(fileStatus.fileStatusLabel({ status: 'needs_review', review: { reason: 'receipt_totals' } }), 'Needs review');
@@ -300,6 +304,8 @@ if (scenario === 'state semantics') {
         assert.ok(workspace.includes(label));
         const activity = await render('Pages/Files/Index.vue', { files: { data: [file], links: [] } });
         assert.ok(activity.includes(label));
+        assert.ok(!activity.includes('Change Type'));
+        assert.ok(!activity.includes('Retry Processing'));
         assert.ok(!activity.includes('Completed'));
         const receipt = await render('Pages/Receipt/Show.vue', { receipt: { id: 1246, file, merchant: { name: 'Wine shop' }, total_amount: 21.56, lineItems: [] }, categories: [] });
         assert.ok(receipt.includes(`Processing: ${label}`));

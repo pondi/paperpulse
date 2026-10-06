@@ -22,7 +22,7 @@
             
             <!-- Jobs List -->
             <div v-if="jobs?.length" class="space-y-4">
-              <JobCard v-for="job in jobs" :key="job.id" :job="job" @restart="handleJobRestart" />
+              <JobCard v-for="job in jobs" :key="job.id" :job="job" />
             </div>
 
             <!-- Empty State -->
@@ -230,11 +230,7 @@ const loadJobsData = async () => {
   }
 };
 
-const handleJobRestart = (jobId: string) => {
-  if (import.meta.env.DEV) console.log('Job restart initiated for:', jobId);
-  // Refresh data after restart
-  setTimeout(() => loadJobsData(), 1000);
-};
+
 
 const handleFilterStatus = (status: string) => {
   form.status = status;

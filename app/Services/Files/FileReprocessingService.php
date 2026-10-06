@@ -76,6 +76,7 @@ class FileReprocessingService
             });
 
         } catch (Exception $e) {
+            report($e);
             Log::error('[FileReprocessing] Failed to start reprocessing', [
                 'file_id' => $file->id,
                 'file_guid' => $file->guid,

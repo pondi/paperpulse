@@ -3,14 +3,11 @@
 namespace App\Services\Files;
 
 use App\Jobs\BankStatements\ProcessCsvImport;
-use App\Jobs\Documents\AnalyzeDocument;
-use App\Jobs\Documents\ProcessDocument;
+use App\Jobs\Files\ClassifyFile;
 use App\Jobs\Files\ProcessFile;
 use App\Jobs\Files\ProcessFileGemini;
 use App\Jobs\Maintenance\DeleteWorkingFiles;
 use App\Jobs\PulseDav\UpdatePulseDavFileStatus;
-use App\Jobs\Receipts\MatchMerchant;
-use App\Jobs\Receipts\ProcessReceipt;
 use App\Jobs\System\ApplyTags;
 use App\Models\File;
 use App\Models\JobHistory;
@@ -76,19 +73,10 @@ class FileJobChainDispatcher
                     (new ProcessFileGemini($jobId))->onQueue($queue),
                 ];
             } else {
-                if ($fileType === 'receipt') {
-                    $jobs = [
-                        (new ProcessFile($jobId))->onQueue($queue),
-                        (new ProcessReceipt($jobId))->onQueue($queue),
-                        (new MatchMerchant($jobId))->onQueue($queue),
-                    ];
-                } else {
-                    $jobs = [
-                        (new ProcessFile($jobId))->onQueue($queue),
-                        (new ProcessDocument($jobId))->onQueue($queue),
-                        (new AnalyzeDocument($jobId))->onQueue($queue),
-                    ];
-                }
+                $jobs = [
+                    (new ProcessFile($jobId))->onQueue($queue),
+                    (new ClassifyFile($jobId))->onQueue($queue),
+                ];
             }
         }
 

@@ -22,7 +22,7 @@ class OrganizationPreferencesRequest extends FormRequest
             'naming_rules.role_labels' => 'sometimes|array:contracts,invoices,receipts,payslips,letters,other',
             'naming_rules.role_labels.*' => $label, 'aliases' => 'present_unless:reset,true|array|max:100',
             'aliases.*' => 'array:id,kind,alias,canonical_name', 'aliases.*.id' => ['nullable', 'integer', 'distinct', new ExistsForUser('organization_aliases')],
-            'aliases.*.kind' => 'required|in:property,employer', 'aliases.*.alias' => 'nullable|required_without:aliases.*.id|string|max:180',
+            'aliases.*.kind' => ['required', 'string', 'regex:/^[a-z][a-z_]{0,21}$/'], 'aliases.*.alias' => 'nullable|required_without:aliases.*.id|string|max:180',
             'aliases.*.canonical_name' => ['required', 'string', 'max:180', 'regex:#^[^/\\\\\\x00-\\x1f]+$#u']];
     }
 

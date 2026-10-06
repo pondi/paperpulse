@@ -7,6 +7,7 @@ namespace App\Jobs\BankStatements;
 use App\Jobs\BaseJob;
 use App\Models\BankStatement;
 use App\Models\File;
+use App\Notifications\DocumentProcessed;
 use App\Services\BankStatements\CsvImportService;
 use App\Services\BankStatements\TransactionCategorizationService;
 use App\Services\StorageService;
@@ -56,13 +57,7 @@ class ProcessCsvImport extends BaseJob
 
         $storageService = app(StorageService::class);
         $extension = $file->fileExtension ?? 'csv';
-        $csvContent = $storageService->getFileByUserAndGuid(
-            $file->user_id,
-            $file->guid,
-            'document',
-            'original',
-            $extension
-        );
+        $csvContent = $file->s3_original_path ? $storageService->getFile($file->s3_original_path) : $storageService->getFileByUserAndGuid($file->user_id, $file->guid, $file->file_type, 'original', $extension);
 
         if ($csvContent === null) {
             throw new RuntimeException('Could not retrieve CSV file from storage.');
@@ -91,6 +86,8 @@ class ProcessCsvImport extends BaseJob
             'status' => 'completed',
             'processing_type' => 'bank_statement',
         ]);
+
+        $file->user->notify(DocumentProcessed::forFile($file->fresh())->onConnection('database')->beforeCommit());
 
         Log::info('[ProcessCsvImport] CSV import completed', [
             'file_id' => $this->fileId,

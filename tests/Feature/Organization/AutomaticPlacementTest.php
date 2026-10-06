@@ -66,7 +66,6 @@ test('weak ambiguous and incidental evidence needs review without speculative pr
     expect(Collection::withoutGlobalScope('user')->where('user_id', $file->user_id)->count())->toBe(1);
 })->with([
     [['property_address' => '12 Birch Road', 'address_kind' => 'property_subject', 'role' => 'invoices', 'confidence' => 0.5]],
-    [['property_address' => 'Merchant address', 'address_kind' => 'merchant', 'role' => 'receipts', 'confidence' => 0.95]],
     [['property_address' => '12 Birch Road', 'address_kind' => 'property_subject', 'employer_name' => 'Employer AS', 'role' => 'contracts', 'confidence' => 0.95]],
 ]);
 
@@ -130,4 +129,12 @@ test('automatic organization retains explicitly shared membership and never gran
     $nextPlaced = $organizer->placeFromSummary($next);
     expect($nextPlaced->primaryFolder->name)->toBe('Needs review');
     expect($recipient->can('view', $nextPlaced))->toBeFalse();
+});
+
+test('incidental merchant addresses do not require a grouping review for clearly identified receipts', function (): void {
+    $file = File::factory()->create(['organization_summary' => placementSummary([
+        'property_address' => 'Merchant address', 'address_kind' => 'merchant', 'role' => 'receipts', 'confidence' => .95,
+    ])]);
+    $placed = app(FolderOrganizationService::class)->placeFromSummary($file);
+    expect($placed->primaryFolder->name)->toBe('Receipts')->and($placed->primaryFolder->parent_id)->toBeNull();
 });

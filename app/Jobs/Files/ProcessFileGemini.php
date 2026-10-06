@@ -10,12 +10,14 @@ use App\Models\File;
 use App\Models\FileProcessingAnalytic;
 use App\Models\Invoice;
 use App\Models\Receipt;
+use App\Notifications\DocumentProcessed;
 use App\Notifications\ReceiptProcessed;
 use App\Services\AI\Extractors\EntityExtractorFactory;
 use App\Services\AI\FileManager\GeminiFileManager;
 use App\Services\AI\Providers\GeminiFileAnalyzer;
 use App\Services\AI\Shared\ProcessingStageCache;
 use App\Services\AI\Shared\ProcessingUsageBudget;
+use App\Services\AI\TypeClassification\AutomaticTypeResolver;
 use App\Services\AI\TypeClassification\ClassificationResult;
 use App\Services\AI\TypeClassification\ClassificationSchema;
 use App\Services\AI\TypeClassification\GeminiTypeClassifier;
@@ -87,7 +89,7 @@ class ProcessFileGemini extends BaseJob
             throw new Exception("File record not found: {$fileId}");
         }
 
-        if ($file->status === 'needs_review') {
+        if ($file->status === 'needs_review' && ($file->meta['review']['reason'] ?? null) !== 'uncertain_classification') {
             return;
         }
 
@@ -179,8 +181,8 @@ class ProcessFileGemini extends BaseJob
                     ]);
 
                     $correctedType = $file->meta['review']['corrected_type'] ?? null;
-                    $hints = ['filename' => $file->filename, 'extension' => $extension, 'mime_type' => $uploadResult['mimeType']];
-                    $version = ['model' => config('ai.providers.gemini.model'), 'options' => ['mime' => $uploadResult['mimeType'], 'output_tokens' => config('ai.providers.gemini.max_output_tokens', 8192)]];
+                    $hints = ['filename' => $file->fileName, 'extension' => $extension, 'mime_type' => $uploadResult['mimeType']];
+                    $version = ['model' => config('ai.providers.gemini.model'), 'options' => ['mime' => $uploadResult['mimeType'], 'output_tokens' => 512]];
                     $classification = $correctedType
                         ? new ClassificationResult($correctedType, 1.0, 'Owner corrected document type')
                         : ClassificationResult::fromGeminiResponse(ProcessingStageCache::remember($file->user_id, $contentHash, 'classification', [
@@ -194,18 +196,14 @@ class ProcessFileGemini extends BaseJob
                         'reasoning' => $classification->reasoning,
                     ]);
 
-                    if (! $classification->isValid()) {
-                        $file->status = 'needs_review';
-                        $file->meta = array_merge($file->meta ?? [], ['review' => [
-                            'reason' => 'uncertain_classification',
-                            'confidence' => $classification->confidence,
-                            'reasoning' => mb_substr($classification->reasoning, 0, 1000),
-                            'classification' => $classification->toArray(),
-                        ]]);
-                        $file->save();
-
-                        return ['needs_review' => true];
+                    $classification = app(AutomaticTypeResolver::class)->resolve($file, $classification, $fileUri, $hints, $textContext['excerpt'] ?? null, $this->jobID, $contentHash);
+                    $meta = $file->meta ?? [];
+                    if (($meta['review']['reason'] ?? null) === 'uncertain_classification') {
+                        unset($meta['review']);
+                        $file->status = 'processing';
                     }
+                    $file->meta = $meta;
+                    $file->save();
 
                     // Update file_type if Gemini reclassified (e.g. receipt → document)
                     $classifiedType = $classification->type === 'receipt' ? 'receipt' : 'document';
@@ -221,6 +219,8 @@ class ProcessFileGemini extends BaseJob
                     }
 
                     $this->updateProgress(50);
+
+                    $version['options']['output_tokens'] = config('ai.providers.gemini.max_output_tokens', 8192);
 
                     // PASS 2: Extract structured data
                     Log::info('[ProcessFileGemini] Pass 2: Extracting data', [
@@ -340,6 +340,7 @@ class ProcessFileGemini extends BaseJob
         $file->processing_type = 'gemini';
         $file->save();
 
+        $metadata['fileType'] = $file->file_type;
         $metadata['gemini'] = $result;
         $this->storeMetadata($metadata);
 
@@ -383,15 +384,20 @@ class ProcessFileGemini extends BaseJob
         $file->save();
 
         // Create analytics record for production learning
-        $this->createAnalyticsRecord($file, 'completed', $classification ?? null, $extractedEntity ?? null);
+        $this->createAnalyticsRecord($file, $file->status, $classification ?? null, $extractedEntity ?? null);
 
         $this->updateProgress(100);
 
         if ($file->status === 'completed') {
+            $notifiedReceipt = false;
             foreach ($createdEntities as $entityInfo) {
                 if ($entityInfo['model'] instanceof Receipt) {
                     $file->user->notify((new ReceiptProcessed($entityInfo['model']))->onConnection('database')->beforeCommit());
+                    $notifiedReceipt = true;
                 }
+            }
+            if (! $notifiedReceipt) {
+                $file->user->notify(DocumentProcessed::forFile($file)->onConnection('database')->beforeCommit());
             }
         }
     }

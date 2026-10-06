@@ -5,6 +5,7 @@ use App\Models\File;
 use App\Models\User;
 use App\Services\AI\Extractors\Contract\ContractDataNormalizer;
 use App\Services\AI\Extractors\Contract\ContractSchema;
+use App\Services\AI\Extractors\Document\DocumentDataNormalizer;
 use App\Services\AI\Extractors\Document\DocumentExtractor;
 use App\Services\AI\Extractors\Document\DocumentSchema;
 use App\Services\AI\Prompt\Schema\DocumentPromptSchemaProvider;
@@ -102,4 +103,21 @@ test('active and specialized schemas use one optional organization evidence cont
     expect($schema['properties']['organization'])->toBe(DocumentSchema::get()['responseSchema']['properties']['organization'])
         ->toBe(ContractSchema::get()['responseSchema']['properties']['organization']);
     expect($schema['required'])->not->toContain('organization');
+});
+
+it('preserves generic context paths through extraction normalization entity persistence and summary capture', function (): void {
+    $file = File::factory()->create();
+    $path = [
+        ['kind' => 'project', 'name' => 'Example restoration', 'relationship' => 'subject', 'confidence' => .95],
+        ['kind' => 'category', 'name' => 'Permits', 'relationship' => 'subgroup', 'confidence' => .95],
+    ];
+    $data = app(DocumentDataNormalizer::class)->normalize([
+        'document_title' => 'Permit confirmation', 'document_type' => 'letter',
+        'organization' => ['group_path' => $path, 'confidence' => .95],
+    ]);
+    app(EntityFactory::class)->createEntitiesFromParsedData(['entities' => [['type' => 'document', 'data' => $data]]], $file);
+    app(FileOrganizationSummaryService::class)->capture($file, $file->primaryEntity->entity);
+    expect($file->fresh()->organization_summary['group_path'][0]['kind'])->toBe('project')
+        ->and($file->fresh()->primaryFolder->name)->toBe('Permits')
+        ->and($file->fresh()->primaryFolder->parent->name)->toBe('Example restoration');
 });

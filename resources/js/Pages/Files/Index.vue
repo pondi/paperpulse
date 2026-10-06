@@ -2,8 +2,6 @@
 import { onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { Head, Link, router, usePoll } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
-import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
 import { fileStatusLabel } from '@/utils/fileStatus';
 import ProcessingLimit from '@/Components/Domain/ProcessingLimit.vue';
 import ProcessingProgress from '@/Components/Domain/ProcessingProgress.vue';
@@ -45,7 +43,6 @@ interface PaginationInfo {
 }
 
 interface Props {
-    reviewTypes?: string[];
     files: {
         data: FileItem[];
         links: any;
@@ -94,17 +91,6 @@ const form = reactive({
     page: props.pagination?.current_page ?? 1,
 });
 
-const selectedTypeById = ref<Record<number, string>>(
-    Object.fromEntries(
-        props.files.data.map(f => [
-            f.id,
-            f.file_type === 'receipt' ? 'document' : 'receipt',
-        ])
-    ) as Record<number, string>
-);
-
-const expandedFileId = ref<number | null>(props.filters.file_id ?? null);
-
 const selectedFileId = ref<number | null>(props.filters.file_id ?? null);
 let filterTimer: ReturnType<typeof setTimeout>;
 watch(
@@ -125,22 +111,6 @@ watch(
 );
 onBeforeUnmount(() => clearTimeout(filterTimer));
 
-const restart = (fileId: number) => {
-    router.post(route('files.reprocess', fileId), {}, { preserveScroll: true });
-};
-
-const changeTypeAndRestart = (fileId: number) => {
-    router.patch(
-        route('files.change-type', fileId),
-        { file_type: selectedTypeById.value[fileId] },
-        { preserveScroll: true }
-    );
-    expandedFileId.value = null;
-};
-
-const toggleExpanded = (fileId: number) => {
-    expandedFileId.value = expandedFileId.value === fileId ? null : fileId;
-};
 </script>
 
 <template>
@@ -153,7 +123,7 @@ const toggleExpanded = (fileId: number) => {
                 <div class="mb-8">
                     <h1 class="text-3xl font-bold text-zinc-900 dark:text-zinc-100">File Management</h1>
                     <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        Manage and reprocess your uploaded files
+                        View your uploads and their processing progress
                     </p>
                 </div>
 
@@ -372,7 +342,7 @@ const toggleExpanded = (fileId: number) => {
                                         </svg>
                                         {{ fileStatusLabel(file) }}
                                     </span>
-                                    <button type="button" @click="selectedFileId = selectedFileId === file.id ? null : file.id" :aria-expanded="selectedFileId === file.id" :aria-controls="'activity-actions-' + file.id" class="text-xs font-medium text-amber-700 dark:text-amber-400">{{ selectedFileId === file.id ? 'Hide actions' : 'Show actions' }}</button>
+                                    <button type="button" @click="selectedFileId = selectedFileId === file.id ? null : file.id" :aria-expanded="selectedFileId === file.id" :aria-controls="'activity-details-' + file.id" class="text-xs font-medium text-amber-700 dark:text-amber-400">{{ selectedFileId === file.id ? 'Hide details' : 'Show details' }}</button>
                                 </div>
                             </div>
 
@@ -381,17 +351,10 @@ const toggleExpanded = (fileId: number) => {
                             <div v-if="selectedFileId === file.id && file.status === 'needs_review'" class="mt-4 rounded-lg bg-amber-50 p-4 dark:bg-zinc-900">
                                 <p class="text-sm text-zinc-800 dark:text-zinc-200">{{ file.review?.reasoning || 'This file needs review before processing can finish.' }}</p>
                                 <p v-if="file.review?.confidence != null" class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Classification confidence: {{ Math.round(file.review.confidence * 100) }}%</p>
-                                <div v-if="file.review?.reason === 'uncertain_classification'" class="mt-3 flex flex-wrap items-center gap-3">
-                                    <label :for="`type-${file.id}`" class="text-sm dark:text-zinc-200">Document type</label>
-                                    <select :id="`type-${file.id}`" v-model="selectedTypeById[file.id]" class="rounded border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white">
-                                        <option v-for="type in props.reviewTypes" :key="type" :value="type">{{ type.replaceAll('_', ' ') }}</option>
-                                    </select>
-                                    <PrimaryButton type="button" @click="changeTypeAndRestart(file.id)">Retry extraction</PrimaryButton>
-                                </div>
                             </div>
 
-                            <!-- Actions -->
-                            <div v-if="selectedFileId === file.id" :id="'activity-actions-' + file.id" class="mt-3 flex flex-wrap items-center gap-3">
+                            <!-- Details -->
+                            <div v-if="selectedFileId === file.id" :id="'activity-details-' + file.id" class="mt-3 flex flex-wrap items-center gap-3">
                                 <Link :href="route('files.extraction-report', file.id)" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                                     Extraction report
                                 </Link>
@@ -414,58 +377,7 @@ const toggleExpanded = (fileId: number) => {
                                         class="text-blue-600 dark:text-blue-400 hover:underline">
                                         Correct CSV mapping
                                     </Link>
-                                    <PrimaryButton type="button" @click="restart(file.id)">
-                                        <svg class="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                        </svg>
-                                        Retry Processing
-                                    </PrimaryButton>
-
-                                    <SecondaryButton type="button" @click="toggleExpanded(file.id)">
-                                        <svg class="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                        Change Type & Retry
-                                    </SecondaryButton>
                                 </template>
-                            </div>
-
-                            <!-- Expanded Options -->
-                            <div
-                                v-if="selectedFileId === file.id && file.status === 'failed' && expandedFileId === file.id"
-                                class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/40"
-                            >
-                                <h4 class="text-sm font-bold text-zinc-900 dark:text-zinc-100">Change Processing Type</h4>
-                                <p class="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                                    If processing failed, try changing the file type. This may help if the file was incorrectly classified.
-                                </p>
-                                <div class="mt-3 flex flex-wrap items-center gap-3">
-                                    <label class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Process as:</label>
-                                    <div class="flex gap-4">
-                                        <label class="flex items-center">
-                                            <input
-                                                v-model="selectedTypeById[file.id]"
-                                                type="radio"
-                                                value="receipt"
-                                                class="h-4 w-4 border-zinc-300 text-amber-600 focus:ring-amber-600 dark:border-zinc-600 dark:bg-zinc-700"
-                                            />
-                                            <span class="ml-2 text-sm text-zinc-700 dark:text-zinc-300">Receipt</span>
-                                        </label>
-                                        <label class="flex items-center">
-                                            <input
-                                                v-model="selectedTypeById[file.id]"
-                                                type="radio"
-                                                value="document"
-                                                class="h-4 w-4 border-zinc-300 text-amber-600 focus:ring-amber-600 dark:border-zinc-600 dark:bg-zinc-700"
-                                            />
-                                            <span class="ml-2 text-sm text-zinc-700 dark:text-zinc-300">Document</span>
-                                        </label>
-                                    </div>
-                                    <PrimaryButton type="button" @click="changeTypeAndRestart(file.id)" class="ml-auto">
-                                        Apply & Retry
-                                    </PrimaryButton>
-                                </div>
                             </div>
                         </div>
                     </div>

@@ -12,6 +12,11 @@ class StoreDocumentUploadRequest extends FormRequest
         return $this->user() !== null;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['file_type' => $this->input('file_type') ?? 'document']);
+    }
+
     public function rules(): array
     {
         return [
@@ -32,7 +37,7 @@ class StoreDocumentUploadRequest extends FormRequest
             'files.required' => 'Select at least one file to upload.',
             'files.array' => 'Files must be submitted as a list.',
             'files.*.file' => 'Each upload must be a valid file.',
-            'file_type.in' => 'Choose receipt or document.',
+            'file_type.in' => 'The supplied file type is unsupported.',
             'note.max' => 'The note cannot exceed 1000 characters.',
         ];
     }

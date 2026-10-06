@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Events\FileExtractionCompleted;
+use App\Exceptions\AIResponseException;
+use App\Exceptions\GeminiApiException;
 use App\Jobs\BankStatements\ProcessCsvImport;
 use App\Jobs\Documents\AnalyzeDocument;
 use App\Jobs\Files\ProcessFileGemini;
@@ -132,7 +134,7 @@ abstract class BaseJob implements ShouldQueue
     final public function handle(): void
     {
         $metadata = $this->getMetadata();
-        Context::forget(['processing_failure', 'processing_stage', 'queue_failure']);
+        Context::forget(['processing_failure', 'processing_stage', 'queue_failure', 'classification_resolution', 'automatic_recovery', 'organization']);
         Context::add('processing', [
             'job_id' => $this->jobID,
             'task_id' => $this->uuid,
@@ -454,13 +456,15 @@ abstract class BaseJob implements ShouldQueue
 
             if ($fileId) {
                 $file = File::find($fileId);
-                if ($file && in_array($file->status, ['pending', 'processing'], true)) {
+                if ($file && in_array($file->status, ['pending', 'processing', 'failed'], true)) {
                     $fileMeta = $file->meta ?? [];
                     $fileMeta['last_processing_error'] = [
                         'message' => $exceptionMessage,
                         'job' => static::class,
                         'job_id' => $this->jobID,
                         'failed_at' => now()->toISOString(),
+                        'retryable' => $exception instanceof AIResponseException ? ($exception->retryable || $exception->errorCode === AIResponseException::CODE_USAGE_BUDGET_EXCEEDED) : ($exception instanceof GeminiApiException && $exception->isRetryable()),
+                        'retry_after' => $exception instanceof AIResponseException && $exception->errorCode === AIResponseException::CODE_USAGE_BUDGET_EXCEEDED ? now()->utc()->addDay()->startOfDay()->addMinutes(5)->toIso8601String() : null,
                     ];
 
                     $file->status = 'failed';

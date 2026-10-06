@@ -1,11 +1,10 @@
 <?php
 
 use App\Jobs\BankStatements\ProcessCsvImport;
+use App\Jobs\Files\ClassifyFile;
 use App\Jobs\Files\ProcessFile;
 use App\Jobs\Files\ProcessFileGemini;
 use App\Jobs\Maintenance\DeleteWorkingFiles;
-use App\Jobs\Receipts\MatchMerchant;
-use App\Jobs\Receipts\ProcessReceipt;
 use App\Models\File;
 use App\Models\FileProcessingRequest;
 use App\Models\JobHistory;
@@ -175,7 +174,7 @@ it('keeps failed-only retry behavior and the previous pipeline by default', func
     $this->artisan('files:reprocess', ['--no-interaction' => true])->assertSuccessful();
 
     Bus::assertDispatchedTimes(ProcessFile::class, 1);
-    Bus::assertChained([ProcessFile::class, ProcessReceipt::class, MatchMerchant::class, DeleteWorkingFiles::class]);
+    Bus::assertChained([ProcessFile::class, ClassifyFile::class, DeleteWorkingFiles::class]);
 });
 
 it('uses an explicit provider override and preserves CSV import routing', function (string $extension, array $chain, string $pipeline): void {
@@ -186,7 +185,7 @@ it('uses an explicit provider override and preserves CSV import routing', functi
     Bus::assertChained($chain);
     expect($file->processingJobs()->first()->metadata['pipeline'])->toBe($pipeline);
 })->with([
-    ['pdf', [ProcessFile::class, ProcessReceipt::class, MatchMerchant::class, DeleteWorkingFiles::class], 'textract+openai'],
+    ['pdf', [ProcessFile::class, ClassifyFile::class, DeleteWorkingFiles::class], 'textract+openai'],
     ['CSV', [ProcessCsvImport::class, DeleteWorkingFiles::class], 'csv'],
 ]);
 

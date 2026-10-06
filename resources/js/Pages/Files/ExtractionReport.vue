@@ -39,7 +39,7 @@
             <p v-if="reviewError" role="alert">{{ reviewError }}</p>
             <button type="submit" :disabled="!confirmed || resolving" class="rounded-md bg-amber-700 px-4 py-2 font-semibold text-white disabled:opacity-50">Confirm reconciled totals</button>
           </form>
-          <button type="button" @click="router.post(route('files.reprocess', report.file.id))" class="self-start font-medium underline">Retry extraction for missing source values</button>
+          <p class="text-sm">Missing source values are recorded for processing support.</p>
         </div>
         <p v-if="report.review.reasoning">{{ report.review.reasoning }}</p>
         <ProcessingFailure v-if="report.file.status === 'failed'" :failure="report.failure" :processing="report.processing" :file-id="report.file.id" />

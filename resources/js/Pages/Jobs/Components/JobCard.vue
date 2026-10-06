@@ -37,29 +37,6 @@
       </div>
       
       <div class="flex items-center gap-3">
-        <!-- Restart Button for Failed Jobs -->
-        <button
-          v-if="canRestart"
-          @click="restartJob"
-          :disabled="isRestarting"
-          class="px-3 py-1 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-800 disabled:opacity-50 text-white text-sm rounded-lg font-medium transition-colors duration-200"
-          :title="isRestarting ? 'Restarting...' : 'Restart failed job chain'"
-        >
-          <span v-if="isRestarting" class="flex items-center gap-2">
-            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="m15.84 12.32-.1-.17a2 2 0 01.73-2.63l.06-.04a6.97 6.97 0 00-1.92-2.64 2 2 0 01-2.62.73l-.18.1A2 2 0 019 6.68v-.07A6.98 6.98 0 006.32 8.16 2 2 0 017.27 10.8l-.1.17a2 2 0 01-2.63-.73l-.04-.06a6.97 6.97 0 00-1.64 1.92 2 2 0 01.73 2.62l-.1.18A2 2 0 016.32 17v.07a6.98 6.98 0 001.84-1.48 2 2 0 012.62.73l.04.06a6.97 6.97 0 001.92-1.64 2 2 0 01-.73-2.62l.1-.18A2 2 0 0115 11.32v-.07a6.98 6.98 0 00-1.48 1.84 2 2 0 01-.73-2.62z"></path>
-            </svg>
-            Restarting...
-          </span>
-          <span v-else class="flex items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-            </svg>
-            Restart
-          </span>
-        </button>
-        
         <span :class="{
           'px-3 py-1 rounded-full text-sm font-semibold': true,
           'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300': job.status === 'pending',
@@ -148,8 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { formatDateTime, formatDuration } from '@/utils/datetime';
 
 interface JobStep {
@@ -190,26 +166,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const emit = defineEmits<{
-  restart: [jobId: string];
-}>();
-
-const isRestarting = ref(false);
-
-// Check if the job can be restarted (has failed steps or is failed itself)
-const canRestart = computed(() => {
-  if (props.job.status === 'failed') {
-    return true;
-  }
-  
-  // Check if any steps failed
-  if (props.job.steps?.some(step => step.status === 'failed')) {
-    return true;
-  }
-  
-  return false;
-});
-
 // Get failed steps for error display
 const failedSteps = computed(() => {
   return props.job.steps?.filter(step => step.status === 'failed' && step.exception) || [];
@@ -225,37 +181,4 @@ const formatFileSize = (bytes: number): string => {
   return Math.round(bytes / Math.pow(1024, i)) + ' ' + sizes[i];
 };
 
-const restartJob = () => {
-  if (isRestarting.value) return;
-  
-  isRestarting.value = true;
-  
-  // Use Inertia's router.post for proper CSRF handling
-  router.post(`/jobs/${props.job.id}/restart`, {}, {
-    preserveScroll: true,
-    preserveState: false,
-    onStart: () => {
-      if (import.meta.env.DEV) console.log('Restarting job:', props.job.id);
-    },
-    onSuccess: () => {
-      // Emit restart event to parent component
-      emit('restart', props.job.id);
-      if (import.meta.env.DEV) console.log('Job restart initiated successfully');
-      isRestarting.value = false;
-      
-      // The page will reload automatically with updated data
-    },
-    onError: (errors) => {
-      console.error('Failed to restart job:', errors);
-      alert('Failed to restart job. Please try again.');
-      isRestarting.value = false;
-    },
-    onFinish: () => {
-      // Reset state if needed
-      if (isRestarting.value) {
-        isRestarting.value = false;
-      }
-    }
-  });
-};
 </script> 

@@ -60,6 +60,7 @@ class NotificationController extends Controller
     {
         [$model, $field, $route] = match ($data['type'] ?? null) {
             'receipt_processed', 'receipt_shared' => [Receipt::class, 'receipt_id', 'receipts.show'],
+            'document_processed' => [File::class, 'file_id', 'files.show'],
             'document_shared' => [Document::class, 'document_id', 'documents.show'],
             'voucher_expiring' => [Voucher::class, 'voucher_id', 'vouchers.show'],
             'warranty_ending' => [File::class, 'file_id', 'files.show'],

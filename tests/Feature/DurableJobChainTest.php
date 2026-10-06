@@ -32,13 +32,13 @@ it('persists every planned step before the first job is dispatched', function ()
     (new FileJobChainDispatcher)->dispatch($id, 'document');
     $parent = JobHistory::where('uuid', $id)->first();
 
-    expect($parent->metadata['plannedSteps'])->toHaveCount(4)
-        ->and($parent->tasks()->where('status', 'pending')->count())->toBe(4);
+    expect($parent->metadata['plannedSteps'])->toHaveCount(3)
+        ->and($parent->tasks()->where('status', 'pending')->count())->toBe(3);
     $first = $parent->tasks()->orderBy('order_in_chain')->first();
     $first->update(['status' => 'completed', 'progress' => 100]);
     JobParentStatusCalculator::update($id);
     expect($parent->fresh()->status)->toBe('processing')
-        ->and($parent->fresh()->progress)->toBe(25)
+        ->and($parent->fresh()->progress)->toBe(33)
         ->and($parent->fresh()->finished_at)->toBeNull();
 });
 

@@ -230,6 +230,7 @@ return [
     'no_notifications' => 'Ingen varsler',
     'clear_all_notifications_confirm' => 'Er du sikker på at du vil fjerne alle varsler?',
     'notification_settings' => 'Varselinnstillinger',
+    'document_processed' => 'Dokument behandlet',
     'receipt_processed' => 'Kvittering behandlet',
     'receipt_processing_failed' => 'Behandling mislyktes',
     'bulk_operation_completed' => 'Masseoperasjon fullført',

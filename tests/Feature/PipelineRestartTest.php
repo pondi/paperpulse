@@ -1,14 +1,11 @@
 <?php
 
 use App\Jobs\BankStatements\ProcessCsvImport;
-use App\Jobs\Documents\AnalyzeDocument;
-use App\Jobs\Documents\ProcessDocument;
+use App\Jobs\Files\ClassifyFile;
 use App\Jobs\Files\ConvertOfficeFile;
 use App\Jobs\Files\ProcessFile;
 use App\Jobs\Files\ProcessFileGemini;
 use App\Jobs\Maintenance\DeleteWorkingFiles;
-use App\Jobs\Receipts\MatchMerchant;
-use App\Jobs\Receipts\ProcessReceipt;
 use App\Models\File;
 use App\Models\FileConversion;
 use App\Models\JobHistory;
@@ -53,8 +50,8 @@ it('restarts the stored pipeline at its failed step for its exact file', functio
 })->with([
     ['gemini', 'document', 'pdf', 0, [ProcessFile::class, ProcessFileGemini::class, DeleteWorkingFiles::class]],
     ['gemini', 'receipt', 'pdf', 1, [ProcessFileGemini::class, DeleteWorkingFiles::class]],
-    ['textract+openai', 'receipt', 'pdf', 1, [ProcessReceipt::class, MatchMerchant::class, DeleteWorkingFiles::class]],
-    ['textract+openai', 'document', 'pdf', 1, [ProcessDocument::class, AnalyzeDocument::class, DeleteWorkingFiles::class]],
+    ['textract+openai', 'receipt', 'pdf', 1, [ClassifyFile::class, DeleteWorkingFiles::class]],
+    ['textract+openai', 'document', 'pdf', 1, [ClassifyFile::class, DeleteWorkingFiles::class]],
     ['textract+openai', 'document', 'csv', 0, [ProcessCsvImport::class, DeleteWorkingFiles::class]],
 ]);
 

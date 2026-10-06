@@ -70,8 +70,12 @@ Schedule::command('pulsedav:reconcile-imports')->everyFiveMinutes()->name('recon
 
 Schedule::command('organization:recover-placements')->everyFiveMinutes()->name('recover-file-organization')->withoutOverlapping();
 
+Schedule::command('organization:repair')->everyFiveMinutes()->name('repair-archive-organization')->withoutOverlapping();
+
 Schedule::command('organization:plan')->everyFiveMinutes()->name('plan-organization')->withoutOverlapping();
 
 Schedule::command('organization:backfill --recover')->everyFiveMinutes()->name('recover-organization-backfills')->withoutOverlapping();
 
 Schedule::command('exports:cleanup')->hourly()->name('cleanup-expired-exports')->withoutOverlapping();
+
+Schedule::command('files:recover-automatic')->everyFiveMinutes()->name('recover-automatic-file-processing')->withoutOverlapping();

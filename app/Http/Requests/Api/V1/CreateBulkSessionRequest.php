@@ -16,6 +16,11 @@ class CreateBulkSessionRequest extends FormRequest
         return auth()->check();
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['file_type' => $this->input('file_type') ?? 'document']);
+    }
+
     public function rules(): array
     {
         $allFormats = array_unique(array_merge(

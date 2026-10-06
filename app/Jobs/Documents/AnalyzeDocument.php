@@ -8,6 +8,7 @@ use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Tag;
+use App\Notifications\DocumentProcessed;
 use App\Services\DocumentAnalysisService;
 use App\Services\Tags\TagAttachmentService;
 use Exception;
@@ -145,6 +146,7 @@ class AnalyzeDocument extends BaseJob
             $file = File::withoutGlobalScope('user')->where('user_id', $metadata['userId'])->findOrFail($fileId);
             if ($file->status !== 'needs_review') {
                 $file->update(['status' => 'completed']);
+                $file->user->notify(DocumentProcessed::forFile($file)->onConnection('database')->beforeCommit());
             }
             $this->updateProgress(100);
 

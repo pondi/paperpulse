@@ -34,7 +34,7 @@ const legacy = computed(() => props.file.primary_receipt
     ? { label: 'Receipt', href: route('receipts.show', props.file.primary_receipt.id) }
     : props.file.primary_document ? { label: 'Document', href: route('documents.show', props.file.primary_document.id) } : null);
 const reviewMessages = {
-    uncertain_classification: 'Confirm the document type to finish extraction.',
+    uncertain_classification: 'The file type is detected automatically during processing.',
     receipt_totals: 'The extracted total and line items need checking against the original.',
 };
 const reviewMessage = computed(() => reviewMessages[props.file.review?.reason] || 'Check the extraction report for warnings and processing details.');

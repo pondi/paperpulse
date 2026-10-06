@@ -133,7 +133,7 @@ it('retains paid usage after provider failure and resumes without exceeding the 
     expect($backfill->fresh()->processed)->toBe(1)->and($backfill->fresh()->status)->toBe('completed')->and($backfill->fresh()->calls)->toBe(1);
 });
 
-it('uses stored extraction without paid calls and reports missing source metadata as skipped', function () {
+it('uses stored extraction without paid calls and files missing source metadata in a general role folder', function () {
     $owner = User::factory()->create();
     $file = archiveFile($owner->id);
     $file->update(['organization_summary' => null]);
@@ -145,7 +145,7 @@ it('uses stored extraction without paid calls and reports missing source metadat
     $service = app(OrganizationBackfillService::class);
     $backfill = $service->start($owner->id, backfillOptions());
     (new BackfillOrganization($owner->id, $backfill->id))->handle($service);
-    expect($backfill->fresh()->processed)->toBe(1)->and($backfill->fresh()->skipped)->toBe(1)
+    expect($backfill->fresh()->processed)->toBe(2)->and($backfill->fresh()->skipped)->toBe(0)
         ->and($file->fresh()->organization_summary['property_address'])->toBe('42 Birch Road')->and($backfill->fresh()->calls)->toBe(0);
 });
 

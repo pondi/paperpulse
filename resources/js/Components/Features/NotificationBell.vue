@@ -203,7 +203,7 @@ const handleNotificationClick = (notification) => {
 
 const getNotificationIcon = (notification) => {
   const type = notification.data.type;
-  if (type === 'receipt_processed') return CheckCircleIcon;
+  if (['receipt_processed', 'document_processed'].includes(type)) return CheckCircleIcon;
   if (type === 'receipt_failed') return XCircleIcon;
   if (type === 'bulk_operation_completed') return FolderIcon;
   if (type === 'scanner_files_imported') return CloudArrowDownIcon;
@@ -213,7 +213,7 @@ const getNotificationIcon = (notification) => {
 
 const getNotificationIconClass = (notification) => {
   const type = notification.data.type;
-  if (type === 'receipt_processed') return 'text-green-500';
+  if (['receipt_processed', 'document_processed'].includes(type)) return 'text-green-500';
   if (type === 'receipt_failed') return 'text-red-500';
   if (type === 'bulk_operation_completed') return 'text-amber-500';
   if (type === 'scanner_files_imported') return 'text-orange-500';
@@ -223,7 +223,7 @@ const getNotificationIconClass = (notification) => {
 
 const getNotificationTitle = (notification) => {
   const type = notification.data.type;
-  if (type === 'receipt_processed') return __('receipt_processed');
+  if (['receipt_processed', 'document_processed'].includes(type)) return __(type);
   if (type === 'receipt_failed') return __('receipt_processing_failed');
   if (type === 'bulk_operation_completed') return __('bulk_operation_completed');
   if (type === 'scanner_files_imported') return __('scanner_files_imported');
@@ -238,6 +238,8 @@ const getNotificationMessage = (notification) => {
   if (data.type === 'receipt_processed') {
     return `${data.merchant_name} - ${formatCurrency(data.amount, data.currency)}`;
   }
+
+  if (data.type === 'document_processed') return data.document_title;
 
   if (data.type === 'receipt_failed') {
     return data.error_message || __('processing_error');

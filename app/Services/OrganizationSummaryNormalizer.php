@@ -17,6 +17,7 @@ class OrganizationSummaryNormalizer
         $employer = $this->text($data['employer_name'] ?? null, 120);
 
         return [
+            'group_path' => $this->groupPath(array_key_exists('group_path', $data) ? $data['group_path'] : []),
             'subject' => $this->text($data['subject'] ?? null, 160),
             'property_address' => $property,
             'employer' => $employer ? ['name' => $employer, 'registration' => $this->text($data['employer_registration'] ?? null, 40)] : null,
@@ -72,6 +73,7 @@ class OrganizationSummaryNormalizer
             'version' => self::VERSION,
             'document_type' => $this->text($subtype, 50) ?? $type,
             'title' => $this->text($title, 120) ?? ucfirst($type),
+            'group_path' => $evidence['group_path'],
             'subject' => $evidence['subject'],
             'property_address' => $evidence['property_address'],
             'employer' => $employer,
@@ -82,6 +84,39 @@ class OrganizationSummaryNormalizer
             'provenance' => ['source' => 'existing_extraction', 'entity_type' => $type, 'entity_id' => $entityId,
                 'evidence' => $organization !== [] ? 'explicit_subject' : ($employer ? 'typed_employer_party' : 'basic_fields')],
         ];
+    }
+
+    /** @return list<array{kind: string, name: string, identifier: ?string, relationship: string, confidence: float}>|null */
+    public function groupPath(mixed $value): ?array
+    {
+        if (! is_array($value) || ! array_is_list($value) || count($value) > 4) {
+            return null;
+        }
+        $path = [];
+        $identities = [];
+        foreach ($value as $index => $node) {
+            if (! is_array($node)) {
+                return null;
+            }
+            $kind = $this->text($node['kind'] ?? null, 22);
+            $name = $this->text($node['name'] ?? null, 180);
+            $relationship = $index === 0 ? 'subject' : 'subgroup';
+            if (! $kind || ! preg_match('/^[a-z][a-z_]{0,21}$/', $kind) || ! $name
+                || str_contains($name, '/') || str_contains($name, chr(92)) || preg_match('/[\x00-\x1f]/', $name) || in_array($name, ['.', '..'], true)
+                || ($node['relationship'] ?? null) !== $relationship) {
+                return null;
+            }
+            $identifier = $this->text($node['identifier'] ?? null, 120);
+            $identity = $kind.':'.mb_strtolower($identifier ?? $name);
+            if (in_array($identity, $identities, true)) {
+                return null;
+            }
+            $identities[] = $identity;
+            $path[] = ['kind' => $kind, 'name' => $name, 'identifier' => $identifier,
+                'relationship' => $relationship, 'confidence' => $this->confidence($node['confidence'] ?? null)];
+        }
+
+        return $path;
     }
 
     private function text(mixed $value, int $limit): ?string

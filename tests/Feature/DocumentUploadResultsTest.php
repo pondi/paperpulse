@@ -131,6 +131,8 @@ page.collectionIds.value = [7];
 page.tagIds.value = [8];
 page.submit();
 assert.equal(callbacks.preserveScroll, false);
+assert.equal(payload.file_type, 'document');
+assert.ok(!(await renderPage()).includes('Upload mode'));
 assert.deepEqual(payload.files, entries.map(entry => entry.file));
 callbacks.onSuccess({ props: { flash: { upload_results: [
     { index: 0, filename: 'same.png', status: 'accepted', message: 'Accepted' },

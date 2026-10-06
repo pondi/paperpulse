@@ -9,6 +9,50 @@ use App\Notifications\BulkOperationCompleted;
 use App\Notifications\DuplicateFileDetected;
 use App\Notifications\ReceiptProcessed;
 use App\Notifications\ScannerFilesImported;
+use Illuminate\Support\Facades\Broadcast;
+use Laravel\Reverb\Application;
+use Laravel\Reverb\Connection;
+use Laravel\Reverb\Contracts\WebSocketConnection;
+use Laravel\Reverb\Protocols\Pusher\Channels\PrivateChannel;
+use Laravel\Reverb\Protocols\Pusher\Contracts\ChannelConnectionManager;
+use Laravel\Reverb\Protocols\Pusher\Exceptions\ConnectionUnauthorized;
+
+it('distinguishes successful HTTP authorization from Reverb private channel subscription', function (string $key, bool $subscribes): void {
+    $user = User::factory()->create();
+    $channelName = 'private-App.Models.User.'.$user->id;
+    config([
+        'broadcasting.default' => 'reverb',
+        'broadcasting.connections.reverb.key' => $key,
+        'broadcasting.connections.reverb.secret' => 'test-secret',
+        'broadcasting.connections.reverb.app_id' => 'test-app',
+    ]);
+    Broadcast::purge('reverb');
+    require base_path('routes/channels.php');
+
+    $connection = new Connection(
+        Mockery::mock(WebSocketConnection::class),
+        new Application('test-app', $key, 'test-secret', 60, 30, ['*'], 10000),
+        null,
+    );
+    $auth = $this->actingAs($user)->postJson('/broadcasting/auth', [
+        'socket_id' => $connection->id(), 'channel_name' => $channelName,
+    ])->assertOk()->json('auth');
+    expect($auth)->toStartWith($key.':');
+
+    $manager = $this->mock(ChannelConnectionManager::class);
+    $manager->shouldReceive('for')->with($channelName)->once()->andReturnSelf();
+    $channel = new PrivateChannel($channelName);
+
+    if ($subscribes) {
+        $manager->shouldReceive('add')->with($connection, [])->once();
+        $channel->subscribe($connection, $auth);
+    } else {
+        $manager->shouldNotReceive('add');
+        expect(fn () => $channel->subscribe($connection, $auth))->toThrow(ConnectionUnauthorized::class);
+    }
+})->with([
+    ['paperpulse-public-key', true], ['base64:paperpulse-public-key', false],
+]);
 
 it('includes broadcast channel in receipt processed notification', function () {
     $user = User::factory()->create();

@@ -5,6 +5,7 @@ use App\Models\Document;
 use App\Models\File;
 use App\Models\FileShare;
 use App\Models\User;
+use App\Services\PulseDavService;
 use Illuminate\Support\Facades\File as Filesystem;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Route;
@@ -53,7 +54,7 @@ async function render(file, props) {
         bindings[name] = name === 'Checkbox' ? props => vue.h('input', { ...props, type: 'checkbox' }) : stub;
         return '';
     });
-    code = stripTypeScriptTypes(code, { mode: 'strip' });
+    code = stripTypeScriptTypes(code.replaceAll('import.meta.env.DEV', 'false'), { mode: 'strip' });
     const component = new Function(...Object.keys(bindings), code + '; return ContractPage;')(...Object.values(bindings));
     const app = vue.createSSRApp(component, props);
     app.config.globalProperties.$page = page;
@@ -214,13 +215,21 @@ if (scenario === 'pdf initial fit') {
     assert.ok(image.includes('src="/scan.jpg"'));
     assert.ok(!image.includes('<iframe'));
 }
+if (scenario === 'scanner onboarding') {
+    for (const enabled of [true, false]) {
+        const html = await render('Pages/PulseDav/Index.vue', { files: { data: [], links: [] }, tags: [], scannerImportsEnabled: enabled });
+        for (const text of ['No scanner imports yet', 'Scanner connection instructions', 'WebDAV server address', 'verified PaperPulse email address', 'private scanner inbox', '/preferences#preferences-scanner']) assert.ok(html.includes(text), text);
+        assert.ok(html.includes(enabled ? 'Scanner imports are enabled' : 'Scanner imports are not configured on this server'));
+        assert.equal(/<button[^>]*\sdisabled(?:=|[\s>])/.test(html), !enabled);
+    }
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {
@@ -336,3 +345,11 @@ JS;
     ['en', 'Expiring within 1 day', 'Expiring within 30 days'],
     ['nb', 'Utløper innen 1 dag', 'Utløper innen 30 dager'],
 ]);
+
+it('shares scanner import configuration without exposing connection secrets', function (bool $enabled, ?string $bucket, bool $expected): void {
+    config(['services.pulsedav.auth_enabled' => $enabled, 'filesystems.disks.pulsedav.bucket' => $bucket]);
+    $this->mock(PulseDavService::class);
+    $response = $this->actingAs(User::factory()->create())->get(route('pulsedav.index'))->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page->has('files.data', 0)
+        ->where('scannerImportsEnabled', $expected)->missing('scannerCredentials'));
+})->with([[true, 'private-incoming', true], [false, 'private-incoming', false], [true, null, false]]);

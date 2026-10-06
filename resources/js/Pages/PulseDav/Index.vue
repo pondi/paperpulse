@@ -16,7 +16,7 @@
                             <div>
                                 <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Sync Scanner Files</h3>
                                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                                    Check for new files uploaded by your scanner
+                                    Sync Files checks your private scanner inbox for uploads sent through PulseDav. It does not scan a document or read files from this device.
                                 </p>
                             </div>
                             <div class="flex space-x-2">
@@ -34,7 +34,7 @@
                                 </button>
                                 <button
                                     @click="syncFiles"
-                                    :disabled="syncing"
+                                    :disabled="syncing || !scannerImportsEnabled"
                                     class="inline-flex items-center px-4 py-2 bg-zinc-900 dark:bg-amber-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-zinc-800 focus:bg-zinc-800 active:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50"
                                 >
                                     <svg v-if="syncing" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -206,7 +206,18 @@
                         </div>
 
                         <div v-if="files.data.length === 0" class="text-center py-8 text-zinc-500 dark:text-zinc-400">
-                            No files found. Click "Sync Files" to check for new scanner uploads.
+                            <h3 class="font-semibold text-zinc-900 dark:text-zinc-100">No scanner imports yet</h3>
+                            <p class="mt-2">{{ scannerImportsEnabled ? 'Scanner imports are enabled. Connect your scanner, send a file, then choose Sync Files.' : 'Scanner imports are not configured on this server. Contact your administrator to enable PulseDav before connecting a scanner.' }}</p>
+                            <details class="mt-4 text-left">
+                                <summary class="cursor-pointer font-medium text-amber-700 dark:text-amber-400">Scanner connection instructions</summary>
+                                <ol class="mt-3 flex list-decimal flex-col gap-2 pl-5">
+                                    <li>Get your PulseDav WebDAV server address from your administrator.</li>
+                                    <li>Choose WebDAV as the upload destination in your scanner or scanning app.</li>
+                                    <li>Enter that server address and sign in with your verified PaperPulse email address and password.</li>
+                                    <li>Send a scan, then return here and choose Sync Files to find it in your private scanner inbox.</li>
+                                </ol>
+                            </details>
+                            <Link :href="route('preferences.index') + '#preferences-scanner'" class="mt-4 inline-block font-medium text-amber-700 hover:underline dark:text-amber-400">Scanner processing settings</Link>
                         </div>
 
                         <div v-else class="overflow-x-auto">
@@ -349,6 +360,7 @@ import TagSelector from '@/Components/Domain/TagSelector.vue';
 import FolderItem from '@/Components/Features/FolderItem.vue';
 
 const props = defineProps({
+    scannerImportsEnabled: Boolean,
     files: Object,
     tags: Array,
 });

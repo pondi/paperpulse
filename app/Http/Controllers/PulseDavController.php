@@ -39,6 +39,7 @@ class PulseDavController extends Controller
         ]);
 
         return Inertia::render('PulseDav/Index', [
+            'scannerImportsEnabled' => (bool) config('services.pulsedav.auth_enabled') && (bool) config('filesystems.disks.pulsedav.bucket'),
             'files' => $files,
             'tags' => $tags,
         ]);

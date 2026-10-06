@@ -799,3 +799,14 @@ it('fits portrait and multipage PDF sources in previews at different widths', fu
         }
     }
 });
+
+it('opens scanner connection instructions and processing settings from empty imports', function (): void {
+    $user = $this->createUser();
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/pulsedav')->waitForText('No scanner imports yet')
+            ->assertSee('private scanner inbox')->click('summary')->assertSee('WebDAV server address')
+            ->assertSee('verified PaperPulse email address and password')
+            ->clickLink('Scanner processing settings')->waitForLocation('/preferences')
+            ->assertScript('location.hash', '#preferences-scanner');
+    });
+});

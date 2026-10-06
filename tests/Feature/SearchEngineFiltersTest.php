@@ -31,6 +31,7 @@ it('applies inclusive engine date and amount ranges with tenant isolation', func
         $attributes = ['user_id' => $user->id, 'file_id' => $file->id, $date => $day];
         if ($amount) {
             $attributes[$amount] = $value;
+            $attributes['currency'] = $value === 10 ? 'EUR' : 'USD';
         }
         if (in_array($model, [Receipt::class, Document::class, Invoice::class], true)) {
             $category = Category::firstOrCreate(['user_id' => $user->id, 'name' => $value === 30 ? 'Other' : $label], ['slug' => $user->id.'-'.($value === 30 ? 'other' : 'books')]);

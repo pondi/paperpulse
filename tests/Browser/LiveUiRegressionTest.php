@@ -1014,3 +1014,20 @@ it('names active dialogs with their headings and restores focus after Escape', f
     ['/library', '[dusk=save-view]', 'Save a view'],
     ['/search', '[dusk=save-view]', 'Save a view'],
 ]);
+
+it('discloses native currency range semantics before applying search filters', function (): void {
+    $user = $this->createUser();
+    $this->browse(function (Browser $browser) use ($user): void {
+        foreach ([1440, 390] as $width) {
+            $browser->resize($width, 900)->loginAs($user)->visit('/search');
+            if ($width === 390) {
+                $browser->waitForText('Show filters')->press('Show filters');
+            }
+            $browser->waitFor('#search-amount-min');
+            $browser->assertSee('Amount Range · Source currency')
+                ->assertSee("Amounts use each document's source currency, with no currency conversion.")
+                ->assertSee('100 NOK, 100 EUR and 100 USD')
+                ->assertScript("['search-amount-min', 'search-amount-max'].every(id => document.getElementById(id).getAttribute('aria-describedby') === 'search-amount-basis')", true);
+        }
+    });
+});

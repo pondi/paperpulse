@@ -192,15 +192,16 @@
                   </div>
                 </fieldset>
 
-                <!-- Amount Filter (for receipts) -->
+                <!-- Source amount filter -->
                 <fieldset v-if="['all', 'receipt', 'invoice', 'voucher', 'contract', 'bank_statement'].includes(filters.type)" class="border-t border-amber-200 dark:border-zinc-700 pt-4">
                   <legend class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    Amount Range
+                    Amount Range · Source currency
                   </legend>
+                  <p id="search-amount-basis" class="mb-3 text-xs text-zinc-600 dark:text-zinc-400">Amounts use each document's source currency, with no currency conversion. A minimum of 100 includes 100 NOK, 100 EUR and 100 USD. Ranges compare receipt/invoice totals, contract or voucher values, and statement closing balances.</p>
                   <div class="space-y-2">
                     <label for="search-amount-min" class="block text-sm text-zinc-700 dark:text-zinc-300">Minimum amount</label>
                     <input
-                      id="search-amount-min"
+                      id="search-amount-min" aria-describedby="search-amount-basis"
                       v-model.number="filters.amount_min"
                       type="number"
                       step="0.01"
@@ -209,7 +210,7 @@
                     />
                     <label for="search-amount-max" class="block text-sm text-zinc-700 dark:text-zinc-300">Maximum amount</label>
                     <input
-                      id="search-amount-max"
+                      id="search-amount-max" aria-describedby="search-amount-basis"
                       v-model.number="filters.amount_max"
                       type="number"
                       step="0.01"

@@ -40,7 +40,14 @@ class ProcessingUsageBudget
                 || $user['calls'] >= (int) config('ai.limits.max_calls_per_user_day', 100)
                 || (int) ($context['limits']['tokens'] ?? config('ai.limits.max_tokens_per_run', 200000)) < $run['reserved_tokens'] + $tokens
                 || (int) config('ai.limits.max_tokens_per_user_day', 2000000) < $user['reserved_tokens'] + $tokens) {
-                throw new AIResponseException('Processing usage budget exceeded');
+                throw new AIResponseException('Processing usage budget exceeded', errorCode: AIResponseException::CODE_USAGE_BUDGET_EXCEEDED, context: [
+                    'stage' => $context['stage'],
+                    'run_calls' => $run['calls'],
+                    'daily_calls' => $user['calls'],
+                    'run_reserved_tokens' => $run['reserved_tokens'],
+                    'daily_reserved_tokens' => $user['reserved_tokens'],
+                    'requested_tokens' => $tokens,
+                ]);
             }
             $run['calls']++;
             $user['calls']++;

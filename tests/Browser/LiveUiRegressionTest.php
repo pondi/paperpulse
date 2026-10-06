@@ -28,6 +28,19 @@ use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
 use Smalot\PdfParser\Parser;
 
+it('explains processing usage limits on failed file reports', function (): void {
+    $user = $this->createUser();
+    $file = File::factory()->create(['user_id' => $user->id, 'status' => 'failed', 'meta' => [
+        'gemini_error' => ['category' => 'usage_budget_exceeded', 'retryable' => false, 'timestamp' => now()->toISOString()],
+    ]]);
+    $this->browse(function (Browser $browser) use ($user, $file): void {
+        $browser->loginAs($user)->visit('/files/'.$file->id.'/extraction-report')
+            ->waitForText('The processing usage limit was reached.')
+            ->assertSee('Retry after the daily limit resets, or contact support to review the processing limit.')
+            ->assertDontSee('The failure cause was not recorded.');
+    });
+});
+
 it('distinguishes recommendation generation failures pending work and successful empty reviews', function (string $status, string $message): void {
     $user = $this->createUser();
     $run = OrganizationRun::create(['user_id' => $user->id, 'active_user_id' => $status === 'completed' ? null : $user->id,

@@ -167,6 +167,10 @@ return [
     |
     */
     'limits' => [
+        'max_calls_per_run' => (int) env('AI_MAX_CALLS_PER_RUN', 10),
+        'max_calls_per_user_day' => (int) env('AI_MAX_CALLS_PER_USER_DAY', 100),
+        'max_tokens_per_run' => (int) env('AI_MAX_TOKENS_PER_RUN', 200000),
+        'max_tokens_per_user_day' => (int) env('AI_MAX_TOKENS_PER_USER_DAY', 2000000),
         'max_requests_per_minute' => env('AI_RATE_LIMIT', 60),
         'max_file_size_mb' => env('AI_MAX_FILE_SIZE', 10),
     ],

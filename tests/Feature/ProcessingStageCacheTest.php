@@ -3,10 +3,12 @@
 use App\Exceptions\AIResponseException;
 use App\Models\File;
 use App\Models\User;
+use App\Services\AI\Extractors\EntityExtractorFactory;
 use App\Services\AI\Providers\GeminiProvider;
 use App\Services\AI\Providers\OpenAIProvider;
 use App\Services\AI\Shared\ProcessingStageCache;
 use App\Services\AI\Shared\ProcessingUsageBudget;
+use App\Services\EntityFactory;
 use App\Services\OCR\ExtractionCache;
 use App\Services\OCR\OCRResult;
 use App\Services\OCR\OCRServiceFactory;
@@ -75,6 +77,48 @@ it('counts and stops provider retries before they exceed the run budget', functi
     expect(fn () => ProcessingUsageBudget::run($user->id, 'retry', 'extraction', fn () => app(GeminiProvider::class)->analyzeFileByUri('https://files.test/source', ['responseSchema' => ['type' => 'object']], 'Extract')))->toThrow(AIResponseException::class);
     Http::assertSentCount(2);
     expect(ProcessingUsageBudget::usage($user->id, 'retry')['calls'])->toBe(2);
+});
+
+it('identifies exhausted usage budgets without making another provider request', function (string $limit, int $tokens): void {
+    $user = User::factory()->create();
+    config(['ai.limits.'.$limit => 1]);
+    ProcessingUsageBudget::run($user->id, 'budget-report', 'classification', fn () => ProcessingUsageBudget::reserve(1));
+    Http::fake();
+
+    try {
+        ProcessingUsageBudget::run($user->id, 'budget-report', 'extraction', fn () => ProcessingUsageBudget::reserve($tokens));
+        $this->fail('The exhausted budget allowed another request.');
+    } catch (AIResponseException $exception) {
+        expect($exception->errorCode)->toBe(AIResponseException::CODE_USAGE_BUDGET_EXCEEDED)
+            ->and($exception->retryable)->toBeFalse()
+            ->and($exception->context)->toMatchArray(['stage' => 'extraction', 'run_calls' => 1, 'daily_calls' => 1, 'requested_tokens' => $tokens]);
+    }
+    expect(ProcessingUsageBudget::usage($user->id, 'budget-report')['calls'])->toBe(1);
+    Http::assertNothingSent();
+})->with([
+    ['max_calls_per_run', 0], ['max_calls_per_user_day', 0],
+    ['max_tokens_per_run', 1], ['max_tokens_per_user_day', 1],
+]);
+
+it('extracts a controlled receipt after correcting the daily processing limit', function (): void {
+    config(['ai.providers.gemini.api_key' => 'test', 'ai.limits.max_calls_per_user_day' => 1]);
+    $file = File::factory()->create(['fileType' => 'application/pdf']);
+    ProcessingUsageBudget::run($file->user_id, 'previous-file', 'extraction', fn () => ProcessingUsageBudget::reserve(1));
+    $data = ['merchant_name' => 'Shop', 'total_amount' => 10, 'receipt_date' => '2024-01-01', 'description' => 'Purchase', 'category' => 'Other'];
+    Http::fake([
+        '*countTokens*' => Http::response(['totalTokens' => 100]),
+        '*generateContent*' => Http::response(['candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => json_encode($data)]]]]]]),
+    ]);
+    $extract = fn () => ProcessingUsageBudget::run($file->user_id, 'controlled-file', 'extraction', fn () => EntityExtractorFactory::create('receipt')->extract('https://gemini.test/file', $file));
+    expect($extract)->toThrow(AIResponseException::class, 'Processing usage budget exceeded');
+    Http::assertNothingSent();
+
+    config(['ai.limits.max_calls_per_user_day' => 3]);
+    $created = app(EntityFactory::class)->createEntitiesFromParsedData(['entities' => [$extract()]], $file, 'receipt');
+    expect($created)->toHaveCount(1)
+        ->and($created[0]['model']->total_amount)->toBe('10.00')
+        ->and(ProcessingUsageBudget::usage($file->user_id, 'controlled-file')['calls'])->toBe(2);
+    Http::assertSentCount(2);
 });
 
 it('reuses OCR checkpoints by tenant and bytes, preserves partial coverage, and clears indexed stages', function () {

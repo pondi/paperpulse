@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Files;
 
+use App\Exceptions\AIResponseException;
 use App\Exceptions\GeminiApiException;
 use App\Jobs\BaseJob;
 use App\Models\BankStatement;
@@ -26,6 +27,7 @@ use App\Services\Files\ImagePreviewGenerator;
 use App\Services\Receipts\Analysis\UserPreferencesLoader;
 use App\Services\Workers\WorkerFileManager;
 use Exception;
+use Illuminate\Queue\Middleware\FailOnException;
 use Illuminate\Support\Facades\Log;
 use Spatie\PdfToImage\Pdf;
 use Throwable;
@@ -47,6 +49,14 @@ class ProcessFileGemini extends BaseJob
     {
         parent::__construct($jobID);
         $this->jobName = 'Process File (Gemini)';
+    }
+
+    public function middleware(): array
+    {
+        return [
+            ...parent::middleware(),
+            new FailOnException(fn (Throwable $exception): bool => $exception instanceof AIResponseException && ! $exception->retryable),
+        ];
     }
 
     protected function handleJob(): void
@@ -506,6 +516,10 @@ class ProcessFileGemini extends BaseJob
      */
     protected function categorizeFailure(Throwable $exception): string
     {
+        if ($exception instanceof AIResponseException && $exception->errorCode === AIResponseException::CODE_USAGE_BUDGET_EXCEEDED) {
+            return AIResponseException::CODE_USAGE_BUDGET_EXCEEDED;
+        }
+
         if ($exception instanceof GeminiApiException) {
             $category = match ($exception->getErrorCode()) {
                 GeminiApiException::CODE_FILE_NOT_FOUND => 'file_missing',
@@ -576,6 +590,10 @@ class ProcessFileGemini extends BaseJob
             $errorCode = $exception->getErrorCode();
             $retryable = $exception->isRetryable();
             $context = $exception->getContext();
+        } elseif ($exception instanceof AIResponseException) {
+            $errorCode = $exception->errorCode;
+            $retryable = $exception->retryable;
+            $context = $exception->context;
         }
 
         Log::error('[ProcessFileGemini] Job failed', [

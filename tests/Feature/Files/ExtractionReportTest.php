@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\AIResponseException;
 use App\Exceptions\GeminiApiException;
 use App\Jobs\Files\ProcessFileGemini;
 use App\Models\Document;
@@ -9,8 +10,11 @@ use App\Models\FileShare;
 use App\Models\JobHistory;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Services\Jobs\JobMetadataPersistence;
+use App\Services\Workers\WorkerFileManager;
 use Illuminate\Support\Facades\File as Filesystem;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function (): void {
@@ -141,3 +145,29 @@ it('records safe source and service failure categories without exposing internal
     $file->update(['status' => 'pending']);
     $this->getJson(route('api.files.extraction-report', $file))->assertJsonPath('data.failure', []);
 })->with([['unsupported_mime', 'unsupported_format'], ['file_too_large', 'file_too_large'], ['timeout', 'api_timeout']]);
+
+it('fails non-retryable AI errors on the first worker attempt while retaining transient retries', function (bool $retryable): void {
+    config(['broadcasting.default' => 'log']);
+    $file = File::factory()->create(['user_id' => $this->owner->id, 'status' => 'processing']);
+    $jobId = (string) Str::uuid();
+    JobMetadataPersistence::store($jobId, ['fileId' => $file->id, 'fileGuid' => $file->guid, 'fileExtension' => 'pdf', 's3OriginalPath' => 'source.pdf']);
+    $this->mock(WorkerFileManager::class)->shouldReceive('processWithCleanup')->once()->andThrow(
+        new AIResponseException('Processing usage budget exceeded: private details', $retryable, AIResponseException::CODE_USAGE_BUDGET_EXCEEDED, ['private' => 'secret'])
+    );
+    ProcessFileGemini::dispatch($jobId)->onConnection('database')->onQueue('files');
+    $this->artisan('queue:work', ['connection' => 'database', '--queue' => 'files', '--once' => true, '--sleep' => 0, '--no-interaction' => true])->assertSuccessful();
+
+    if ($retryable) {
+        $this->assertDatabaseCount('failed_jobs', 0);
+        $this->assertDatabaseCount('jobs', 1);
+        expect($file->fresh()->status)->toBe('processing');
+    } else {
+        $this->assertDatabaseCount('failed_jobs', 1);
+        $this->assertDatabaseCount('jobs', 0);
+        expect($file->fresh()->status)->toBe('failed')
+            ->and($file->fresh()->meta['gemini_error']['code'])->toBe(AIResponseException::CODE_USAGE_BUDGET_EXCEEDED);
+        $this->actingAs($this->owner)->getJson(route('api.files.extraction-report', $file))->assertOk()
+            ->assertJsonPath('data.failure.category', 'usage_budget_exceeded')
+            ->assertJsonPath('data.failure.retryable', false)->assertDontSee('secret')->assertDontSee('private details');
+    }
+})->with([false, true]);

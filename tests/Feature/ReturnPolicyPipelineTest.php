@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\AIResponseException;
 use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\ReturnPolicy;
@@ -44,3 +45,22 @@ it('rejects incomplete policies and invalid dates or fees', function (array $dat
     [[]], [['conditions' => 'Return', 'return_deadline' => '2024-02-30']],
     [['conditions' => 'Return', 'restocking_fee_percentage' => 101]],
 ]);
+
+it('reports the failing supplemental field and validation errors', function (): void {
+    config(['ai.providers.gemini.api_key' => 'test']);
+    $data = ['merchant_name' => 'Shop', 'total_amount' => 10, 'receipt_date' => '2024-01-01', 'description' => 'Purchase', 'category' => 'Other',
+        'return_policies' => [['conditions' => 'Return', 'return_deadline' => '2024-02-30']],
+    ];
+    Http::fake(['*' => Http::response(['totalTokens' => 100, 'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => json_encode($data)]]]]]])]);
+    $file = File::factory()->create(['fileType' => 'application/pdf']);
+
+    try {
+        EntityExtractorFactory::create('receipt')->extract('https://gemini.test/file', $file);
+        $this->fail('An invalid supplemental policy was accepted.');
+    } catch (AIResponseException $exception) {
+        expect($exception->context['field'])->toBe('return_policies')
+            ->and($exception->context['errors'])->not->toBeEmpty()
+            ->and($exception->getMessage())->toContain('return deadline')
+            ->and($exception->retryable)->toBeFalse();
+    }
+});

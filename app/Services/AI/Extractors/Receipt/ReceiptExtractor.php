@@ -95,8 +95,12 @@ class ReceiptExtractor implements EntityExtractorContract
             foreach (['return_policies' => 'ReturnPolicy', 'warranties' => 'Warranty'] as $field => $type) {
                 foreach ($rawData[$field] ?? [] as $entry) {
                     $validator = app('App\\Services\\AI\\Extractors\\'.$type.'\\'.$type.'Validator');
-                    if (! $validator->validate($entry)['valid']) {
-                        throw new AIResponseException('Supplemental policy validation failed');
+                    $supplementalValidation = $validator->validate($entry);
+                    if (! $supplementalValidation['valid']) {
+                        throw new AIResponseException('Supplemental policy validation failed: '.implode(', ', $supplementalValidation['errors']), context: [
+                            'field' => $field,
+                            'errors' => $supplementalValidation['errors'],
+                        ]);
                     }
                     $normalizer = app('App\\Services\\AI\\Extractors\\'.$type.'\\'.$type.'DataNormalizer');
                     $supplemental[] = ['type' => $field === 'warranties' ? 'warranty' : 'return_policy',

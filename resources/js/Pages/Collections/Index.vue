@@ -20,7 +20,7 @@
             </div>
         </template>
 
-        <div class="py-12">
+        <div class="py-6">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <Breadcrumbs :crumbs="[{ label: 'Collections', href: route('collections.index') }, ...breadcrumbs]" />
                 <Link v-if="parentName" :href="breadcrumbs[breadcrumbs.length - 1].href" class="mb-4 mr-4 inline-block text-blue-600 dark:text-blue-400">Back to {{ parentName }}</Link>
@@ -28,7 +28,7 @@
                 <p v-if="actionError" role="alert" class="mb-4 text-red-600 dark:text-red-400">{{ actionError }}</p>
                 <!-- Search and Filters -->
                 <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg mb-6">
-                    <div class="p-6">
+                    <div class="p-4">
                         <div class="flex flex-col sm:flex-row gap-4">
                             <div class="flex-1">
                                 <input
@@ -55,8 +55,8 @@
 
                 <!-- Collections Grid -->
                 <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-orange-600 dark:border-orange-500">
-                    <div class="p-6">
-                        <div v-if="collections.data.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="p-4">
+                        <div v-if="collections.data.length > 0" class="flex flex-col gap-3">
                             <CollectionCard
                                 v-for="collection in collections.data"
                                 :key="collection.id"

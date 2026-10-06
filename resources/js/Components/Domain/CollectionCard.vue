@@ -1,9 +1,9 @@
 <template>
     <div
-        class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-200 border-l-4 p-6"
+        class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 border-l-4 p-4"
         :style="{ borderLeftColor: collection.color }"
     >
-        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-2">
             <Link :href="route('collections.show', collection.id)" class="flex min-w-0 flex-1 basis-full sm:basis-auto items-center gap-3 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600">
                 <div
                     class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
@@ -60,13 +60,14 @@
         <p v-if="collection.description" class="text-sm text-zinc-600 dark:text-zinc-400 mb-4 line-clamp-2">
             {{ collection.description }}
         </p>
-        <div class="border-t border-blue-200 dark:border-zinc-700 pt-4 space-y-2">
-            <div class="flex items-center justify-between">
-                <span class="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Direct files</span>
-                <span class="text-sm font-black text-zinc-900 dark:text-zinc-100">{{ collection.files_count || 0 }}</span>
-            </div>
-            <p v-if="collection.children_count" class="text-xs text-zinc-600 dark:text-zinc-400">{{ collection.children_count }} subfolder{{ collection.children_count === 1 ? '' : 's' }} · Open this folder to browse their files.</p>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <span>{{ collection.files_count || 0 }} direct files</span>
+            <span v-if="collection.children_count">{{ collection.children_count }} subfolder{{ collection.children_count === 1 ? '' : 's' }}</span>
+            <Link v-if="collection.children_count" :href="route('collections.index', { parent_id: collection.id })" class="text-blue-600 hover:underline dark:text-blue-400">Browse subfolders</Link>
         </div>
+        <nav v-if="collection.children?.length" :aria-label="`Subfolders in ${collection.name}`" class="mt-3 flex flex-wrap gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+            <Link v-for="child in collection.children" :key="child.id" :href="route('collections.show', child.id)" class="rounded bg-zinc-100 px-3 py-2 text-sm text-zinc-700 hover:bg-amber-50 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600">{{ collection.name }} → {{ child.name }}</Link>
+        </nav>
     </div>
 </template>
 

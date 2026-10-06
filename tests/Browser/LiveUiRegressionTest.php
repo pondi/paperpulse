@@ -954,7 +954,7 @@ it('distinguishes direct mixed file counts from the folder subtree total', funct
     }
     $this->browse(function (Browser $browser) use ($user, $root, $leaf): void {
         $browser->loginAs($user)->visit('/collections')->waitForText('Building')
-            ->assertSee('DIRECT FILES')->assertSee('1 subfolder');
+            ->assertSee('direct files')->assertSee('1 subfolder');
         $browser->visit('/collections/'.$root->id)->waitForText('Files including subfolders')
             ->assertScript("Object.fromEntries(Array.from(document.querySelectorAll('dl > div')).map(el => [el.querySelector('dt')?.textContent, el.querySelector('dd')?.textContent]))['Files including subfolders']", '3')
             ->assertScript("Array.from(document.querySelectorAll('dt')).find(el => el.textContent === 'Files directly here').nextElementSibling.textContent", '0')
@@ -965,5 +965,25 @@ it('distinguishes direct mixed file counts from the folder subtree total', funct
         $leaf->files()->detach();
         $browser->refresh()->waitForText('Files including subfolders')
             ->assertScript("Array.from(document.querySelectorAll('dt')).find(el => el.textContent === 'Files including subfolders').nextElementSibling.textContent", '0');
+    });
+});
+
+it('browses compact folder rows with visible child paths at desktop and mobile widths', function (): void {
+    $user = $this->createUser();
+    $root = Collection::factory()->for($user)->create(['name' => 'Building']);
+    $child = Collection::factory()->for($user)->create(['name' => 'Contracts', 'parent_id' => $root->id]);
+    $leaf = Collection::factory()->for($user)->create(['name' => 'Hønsfaret', 'parent_id' => $child->id]);
+    $this->browse(function (Browser $browser) use ($user, $root, $child, $leaf): void {
+        foreach ([1440, 390] as $width) {
+            $browser->resize($width, 900)->loginAs($user)->visit('/collections')->waitForText('Building → Contracts')
+                ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+                ->assertPresent('button[aria-label="Edit Building"]')
+                ->clickLink('Building → Contracts')->waitForLocation('/collections/'.$child->id)->waitForText('Hønsfaret')
+                ->assertSee('Building')->click('a[href$="/collections/'.$leaf->id.'"]')->waitForLocation('/collections/'.$leaf->id)
+                ->assertSee('Building')->assertSee('Contracts')->assertSee('Hønsfaret');
+            $browser->visit('/collections?parent_id='.$root->id)->waitForText('Contracts → Hønsfaret')
+                ->assertPresent('button[aria-label="Edit Contracts"]')
+                ->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
+        }
     });
 });

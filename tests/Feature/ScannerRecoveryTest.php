@@ -111,9 +111,12 @@ assert.equal(timers.size, 0);
 // Permission rejection, missing metadata, and late permission grants release streams.
 const video = { ...target(), readyState: 0 };
 page.video.value = video;
-mediaRequest = () => Promise.reject(new Error('denied'));
+mediaRequest = () => Promise.reject(new DOMException('denied', 'NotAllowedError'));
 await page.startCamera();
-assert.match(page.error.value, /permissions/);
+assert.match(page.error.value, /permission was denied/);
+mediaRequest = () => Promise.reject(new DOMException('no device', 'NotFoundError'));
+await page.startCamera();
+assert.match(page.error.value, /No camera was found/);
 let stopped = 0;
 const stream = () => ({ getTracks: () => [{ stop: () => stopped++ }] });
 mediaRequest = () => Promise.resolve(stream());

@@ -17,6 +17,24 @@ use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
 
+it('keeps scanner error exits visible and provides file upload recovery', function (string $failure, string $message): void {
+    $user = $this->createUser();
+    $this->browse(function (Browser $browser) use ($user, $failure, $message): void {
+        $browser->loginAs($user)->visit('/dashboard');
+        $browser->script("window.cv = { getBuildInformation: () => 'ready' }; navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('Camera unavailable', '".$failure."'));");
+        $browser->click('@add-document')->clickLink('Scan a document')->waitForText($message)
+            ->assertSee('Upload a file')->assertSee('Close scanner')
+            ->assertScript("(() => { const el = document.querySelector('a[aria-label=\"Close scanner\"]'); const r = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)); })()", true)
+            ->clickLink('Upload a file')->waitForLocation('/documents/upload');
+        $browser->back()->waitForText($message);
+        $browser->script("document.querySelector('a[aria-label=\"Close scanner\"]').focus()");
+        $browser->keys('a[aria-label="Close scanner"]', WebDriverKeys::ENTER)->waitForLocation('/dashboard');
+    });
+})->with([
+    ['NotAllowedError', 'Camera permission was denied'],
+    ['NotFoundError', 'No camera was found'],
+]);
+
 it('names row selection and search result links with distinct record identities', function (): void {
     $user = $this->createUser();
     $merchant = Merchant::create(['user_id' => $user->id, 'name' => 'Same store']);

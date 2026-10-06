@@ -2,7 +2,7 @@
   <div class="fixed inset-0 bg-black text-white overflow-hidden flex flex-col z-50">
     <Head title="Scan a document" />
     <!-- Header -->
-    <div class="absolute top-0 left-0 right-0 z-30 p-4 flex justify-between items-center bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
+    <div class="absolute top-0 left-0 right-0 z-[60] p-4 flex justify-between items-center bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
       <Link :href="route('dashboard')" aria-label="Close scanner" class="text-white p-2 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition pointer-events-auto">
         <XMarkIcon class="w-6 h-6" aria-hidden="true" />
       </Link>
@@ -26,7 +26,7 @@
     </div>
 
     <!-- Error/Permission Message -->
-    <div v-if="error" class="absolute inset-0 z-50 flex items-center justify-center bg-black/90 p-6 text-center">
+    <div v-if="error" role="alert" class="absolute inset-0 z-50 flex items-center justify-center bg-black/90 p-6 text-center">
       <div class="max-w-md">
         <ExclamationTriangleIcon class="w-12 h-12 text-amber-500 mx-auto mb-4" />
         <p class="text-lg font-medium mb-2">{{ error }}</p>
@@ -39,6 +39,10 @@
         <button v-else @click="error = null" class="mt-4 px-6 py-2 bg-amber-600 rounded-lg hover:bg-amber-500 transition">
           Back to Scan
         </button>
+        <div class="mt-4 flex flex-wrap justify-center gap-3">
+          <Link :href="route('documents.upload')" class="rounded-lg bg-white px-6 py-2 font-semibold text-zinc-900 hover:bg-zinc-200">Upload a file</Link>
+          <Link :href="route('dashboard')" class="rounded-lg border border-white/50 px-6 py-2 hover:bg-white/10">Close scanner</Link>
+        </div>
       </div>
     </div>
 
@@ -464,7 +468,7 @@ const startCamera = async () => {
         cameraReady.value = true;
         finish();
       };
-      const failed = () => finish(new Error('Could not access camera. Please check permissions and retry.'));
+      const failed = (failure) => finish(failure instanceof Error ? failure : new Error('Could not access camera. Please check permissions and retry.'));
       const timer = setTimeout(failed, 15000);
       cancelCameraWait = failed;
       navigator.mediaDevices.getUserMedia({
@@ -489,7 +493,11 @@ const startCamera = async () => {
   } catch (err) {
     if (!disposed && request === cameraRequest) {
       stopCamera();
-      error.value = err.message;
+      error.value = err.name === 'NotAllowedError'
+        ? 'Camera permission was denied. Allow camera access in your browser or upload a file.'
+        : err.name === 'NotFoundError'
+          ? 'No camera was found. Connect a camera or upload a file.'
+          : err.message;
     }
   }
 };

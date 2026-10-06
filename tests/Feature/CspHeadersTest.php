@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use Inertia\Testing\AssertableInertia;
 use Symfony\Component\Process\Process;
 
 it('includes content-security-policy header on web responses', function () {
@@ -129,6 +130,43 @@ it('permits the configured production websocket and wasm without JavaScript eval
         ->toContain("'wasm-unsafe-eval'")
         ->not->toContain("'unsafe-eval'", 'localhost', 'wss://*', 'ws://*');
 })->with([['https', 'wss'], ['http', 'ws']]);
+
+it('aligns the secure production Echo endpoint with the CSP origin', function (): void {
+    $this->withoutVite();
+    app()->detectEnvironment(fn () => 'production');
+    $reverb = ['key' => 'public-key', 'host' => 'ws.paperpulse.app', 'port' => 443, 'scheme' => 'https'];
+    config([
+        'broadcasting.connections.reverb.key' => $reverb['key'],
+        'broadcasting.connections.reverb.options.host' => $reverb['host'],
+        'broadcasting.connections.reverb.options.port' => $reverb['port'],
+        'broadcasting.connections.reverb.options.scheme' => $reverb['scheme'],
+    ]);
+    $response = $this->actingAs(User::factory()->create())->get(route('scanner'))->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('reverb', $reverb));
+    expect($response->headers->get('Content-Security-Policy'))->toContain('wss://ws.paperpulse.app:443')
+        ->not->toContain('ws://ws.paperpulse.app:80', 'wss://*', 'ws://*');
+
+    $script = <<<'JS'
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+let options;
+const context = vm.createContext({
+    window: {}, axios: { defaults: { headers: { common: {} } } }, Pusher: {},
+    Echo: class { constructor(config) { options = config; } },
+});
+const source = fs.readFileSync('resources/js/bootstrap.js', 'utf8')
+    .replace(/^import .*;$/gm, '').replace('export function initEcho', 'function initEcho');
+vm.runInContext(source, context);
+context.initEcho(JSON.parse(process.argv[1]));
+assert.equal(options.wsHost, 'ws.paperpulse.app');
+assert.equal(options.wssPort, 443);
+assert.equal(options.forceTLS, true);
+JS;
+    $process = new Process(['node', '-e', $script, json_encode($reverb)], base_path());
+    $process->run();
+    expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
+});
 
 it('does not permit unconfigured production websocket origins', function () {
     app()->detectEnvironment(fn () => 'production');

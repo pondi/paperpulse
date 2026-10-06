@@ -751,3 +751,17 @@ it('names the target parent when managing and creating empty subfolders', functi
         expect(Collection::where('name', 'Plans')->sole()->parent_id)->toBe($leaf->id);
     });
 });
+
+it('reaches common settings through labelled sections on mobile and desktop', function (): void {
+    $user = $this->createUser();
+    $this->browse(function (Browser $browser) use ($user): void {
+        foreach ([1440, 390] as $width) {
+            $browser->resize($width, 900)->loginAs($user)->visit('/preferences')->waitFor('nav[aria-label="Settings sections"]');
+            foreach (['general', 'display', 'notifications'] as $id) {
+                $browser->script('window.scrollTo(0, 0)');
+                $browser->click('a[href="#preferences-'.$id.'"]')
+                    ->assertScript("document.querySelector('#preferences-".$id."').getBoundingClientRect().top >= 0 && document.querySelector('#preferences-".$id."').getBoundingClientRect().top < 180", true);
+            }
+        }
+    });
+});

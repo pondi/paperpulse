@@ -9,57 +9,11 @@
     </template>
 
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-      <section class="flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800 dark:text-zinc-100">
-        <h2 class="text-lg font-medium">Organization choices</h2>
-        <p>Saved labels and aliases guide folder placement. Pinned folders and manual placements stay fixed. Declined suggestions remain suppressed until their evidence changes.</p>
-        <form class="flex flex-col gap-4" @submit.prevent="saveOrganization">
-          <label class="flex flex-col gap-2">Building folder name<input v-model="organization.naming_rules.building_root" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
-          <label class="flex flex-col gap-2">Work folder name<input v-model="organization.naming_rules.work_root" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
-          <label class="flex flex-col gap-2">Work folder template<select v-model="organization.naming_rules.work_structure" class="rounded dark:bg-zinc-700"><option value="role">Work / employer / document role</option><option value="year">Work / employer / year</option></select></label>
-          <div v-for="role in ['contracts', 'invoices', 'receipts', 'payslips', 'letters', 'other']" :key="role">
-            <label class="flex flex-col gap-2">{{ role }} folder name<input :value="organization.naming_rules.role_labels[role] ?? role[0].toUpperCase() + role.slice(1)" @input="organization.naming_rules.role_labels[role] = $event.target.value" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
-          </div>
-          <div v-for="(alias, index) in organization.aliases" :key="alias.id ?? index" class="flex flex-wrap items-center gap-3">
-            <label>Kind<select v-model="alias.kind" class="rounded dark:bg-zinc-700"><option value="property">Property address</option><option value="employer">Company</option></select></label>
-            <label v-if="!alias.id">Recognize<input v-model="alias.alias" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
-            <label>Use this label<input v-model="alias.canonical_name" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
-            <SecondaryButton type="button" @click="removeAlias(index)">Remove alias</SecondaryButton>
-          </div>
-          <p v-for="(message, field) in organization.errors" :key="field" role="alert" class="text-red-600 dark:text-red-400">{{ message }}</p>
-          <div class="flex flex-wrap gap-3">
-            <SecondaryButton type="button" :disabled="organization.aliases.length >= 100" @click="organization.aliases.push({ kind: 'property', alias: '', canonical_name: '' })">Add alias</SecondaryButton>
-            <PrimaryButton :disabled="organization.processing">Save organization choices</PrimaryButton>
-            <SecondaryButton type="button" @click="resetOrganization">Reset labels, aliases and declined suggestions</SecondaryButton>
-          </div>
-        </form>
-      </section>
-      <section class="flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800 dark:text-zinc-100">
-        <h2 class="text-lg font-medium">Organize an existing archive</h2>
-        <p>Preview first. Saved summaries require no paid extraction. Manual placements and pinned folders are preserved; pending recommendations must be resolved first.</p>
-        <label class="flex items-center gap-2"><input v-model="backfill.extract_missing" type="checkbox" />Extract missing grouping evidence from stored text using AI</label>
-        <label class="flex flex-col gap-2">Maximum provider calls<input v-model.number="backfill.max_calls" type="number" min="1" max="100" class="rounded dark:bg-zinc-700" /></label>
-        <label class="flex flex-col gap-2">Maximum reserved tokens<input v-model.number="backfill.max_tokens" type="number" min="10000" max="1000000" class="rounded dark:bg-zinc-700" /></label>
-        <p v-if="previewError" role="alert" class="text-red-600 dark:text-red-400">{{ previewError }}</p>
-        <p v-for="(message, field) in backfill.errors" :key="field" role="alert" class="text-red-600 dark:text-red-400">{{ message }}</p>
-        <div v-if="backfillPreview" class="flex flex-col gap-2">
-          <p>{{ backfillPreview.eligible }} eligible documents · {{ backfillPreview.missing_metadata }} need grouping metadata · {{ backfill.extract_missing ? `up to ${backfillPreview.maximum_calls_with_extraction} provider calls, within your budget` : '0 paid provider calls' }}</p>
-          <p v-if="!backfillPreview.can_start">Enable automatic organization and finish pending recommendations to continue.</p>
-          <ul class="flex flex-col gap-2"><li v-for="file in backfillPreview.sample" :key="file.id">{{ file.name }} · {{ file.current_folder ?? 'Unfiled' }} → {{ file.group }}{{ file.role ? ` / ${file.role}` : '' }}</li></ul>
-        </div>
-        <div v-if="organizationBackfill" class="flex flex-col gap-2">
-          <p>{{ organizationBackfill.status }} · {{ organizationBackfill.processed }} processed · {{ organizationBackfill.skipped }} skipped · {{ organizationBackfill.calls }} provider calls · {{ organizationBackfill.tokens }} reserved tokens</p>
-          <p v-if="organizationBackfill.error" role="alert" class="text-amber-700 dark:text-amber-300">{{ organizationBackfill.error }}</p>
-        </div>
-        <div class="flex flex-wrap gap-3">
-          <SecondaryButton :disabled="previewBusy" @click="previewBackfill">Preview archive and budget</SecondaryButton>
-          <PrimaryButton :disabled="!backfillPreview?.can_start || backfill.processing || ['queued', 'running', 'paused', 'failed'].includes(organizationBackfill?.status)" @click="startBackfill">Organize this archive</PrimaryButton>
-          <SecondaryButton v-if="['paused', 'failed'].includes(organizationBackfill?.status)" :disabled="!backfillPreview?.can_start || backfill.processing" @click="resumeBackfill">Resume with this budget</SecondaryButton>
-          <SecondaryButton v-if="organizationBackfill" @click="router.reload({ only: ['organizationBackfill'] })">Refresh progress</SecondaryButton>
-        </div>
-      </section>
-
+      <nav aria-label="Settings sections" class="flex flex-wrap gap-2 rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
+        <a v-for="section in settingsSections" :key="section.id" :href="`#preferences-${section.id}`" class="rounded-md px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-amber-50 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ section.label }}</a>
+      </nav>
       <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
-        <section>
+        <section id="preferences-general" class="scroll-mt-24">
           <header>
             <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
               {{ __('general_preferences') }}
@@ -136,7 +90,7 @@
       </div>
 
       <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
-        <section>
+        <section id="preferences-processing" class="scroll-mt-24">
           <header>
             <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
               {{ __('receipt_processing') }}
@@ -199,7 +153,7 @@
       </div>
 
       <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
-        <section>
+        <section id="preferences-notifications" class="scroll-mt-24">
           <header>
             <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
               {{ __('notification_preferences') }}
@@ -401,7 +355,7 @@
       </div>
 
       <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
-        <section>
+        <section id="preferences-display" class="scroll-mt-24">
           <header>
             <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
               {{ __('display_preferences') }}
@@ -458,7 +412,7 @@
       </div>
 
       <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
-        <section>
+        <section id="preferences-scanner" class="scroll-mt-24">
           <header>
             <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
               {{ __('scanner_preferences') }}
@@ -557,6 +511,55 @@
           </p>
         </Transition>
       </div>
+      <section id="preferences-organization" class="scroll-mt-24 flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800 dark:text-zinc-100">
+        <h2 class="text-lg font-medium">Organization choices</h2>
+        <p>Saved labels and aliases guide folder placement. Pinned folders and manual placements stay fixed. Declined suggestions remain suppressed until their evidence changes.</p>
+        <form class="flex flex-col gap-4" @submit.prevent="saveOrganization">
+          <label class="flex flex-col gap-2">Building folder name<input v-model="organization.naming_rules.building_root" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
+          <label class="flex flex-col gap-2">Work folder name<input v-model="organization.naming_rules.work_root" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
+          <label class="flex flex-col gap-2">Work folder template<select v-model="organization.naming_rules.work_structure" class="rounded dark:bg-zinc-700"><option value="role">Work / employer / document role</option><option value="year">Work / employer / year</option></select></label>
+          <div v-for="role in ['contracts', 'invoices', 'receipts', 'payslips', 'letters', 'other']" :key="role">
+            <label class="flex flex-col gap-2">{{ role }} folder name<input :value="organization.naming_rules.role_labels[role] ?? role[0].toUpperCase() + role.slice(1)" @input="organization.naming_rules.role_labels[role] = $event.target.value" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
+          </div>
+          <div v-for="(alias, index) in organization.aliases" :key="alias.id ?? index" class="flex flex-wrap items-center gap-3">
+            <label>Kind<select v-model="alias.kind" class="rounded dark:bg-zinc-700"><option value="property">Property address</option><option value="employer">Company</option></select></label>
+            <label v-if="!alias.id">Recognize<input v-model="alias.alias" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
+            <label>Use this label<input v-model="alias.canonical_name" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
+            <SecondaryButton type="button" @click="removeAlias(index)">Remove alias</SecondaryButton>
+          </div>
+          <p v-for="(message, field) in organization.errors" :key="field" role="alert" class="text-red-600 dark:text-red-400">{{ message }}</p>
+          <div class="flex flex-wrap gap-3">
+            <SecondaryButton type="button" :disabled="organization.aliases.length >= 100" @click="organization.aliases.push({ kind: 'property', alias: '', canonical_name: '' })">Add alias</SecondaryButton>
+            <PrimaryButton :disabled="organization.processing">Save organization choices</PrimaryButton>
+            <SecondaryButton type="button" @click="resetOrganization">Reset labels, aliases and declined suggestions</SecondaryButton>
+          </div>
+        </form>
+      </section>
+      <section id="preferences-archive" class="scroll-mt-24 flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800 dark:text-zinc-100">
+        <h2 class="text-lg font-medium">Organize an existing archive</h2>
+        <p>Preview first. Saved summaries require no paid extraction. Manual placements and pinned folders are preserved; pending recommendations must be resolved first.</p>
+        <label class="flex items-center gap-2"><input v-model="backfill.extract_missing" type="checkbox" />Extract missing grouping evidence from stored text using AI</label>
+        <label class="flex flex-col gap-2">Maximum provider calls<input v-model.number="backfill.max_calls" type="number" min="1" max="100" class="rounded dark:bg-zinc-700" /></label>
+        <label class="flex flex-col gap-2">Maximum reserved tokens<input v-model.number="backfill.max_tokens" type="number" min="10000" max="1000000" class="rounded dark:bg-zinc-700" /></label>
+        <p v-if="previewError" role="alert" class="text-red-600 dark:text-red-400">{{ previewError }}</p>
+        <p v-for="(message, field) in backfill.errors" :key="field" role="alert" class="text-red-600 dark:text-red-400">{{ message }}</p>
+        <div v-if="backfillPreview" class="flex flex-col gap-2">
+          <p>{{ backfillPreview.eligible }} eligible documents · {{ backfillPreview.missing_metadata }} need grouping metadata · {{ backfill.extract_missing ? `up to ${backfillPreview.maximum_calls_with_extraction} provider calls, within your budget` : '0 paid provider calls' }}</p>
+          <p v-if="!backfillPreview.can_start">Enable automatic organization and finish pending recommendations to continue.</p>
+          <ul class="flex flex-col gap-2"><li v-for="file in backfillPreview.sample" :key="file.id">{{ file.name }} · {{ file.current_folder ?? 'Unfiled' }} → {{ file.group }}{{ file.role ? ` / ${file.role}` : '' }}</li></ul>
+        </div>
+        <div v-if="organizationBackfill" class="flex flex-col gap-2">
+          <p>{{ organizationBackfill.status }} · {{ organizationBackfill.processed }} processed · {{ organizationBackfill.skipped }} skipped · {{ organizationBackfill.calls }} provider calls · {{ organizationBackfill.tokens }} reserved tokens</p>
+          <p v-if="organizationBackfill.error" role="alert" class="text-amber-700 dark:text-amber-300">{{ organizationBackfill.error }}</p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <SecondaryButton :disabled="previewBusy" @click="previewBackfill">Preview archive and budget</SecondaryButton>
+          <PrimaryButton :disabled="!backfillPreview?.can_start || backfill.processing || ['queued', 'running', 'paused', 'failed'].includes(organizationBackfill?.status)" @click="startBackfill">Organize this archive</PrimaryButton>
+          <SecondaryButton v-if="['paused', 'failed'].includes(organizationBackfill?.status)" :disabled="!backfillPreview?.can_start || backfill.processing" @click="resumeBackfill">Resume with this budget</SecondaryButton>
+          <SecondaryButton v-if="organizationBackfill" @click="router.reload({ only: ['organizationBackfill'] })">Refresh progress</SecondaryButton>
+        </div>
+      </section>
+
     </div>
   </AuthenticatedLayout>
 </template>
@@ -579,6 +582,16 @@ const props = defineProps({
   organizationAliases: Array,
   organizationBackfill: Object,
 });
+
+const settingsSections = [
+  { id: 'general', label: 'Language & timezone' },
+  { id: 'display', label: 'Display' },
+  { id: 'notifications', label: 'Notifications' },
+  { id: 'processing', label: 'Processing' },
+  { id: 'scanner', label: 'Scanner' },
+  { id: 'organization', label: 'Organization choices' },
+  { id: 'archive', label: 'Existing archive' },
+];
 
 const organization = useForm({
   naming_rules: {

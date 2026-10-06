@@ -30,7 +30,7 @@ import { route as ziggyRoute } from './vendor/tightenco/ziggy/dist/index.js';
 const input = JSON.parse(fs.readFileSync(0, 'utf8'));
 const scenario = input.scenario;
 const route = (name, params) => ziggyRoute(name, params, true, input.ziggy);
-const page = { props: { flash: {}, language: { messages: {} } } };
+const page = { props: { flash: {}, auth: { user: { preferences: { timezone: 'UTC' } } }, language: { messages: {} } } };
 const stub = (props, { slots }) => props.show === false ? null : vue.h('div', [slots.header?.(), slots.default?.({ active: false })]);
 const warnings = [];
 async function render(file, props) {
@@ -43,7 +43,7 @@ async function render(file, props) {
             bindings[alias] = module === 'vue' ? vue[name]
                 : name === 'Link' ? Link : name === 'Head' ? () => null
                 : name === 'usePage' ? () => page
-                : name === 'useForm' ? data => vue.reactive({ ...data, processing: false })
+                : name === 'useForm' ? data => vue.reactive({ ...data, processing: false, errors: {} })
                 : name === 'useDateFormatter' ? () => ({ formatDate: value => value, formatDateTime: value => value, formatCurrency: (value, currency) => `${value} ${currency}` })
                 : name === 'router' ? {} : stub;
         }
@@ -163,13 +163,22 @@ if (scenario === 'subfolder context') {
     assert.ok(root.includes('Create Collection'));
     assert.ok(!root.includes('No subfolders'));
 }
+if (scenario === 'settings sections') {
+    const html = await render('Pages/Preferences/Index.vue', { preferences: {}, categories: [], options: {}, timezones: [], organizationAliases: [] });
+    assert.ok(html.includes('aria-label="Settings sections"'));
+    for (const id of ['general', 'display', 'notifications', 'processing', 'scanner', 'organization', 'archive']) {
+        assert.ok(html.includes(`href="#preferences-${id}"`), id);
+        assert.ok(html.includes(`id="preferences-${id}"`), id);
+    }
+    assert.ok(html.indexOf('id="preferences-general"') < html.indexOf('id="preferences-organization"'));
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

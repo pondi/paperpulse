@@ -1106,3 +1106,18 @@ it('renders both duplicate candidates including files with missing extracted met
         $browser->resize(390, 844)->assertSee('First scan.pdf')->assertSee('Second scan.pdf');
     });
 });
+
+
+it('keeps scanner folder navigation usable for empty lists and failed requests', function (bool $fails): void {
+    $user = $this->createUser();
+    $this->browse(function (Browser $browser) use ($user, $fails): void {
+        $this->loginAs($browser, $user);
+        $browser->visit('/pulsedav')->waitForText('FOLDER VIEW');
+        $browser->script('window.fetch = async () => new Response('.json_encode($fails ? '{"error":"Unavailable"}' : '{"hierarchy":[]}').', {status: '.($fails ? 503 : 200).', headers: {"Content-Type":"application/json"}})');
+        $browser->press('FOLDER VIEW')->waitForText($fails ? 'Scanner folders could not be loaded' : 'No files or folders found')->assertSee('Scanner Imports');
+        if ($fails) {
+            $browser->script('window.fetch = async () => new Response(JSON.stringify({hierarchy:[]}), {status:200, headers:{"Content-Type":"application/json"}})');
+            $browser->press('Try again')->waitForText('No files or folders found')->assertMissing('[role="alert"]');
+        }
+    });
+})->with([false, true]);

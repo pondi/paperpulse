@@ -6,8 +6,10 @@ use App\Models\PulseDavFile;
 use App\Rules\ExistsForUser;
 use App\Services\PulseDavService;
 use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 use Log;
 use Validator;
 
@@ -23,7 +25,7 @@ class PulseDavController extends Controller
     /**
      * Display the PulseDav file browser
      */
-    public function index()
+    public function index(Request $request): Response
     {
         $files = PulseDavFile::where('user_id', auth()->id())
             ->orderBy('uploaded_at', 'desc')
@@ -40,6 +42,7 @@ class PulseDavController extends Controller
 
         return Inertia::render('PulseDav/Index', [
             'scannerImportsEnabled' => (bool) config('services.pulsedav.auth_enabled') && (bool) config('filesystems.disks.pulsedav.bucket'),
+            'initialView' => $request->routeIs('pulsedav.folders') ? 'folder' : 'list',
             'files' => $files,
             'tags' => $tags,
         ]);
@@ -118,15 +121,25 @@ class PulseDavController extends Controller
     /**
      * Get folder structure
      */
-    public function folders(Request $request)
+    public function folders(Request $request): JsonResponse|Response
     {
-        $items = $this->pulseDavService->listUserFilesWithFolders($request->user());
-        $hierarchy = $this->pulseDavService->buildFolderHierarchy($items);
+        if (! $request->expectsJson()) {
+            return $this->index($request);
+        }
 
-        return response()->json([
-            'hierarchy' => $hierarchy,
-            'total_items' => count($items),
-        ]);
+        try {
+            $items = config('filesystems.disks.pulsedav.bucket')
+                ? $this->pulseDavService->listUserFilesWithFolders($request->user()) : [];
+
+            return response()->json([
+                'hierarchy' => $this->pulseDavService->buildFolderHierarchy($items),
+                'total_items' => count($items),
+            ]);
+        } catch (Exception $exception) {
+            report($exception);
+
+            return response()->json(['error' => 'Scanner folders could not be loaded. Please try again.'], 503);
+        }
     }
 
     /**

@@ -106,3 +106,19 @@ it('lists every object and deduplicates folders shared by pages', function (stri
     [PulseDavSyncService::class, false], [PulseDavSyncService::class, true],
     [PulseDavService::class, false], [PulseDavService::class, true],
 ]);
+
+it('renders direct scanner folder navigation with an empty import list', function (): void {
+    $this->withoutVite()->actingAs($this->user)->get(route('pulsedav.folders'))->assertOk()
+        ->assertInertia(fn ($page) => $page->component('PulseDav/Index')->where('initialView', 'folder')->has('files.data', 0));
+});
+
+it('returns an empty scanner hierarchy for an empty bucket', function (): void {
+    $this->s3->shouldReceive('listObjectsV2')->once()->andReturn(new Result([]));
+    $this->actingAs($this->user)->getJson(route('pulsedav.folders'))->assertOk()->assertExactJson(['hierarchy' => [], 'total_items' => 0]);
+});
+
+it('reports scanner listing failures separately from an empty hierarchy', function (): void {
+    $this->s3->shouldReceive('listObjectsV2')->once()->andThrow(new RuntimeException('Provider credentials secret'));
+    $this->actingAs($this->user)->getJson(route('pulsedav.folders'))->assertServiceUnavailable()
+        ->assertExactJson(['error' => 'Scanner folders could not be loaded. Please try again.']);
+});

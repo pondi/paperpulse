@@ -145,6 +145,10 @@
                             <p class="mt-2 text-zinc-600 dark:text-zinc-400">Loading folder structure...</p>
                         </div>
                         
+                        <div v-else-if="folderError" role="alert" class="text-sm text-red-700 dark:text-red-300">
+                            {{ folderError }}
+                            <button type="button" @click="loadFolderStructure" class="ml-2 underline">Try again</button>
+                        </div>
                         <div v-else>
                             <div v-if="currentFolderFiles.length > 0" class="mb-4">
                                 <label class="flex items-center space-x-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -172,7 +176,7 @@
                             </div>
                         </div>
                         
-                        <div v-if="!loadingFolders && currentFolderContents.length === 0" class="text-center py-8 text-zinc-500 dark:text-zinc-400">
+                        <div v-if="!loadingFolders && !folderError && currentFolderContents.length === 0" class="text-center py-8 text-zinc-500 dark:text-zinc-400">
                             No files or folders found in this location.
                         </div>
                     </div>
@@ -361,16 +365,18 @@ import FolderItem from '@/Components/Features/FolderItem.vue';
 
 const props = defineProps({
     scannerImportsEnabled: Boolean,
+    initialView: String,
     files: Object,
     tags: Array,
 });
 
 // View mode
-const viewMode = ref('list');
+const viewMode = ref(props.initialView);
 const currentPath = ref('');
 const folderHierarchy = ref([]);
 const currentFolderContents = ref([]);
 const loadingFolders = ref(false);
+const folderError = ref('');
 
 // Sync state
 const syncing = ref(false);
@@ -523,6 +529,7 @@ const syncFiles = async () => {
 
 const loadFolderStructure = async () => {
     loadingFolders.value = true;
+    folderError.value = '';
     
     try {
         const response = await fetch(route('pulsedav.folders'), {
@@ -531,11 +538,12 @@ const loadFolderStructure = async () => {
             },
         });
 
+        if (!response.ok) throw new Error('Folder request failed');
         const data = await response.json();
         folderHierarchy.value = data.hierarchy;
         navigateToFolder('');
     } catch (error) {
-        console.error('Failed to load folder structure:', error);
+        folderError.value = 'Scanner folders could not be loaded. Please try again.';
     } finally {
         loadingFolders.value = false;
     }
@@ -859,6 +867,10 @@ const formatFileSize = (bytes) => {
 };
 
 
+
+onMounted(() => {
+    if (viewMode.value === 'folder') loadFolderStructure();
+});
 
 const getStatusClass = (status) => {
     const classes = {

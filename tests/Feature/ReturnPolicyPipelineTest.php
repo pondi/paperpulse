@@ -59,6 +59,47 @@ it('extracts and persists a standalone return policy as a primary entity', funct
         ->and(ExtractableEntity::first()->is_primary)->toBeTrue();
 });
 
+it('preserves durations returned as deadlines without failing receipt or policy extraction', function (string $type, array $deadlines, string $expectedConditions, ?string $expectedReturnDate): void {
+    config(['ai.providers.gemini.api_key' => 'test']);
+    $policy = ['conditions' => 'Unused items only', 'requires_receipt' => false, 'restocking_fee' => 0, ...$deadlines];
+    $data = $type === 'receipt' ? [
+        'merchant_name' => 'Shop', 'total_amount' => 10, 'receipt_date' => '2025-02-16',
+        'description' => 'Purchase', 'category' => 'Other', 'return_policies' => [$policy],
+    ] : $policy;
+    Http::fake(['*' => Http::response(['totalTokens' => 100, 'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => json_encode($data)]]]]]])]);
+    $file = File::factory()->create(['fileType' => 'application/pdf']);
+    $extracted = EntityExtractorFactory::create($type)->extract('https://gemini.test/file', $file);
+    app(EntityFactory::class)->createEntitiesFromParsedData([
+        'entities' => array_merge([$extracted], $extracted['supplemental_entities'] ?? []),
+    ], $file, $type);
+
+    $stored = ReturnPolicy::firstOrFail();
+    expect($stored->conditions)->toBe($expectedConditions)
+        ->and($stored->return_deadline?->format('Y-m-d'))->toBe($expectedReturnDate)
+        ->and($stored->exchange_deadline)->toBeNull()
+        ->and($stored->requires_receipt)->toBeFalse()
+        ->and($stored->restocking_fee)->toBe('0.00');
+})->with([
+    'receipt with reported 14 day deadline' => ['receipt', ['return_deadline' => '14 days'], 'Unused items only Return period: 14 days.', null],
+    'standalone with reported 14 day deadline' => ['return_policy', ['return_deadline' => '14 days'], 'Unused items only Return period: 14 days.', null],
+    'receipt with both relative deadlines' => ['receipt', ['return_deadline' => '14 days', 'exchange_deadline' => '30 business days'], 'Unused items only Return period: 14 days. Exchange period: 30 business days.', null],
+    'standalone with an explicit date and relative exchange deadline' => ['return_policy', ['return_deadline' => '2025-03-18', 'exchange_deadline' => '2 weeks'], 'Unused items only Exchange period: 2 weeks.', '2025-03-18'],
+]);
+
+it('still rejects invalid calendar dates unknown deadlines and missing policy conditions', function (array $policy): void {
+    config(['ai.providers.gemini.api_key' => 'test']);
+    Http::fake(['*' => Http::response(['totalTokens' => 100, 'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => json_encode($policy)]]]]]])]);
+    $file = File::factory()->create(['fileType' => 'application/pdf']);
+
+    expect(fn () => EntityExtractorFactory::create('return_policy')->extract('https://gemini.test/file', $file))
+        ->toThrow(AIResponseException::class);
+    $this->assertDatabaseCount('return_policies', 0);
+})->with([
+    [['conditions' => 'Return', 'return_deadline' => '2024-02-30']],
+    [['conditions' => 'Return', 'return_deadline' => 'soon']],
+    [['conditions' => '', 'return_deadline' => '14 days']],
+]);
+
 it('keeps supplemental policies and warranties linked to their primary receipt', function () {
     config(['ai.providers.gemini.api_key' => 'test']);
     $data = ['merchant_name' => 'Shop', 'total_amount' => 10, 'receipt_date' => '2024-01-01', 'description' => 'Purchase', 'category' => 'Other',

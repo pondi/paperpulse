@@ -6,6 +6,7 @@ use App\Exceptions\AIResponseException;
 use App\Exceptions\GeminiApiException;
 use App\Models\File;
 use App\Services\AI\Extractors\EntityExtractorContract;
+use App\Services\AI\Extractors\ReturnPolicy\ReturnPolicyDataNormalizer;
 use App\Services\AI\Providers\GeminiProvider;
 use Exception;
 use Illuminate\Support\Arr;
@@ -95,6 +96,10 @@ class ReceiptExtractor implements EntityExtractorContract
             $supplemental = [];
             foreach (['return_policies' => 'ReturnPolicy', 'warranties' => 'Warranty'] as $field => $type) {
                 foreach ($rawData[$field] ?? [] as $entry) {
+                    $normalizer = app('App\\Services\\AI\\Extractors\\'.$type.'\\'.$type.'DataNormalizer');
+                    if ($normalizer instanceof ReturnPolicyDataNormalizer) {
+                        $entry = $normalizer->normalizeRelativeDeadlines($entry);
+                    }
                     $validator = app('App\\Services\\AI\\Extractors\\'.$type.'\\'.$type.'Validator');
                     $supplementalValidation = $validator->validate($entry);
                     if (! $supplementalValidation['valid']) {
@@ -104,7 +109,6 @@ class ReceiptExtractor implements EntityExtractorContract
                             'dates' => Arr::only($entry, ['return_deadline', 'exchange_deadline']),
                         ]);
                     }
-                    $normalizer = app('App\\Services\\AI\\Extractors\\'.$type.'\\'.$type.'DataNormalizer');
                     $supplemental[] = ['type' => $field === 'warranties' ? 'warranty' : 'return_policy',
                         'data' => $normalizer->normalize($entry), 'confidence_score' => $entry['confidence_score'] ?? 0.85];
                 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { fileStatusLabel } from '@/utils/fileStatus';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 const { formatDate, formatCurrency: formatOriginalCurrency } = useDateFormatter();
 const formatCurrency = (amount: number | string) => formatOriginalCurrency(amount, props.invoice.currency);
@@ -44,6 +45,8 @@ interface SharedUser {
 }
 
 interface FileInfo {
+    status?: string;
+    review?: { reason?: string } | null;
     id: number;
     url: string;
     pdfUrl: string | null;
@@ -299,7 +302,8 @@ const getInvoiceTypeClass = () => {
             <!-- Invoice details -->
             <div class="w-full min-w-0 break-words p-3 sm:p-6" :class="showPreview ? 'xl:w-2/3' : 'xl:w-full'">
                 <div class="space-y-8">
-                    <!-- Invoice Status Badge -->
+                    <p v-if="invoice.file?.status" class="text-sm text-zinc-700 dark:text-zinc-300">Processing: {{ fileStatusLabel(invoice.file) }}</p>
+                    <!-- Invoice payment status -->
                     <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-x-3">
@@ -309,7 +313,7 @@ const getInvoiceTypeClass = () => {
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200">Invoice Details</h3>
                             </div>
                             <span class="px-3 py-1 rounded-full text-sm font-medium" :class="paymentStatusClass">
-                                {{ invoice.payment_status }}
+                                Payment: {{ invoice.payment_status }}
                             </span>
                         </div>
 

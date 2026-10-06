@@ -99,6 +99,8 @@ class ReceiptInertiaResource extends JsonResource
 
         return [
             'id' => $this->file->id,
+            'status' => $this->file->status,
+            'review' => $this->file->status === 'needs_review' ? ['reason' => $this->file->meta['review']['reason'] ?? null] : null,
             'url' => route('receipts.showImage', $this->id),
             'pdfUrl' => StoragePathBuilder::pdfVariant($this->file) !== null
                 ? route('receipts.showPdf', $this->id)

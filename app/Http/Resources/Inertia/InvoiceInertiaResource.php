@@ -110,6 +110,8 @@ class InvoiceInertiaResource extends JsonResource
 
         return [
             'id' => $this->file->id,
+            'status' => $this->file->status,
+            'review' => $this->file->status === 'needs_review' ? ['reason' => $this->file->meta['review']['reason'] ?? null] : null,
             'url' => route('documents.serve', [
                 'guid' => $this->file->guid,
                 'type' => $typeFolder,

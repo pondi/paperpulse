@@ -181,7 +181,7 @@ const toggleExpanded = (fileId: number) => {
                                 </svg>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Completed</p>
+                                <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Ready</p>
                                 <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.completed }}</p>
                             </div>
                         </div>
@@ -234,9 +234,9 @@ const toggleExpanded = (fileId: number) => {
                             class="bg-white text-zinc-900 dark:bg-zinc-700 dark:text-white rounded-md border border-zinc-300 dark:border-zinc-600 shadow-sm focus:border-amber-500 focus:ring focus:ring-amber-500 focus:ring-opacity-50"
                         >
                             <option value="">All Statuses</option>
-                            <option value="pending">Pending</option>
+                            <option value="pending">Queued</option>
                             <option value="processing">Processing</option>
-                            <option value="completed">Completed</option>
+                            <option value="completed">Ready</option>
                             <option value="failed">Failed</option>
                             <option value="needs_review">Needs review</option>
                         </select>
@@ -279,7 +279,7 @@ const toggleExpanded = (fileId: number) => {
                         :dusk="'activity-file-' + file.id"
                         class="bg-white dark:bg-zinc-800"
                     >
-                        <h2 v-if="form.sort === 'status' && (index === 0 || props.files.data[index - 1].status !== file.status)" class="bg-zinc-50 px-4 py-2 text-xs font-semibold uppercase text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">{{ file.status.replace('_', ' ') }}</h2>
+                        <h2 v-if="form.sort === 'status' && (index === 0 || props.files.data[index - 1].status !== file.status)" class="bg-zinc-50 px-4 py-2 text-xs font-semibold uppercase text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">{{ fileStatusLabel(file) }}</h2>
                         <div class="p-3 sm:px-4">
                             <div class="flex items-start justify-between gap-2">
                                 <!-- File Info -->
@@ -360,7 +360,7 @@ const toggleExpanded = (fileId: number) => {
                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01" />
                                         </svg>
-                                        Pending
+                                        {{ fileStatusLabel(file) }}
                                     </span>
                                     <span v-else-if="file.status === 'needs_review'" class="rounded-full bg-yellow-100 px-3 py-1.5 text-sm font-semibold text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200">{{ fileStatusLabel(file) }}</span>
                                     <span
@@ -370,7 +370,7 @@ const toggleExpanded = (fileId: number) => {
                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                        Completed
+                                        {{ fileStatusLabel(file) }}
                                     </span>
                                     <button type="button" @click="selectedFileId = selectedFileId === file.id ? null : file.id" :aria-expanded="selectedFileId === file.id" :aria-controls="'activity-actions-' + file.id" class="text-xs font-medium text-amber-700 dark:text-amber-400">{{ selectedFileId === file.id ? 'Hide actions' : 'Show actions' }}</button>
                                 </div>

@@ -147,3 +147,13 @@ it('shows persisted source discounts and current receipt totals', function (bool
             ->where('receipt.reconciliation.total_amount', '21.56')
             ->where('receipt.reconciliation.needs_review', false));
 })->with([false, true]);
+
+it('exposes the same processing and review state on receipt and file views', function (string $status): void {
+    $this->withoutVite();
+    $file = File::factory()->create(['status' => $status, 'meta' => ['review' => ['reason' => 'receipt_totals']]]);
+    $receipt = Receipt::factory()->create(['user_id' => $file->user_id, 'file_id' => $file->id]);
+    $this->actingAs($file->user)->get(route('receipts.show', $receipt))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('receipt.file.status', $status)
+            ->where('receipt.file.review', $status === 'needs_review' ? ['reason' => 'receipt_totals'] : null));
+    $this->get(route('files.show', $file))->assertInertia(fn (AssertableInertia $page) => $page->where('file.status', $status));
+})->with(['completed', 'needs_review']);

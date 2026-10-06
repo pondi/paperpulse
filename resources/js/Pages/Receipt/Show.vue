@@ -36,14 +36,14 @@
       <!-- Receipt details -->
       <div class="w-full min-w-0 break-words p-3 sm:p-6" :class="showPreview ? 'xl:w-2/3' : 'xl:w-full'">
         <div class="space-y-8">
-          <!-- Receipt Status -->
+          <!-- Receipt completeness and source processing -->
           <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex items-center gap-x-3">
                 <div :class="[getStatusClass(receipt), 'flex-none rounded-full p-1']" aria-hidden="true">
                   <div class="size-2 rounded-full bg-current" />
                 </div>
-                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200">{{ __('receipt_status') }}: {{ getStatusLabel(receipt) }}</h3>
+                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200">Receipt data: {{ getStatusLabel(receipt) }}</h3>
               </div>
               <div class="flex flex-wrap items-center gap-3">
                 <button v-if="isEditing" type="button" @click="cancelEditing"
@@ -61,6 +61,8 @@
                 </button>
               </div>
             </div>
+            <p v-if="receipt.file?.status" class="mt-3 text-sm text-zinc-700 dark:text-zinc-300">Processing: {{ fileStatusLabel(receipt.file) }}</p>
+            <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Processing tracks extraction and review. Receipt data describes saved field completeness.</p>
             <p v-if="isEditing" class="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
               Save Changes saves your edits. Cancel or leaving this page discards unsaved edits.
             </p>
@@ -275,6 +277,7 @@ import {
   ReceiptRefundIcon,
   RectangleStackIcon
 } from '@heroicons/vue/24/outline';
+import { fileStatusLabel } from '@/utils/fileStatus';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 const props = defineProps({
@@ -461,14 +464,14 @@ const lineItemHeaders = computed(() => [
 ]);
 
 const getStatusClass = (receipt) => {
-  if (!receipt?.merchant_id) return 'text-zinc-500 bg-amber-100/10'
+  if (!receipt?.merchant?.name) return 'text-zinc-500 bg-amber-100/10'
   if (receipt?.total_amount === null) return 'text-rose-400 bg-rose-400/10'
   return 'text-green-400 bg-green-400/10'
 }
 
 const getStatusLabel = (receipt) => {
-  if (!receipt?.merchant_id) return 'Pending'
-  if (receipt?.total_amount === null) return 'Incomplete'
+  if (!receipt?.merchant?.name) return 'Merchant missing'
+  if (receipt?.total_amount === null) return 'Total missing'
   return 'Complete'
 }
 

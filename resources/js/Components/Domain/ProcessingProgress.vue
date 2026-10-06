@@ -3,7 +3,7 @@ import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 defineProps({ processing: { type: Object, required: true } });
 const { formatDateTime } = useDateFormatter();
-const states = { pending: 'Queued', queued: 'Queued', processing: 'Active', retrying: 'Waiting to retry', completed: 'Completed', failed: 'Failed', needs_review: 'Needs review' };
+const states = { pending: 'Queued', queued: 'Queued', processing: 'Active', retrying: 'Waiting to retry', completed: 'Ready', failed: 'Failed', needs_review: 'Needs review' };
 </script>
 
 <template>

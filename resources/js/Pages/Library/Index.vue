@@ -5,7 +5,7 @@ import { DocumentIcon, MagnifyingGlassIcon, AdjustmentsHorizontalIcon, Squares2X
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import SaveViewButton from '@/Components/Search/SaveViewButton.vue';
 import { documentTypes, smartViews, cleanViewFilters } from '@/utils/libraryNavigation';
-import { fileStatusLabel } from '@/utils/fileStatus';
+import { fileStatusLabel, fileStatusLabels } from '@/utils/fileStatus';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 const props = defineProps({
@@ -25,7 +25,6 @@ const { formatDate, formatCurrency } = useDateFormatter();
 const view = computed(() => smartViews.find(item => item.value === form.view));
 const title = computed(() => props.activeView?.name || view.value?.label || 'Library');
 const description = computed(() => view.value?.description || 'Every document, one place. Filter, find and open your files.');
-const statusLabels = { pending: 'Queued', processing: 'Processing', completed: 'Ready', failed: 'Failed', needs_review: 'Needs review' };
 const saveFilters = computed(() => cleanViewFilters(form));
 const filterCount = computed(() => [form.type !== 'all', Boolean(form.status), form.date_range !== 'all', Boolean(form.date_from || form.date_to), Boolean(form.collection_id), Boolean(form.tag_id)].filter(Boolean).length);
 const display = computed(() => form.display === 'grid' ? 'grid' : 'list');
@@ -89,7 +88,7 @@ onBeforeUnmount(() => { clearTimeout(timer); cancelVisit?.cancel(); });
                     <button v-if="filterCount || form.query || form.view !== 'all'" type="button" @click="clear" class="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white"><XMarkIcon class="h-3.5 w-3.5" aria-hidden="true" />Reset</button>
                 </form>
                 <div v-if="expanded" id="library-more-filters" class="grid gap-4 border-t border-zinc-100 p-4 sm:grid-cols-2 xl:grid-cols-4 dark:border-zinc-800">
-                    <label class="flex flex-col gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">Processing status<select v-model="form.status" @change="apply" class="rounded-lg border-zinc-200 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"><option value="">Any status</option><option v-for="(name, value) in statusLabels" :key="value" :value="value">{{ name }}</option></select></label>
+                    <label class="flex flex-col gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">Processing status<select v-model="form.status" @change="apply" class="rounded-lg border-zinc-200 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"><option value="">Any status</option><option v-for="(name, value) in fileStatusLabels" :key="value" :value="value">{{ name }}</option></select></label>
                     <label class="flex flex-col gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">Uploaded<select v-model="form.date_range" @change="form.date_from = ''; form.date_to = ''; apply()" class="rounded-lg border-zinc-200 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"><option value="all">Any time</option><option value="last_30_days">Last 30 days</option><option value="this_month">This month</option><option value="this_year">This year</option><option value="custom">Choose dates</option></select></label>
                     <label class="flex flex-col gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">Collection<select v-model="form.collection_id" @change="apply" class="rounded-lg border-zinc-200 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"><option value="">Any collection</option><option v-for="collection in options.collections" :key="collection.id" :value="collection.id">{{ collection.path }}</option></select></label>
                     <label class="flex flex-col gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">Tag<select v-model="form.tag_id" @change="apply" class="rounded-lg border-zinc-200 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"><option value="">Any tag</option><option v-for="tag in options.tags" :key="tag.id" :value="tag.id">{{ tag.name }}</option></select></label>
@@ -128,7 +127,7 @@ onBeforeUnmount(() => { clearTimeout(timer); cancelVisit?.cancel(); });
                         </div>
                         <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-400 dark:text-zinc-500">
                             <span class="uppercase">{{ file.extension }}</span><span>Uploaded {{ formatDate(file.uploaded_at) }}</span>
-                            <span v-if="file.folder" class="truncate">{{ file.folder.name }}</span><span v-if="file.is_shared">Shared by {{ file.owner }}</span>
+                            <span v-if="file.folder" class="truncate">Folder: {{ file.folder.name }}</span><span v-if="file.is_shared">Shared by {{ file.owner }}</span>
                         </div>
                         <div v-if="display === 'grid'" class="mt-3 flex flex-wrap gap-1.5"><span v-for="type in file.entity_types.length ? file.entity_types : [file.file_type]" :key="type" class="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">{{ label(type) }}</span></div>
                     </div>

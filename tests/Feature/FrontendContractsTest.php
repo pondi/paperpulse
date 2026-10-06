@@ -26,6 +26,7 @@ import * as vue from 'vue';
 import { parse, compileScript } from '@vue/compiler-sfc';
 import { renderToString } from '@vue/server-renderer';
 import { Link } from '@inertiajs/vue3';
+import * as navigation from './resources/js/utils/libraryNavigation.js';
 import * as fileStatus from './resources/js/utils/fileStatus.js';
 import { route as ziggyRoute } from './vendor/tightenco/ziggy/dist/index.js';
 
@@ -43,7 +44,7 @@ async function render(file, props) {
     let code = compiled.content.replace(/import\s+\{([\s\S]*?)\}\s+from\s+['"]([^'"]+)['"];?/g, (_, specifiers, module) => {
         for (const specifier of specifiers.split(',').filter(value => value.trim())) {
             const [name, alias = name] = specifier.trim().split(/\s+as\s+/);
-            bindings[alias] = module.includes('fileStatus') ? fileStatus[name] : module === 'vue' ? vue[name]
+            bindings[alias] = module.includes('libraryNavigation') ? navigation[name] : module.includes('fileStatus') ? fileStatus[name] : module === 'vue' ? vue[name]
                 : name === 'Link' ? Link : name === 'Head' ? () => null
                 : name === 'usePage' ? () => page
                 : name === 'useForm' ? data => vue.reactive({ ...data, processing: false, errors: {} })
@@ -249,7 +250,7 @@ if (scenario === 'processing timing') {
         await render('Pages/Files/Show.vue', { file: { id: 402, name: 'Upload.pdf', status }, extractedEntities: [] });
         assert.equal(pollCalls.at(-1), ['pending', 'processing'].includes(status) ? 'start' : 'stop');
     }
-    for (const [state, label] of [['pending', 'Queued'], ['processing', 'Active'], ['retrying', 'Waiting to retry'], ['completed', 'Completed'], ['failed', 'Failed']]) {
+    for (const [state, label] of [['pending', 'Queued'], ['processing', 'Active'], ['retrying', 'Waiting to retry'], ['completed', 'Ready'], ['failed', 'Failed']]) {
         const html = await render('Components/Domain/ProcessingProgress.vue', { processing: { state, stage: 'Extract text',
             queued_at: '2026-10-06T10:00:00Z', started_at: state === 'pending' ? null : '2026-10-06T10:01:00Z',
             finished_at: ['completed', 'failed'].includes(state) ? '2026-10-06T10:03:00Z' : null, elapsed_seconds: 120, attempt: state === 'retrying' ? 2 : 1, progress: 40 } });
@@ -287,13 +288,34 @@ if (scenario === 'processing limits') {
     assert.equal(fileStatus.fileStatusLabel({ status: 'needs_review', review }), 'Blocked: processing limit');
     assert.equal(fileStatus.fileStatusLabel({ status: 'needs_review', review: { reason: 'receipt_totals' } }), 'Needs review');
 }
+if (scenario === 'state semantics') {
+    for (const status of ['completed', 'needs_review']) {
+        const file = { id: 391, status, name: 'Receipt.pdf', file_type: 'receipt', detailsUrl: route('files.show', 391), review: status === 'needs_review' ? { reason: 'receipt_totals' } : null, folder: { name: 'Needs review' }, collections: [{ id: 1, name: 'Needs review' }] };
+        const label = fileStatus.fileStatusLabel(file);
+        const library = await render('Pages/Library/Index.vue', { files: { data: [file], total: 1 }, filters: {} });
+        assert.ok(library.includes('Folder: Needs review'));
+        assert.ok(library.includes(label));
+        const workspace = await render('Pages/Files/Show.vue', { file, extractedEntities: [] });
+        assert.ok(workspace.includes('Folder: Needs review'));
+        assert.ok(workspace.includes(label));
+        const activity = await render('Pages/Files/Index.vue', { files: { data: [file], links: [] } });
+        assert.ok(activity.includes(label));
+        assert.ok(!activity.includes('Completed'));
+        const receipt = await render('Pages/Receipt/Show.vue', { receipt: { id: 1246, file, merchant: { name: 'Wine shop' }, total_amount: 21.56, lineItems: [] }, categories: [] });
+        assert.ok(receipt.includes(`Processing: ${label}`));
+        assert.ok(receipt.includes('Receipt data: Complete'));
+        assert.ok(!receipt.includes('Pending'));
+    }
+    const missing = await render('Pages/Receipt/Show.vue', { receipt: { id: 1246, total_amount: 21.56, lineItems: [] }, categories: [] });
+    assert.ok(missing.includes('Receipt data: Merchant missing'));
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts', 'receipt totals review', 'processing timing', 'failure diagnostics', 'processing limits']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts', 'receipt totals review', 'processing timing', 'failure diagnostics', 'processing limits', 'state semantics']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {
@@ -340,7 +362,7 @@ const stub = (props, { slots }) => vue.h('div', slots.default?.());
 let code = compiled.content.replace(/import\s+\{([\s\S]*?)\}\s+from\s+['"]([^'"]+)['"];?/g, (_, specifiers, module) => {
     for (const specifier of specifiers.split(',')) {
         const [name, alias = name] = specifier.trim().split(/\s+as\s+/);
-        bindings[alias] = module.includes('fileStatus') ? fileStatus[name] : module === 'vue' ? vue[name] : name === 'useDateFormatter' ? () => ({ formatDate: value => value }) : name === 'Head' ? () => null : name === 'router' ? { get() {} } : stub;
+        bindings[alias] = module.includes('libraryNavigation') ? navigation[name] : module.includes('fileStatus') ? fileStatus[name] : module === 'vue' ? vue[name] : name === 'useDateFormatter' ? () => ({ formatDate: value => value }) : name === 'Head' ? () => null : name === 'router' ? { get() {} } : stub;
     }
     return '';
 }).replace(/import\s+(\w+)\s+from\s+['"][^'"]+['"];?/g, (_, name) => {

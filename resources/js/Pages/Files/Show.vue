@@ -68,7 +68,7 @@ const reviewMessage = computed(() => reviewMessages[props.file.review?.reason] |
                     </div>
                     <ProcessingProgress v-if="file.processing" :processing="file.processing" class="mt-4" />
                     <p v-if="file.note" class="mt-4 whitespace-pre-wrap text-sm text-zinc-600 dark:text-zinc-300">{{ file.note }}</p>
-                    <div v-if="file.collections?.length" class="mt-4 flex flex-wrap gap-2"><Link v-for="collection in file.collections" :key="collection.id" :href="route('collections.show', collection.id)" class="rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-600 hover:text-amber-700 dark:bg-zinc-800 dark:text-zinc-300">{{ collection.name }}</Link></div>
+                    <div v-if="file.collections?.length" class="mt-4 flex flex-wrap gap-2"><Link v-for="collection in file.collections" :key="collection.id" :href="route('collections.show', collection.id)" class="rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-600 hover:text-amber-700 dark:bg-zinc-800 dark:text-zinc-300">Folder: {{ collection.name }}</Link></div>
                     <div v-if="file.can_view_extraction_report" class="mt-4 flex flex-wrap gap-4 border-t border-zinc-100 pt-4 dark:border-zinc-800">
                         <Link :href="route('files.extraction-report', file.id)" class="text-xs font-medium text-amber-700 dark:text-amber-400">Extraction report</Link>
                         <Link v-if="file.status !== 'completed'" :href="route('files.index', { status: file.status })" class="text-xs text-zinc-500 dark:text-zinc-400">Processing activity</Link>

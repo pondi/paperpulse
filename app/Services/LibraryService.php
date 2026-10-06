@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\BankStatement;
-use App\Models\Collection;
 use App\Models\Contract;
 use App\Models\Document;
 use App\Models\File;
@@ -132,7 +131,7 @@ class LibraryService
     public function options(User $user): array
     {
         return [
-            'collections' => Collection::query()->where('user_id', $user->id)->active()->orderBy('name')->get(['id', 'name']),
+            'collections' => app(CollectionService::class)->getActiveCollectionsForSelector($user->id),
             'tags' => Tag::query()->where('user_id', $user->id)->orderBy('name')->get(['id', 'name']),
         ];
     }

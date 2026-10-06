@@ -1140,3 +1140,20 @@ it('opens named scanner folder tags and discards canceled edits while saving con
         expect(PulseDavFile::where('user_id', $user->id)->where('folder_path', 'Taxes')->firstOrFail()->folder_tag_ids)->toBe([$tag->id]);
     });
 });
+
+it('retains nested folder context in upload library and search selectors', function (): void {
+    $user = $this->createUser();
+    $root = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Building']);
+    $parent = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Contracts', 'parent_id' => $root->id]);
+    $leaf = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Hønsfaret', 'parent_id' => $parent->id]);
+    $this->browse(function (Browser $browser) use ($user): void {
+        $this->loginAs($browser, $user);
+        $browser->visit('/documents/upload')->waitFor('input[placeholder="Search or create collections..."]')
+            ->type('input[placeholder="Search or create collections..."]', 'Building')->pause(200)
+            ->assertSee('Building → Contracts → Hønsfaret')->keys('input[placeholder="Search or create collections..."]', WebDriverKeys::ARROW_DOWN);
+        $browser->type('input[placeholder="Search or create collections..."]', 'Hønsfaret')->keys('input[placeholder="Search or create collections..."]', WebDriverKeys::ENTER)
+            ->assertSee('Building → Contracts → Hønsfaret');
+        $browser->visit('/library')->waitFor('@library-query')->press('Filters')->assertSee('Building → Contracts → Hønsfaret');
+        $browser->visit('/search')->waitFor('#search-collection')->assertSeeIn('#search-collection', 'Building → Contracts → Hønsfaret');
+    });
+});

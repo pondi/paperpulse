@@ -255,7 +255,7 @@
                       :key="collection.id"
                       :value="collection.id"
                     >
-                      {{ collection.name }}
+                      {{ collection.path }}
                     </option>
                   </select>
                 </div>
@@ -451,7 +451,7 @@
               :key="collection.id"
               :value="collection.id"
             >
-              {{ collection.name }}
+              {{ collection.path }}
             </option>
           </select>
         </div>

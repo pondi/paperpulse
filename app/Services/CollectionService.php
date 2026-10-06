@@ -105,10 +105,22 @@ class CollectionService
      */
     public function getActiveCollectionsForSelector(int $userId): SupportCollection
     {
-        return Collection::where('user_id', $userId)
+        $collections = Collection::where('user_id', $userId)
             ->active()
             ->orderBy('name')
-            ->get(['id', 'name', 'icon', 'color']);
+            ->get(['id', 'name', 'parent_id', 'icon', 'color']);
+        $byId = $collections->keyBy('id');
+
+        return $collections->each(function (Collection $collection) use ($byId): void {
+            $names = [$collection->name];
+            $parentId = $collection->parent_id;
+            while ($parentId !== null) {
+                $parent = $byId->get($parentId);
+                array_unshift($names, $parent->name);
+                $parentId = $parent->parent_id;
+            }
+            $collection->setAttribute('path', implode(' → ', $names));
+        });
     }
 
     /**

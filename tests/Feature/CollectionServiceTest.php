@@ -6,6 +6,7 @@ use App\Models\File;
 use App\Models\User;
 use App\Services\CollectionService;
 use App\Services\CollectionSharingService;
+use App\Services\LibraryService;
 use Illuminate\Auth\Access\AuthorizationException;
 
 beforeEach(function () {
@@ -338,4 +339,19 @@ describe('CollectionSharingService', function () {
 
         expect($shares)->toHaveCount(2);
     });
+});
+
+it('labels nested selector folders with distinct ancestor paths and excludes foreign folders', function (): void {
+    $user = User::factory()->create();
+    $root = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Building']);
+    $contracts = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Contracts', 'parent_id' => $root->id]);
+    $leaf = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Hønsfaret', 'parent_id' => $contracts->id]);
+    $otherRoot = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Home']);
+    $otherLeaf = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Hønsfaret', 'parent_id' => $otherRoot->id]);
+    $foreign = Collection::factory()->create();
+    $options = $this->collectionService->getActiveCollectionsForSelector($user->id)->keyBy('id');
+    expect($options[$leaf->id]->path)->toBe('Building → Contracts → Hønsfaret')
+        ->and($options[$otherLeaf->id]->path)->toBe('Home → Hønsfaret')->and($options->has($foreign->id))->toBeFalse();
+    $this->actingAs($user)->getJson(route('collections.all'))->assertOk()->assertJsonFragment(['path' => 'Building → Contracts → Hønsfaret']);
+    expect(app(LibraryService::class)->options($user)['collections']->keyBy('id')[$leaf->id]->path)->toBe('Building → Contracts → Hønsfaret');
 });

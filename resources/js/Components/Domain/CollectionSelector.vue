@@ -10,7 +10,7 @@
                 <svg v-if="collection.icon" class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getIconPath(collection.icon)" />
                 </svg>
-                {{ collection.name }}
+                {{ collection.path }}
                 <button
                     v-if="!readonly"
                     @click.stop="removeCollection(collection.id)"
@@ -52,7 +52,7 @@
                         class="w-3 h-3 rounded-full mr-2"
                         :style="{ backgroundColor: collection.color }"
                     ></span>
-                    {{ collection.name }}
+                    {{ collection.path }}
                     <span v-if="collection.files_count !== undefined" class="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
                         {{ collection.files_count }} {{ collection.files_count === 1 ? 'file' : 'files' }}
                     </span>
@@ -117,13 +117,13 @@ const filteredCollections = computed(() => {
 
     const query = searchQuery.value.toLowerCase();
     return availableCollections.value.filter(collection =>
-        collection.name.toLowerCase().includes(query)
+        collection.path.toLowerCase().includes(query)
     );
 });
 
 const exactMatch = computed(() => {
     const query = searchQuery.value.toLowerCase();
-    return allCollections.value.some(collection => collection.name.toLowerCase() === query);
+    return allCollections.value.some(collection => collection.path.toLowerCase() === query);
 });
 
 const isSelected = (collectionId) => {
@@ -150,7 +150,7 @@ const createNewCollection = async () => {
         const response = await axios.post(route('collections.store'), {
             name: searchQuery.value.trim(),
         });
-        const newCollection = response.data;
+        const newCollection = { ...response.data, path: response.data.name };
         allCollections.value.push(newCollection);
         emit('update:modelValue', [...props.modelValue, newCollection.id]);
         emit('create-collection', newCollection);

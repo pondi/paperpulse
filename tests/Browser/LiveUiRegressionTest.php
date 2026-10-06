@@ -271,7 +271,7 @@ it('keeps long invoice identities dates and amounts readable in mobile search ca
     ]);
 
     $this->browse(function (Browser $browser) use ($user): void {
-        $browser->loginAs($user)->visit('/search?query=DigitalOcean&type=invoice')->waitForText('1,234.56 USD');
+        $browser->loginAs($user)->visit('/search?query=DigitalOcean&type=invoice')->waitForText('$1,234.56');
 
         foreach ([320, 390, 1440] as $width) {
             $browser->resize($width, 844)->assertSee('DigitalOcean with a longer merchant identity');
@@ -1219,3 +1219,31 @@ it('finds activity by filename and reviews compact failed rows with per-file act
         $browser->press('Hide actions')->waitUntilMissing('#activity-actions-'.$second->id)->type('@activity-query', 'missing')->waitForText('No files yet');
     });
 });
+
+it('uses selected dates and source currency consistently in invoice listings search details and notifications', function (string $language, string $dateFormat, string $date, string $amount): void {
+    $user = $this->createUser();
+    UserPreference::updateOrCreate(['user_id' => $user->id], [
+        'language' => $language, 'date_format' => $dateFormat, 'currency' => 'NOK', 'timezone' => 'UTC',
+    ]);
+    $invoice = Invoice::factory()->for(File::factory()->for($user))->create([
+        'user_id' => $user->id, 'invoice_date' => '2026-06-01', 'total_amount' => '1234.56',
+        'currency' => 'USD', 'invoice_number' => 'LOCALE-CHECK', 'from_name' => 'Locale supplier',
+    ]);
+    $user->notifications()->create([
+        'id' => (string) Str::uuid(), 'type' => 'App\\Notifications\\ReceiptProcessed',
+        'data' => ['type' => 'receipt_processed', 'merchant_name' => 'Locale supplier', 'amount' => '1234.56', 'currency' => 'USD'],
+        'created_at' => '2026-06-01 00:00:00',
+    ]);
+    $this->browse(function (Browser $browser) use ($user, $invoice, $date, $amount): void {
+        $browser->loginAs($user);
+        foreach (['/invoices', '/search?query=LOCALE-CHECK&type=invoice', '/invoices/'.$invoice->id] as $path) {
+            $browser->visit($path)->waitForText('Locale supplier')->assertSee($date)->assertSee($amount);
+        }
+        $browser->click('.relative.ml-3 > div > button')->waitFor('[role="menu"]')
+            ->assertSeeIn('[role="menu"]', $date)->assertSeeIn('[role="menu"]', $amount);
+    });
+    expect($invoice->fresh()->total_amount)->toBe('1234.56')->and($invoice->fresh()->currency)->toBe('USD');
+})->with([
+    ['en', 'Y-m-d', '2026-06-01', '$1,234.56'],
+    ['nb', 'd.m.Y', '01.06.2026', '1 234,56 USD'],
+]);

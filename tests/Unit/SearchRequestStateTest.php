@@ -38,8 +38,15 @@ const context = {
   clearTimeout: id => timers.delete(id),
 };
 vm.createContext(context);
-vm.runInContext(descriptor.scriptSetup.content.replace(/^import .*;$/gm, '') + '\nglobalThis.state = { performSearch, searchQuery, filters, results, searching, searchError, facets, pagination, hasActiveFilters, clearFilters, sortBy };', context);
+vm.runInContext(descriptor.scriptSetup.content.replace(/^import .*;$/gm, '') + '\nglobalThis.state = { performSearch, searchQuery, filters, results, searching, searchError, facets, pagination, hasActiveFilters, clearFilters, sortBy, sortedResults };', context);
 const state = context.state;
+state.results.value = [{ id: 'larger', total: '1234.56' }, { id: 'smaller', total: '999.00' }];
+state.sortBy.value = 'amount_asc';
+assert.equal(state.sortedResults.value[0].id, 'smaller');
+state.sortBy.value = 'amount_desc';
+assert.equal(state.sortedResults.value[0].id, 'larger');
+state.results.value = [];
+state.sortBy.value = 'relevance';
 const data = (id, status = 'available') => ({ data: { results: id ? [{ id }] : [], facets: { total: id ? 1 : 0 }, pagination: { page: 1, last_page: id ? 1 : 0, total: id ? 1 : 0 }, search_status: status } });
 const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
 

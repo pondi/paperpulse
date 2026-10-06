@@ -582,14 +582,14 @@ const sortedResults = computed(() => {
       return sorted.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
     case 'amount_desc':
       return sorted.sort((a, b) => {
-        const aAmount = parseFloat(a.total?.replace(/[^0-9.-]+/g, '') || 0);
-        const bAmount = parseFloat(b.total?.replace(/[^0-9.-]+/g, '') || 0);
+        const aAmount = Number(a.total ?? 0);
+        const bAmount = Number(b.total ?? 0);
         return bAmount - aAmount;
       });
     case 'amount_asc':
       return sorted.sort((a, b) => {
-        const aAmount = parseFloat(a.total?.replace(/[^0-9.-]+/g, '') || 0);
-        const bAmount = parseFloat(b.total?.replace(/[^0-9.-]+/g, '') || 0);
+        const aAmount = Number(a.total ?? 0);
+        const bAmount = Number(b.total ?? 0);
         return aAmount - bAmount;
       });
     case 'relevance':

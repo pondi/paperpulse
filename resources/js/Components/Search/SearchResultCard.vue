@@ -70,10 +70,10 @@
           </div>
 
           <!-- Total amount -->
-          <div v-if="result.total" class="max-w-full sm:flex-shrink-0">
+          <div v-if="result.total != null" class="max-w-full sm:flex-shrink-0">
             <div class="break-words text-left sm:text-right">
               <div class="text-lg font-bold text-zinc-900 dark:text-white">
-                {{ result.total }}
+                {{ formatCurrency(result.total, result.currency) }}
               </div>
               <div v-if="result.payment_status" class="text-xs text-zinc-500 dark:text-zinc-400">
                 {{ result.payment_status }}
@@ -179,6 +179,8 @@
 </template>
 
 <script setup>
+import { useDateFormatter } from '@/Composables/useDateFormatter';
+
 import { computed } from 'vue';
 import {
   DocumentIcon,
@@ -196,6 +198,8 @@ import {
   ArrowUturnLeftIcon,
   BuildingLibraryIcon,
 } from '@heroicons/vue/24/outline';
+
+const { formatDate, formatCurrency } = useDateFormatter();
 
 const props = defineProps({
   result: {
@@ -242,15 +246,6 @@ const handleClick = () => {
 
 const handlePreview = () => {
   emit('preview', props.result);
-};
-
-const formatDate = (date) => {
-  if (!date) return '';
-  return new Date(date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
 };
 
 const escapeHtml = (str) => {

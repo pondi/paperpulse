@@ -79,7 +79,9 @@ it('searches invoices and returns them with correct type', function () {
 
     expect($result['results'])->toHaveCount(1)
         ->and($result['results'][0]['type'])->toBe('invoice')
-        ->and($result['results'][0]['title'])->toBe('Visma Solutions');
+        ->and($result['results'][0]['title'])->toBe('Visma Solutions')
+        ->and($result['results'][0]['total'])->toBe('1500.00')
+        ->and($result['results'][0]['currency'])->toBe('NOK');
 });
 
 it('searches contracts and returns them with correct type', function () {

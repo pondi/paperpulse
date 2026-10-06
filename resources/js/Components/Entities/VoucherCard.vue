@@ -115,15 +115,8 @@ const isPaymentPlan = computed(() => {
   return props.voucher.voucher_type === 'payment_plan';
 });
 
-const { formatDate, daysUntilDate } = useDateFormatter();
+const { formatDate, formatCurrency, daysUntilDate } = useDateFormatter();
 const daysRemaining = computed(() => daysUntilDate(props.voucher.expiry_date));
 const isExpired = computed(() => daysRemaining.value !== null && daysRemaining.value < 0);
 const isExpiringSoon = computed(() => !props.voucher.is_redeemed && daysRemaining.value !== null && daysRemaining.value >= 0 && daysRemaining.value <= 30);
-
-const formatCurrency = (amount, currency = 'NOK') => {
-  return new Intl.NumberFormat('no-NO', {
-    style: 'currency',
-    currency: currency
-  }).format(amount);
-};
 </script>

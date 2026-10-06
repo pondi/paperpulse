@@ -115,6 +115,9 @@ import {
   XMarkIcon,
 } from '@heroicons/vue/24/outline';
 import axios from 'axios';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
+
+const { formatDate, formatCurrency } = useDateFormatter();
 
 const loading = ref(false);
 const notifications = ref([]);
@@ -258,11 +261,11 @@ const getNotificationMessage = (notification) => {
   }
 
   if (data.type === 'voucher_expiring') {
-    return `${data.merchant_name} · ${data.voucher_code} · ${data.expiry_date} (${data.days_remaining} ${__('days_remaining')})`;
+    return `${data.merchant_name} · ${data.voucher_code} · ${formatDate(data.expiry_date)} (${data.days_remaining} ${__('days_remaining')})`;
   }
 
   if (data.type === 'warranty_ending') {
-    return `${data.product_name} · ${data.warranty_end_date} (${data.days_remaining} ${__('days_remaining')})`;
+    return `${data.product_name} · ${formatDate(data.warranty_end_date)} (${data.days_remaining} ${__('days_remaining')})`;
   }
 
   if (data.type === 'receipt_shared' || data.type === 'document_shared') {
@@ -270,7 +273,7 @@ const getNotificationMessage = (notification) => {
   }
 
   if (data.type === 'weekly_summary') {
-    return `${data.week_start} – ${data.week_end} · ${data.total_receipts} ${__('receipts')} · ${formatCurrency(data.total_amount, data.currency)}`;
+    return `${formatDate(data.week_start)} – ${formatDate(data.week_end)} · ${data.total_receipts} ${__('receipts')} · ${formatCurrency(data.total_amount, data.currency)}`;
   }
 
   return '';
@@ -286,25 +289,7 @@ const formatTime = (timestamp) => {
   if (diff < 86400) return `${Math.floor(diff / 3600)} ${__('hours_ago')}`;
   if (diff < 604800) return `${Math.floor(diff / 86400)} ${__('days_ago')}`;
   
-  return date.toLocaleDateString();
-};
-
-const formatCurrency = (amount, currency) => {
-  // Validate currency code - must be 3 uppercase letters (ISO 4217 format)
-  const validCurrency = currency && typeof currency === 'string' && /^[A-Z]{3}$/i.test(currency)
-    ? currency.toUpperCase()
-    : 'NOK';
-
-  try {
-    return new Intl.NumberFormat('nb-NO', {
-      style: 'currency',
-      currency: validCurrency,
-    }).format(amount || 0);
-  } catch (e) {
-    // Fallback if Intl.NumberFormat still fails
-    console.error('Currency formatting error:', e);
-    return `${validCurrency} ${(amount || 0).toFixed(2)}`;
-  }
+  return formatDate(timestamp);
 };
 
 const syncPolling = () => {

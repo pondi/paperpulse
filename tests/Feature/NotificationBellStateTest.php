@@ -106,6 +106,7 @@ async function createBell(withEcho) {
   const context = {
     ref: value => ({ value }), onMounted: callback => { mounted = callback; }, onUnmounted: callback => { unmounted = callback; },
     usePage: () => ({ props: { auth: { user: { id: 7 } } } }),
+    useDateFormatter: () => ({ formatDate: date => date, formatCurrency: (amount, currency) => `${amount} ${currency}` }),
     router: { visit: url => { context.visited = url; } },
     console, document, setInterval: callback => { timers.set(++timerId, callback); return timerId; }, clearInterval: id => timers.delete(id),
     window: { Echo: withEcho ? { connector: { pusher: { connection } }, private: () => channel, leave: () => { left++; } } : undefined },

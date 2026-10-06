@@ -64,6 +64,9 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
+
+const { formatDate, formatCurrency } = useDateFormatter();
 
 const props = defineProps({
   statement: {
@@ -97,19 +100,4 @@ const balanceChangeClass = computed(() => {
   }
   return 'text-zinc-900 dark:text-zinc-100';
 });
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('no-NO', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-};
-
-const formatCurrency = (amount, currency = 'NOK') => {
-  return new Intl.NumberFormat('no-NO', {
-    style: 'currency',
-    currency: currency
-  }).format(amount);
-};
 </script>

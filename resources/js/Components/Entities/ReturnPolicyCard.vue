@@ -79,7 +79,7 @@ const props = defineProps({
 });
 
 defineEmits(['view']);
-const { formatDate } = useDateFormatter();
+const { formatDate, formatCurrency } = useDateFormatter();
 
 const refundMethodLabel = computed(() => {
   const labels = {
@@ -90,11 +90,4 @@ const refundMethodLabel = computed(() => {
   };
   return labels[props.returnPolicy.refund_method] || props.returnPolicy.refund_method;
 });
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('no-NO', {
-    style: 'currency',
-    currency: 'NOK'
-  }).format(amount);
-};
 </script>

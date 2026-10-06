@@ -68,9 +68,9 @@
         <div class="p-4 space-y-4">
           <!-- Receipt Details -->
           <template v-if="item?.type === 'receipt'">
-            <div v-if="item.total" class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
+            <div v-if="item.total != null" class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
               <div class="text-sm text-amber-600 dark:text-amber-400 font-medium mb-1">Total Amount</div>
-              <div class="text-2xl font-bold text-amber-900 dark:text-amber-100">{{ item.total }}</div>
+              <div class="text-2xl font-bold text-amber-900 dark:text-amber-100">{{ formatCurrency(item.total, item.currency) }}</div>
             </div>
 
             <div v-if="item.date">
@@ -171,6 +171,8 @@
 </template>
 
 <script setup>
+import { useDateFormatter } from '@/Composables/useDateFormatter';
+
 import { computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import Modal from '@/Components/Common/Modal.vue';
@@ -182,6 +184,8 @@ import {
   ReceiptRefundIcon,
   ArrowTopRightOnSquareIcon
 } from '@heroicons/vue/24/outline';
+
+const { formatDate, formatCurrency } = useDateFormatter();
 
 const props = defineProps({
   show: {
@@ -204,14 +208,5 @@ const workspaceUrl = computed(() => {
 
 const close = () => {
   emit('close');
-};
-
-const formatDate = (date) => {
-  if (!date) return 'N/A';
-  return new Date(date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
 };
 </script>

@@ -196,13 +196,6 @@ const sortBy = (field: string) => {
     }
 };
 
-const formatShortDate = (date: string | null | undefined) => {
-    if (!date) return '';
-    return new Date(date).toLocaleDateString('en-US', {
-        month: 'short', day: 'numeric',
-    });
-};
-
 const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -438,7 +431,7 @@ const handleTagRemoved = (tag: Tag) => {
                                 <tbody class="bg-white dark:bg-zinc-800 divide-y divide-amber-100 dark:divide-zinc-700/50">
                                     <tr v-for="tx in transactionPage.data" :key="tx.id" class="hover:bg-amber-50 dark:hover:bg-zinc-700/30">
                                         <td class="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
-                                            {{ formatShortDate(tx.transaction_date) }}
+                                            {{ formatDate(tx.transaction_date) }}
                                         </td>
                                         <td class="px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 max-w-xs truncate">
                                             <div>{{ tx.description }}</div>

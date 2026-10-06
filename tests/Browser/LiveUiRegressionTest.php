@@ -735,3 +735,19 @@ it('keeps folder content ahead of collapsed public sharing at desktop and mobile
         }
     });
 });
+
+it('names the target parent when managing and creating empty subfolders', function (): void {
+    $user = $this->createUser();
+    $root = Collection::factory()->for($user)->create(['name' => 'Building']);
+    $parent = Collection::factory()->for($user)->create(['name' => 'Contracts', 'parent_id' => $root->id]);
+    $leaf = Collection::factory()->for($user)->create(['name' => 'Hønsfaret', 'parent_id' => $parent->id]);
+    $this->browse(function (Browser $browser) use ($user, $leaf): void {
+        $browser->loginAs($user)->visit('/collections/'.$leaf->id)->clickLink('Manage subfolders')
+            ->waitForText('No subfolders in Hønsfaret')->assertSee('Building')->assertSee('Contracts')
+            ->press('Create Subfolder')->waitForText('Create subfolder in Hønsfaret')
+            ->type('#collection-name', 'Plans')->press('Create')->waitUntilMissing('#collection-name')
+            ->assertSee('Plans');
+        $browser->clickLink('Back to Hønsfaret')->waitForLocation('/collections/'.$leaf->id);
+        expect(Collection::where('name', 'Plans')->sole()->parent_id)->toBe($leaf->id);
+    });
+});

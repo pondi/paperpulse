@@ -1,11 +1,11 @@
 <template>
-    <Head title="Collections" />
+    <Head :title="parentName ? `Subfolders in ${parentName}` : 'Collections'" />
 
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center justify-between">
                 <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
-                    Collections
+                    {{ parentName ? `Subfolders in ${parentName}` : 'Collections' }}
                 </h2>
                 <button
                     @click="openCreateModal"
@@ -15,7 +15,7 @@
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
-                    Create Collection
+                    {{ parentName ? 'Create Subfolder' : 'Create Collection' }}
                 </button>
             </div>
         </template>
@@ -23,6 +23,7 @@
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <Breadcrumbs :crumbs="[{ label: 'Collections', href: route('collections.index') }, ...breadcrumbs]" />
+                <Link v-if="parentName" :href="breadcrumbs[breadcrumbs.length - 1].href" class="mb-4 mr-4 inline-block text-blue-600 dark:text-blue-400">Back to {{ parentName }}</Link>
                 <Link :href="route('collections.organization.index')" class="mb-4 inline-block text-orange-600 dark:text-orange-400">Review folder recommendations</Link>
                 <p v-if="actionError" role="alert" class="mb-4 text-red-600 dark:text-red-400">{{ actionError }}</p>
                 <!-- Search and Filters -->
@@ -75,8 +76,8 @@
                             <svg class="mx-auto h-16 w-16 text-zinc-400 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                             </svg>
-                            <h3 class="mt-4 text-lg font-black text-zinc-900 dark:text-zinc-100">No collections</h3>
-                            <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Get started by creating a new collection to organize your files.</p>
+                            <h3 class="mt-4 text-lg font-black text-zinc-900 dark:text-zinc-100">{{ parentName ? `No subfolders in ${parentName}` : 'No collections' }}</h3>
+                            <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{{ parentName ? `Create a subfolder in ${parentName} to organize its files.` : 'Get started by creating a new collection to organize your files.' }}</p>
                             <div class="mt-8">
                                 <button
                                     @click="openCreateModal"
@@ -86,7 +87,7 @@
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                                     </svg>
-                                    Create Collection
+                                    {{ parentName ? 'Create Subfolder' : 'Create Collection' }}
                                 </button>
                             </div>
                         </div>
@@ -109,7 +110,7 @@
         <Modal :show="showModal" @close="closeModal">
             <div class="p-6">
                 <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
-                    {{ editingCollection ? 'Edit Collection' : 'Create New Collection' }}
+                    {{ editingCollection ? 'Edit Collection' : parentName ? `Create subfolder in ${parentName}` : 'Create New Collection' }}
                 </h2>
 
                 <form @submit.prevent="saveCollection" class="mt-6 space-y-6">
@@ -177,7 +178,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import axios from 'axios';
 import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import FolderLocationPicker from '@/Components/Domain/FolderLocationPicker.vue';
@@ -201,6 +202,7 @@ const props = defineProps({
     }
 });
 
+const parentName = computed(() => props.filters.parent_id ? props.breadcrumbs[props.breadcrumbs.length - 1].label : null);
 const actionError = ref('');
 const searchQuery = ref(props.filters.search || '');
 const showArchived = ref(props.filters.archived || false);

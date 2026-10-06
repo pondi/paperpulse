@@ -154,13 +154,22 @@ if (scenario === 'folder content priority') {
         assert.ok(html.includes(populated ? 'contract.pdf' : 'No files directly in this collection'));
     }
 }
+if (scenario === 'subfolder context') {
+    const html = await render('Pages/Collections/Index.vue', { collections: { data: [] }, filters: { parent_id: 3 },
+        breadcrumbs: [{ label: 'Building', href: route('collections.show', 1) }, { label: 'Contracts', href: route('collections.show', 2) }, { label: 'Hønsfaret', href: route('collections.show', 3) }] });
+    for (const text of ['Subfolders in Hønsfaret', 'No subfolders in Hønsfaret', 'Create Subfolder', 'Back to Hønsfaret', '/collections/3']) assert.ok(html.includes(text), text);
+    const root = await render('Pages/Collections/Index.vue', { collections: { data: [] }, filters: {}, breadcrumbs: [] });
+    assert.ok(root.includes('No collections'));
+    assert.ok(root.includes('Create Collection'));
+    assert.ok(!root.includes('No subfolders'));
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

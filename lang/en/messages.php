@@ -14,6 +14,8 @@ return [
     'bank_statements' => 'Bank Statements',
     'documents' => 'Documents',
     'all_documents' => 'All Documents',
+    'no_receipts_in_category' => 'No receipts in :category',
+    'no_receipts_in_category_description' => 'There are no receipts in this category. Choose All Receipts to clear the category filter.',
     'shared_with_me' => 'Shared With Me',
     'categories' => 'Categories',
     'tags' => 'Tags',

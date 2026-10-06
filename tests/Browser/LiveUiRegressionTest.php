@@ -15,6 +15,25 @@ use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
 
+it('browses categorized receipts and explains filtered empty document and receipt lists', function (): void {
+    $user = $this->createUser();
+    $category = Category::create(['user_id' => $user->id, 'name' => 'Garden & Plants', 'slug' => 'garden-plants']);
+    $merchant = Merchant::create(['user_id' => $user->id, 'name' => 'Eik Senteret']);
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id, 'category_id' => $category->id, 'merchant_id' => $merchant->id]);
+    $this->browse(function (Browser $browser) use ($user, $category): void {
+        $browser->loginAs($user)->visit('/documents/categories')->waitForText('Garden & Plants')
+            ->clickLink('View receipts (1) →')->waitForText('Receipts · Garden & Plants')->assertSee('Eik Senteret')
+            ->clickLink('All Receipts')->waitUntil("location.search === ''")
+            ->visit('/documents?category='.$category->id)->waitForText('No documents in Garden & Plants')
+            ->assertDontSee('Upload your first document')->clickLink('All documents')->waitUntil("location.search === ''");
+    });
+    $receipt->delete();
+    $this->browse(function (Browser $browser) use ($category): void {
+        $browser->visit('/receipts?category_id='.$category->id)->waitForText('No receipts in Garden & Plants')
+            ->assertDontSee('Upload Your First Receipts')->assertPresent('a[href$="/receipts"]');
+    });
+});
+
 it('shows actual document category counts including zero and singular usage', function (): void {
     $user = $this->createUser();
     foreach ([0, 1, 2] as $count) {
@@ -29,7 +48,7 @@ it('shows actual document category counts including zero and singular usage', fu
     $this->browse(function (Browser $browser) use ($user): void {
         $browser->loginAs($user)->visit('/documents/categories')->waitForText('Category 0')
             ->assertSee('0 documents')->assertSee('1 document')->assertSee('2 documents');
-        $browser->click('div.group:has(h3) a')->waitForLocation('/documents')->waitForText('No documents found');
+        $browser->click('div.group:has(h3) a')->waitForLocation('/documents')->waitForText('No documents in Category 0');
     });
 });
 

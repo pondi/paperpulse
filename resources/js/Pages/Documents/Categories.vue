@@ -22,6 +22,7 @@ interface Category {
     name: string;
     color: string;
     documents_count: number;
+    receipts_count: number;
     can_edit: boolean;
 }
 
@@ -175,13 +176,21 @@ const openDeleteModal = (category: Category) => {
                                     
                                 </div>
 
-                                <div class="mt-4 flex items-center justify-between">
-                                    <Link
-                                        :href="route('documents.index', { category: category.id })"
-                                        class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 text-sm"
-                                    >
-                                        View documents →
-                                    </Link>
+                                <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+                                    <div class="flex flex-wrap gap-3">
+                                        <Link
+                                            :href="route('documents.index', { category: category.id })"
+                                            class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 text-sm"
+                                        >
+                                            View documents →
+                                        </Link>
+                                        <Link
+                                            :href="route('receipts.index', { category_id: category.id })"
+                                            class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 text-sm"
+                                        >
+                                            View receipts ({{ category.receipts_count }}) →
+                                        </Link>
+                                    </div>
                                     
                                     <div v-if="category.can_edit" class="flex items-center space-x-2">
                                         <button

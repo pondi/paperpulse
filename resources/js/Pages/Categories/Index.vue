@@ -104,6 +104,10 @@
                     <span class="text-sm font-black text-zinc-900 dark:text-zinc-100">{{ formatCurrency(category.total_amount, category.currency) }}</span>
                   </div>
                 </div>
+                <div class="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-amber-700 dark:text-amber-400">
+                  <Link :href="route('receipts.index', { category_id: category.id })">{{ __('receipts') }} ({{ category.receipt_count }}) →</Link>
+                  <Link :href="route('documents.index', { category: category.id })">{{ __('documents') }} ({{ category.document_count }}) →</Link>
+                </div>
               </div>
             </div>
 
@@ -239,7 +243,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 import {

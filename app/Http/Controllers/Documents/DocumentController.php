@@ -443,7 +443,7 @@ class DocumentController extends BaseResourceController
     public function categories()
     {
         $categories = auth()->user()->categories()
-            ->withCount('documents')
+            ->withCount(['documents', 'receipts'])
             ->orderBy('name')
             ->get()
             ->map(function ($category) {

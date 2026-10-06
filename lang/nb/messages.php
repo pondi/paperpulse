@@ -14,6 +14,8 @@ return [
     'bank_statements' => 'Kontoutskrifter',
     'documents' => 'Dokumenter',
     'all_documents' => 'Alle dokumenter',
+    'no_receipts_in_category' => 'Ingen kvitteringer i :category',
+    'no_receipts_in_category_description' => 'Det finnes ingen kvitteringer i denne kategorien. Velg Alle kvitteringer for å fjerne kategorifilteret.',
     'shared_with_me' => 'Delt med meg',
     'categories' => 'Kategorier',
     'tags' => 'Tagger',

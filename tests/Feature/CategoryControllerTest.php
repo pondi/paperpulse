@@ -3,10 +3,26 @@
 declare(strict_types=1);
 
 use App\Models\Category;
+use App\Models\Receipt;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
+
+it('browses only receipts in the selected owner category and retains empty category context', function (): void {
+    $user = User::factory()->create();
+    $category = Category::create(['user_id' => $user->id, 'name' => 'Garden & Plants', 'slug' => 'garden-plants']);
+    $empty = Category::create(['user_id' => $user->id, 'name' => 'Empty garden', 'slug' => 'empty-garden']);
+    $receipt = Receipt::factory()->create(['user_id' => $user->id, 'category_id' => $category->id]);
+    Receipt::factory()->create(['user_id' => $user->id]);
+    $this->withoutVite()->actingAs($user)->get(route('receipts.index', ['category_id' => $category->id]))
+        ->assertOk()->assertInertia(fn ($page) => $page
+            ->where('category.name', 'Garden & Plants')->has('receipts', 1)->where('receipts.0.id', $receipt->id));
+    $this->get(route('receipts.index', ['category_id' => $empty->id]))
+        ->assertOk()->assertInertia(fn ($page) => $page->where('category.name', 'Empty garden')->has('receipts', 0));
+    $this->actingAs(User::factory()->create())->get(route('receipts.index', ['category_id' => $category->id]))
+        ->assertSessionHasErrors('category_id');
+});
 
 // --- Auth ---
 

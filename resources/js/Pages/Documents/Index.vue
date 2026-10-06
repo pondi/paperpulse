@@ -120,6 +120,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const activeCategory = computed(() => props.categories.find(category => category.id === Number(props.filters.category)));
 
 const { formatDate: formatDateLocalized, formatCurrency: formatCurrencyLocalized, formatDate, formatCurrency } = useDateFormatter();
 
@@ -388,12 +389,14 @@ const getEntityTypeBadge = (entityType?: string) => {
                     <!-- Empty State -->
                     <div v-if="documents.data.length === 0" class="p-12 text-center">
                         <DocumentIcon class="mx-auto h-16 w-16 text-zinc-400 dark:text-zinc-600" />
-                        <h3 class="mt-4 text-lg font-black text-zinc-900 dark:text-zinc-100">No documents found</h3>
+                        <h3 class="mt-4 text-lg font-black text-zinc-900 dark:text-zinc-100">{{ activeCategory ? `No documents in ${activeCategory.name}` : 'No documents found' }}</h3>
                         <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                            Upload your first document to get started.
+                            {{ activeCategory ? 'No documents match this category.' : 'Upload your first document to get started.' }}
                         </p>
                         <div class="mt-8">
+                            <Link v-if="activeCategory" :href="route('documents.index')" class="text-sm font-semibold text-amber-700 hover:underline dark:text-amber-400">All documents</Link>
                             <Link
+                                v-else
                                 :href="route('documents.upload')"
                                 class="inline-flex items-center px-6 py-3 bg-zinc-900 dark:bg-orange-600 border border-transparent rounded-md font-bold text-sm text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-orange-700 transition-all duration-200"
                             >

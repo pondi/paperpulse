@@ -74,13 +74,28 @@ if (scenario === 'original downloads') {
     assert.ok(drawer.includes('download="invoice.pdf"'));
     assert.ok(!drawer.includes('/documents/7/download'));
 }
+if (scenario === 'category browsing') {
+    const category = { id: 12, name: 'Garden & Plants', documents_count: 0, receipts_count: 1, color: '#123456', can_edit: false };
+    const categories = await render('Pages/Documents/Categories.vue', { categories: [category] });
+    assert.ok(categories.includes('/receipts?category_id=12'));
+    assert.ok(categories.includes('View receipts (1)'));
+    const documents = await render('Pages/Documents/Index.vue', { documents: { data: [], links: [] }, categories: [category], filters: { category: '12' } });
+    assert.ok(documents.includes('No documents in Garden &amp; Plants'));
+    assert.ok(documents.includes('All documents'));
+    assert.ok(!documents.includes('Upload your first document'));
+    page.props.language.messages = { receipts: 'Receipts', all_receipts: 'All Receipts', no_receipts_in_category: 'No receipts in :category', no_receipts_in_category_description: 'Choose All Receipts to clear the category filter.' };
+    const receipts = await render('Pages/Receipt/Index.vue', { receipts: [], categories: [category], category });
+    assert.ok(receipts.includes('No receipts in Garden &amp; Plants'));
+    assert.ok(receipts.includes('All Receipts'));
+    assert.ok(!receipts.includes('upload_first_receipts'));
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode($scenario));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads']);
+})->with(['original downloads', 'category browsing']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

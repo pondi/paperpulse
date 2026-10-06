@@ -1,11 +1,11 @@
 <template>
-  <Head :title="merchant ? `${__('receipts')} · ${merchant.name}` : __('receipts')" />
+  <Head :title="merchant || category ? `${__('receipts')} · ${(merchant || category).name}` : __('receipts')" />
 
   <AuthenticatedLayout>
     <template #header>
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-100 leading-tight">{{ __('receipts') }}<span v-if="merchant"> · {{ merchant.name }}</span></h2>
-        <Link v-if="merchant" :href="route('receipts.index')" class="text-sm font-semibold text-amber-700 hover:underline dark:text-amber-400">{{ __('all_receipts') }}</Link>
+        <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-100 leading-tight">{{ __('receipts') }}<span v-if="merchant || category"> · {{ (merchant || category).name }}</span></h2>
+        <Link v-if="merchant || category" :href="route('receipts.index')" class="text-sm font-semibold text-amber-700 hover:underline dark:text-amber-400">{{ __('all_receipts') }}</Link>
       </div>
     </template>
 
@@ -128,8 +128,8 @@
               <div class="px-6 py-24 sm:py-32 lg:px-8">
                 <div class="mx-auto max-w-2xl text-center">
                   <p class="text-base/7 font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider">{{ __('no_receipts_found') }}</p>
-                  <h2 class="mt-2 text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-5xl">{{ __('upload_first_receipts') }}</h2>
-                  <p class="mt-6 text-lg leading-8 text-zinc-600 dark:text-zinc-400">{{ __('no_receipts_description') }}</p>
+                  <h2 class="mt-2 text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-5xl">{{ category ? __('no_receipts_in_category').replace(':category', category.name) : __('upload_first_receipts') }}</h2>
+                  <p class="mt-6 text-lg leading-8 text-zinc-600 dark:text-zinc-400">{{ category ? __('no_receipts_in_category_description') : __('no_receipts_description') }}</p>
                   <div class="mt-10">
                     <Link :href="route('documents.upload')" class="inline-flex items-center px-6 py-3 bg-zinc-900 dark:bg-amber-600 border border-transparent rounded-md font-bold text-sm text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-amber-700 transition-all duration-200">
                       {{ __('upload_receipts') }}
@@ -439,6 +439,10 @@ const props = defineProps({
     required: true
   },
   merchant: {
+    type: Object,
+    default: null
+  },
+  category: {
     type: Object,
     default: null
   },

@@ -126,6 +126,9 @@ class ReceiptController extends BaseResourceController
         return inertia("{$this->resource}/Index", [
             'receipts' => $receipts->through(fn ($receipt) => $this->transformForIndex($receipt))->items(),
             'categories' => $categories,
+            'category' => $request->filled('category_id')
+                ? $user->categories()->findOrFail($request->input('category_id'), ['id', 'name'])
+                : null,
             'pagination' => [
                 'current_page' => $receipts->currentPage(),
                 'last_page' => $receipts->lastPage(),

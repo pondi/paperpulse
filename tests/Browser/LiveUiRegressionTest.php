@@ -810,3 +810,20 @@ it('opens scanner connection instructions and processing settings from empty imp
             ->assertScript('location.hash', '#preferences-scanner');
     });
 });
+
+it('keeps recent receipt merchant and amount pairs visible at phone widths', function (): void {
+    $user = $this->createUser();
+    $merchant = Merchant::create(['user_id' => $user->id, 'name' => 'Long merchant name with multiple words']);
+    foreach ([42, 1234.56] as $amount) {
+        Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id, 'merchant_id' => $merchant->id,
+            'receipt_date' => '2026-10-06', 'total_amount' => $amount, 'currency' => 'EUR', 'receipt_category' => 'Groceries']);
+    }
+    $this->browse(function (Browser $browser) use ($user): void {
+        foreach ([320, 390] as $width) {
+            $browser->resize($width, 844)->loginAs($user)->visit('/dashboard')->waitFor('tbody tr')
+                ->assertSee('€42.00')->assertSee('€1,234.56')
+                ->assertScript("Array.from(document.querySelectorAll('tbody tr td:nth-child(3)')).every(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.width > 0; })", true)
+                ->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
+        }
+    });
+});

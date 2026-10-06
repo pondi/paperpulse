@@ -83,24 +83,25 @@ const { formatDate, formatCurrency } = useDateFormatter();
                             <table class="min-w-full divide-y divide-amber-200 dark:divide-zinc-700">
                                 <thead>
                                     <tr>
-                                        <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">{{ __('date') }}</th>
-                                        <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">{{ __('merchant') }}</th>
-                                        <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">{{ __('amount') }}</th>
-                                        <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">{{ __('category') }}</th>
+                                        <th class="hidden sm:table-cell px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">{{ __('date') }}</th>
+                                        <th class="px-3 py-3 sm:px-6 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">{{ __('merchant') }}</th>
+                                        <th class="px-3 py-3 sm:px-6 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">{{ __('amount') }}</th>
+                                        <th class="hidden sm:table-cell px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">{{ __('category') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white dark:bg-zinc-900 divide-y divide-amber-200 dark:divide-zinc-700">
                                     <tr v-for="receipt in recentReceipts" :key="receipt.id" class="hover:bg-amber-50 dark:hover:bg-zinc-800 transition-colors duration-200">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                        <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900 dark:text-zinc-100">
                                             {{ formatDate(receipt.receipt_date) }}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                        <td class="max-w-[10rem] break-words px-3 py-4 text-sm font-medium sm:max-w-none sm:px-6 text-zinc-900 dark:text-zinc-100">
                                             <Link :href="receipt.file_id ? route('files.show', receipt.file_id) : route('receipts.show', receipt.id)" class="hover:text-amber-700 dark:hover:text-amber-400">{{ receipt.merchant?.name || 'Open receipt' }}</Link>
+                                            <span class="mt-1 block text-xs font-normal text-zinc-500 dark:text-zinc-400 sm:hidden">{{ formatDate(receipt.receipt_date) }}<span v-if="receipt.receipt_category"> · {{ receipt.receipt_category }}</span></span>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold sm:px-6 text-zinc-900 dark:text-zinc-100">
                                             {{ formatCurrency(receipt.total_amount, receipt.currency) }}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">
+                                        <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">
                                             {{ receipt.receipt_category }}
                                         </td>
                                     </tr>

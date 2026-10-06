@@ -223,13 +223,23 @@ if (scenario === 'scanner onboarding') {
         assert.equal(/<button[^>]*\sdisabled(?:=|[\s>])/.test(html), !enabled);
     }
 }
+if (scenario === 'mobile dashboard amounts') {
+    const html = await render('Pages/Dashboard.vue', { expiringVouchers: { items: [], total: 0 }, endingWarranties: { items: [], total: 0 },
+        recentReceipts: [{ id: 5, merchant: { name: 'Long merchant name' }, receipt_date: '2026-10-06', total_amount: 42, currency: 'EUR', receipt_category: 'Groceries' }] });
+    assert.ok(html.includes('Long merchant name'));
+    assert.ok(html.includes('42 EUR'));
+    assert.ok(html.includes('Groceries'));
+    assert.ok(html.includes('max-w-[10rem] break-words'));
+    assert.equal((html.match(/hidden sm:table-cell/g) || []).length, 4);
+    assert.ok(html.includes('2026-10-06'));
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

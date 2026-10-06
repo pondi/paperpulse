@@ -24,11 +24,11 @@ class ExtractableEntityFactory extends Factory
         return [
             'file_id' => $fileFactory,
             'user_id' => function (array $attributes) {
-                return File::query()->findOrFail($attributes['file_id'])->user_id;
+                return File::withoutGlobalScope('user')->findOrFail($attributes['file_id'])->user_id;
             },
             'entity_type' => 'document',
             'entity_id' => function (array $attributes) {
-                $file = File::query()->findOrFail($attributes['file_id']);
+                $file = File::withoutGlobalScope('user')->findOrFail($attributes['file_id']);
 
                 return Document::factory()->create([
                     'file_id' => $file->id,

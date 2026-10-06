@@ -23,7 +23,7 @@ class ReturnPolicyFactory extends Factory
         return [
             'file_id' => $fileFactory,
             'user_id' => function (array $attributes) {
-                return File::query()->findOrFail($attributes['file_id'])->user_id;
+                return File::withoutGlobalScope('user')->findOrFail($attributes['file_id'])->user_id;
             },
             'receipt_id' => null,
             'invoice_id' => null,

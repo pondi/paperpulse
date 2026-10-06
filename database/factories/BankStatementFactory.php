@@ -28,7 +28,7 @@ class BankStatementFactory extends Factory
         return [
             'file_id' => $fileFactory,
             'user_id' => function (array $attributes) {
-                return File::query()->findOrFail($attributes['file_id'])->user_id;
+                return File::withoutGlobalScope('user')->findOrFail($attributes['file_id'])->user_id;
             },
             'bank_name' => $this->faker->company(),
             'account_holder_name' => $this->faker->name(),

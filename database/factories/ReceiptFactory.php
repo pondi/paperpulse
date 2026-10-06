@@ -26,7 +26,7 @@ class ReceiptFactory extends Factory
                 'processing_type' => 'receipt',
             ]),
             'user_id' => function (array $attributes) {
-                return File::query()->findOrFail($attributes['file_id'])->user_id;
+                return File::withoutGlobalScope('user')->findOrFail($attributes['file_id'])->user_id;
             },
             'merchant_id' => null,
             'category_id' => null,

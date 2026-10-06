@@ -23,7 +23,7 @@ class ContractFactory extends Factory
         return [
             'file_id' => $fileFactory,
             'user_id' => function (array $attributes) {
-                return File::query()->findOrFail($attributes['file_id'])->user_id;
+                return File::withoutGlobalScope('user')->findOrFail($attributes['file_id'])->user_id;
             },
             'contract_number' => $this->faker->optional()->bothify('CT-#####'),
             'contract_title' => $this->faker->sentence(4),

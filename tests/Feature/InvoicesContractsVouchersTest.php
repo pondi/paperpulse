@@ -1,15 +1,20 @@
 <?php
 
+use App\Models\BankStatement;
 use App\Models\Contract;
+use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\FileCleanupManifest;
 use App\Models\Invoice;
 use App\Models\InvoiceLineItem;
 use App\Models\Merchant;
+use App\Models\Receipt;
+use App\Models\ReturnPolicy;
 use App\Models\Tag;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Models\Warranty;
 use App\Services\StorageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -34,6 +39,36 @@ it('infers the invoice factory owner independently of the authenticated user', f
         expect($invoice->user_id)->toBe($owner->id);
     }
 })->with([false, true]);
+
+it('infers sibling entity factory ownership independently of authentication', function (string $modelClass, bool $supplyFile): void {
+    $viewer = User::factory()->create();
+    $owner = User::factory()->create();
+    $this->actingAs($viewer);
+
+    $attributes = $supplyFile
+        ? ['file_id' => File::factory()->create(['user_id' => $owner->id])->id]
+        : [];
+    $entity = $modelClass::factory()->create($attributes);
+    $file = File::withoutGlobalScope('user')->findOrFail($entity->file_id);
+
+    expect($entity->user_id)->toBe($file->user_id)
+        ->and($entity->user_id)->not->toBe($viewer->id);
+
+    if ($supplyFile) {
+        expect($entity->user_id)->toBe($owner->id);
+    }
+
+    expect(File::query()->find($file->id))->toBeNull();
+})->with([
+    Document::class,
+    Contract::class,
+    Voucher::class,
+    Receipt::class,
+    Warranty::class,
+    BankStatement::class,
+    ReturnPolicy::class,
+    ExtractableEntity::class,
+])->with([false, true]);
 
 it('renders invoices index with structured data', function () {
     $user = User::factory()->create();

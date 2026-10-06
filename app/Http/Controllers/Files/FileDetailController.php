@@ -55,7 +55,9 @@ class FileDetailController extends Controller
         $fileData['note'] = $file->note;
         $fileData['collections'] = $file->collections()->accessibleBy($request->user())->get(['collections.id', 'collections.name']);
         if ($fileData['can_view_extraction_report']) {
-            $fileData['extraction'] = (new FileExtractionReportResource($file))->toArray($request)['extraction'];
+            $report = (new FileExtractionReportResource($file))->toArray($request);
+            $fileData['extraction'] = $report['extraction'];
+            $fileData['failure'] = $report['failure'];
         }
         if ($entities->isEmpty()) {
             $fileData['primary_receipt'] = Receipt::withoutGlobalScope('user')->where('user_id', $file->user_id)->where('file_id', $file->id)->first(['id']);

@@ -259,13 +259,26 @@ if (scenario === 'processing timing') {
         assert.equal(html.includes('Finished'), ['completed', 'failed'].includes(state));
     }
 }
+if (scenario === 'failure diagnostics') {
+    for (const [category, cause, recovery] of [['unsupported_format', 'source format is not supported', 'Upload a supported'],
+        ['api_timeout', 'extraction service timed out', 'Retry processing'], ['unknown_error', 'failure cause was not recorded', 'contact support']]) {
+        const html = await render('Components/Domain/ProcessingFailure.vue', { fileId: 402, failure: { category, timestamp: '2026-10-06T10:00:00Z' }, processing: { stage: 'Extract text' } });
+        for (const text of [cause, recovery, 'Failed stage: Extract text', 'Failed at 2026-10-06T10:00:00Z', '/files-processing?file_id=402']) assert.ok(html.includes(text), text);
+        assert.ok(!html.includes('unknown error'));
+    }
+    const html = await render('Pages/Files/Show.vue', { file: { id: 402, name: 'Failed.pdf', status: 'failed', can_view_extraction_report: true }, extractedEntities: [] });
+    assert.ok(html.includes('Extraction stopped'));
+    assert.ok(html.includes('You can still view the original'));
+    assert.ok(!html.includes('while its information is being extracted'));
+    assert.ok(!html.includes('Your document is being processed'));
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts', 'receipt totals review', 'processing timing']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts', 'receipt totals review', 'processing timing', 'failure diagnostics']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

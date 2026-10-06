@@ -504,6 +504,20 @@ class ProcessFileGemini extends BaseJob
      */
     protected function categorizeFailure(Throwable $exception): string
     {
+        if ($exception instanceof GeminiApiException) {
+            $category = match ($exception->getErrorCode()) {
+                GeminiApiException::CODE_FILE_NOT_FOUND => 'file_missing',
+                GeminiApiException::CODE_FILE_TOO_LARGE => 'file_too_large',
+                GeminiApiException::CODE_UNSUPPORTED_MIME => 'unsupported_format',
+                GeminiApiException::CODE_RATE_LIMIT => 'api_rate_limited',
+                GeminiApiException::CODE_TIMEOUT => 'api_timeout',
+                default => null,
+            };
+            if ($category !== null) {
+                return $category;
+            }
+        }
+
         $message = strtolower($exception->getMessage());
 
         // Classification failures

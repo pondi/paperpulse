@@ -1,5 +1,7 @@
 <?php
 
+use App\Exceptions\GeminiApiException;
+use App\Jobs\Files\ProcessFileGemini;
 use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
@@ -120,3 +122,22 @@ it('shows durable queued active retry and terminal job timing in workspace activ
     $this->getJson(route('api.files.extraction-report', $file))->assertJsonPath('data.processing.state', 'completed')
         ->assertJsonPath('data.processing.elapsed_seconds', 120)->assertJsonPath('data.processing.progress', 100);
 });
+
+it('records safe source and service failure categories without exposing internal messages', function (string $code, string $category): void {
+    $this->freezeTime();
+    $file = File::factory()->create(['user_id' => $this->owner->id, 'status' => 'processing']);
+    $job = new class('failure-test') extends ProcessFileGemini
+    {
+        public function record(File $file, Throwable $exception): void
+        {
+            $this->recordGeminiFailure($file, $exception);
+        }
+    };
+    $job->record($file, new GeminiApiException('secret key and private source', $code, false, ['key' => 'secret']));
+    $this->actingAs($this->owner)->getJson(route('api.files.extraction-report', $file))->assertOk()
+        ->assertJsonPath('data.failure.category', $category)->assertJsonPath('data.failure.timestamp', now()->toISOString())
+        ->assertDontSee('secret')->assertDontSee('private source');
+    $this->get(route('files.show', $file))->assertInertia(fn (AssertableInertia $page) => $page->where('file.failure.category', $category));
+    $file->update(['status' => 'pending']);
+    $this->getJson(route('api.files.extraction-report', $file))->assertJsonPath('data.failure', []);
+})->with([['unsupported_mime', 'unsupported_format'], ['file_too_large', 'file_too_large'], ['timeout', 'api_timeout']]);

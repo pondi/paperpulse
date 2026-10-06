@@ -3,6 +3,7 @@ import { computed, watch } from 'vue';
 import { Head, Link, usePoll } from '@inertiajs/vue3';
 import { ArrowLeftIcon, ArrowTopRightOnSquareIcon, ExclamationCircleIcon, DocumentIcon } from '@heroicons/vue/24/outline';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import ProcessingFailure from '@/Components/Domain/ProcessingFailure.vue';
 import ProcessingProgress from '@/Components/Domain/ProcessingProgress.vue';
 import DocumentPreview from '@/Components/Domain/DocumentPreview.vue';
 import VoucherCard from '@/Components/Entities/VoucherCard.vue';
@@ -60,7 +61,8 @@ const reviewMessage = computed(() => reviewMessages[props.file.review?.reason] |
                         <h2 class="text-sm font-semibold text-zinc-900 dark:text-white">Document information</h2>
                         <span :class="[file.status === 'needs_review' || file.status === 'failed' ? 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400' : file.status === 'completed' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400', 'rounded-md px-2 py-1 text-xs font-medium']">{{ statusLabels[file.status] || file.status }}</span>
                     </div>
-                    <div v-if="file.extraction?.has_extraction_issues" class="mt-4 flex items-start gap-2 rounded-lg bg-amber-50 p-3 dark:bg-amber-500/10">
+                    <ProcessingFailure v-if="file.status === 'failed' && file.can_view_extraction_report" :failure="file.failure" :processing="file.processing" :file-id="file.id" class="mt-4" />
+                    <div v-else-if="file.extraction?.has_extraction_issues" class="mt-4 flex items-start gap-2 rounded-lg bg-amber-50 p-3 dark:bg-amber-500/10">
                         <ExclamationCircleIcon class="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" /><p class="text-sm leading-5 text-amber-800 dark:text-amber-300">{{ reviewMessage }}</p>
                     </div>
                     <ProcessingProgress v-if="file.processing" :processing="file.processing" class="mt-4" />
@@ -93,7 +95,7 @@ const reviewMessage = computed(() => reviewMessages[props.file.review?.reason] |
                 <section v-if="!extractedEntities.length" class="flex flex-col items-center gap-3 rounded-xl border border-dashed border-zinc-300 p-8 text-center dark:border-zinc-700">
                     <DocumentIcon class="h-8 w-8 text-zinc-300 dark:text-zinc-600" aria-hidden="true" />
                     <template v-if="legacy"><h2 class="text-sm font-medium text-zinc-800 dark:text-white">{{ legacy.label }} information is available</h2><Link :href="legacy.href" class="text-sm font-medium text-amber-700 dark:text-amber-400">Open {{ legacy.label.toLowerCase() }} details</Link></template>
-                    <template v-else><h2 class="text-sm font-medium text-zinc-800 dark:text-white">{{ ['pending', 'processing'].includes(file.status) ? 'Your document is being processed' : 'No extracted information yet' }}</h2><p class="text-xs leading-5 text-zinc-500 dark:text-zinc-400">You can view the original while its information is being extracted.</p></template>
+                    <template v-else><h2 class="text-sm font-medium text-zinc-800 dark:text-white">{{ file.status === 'failed' ? 'Extraction stopped' : ['pending', 'processing'].includes(file.status) ? 'Your document is being processed' : 'No extracted information yet' }}</h2><p class="text-xs leading-5 text-zinc-500 dark:text-zinc-400">{{ ['pending', 'processing'].includes(file.status) ? 'You can view the original while its information is being extracted.' : 'You can still view the original. Check the extraction report for the next step.' }}</p></template>
                 </section>
             </div>
         </div>

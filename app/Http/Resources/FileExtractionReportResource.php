@@ -36,7 +36,10 @@ class FileExtractionReportResource extends JsonResource
             'review' => Arr::only($this->meta['review'] ?? [], ['reason', 'confidence', 'reasoning', 'page_limit', 'corrected_type']),
             'reconciliation' => $receipt?->totalsReconciliation(),
             'receipt_currency' => $receipt?->currency,
-            'failure' => Arr::only($this->meta['gemini_error'] ?? [], ['category', 'retryable']),
+            'failure' => $this->status === 'failed' ? [
+                ...Arr::only($this->meta['gemini_error'] ?? [], ['category', 'retryable']),
+                'timestamp' => $this->meta['gemini_error']['timestamp'] ?? $this->meta['last_processing_error']['failed_at'] ?? $this->resource->processingSummary()['finished_at'] ?? null,
+            ] : [],
             'entities' => $this->extractableEntities->map(fn ($entity): array => [
                 'type' => $entity->entity_type, 'id' => $entity->entity_id, 'is_primary' => $entity->is_primary,
                 'confidence_score' => $entity->confidence_score, 'provider' => $entity->extraction_provider,

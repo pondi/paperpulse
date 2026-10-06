@@ -41,7 +41,7 @@
           <button type="button" @click="router.post(route('files.reprocess', report.file.id))" class="self-start font-medium underline">Retry extraction for missing source values</button>
         </div>
         <p v-if="report.review.reasoning">{{ report.review.reasoning }}</p>
-        <p v-if="report.failure.category">Processing failed: {{ label(report.failure.category) }}. {{ report.failure.retryable ? 'You can retry processing from the file list.' : 'Review the source file before retrying.' }}</p>
+        <ProcessingFailure v-if="report.file.status === 'failed'" :failure="report.failure" :processing="report.processing" :file-id="report.file.id" />
         <ul v-if="report.extraction.validation_warnings.length" class="flex list-disc flex-col gap-2 pl-5">
           <li v-for="(warning, index) in report.extraction.validation_warnings" :key="index">{{ warning }}</li>
         </ul>
@@ -69,6 +69,7 @@ import { ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 import { useTranslations } from '@/Composables/useTranslations';
+import ProcessingFailure from '@/Components/Domain/ProcessingFailure.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
 const props = defineProps({ report: { type: Object, required: true } });

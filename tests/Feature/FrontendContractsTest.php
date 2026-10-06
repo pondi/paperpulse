@@ -172,13 +172,26 @@ if (scenario === 'settings sections') {
     }
     assert.ok(html.indexOf('id="preferences-general"') < html.indexOf('id="preferences-organization"'));
 }
+if (scenario === 'invoice native line values') {
+    const html = await render('Pages/Invoices/Show.vue', { invoice: { id: 1, invoice_number: 'NATIVE-1', currency: 'EUR', payment_status: 'unpaid', total_amount: 42, tags: [], collections: [], shared_users: [], file: null,
+        line_items: [{ id: 1, description: 'Zero values', quantity: 1, unit_price: 0, tax_rate: 0, total_amount: 0 },
+            { id: 2, description: 'Missing values', quantity: 1, unit_price: null, tax_rate: null, total_amount: null },
+            { id: 3, description: 'Native values', quantity: 1, unit_price: '42.00', tax_rate: '25.00', total_amount: '42.00', converted_unit_price: null }] }, available_tags: [] });
+    assert.ok(html.includes('0 EUR'));
+    assert.ok(html.includes('0%'));
+    assert.ok(html.includes('42.00 EUR'));
+    assert.ok(html.includes('25.00%'));
+    assert.equal((html.match(/Not recorded/g) || []).length, 3);
+    assert.ok(!html.includes('Conversion unavailable'));
+    assert.ok(!html.includes('>%<'));
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

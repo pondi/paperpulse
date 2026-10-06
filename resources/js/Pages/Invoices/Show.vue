@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 const { formatDate, formatCurrency: formatOriginalCurrency } = useDateFormatter();
-const formatCurrency = (amount: number) => formatOriginalCurrency(amount, props.invoice.currency);
+const formatCurrency = (amount: number | string) => formatOriginalCurrency(amount, props.invoice.currency);
 import { ref, computed, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -63,9 +63,9 @@ interface LineItem {
     id: number;
     description: string;
     quantity: number;
-    unit_price: number;
-    tax_rate: number;
-    total_amount: number;
+    unit_price: number | string | null;
+    tax_rate: number | string | null;
+    total_amount: number | string | null;
 }
 
 interface Invoice {
@@ -432,9 +432,9 @@ const getInvoiceTypeClass = () => {
                                     <tr v-for="item in invoice.line_items" :key="item.id">
                                         <td class="px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100">{{ item.description }}</td>
                                         <td class="px-4 py-3 text-sm text-right text-zinc-900 dark:text-zinc-100">{{ item.quantity }}</td>
-                                        <td class="px-4 py-3 text-sm text-right text-zinc-900 dark:text-zinc-100">{{ formatCurrency(item.unit_price) }}</td>
-                                        <td class="px-4 py-3 text-sm text-right text-zinc-600 dark:text-zinc-300">{{ item.tax_rate }}%</td>
-                                        <td class="px-4 py-3 text-sm text-right font-medium text-zinc-900 dark:text-zinc-100">{{ formatCurrency(item.total_amount) }}</td>
+                                        <td class="px-4 py-3 text-sm text-right text-zinc-900 dark:text-zinc-100">{{ item.unit_price == null ? 'Not recorded' : formatCurrency(item.unit_price) }}</td>
+                                        <td class="px-4 py-3 text-sm text-right text-zinc-600 dark:text-zinc-300">{{ item.tax_rate == null ? 'Not recorded' : `${item.tax_rate}%` }}</td>
+                                        <td class="px-4 py-3 text-sm text-right font-medium text-zinc-900 dark:text-zinc-100">{{ item.total_amount == null ? 'Not recorded' : formatCurrency(item.total_amount) }}</td>
                                     </tr>
                                 </tbody>
                             </table>

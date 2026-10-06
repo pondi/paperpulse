@@ -66,6 +66,8 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        $exceptions->dontReportDuplicates();
+
         $exceptions->render(function (ValidationException $e, $request) {
             if ($request->expectsJson()) {
                 $response = [

@@ -21,6 +21,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -131,6 +132,18 @@ abstract class BaseJob implements ShouldQueue
     final public function handle(): void
     {
         $metadata = $this->getMetadata();
+        Context::forget(['processing_failure', 'processing_stage', 'queue_failure']);
+        Context::add('processing', [
+            'job_id' => $this->jobID,
+            'task_id' => $this->uuid,
+            'job_class' => static::class,
+            'file_id' => $metadata['fileId'] ?? null,
+            'user_id' => $metadata['userId'] ?? null,
+            'provider' => $metadata['processingProvider'] ?? null,
+            'generation' => $metadata['processingGeneration'] ?? null,
+            'request_id' => $this->requestId,
+        ]);
+
         $ownerId = $metadata['userId'] ?? ($this->pulseDavFile->user_id ?? null);
         if (isset($metadata['fileId'])) {
             (new File)->getConnection()->transaction(function () use ($metadata, $ownerId): void {

@@ -4,6 +4,8 @@ namespace App\Services\AI\Shared;
 
 use App\Exceptions\AIResponseException;
 use App\Models\ProcessingUsageCounter;
+use Illuminate\Support\Facades\Context;
+use Throwable;
 
 class ProcessingUsageBudget
 {
@@ -15,6 +17,9 @@ class ProcessingUsageBudget
         self::$context = ['user' => $userId, 'run' => $runId, 'stage' => $stage, 'limits' => $limits];
         try {
             return $operation();
+        } catch (Throwable $exception) {
+            Context::add('processing_stage', $stage);
+            throw $exception;
         } finally {
             self::$context = $previous;
         }

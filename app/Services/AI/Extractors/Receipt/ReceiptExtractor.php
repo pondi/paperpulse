@@ -8,6 +8,7 @@ use App\Models\File;
 use App\Services\AI\Extractors\EntityExtractorContract;
 use App\Services\AI\Providers\GeminiProvider;
 use Exception;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -100,6 +101,7 @@ class ReceiptExtractor implements EntityExtractorContract
                         throw new AIResponseException('Supplemental policy validation failed: '.implode(', ', $supplementalValidation['errors']), context: [
                             'field' => $field,
                             'errors' => $supplementalValidation['errors'],
+                            'dates' => Arr::only($entry, ['return_deadline', 'exchange_deadline']),
                         ]);
                     }
                     $normalizer = app('App\\Services\\AI\\Extractors\\'.$type.'\\'.$type.'DataNormalizer');

@@ -60,6 +60,7 @@ it('reports the failing supplemental field and validation errors', function (): 
     } catch (AIResponseException $exception) {
         expect($exception->context['field'])->toBe('return_policies')
             ->and($exception->context['errors'])->not->toBeEmpty()
+            ->and($exception->context['dates'])->toBe(['return_deadline' => '2024-02-30'])
             ->and($exception->getMessage())->toContain('return deadline')
             ->and($exception->retryable)->toBeFalse();
     }

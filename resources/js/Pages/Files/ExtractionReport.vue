@@ -13,7 +13,7 @@
       <section class="rounded-lg bg-white p-6 shadow dark:bg-zinc-800">
         <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ report.file.name }}</h3>
         <dl class="mt-4 grid gap-4 text-sm sm:grid-cols-2">
-          <div><dt class="text-zinc-500 dark:text-zinc-400">Status</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ report.file.status === 'needs_review' ? __('needs_review') : label(report.file.status) }}</dd></div>
+          <div><dt class="text-zinc-500 dark:text-zinc-400">Status</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ fileStatusLabel({ ...report.file, review: report.review }) }}</dd></div>
           <div><dt class="text-zinc-500 dark:text-zinc-400">Document type</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ report.classification.type || report.file.file_type }}</dd></div>
           <div><dt class="text-zinc-500 dark:text-zinc-400">Classification confidence</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ confidence(report.classification.confidence) }}</dd></div>
           <div><dt class="text-zinc-500 dark:text-zinc-400">Extraction confidence</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ confidence(report.extraction.confidence_score) }}</dd></div>
@@ -24,7 +24,8 @@
 
       <section v-if="report.extraction.has_extraction_issues" class="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 p-6 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
         <h3 class="font-semibold">Extraction needs attention</h3>
-        <p v-if="report.review.reason">Review: {{ label(report.review.reason) }}<span v-if="report.review.page_limit"> (page limit: {{ report.review.page_limit }})</span></p>
+        <ProcessingLimit v-if="report.review.reason === 'processing_limit'" :review="report.review" />
+        <p v-else-if="report.review.reason">Review: {{ label(report.review.reason) }}<span v-if="report.review.page_limit"> (page limit: {{ report.review.page_limit }})</span></p>
         <div v-if="report.review.reason === 'receipt_totals'" class="flex flex-col gap-3">
           <dl v-if="report.reconciliation" class="flex flex-col gap-2">
             <div><dt class="inline font-medium">Line item total: </dt><dd class="inline">{{ formatCurrency(report.reconciliation.calculated_total, report.receipt_currency) }}</dd></div>
@@ -68,7 +69,8 @@
 import { ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
-import { useTranslations } from '@/Composables/useTranslations';
+import { fileStatusLabel } from '@/utils/fileStatus';
+import ProcessingLimit from '@/Components/Domain/ProcessingLimit.vue';
 import ProcessingFailure from '@/Components/Domain/ProcessingFailure.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
@@ -88,7 +90,6 @@ const resolveReview = () => {
     });
 };
 
-const { __ } = useTranslations();
 const confidence = value => value == null ? 'Not recorded' : `${Math.round(Number(value) * 100)}%`;
 const label = value => value.replace(/_/g, ' ');
 </script>

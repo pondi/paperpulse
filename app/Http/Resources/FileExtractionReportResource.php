@@ -33,7 +33,7 @@ class FileExtractionReportResource extends JsonResource
                 'has_extraction_issues' => in_array($this->status, ['needs_review', 'failed'], true) || $warnings !== [] || ($coverage['complete'] ?? null) === false,
             ],
             'coverage' => $coverage,
-            'review' => Arr::only($this->meta['review'] ?? [], ['reason', 'confidence', 'reasoning', 'page_limit', 'corrected_type']),
+            'review' => Arr::only($this->meta['review'] ?? [], ['reason', 'confidence', 'reasoning', 'page_limit', 'text_limit_bytes', 'corrected_type']),
             'reconciliation' => $receipt?->totalsReconciliation(),
             'receipt_currency' => $receipt?->currency,
             'failure' => $this->status === 'failed' ? [

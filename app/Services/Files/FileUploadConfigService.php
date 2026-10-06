@@ -80,6 +80,10 @@ class FileUploadConfigService
     {
         return [
             'provider' => $this->getProvider(),
+            'processingLimits' => $this->getProvider() === 'gemini' ? [
+                'pdfPages' => max(1, (int) config('ai.providers.gemini.large_pdf_page_limit', 25)),
+                'textBytes' => (int) config('ai.providers.gemini.text_max_bytes', 200000),
+            ] : null,
             'maxFileSizeMb' => ['receipt' => $this->getMaxSizeMb('receipt'), 'document' => $this->getMaxSizeMb('document')],
             'capabilities' => ['receipt' => $this->getCapabilities('receipt'), 'document' => $this->getCapabilities('document')],
         ];

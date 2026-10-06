@@ -73,7 +73,7 @@ class FileInertiaResource extends JsonResource
 
         if ($this->status === 'needs_review') {
             $review = $this->meta['review'] ?? [];
-            $data['review'] = array_intersect_key($review, array_flip(['reason', 'confidence', 'reasoning']));
+            $data['review'] = array_intersect_key($review, array_flip(['reason', 'confidence', 'reasoning', 'page_limit', 'text_limit_bytes']));
         }
 
         if ($this->includeDetailsUrl) {

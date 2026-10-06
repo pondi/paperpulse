@@ -26,6 +26,7 @@ import * as vue from 'vue';
 import { parse, compileScript } from '@vue/compiler-sfc';
 import { renderToString } from '@vue/server-renderer';
 import { Link } from '@inertiajs/vue3';
+import * as fileStatus from './resources/js/utils/fileStatus.js';
 import { route as ziggyRoute } from './vendor/tightenco/ziggy/dist/index.js';
 
 const input = JSON.parse(fs.readFileSync(0, 'utf8'));
@@ -42,7 +43,7 @@ async function render(file, props) {
     let code = compiled.content.replace(/import\s+\{([\s\S]*?)\}\s+from\s+['"]([^'"]+)['"];?/g, (_, specifiers, module) => {
         for (const specifier of specifiers.split(',').filter(value => value.trim())) {
             const [name, alias = name] = specifier.trim().split(/\s+as\s+/);
-            bindings[alias] = module === 'vue' ? vue[name]
+            bindings[alias] = module.includes('fileStatus') ? fileStatus[name] : module === 'vue' ? vue[name]
                 : name === 'Link' ? Link : name === 'Head' ? () => null
                 : name === 'usePage' ? () => page
                 : name === 'useForm' ? data => vue.reactive({ ...data, processing: false, errors: {} })
@@ -272,13 +273,27 @@ if (scenario === 'failure diagnostics') {
     assert.ok(!html.includes('while its information is being extracted'));
     assert.ok(!html.includes('Your document is being processed'));
 }
+if (scenario === 'processing limits') {
+    const review = { reason: 'processing_limit', page_limit: 25 };
+    const report = await render('Pages/Files/ExtractionReport.vue', { report: { file: { id: 353, name: '32-page.pdf', status: 'needs_review' },
+        classification: {}, extraction: { has_extraction_issues: true, validation_warnings: [] }, coverage: { processed_pages: 0, total_pages: 32 }, review, failure: {}, entities: [] } });
+    assert.ok(report.includes('Blocked: processing limit'));
+    assert.ok(report.includes('0 / 32'));
+    const recovery = await render('Components/Domain/ProcessingLimit.vue', { review });
+    for (const text of ['No pages were extracted', '25 pages or fewer', 'Upload split files', '/documents/upload', 'Retrying this unchanged file will not remove the limit']) assert.ok(recovery.includes(text), text);
+    const upload = await render('Pages/Documents/Upload.vue', { uploadConfig: { processingLimits: { pdfPages: 25, textBytes: 200000 }, capabilities: { receipt: { pdf: {} }, document: { pdf: {} } }, maxFileSizeMb: { receipt: 50, document: 50 } } });
+    assert.ok(upload.includes('25 pages per PDF'));
+    assert.ok(upload.includes('Split longer files'));
+    assert.equal(fileStatus.fileStatusLabel({ status: 'needs_review', review }), 'Blocked: processing limit');
+    assert.equal(fileStatus.fileStatusLabel({ status: 'needs_review', review: { reason: 'receipt_totals' } }), 'Needs review');
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts', 'receipt totals review', 'processing timing', 'failure diagnostics']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts', 'receipt totals review', 'processing timing', 'failure diagnostics', 'processing limits']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {
@@ -325,7 +340,7 @@ const stub = (props, { slots }) => vue.h('div', slots.default?.());
 let code = compiled.content.replace(/import\s+\{([\s\S]*?)\}\s+from\s+['"]([^'"]+)['"];?/g, (_, specifiers, module) => {
     for (const specifier of specifiers.split(',')) {
         const [name, alias = name] = specifier.trim().split(/\s+as\s+/);
-        bindings[alias] = module === 'vue' ? vue[name] : name === 'useDateFormatter' ? () => ({ formatDate: value => value }) : name === 'Head' ? () => null : name === 'router' ? { get() {} } : stub;
+        bindings[alias] = module.includes('fileStatus') ? fileStatus[name] : module === 'vue' ? vue[name] : name === 'useDateFormatter' ? () => ({ formatDate: value => value }) : name === 'Head' ? () => null : name === 'router' ? { get() {} } : stub;
     }
     return '';
 }).replace(/import\s+(\w+)\s+from\s+['"][^'"]+['"];?/g, (_, name) => {

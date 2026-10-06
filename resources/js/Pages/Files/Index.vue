@@ -4,6 +4,8 @@ import { Head, Link, router, usePoll } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
 import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
+import { fileStatusLabel } from '@/utils/fileStatus';
+import ProcessingLimit from '@/Components/Domain/ProcessingLimit.vue';
 import ProcessingProgress from '@/Components/Domain/ProcessingProgress.vue';
 import Pagination from '@/Pages/Jobs/Components/Pagination.vue';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
@@ -16,7 +18,7 @@ type FileItem = {
     name: string;
     file_type: string;
     processing?: Record<string, any>;
-    review?: { reason: string; confidence?: number; reasoning?: string };
+    review?: { reason: string; confidence?: number; reasoning?: string; page_limit?: number; text_limit_bytes?: number };
     status: 'pending' | 'processing' | 'failed' | 'completed' | string;
     uploaded_at: string | null;
     extension: string;
@@ -360,7 +362,7 @@ const toggleExpanded = (fileId: number) => {
                                         </svg>
                                         Pending
                                     </span>
-                                    <span v-else-if="file.status === 'needs_review'" class="rounded-full bg-yellow-100 px-3 py-1.5 text-sm font-semibold text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200">Needs review</span>
+                                    <span v-else-if="file.status === 'needs_review'" class="rounded-full bg-yellow-100 px-3 py-1.5 text-sm font-semibold text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200">{{ fileStatusLabel(file) }}</span>
                                     <span
                                         v-else
                                         class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1.5 text-sm font-semibold text-green-700 dark:bg-green-900/40 dark:text-green-200"
@@ -374,6 +376,7 @@ const toggleExpanded = (fileId: number) => {
                                 </div>
                             </div>
 
+                            <ProcessingLimit v-if="file.review?.reason === 'processing_limit'" :review="file.review" class="mt-3" />
                             <ProcessingProgress v-if="file.processing" :processing="file.processing" class="mt-3" />
                             <div v-if="selectedFileId === file.id && file.status === 'needs_review'" class="mt-4 rounded-lg bg-amber-50 p-4 dark:bg-zinc-900">
                                 <p class="text-sm text-zinc-800 dark:text-zinc-200">{{ file.review?.reasoning || 'This file needs review before processing can finish.' }}</p>

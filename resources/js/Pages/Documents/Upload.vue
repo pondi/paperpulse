@@ -132,6 +132,9 @@
                                     <p class="text-xs leading-5 text-zinc-600 dark:text-zinc-400">
                                         {{ Object.keys(uploadConfig.capabilities[fileType]).join(', ').toUpperCase() }} up to {{ uploadConfig.maxFileSizeMb[fileType] }}MB
                                     </p>
+                                    <p v-if="uploadConfig.processingLimits" class="mt-2 text-xs text-zinc-600 dark:text-zinc-300">
+                                        Extraction supports up to {{ uploadConfig.processingLimits.pdfPages }} pages per PDF and {{ Math.floor(uploadConfig.processingLimits.textBytes / 1000) }} KB of native text. Split longer files into supported parts before uploading. Files above these processing limits are blocked before extraction.
+                                    </p>
                                 </div>
 
                                 <!-- File Preview -->
@@ -288,6 +291,7 @@ interface FileObject {
 
 const props = defineProps<{
     uploadConfig: {
+        processingLimits?: { pdfPages: number; textBytes: number } | null;
         maxFileSizeMb: Record<'receipt' | 'document', number>;
         capabilities: Record<'receipt' | 'document', Record<string, { mimeTypes: string[]; maxBytes: number }>>;
     };

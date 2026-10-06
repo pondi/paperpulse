@@ -5,6 +5,7 @@ import { DocumentIcon, MagnifyingGlassIcon, AdjustmentsHorizontalIcon, Squares2X
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import SaveViewButton from '@/Components/Search/SaveViewButton.vue';
 import { documentTypes, smartViews, cleanViewFilters } from '@/utils/libraryNavigation';
+import { fileStatusLabel } from '@/utils/fileStatus';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 const props = defineProps({
@@ -131,7 +132,7 @@ onBeforeUnmount(() => { clearTimeout(timer); cancelVisit?.cancel(); });
                         </div>
                         <div v-if="display === 'grid'" class="mt-3 flex flex-wrap gap-1.5"><span v-for="type in file.entity_types.length ? file.entity_types : [file.file_type]" :key="type" class="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">{{ label(type) }}</span></div>
                     </div>
-                    <span :class="[file.status === 'failed' ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400' : file.status === 'needs_review' ? 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400' : file.status === 'completed' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400', 'self-start whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium', display === 'list' ? 'sm:self-center' : '']">{{ statusLabels[file.status] || file.status }}</span>
+                    <span :class="[file.status === 'failed' ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400' : file.status === 'needs_review' ? 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400' : file.status === 'completed' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400', 'self-start whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium', display === 'list' ? 'sm:self-center' : '']">{{ fileStatusLabel(file) }}</span>
                     <ArrowRightIcon v-if="display === 'list'" class="hidden h-4 w-4 shrink-0 text-zinc-300 group-hover:text-amber-600 sm:block" aria-hidden="true" />
                 </Link>
             </div>

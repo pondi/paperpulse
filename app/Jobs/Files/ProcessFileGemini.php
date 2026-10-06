@@ -139,7 +139,9 @@ class ProcessFileGemini extends BaseJob
                 ]]);
                 if ($exceeds) {
                     $file->status = 'needs_review';
-                    $file->meta = array_merge($file->meta, ['review' => ['reason' => 'processing_limit', 'page_limit' => $pageLimit]]);
+                    $file->meta = array_merge($file->meta, ['review' => ['reason' => 'processing_limit',
+                        'page_limit' => $pages > $pageLimit ? $pageLimit : null,
+                        'text_limit_bytes' => ($textContext['truncated'] ?? false) ? (int) config('ai.providers.gemini.text_max_bytes') : null]]);
                     $file->save();
 
                     return ['needs_review' => true];

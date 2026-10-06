@@ -3,6 +3,8 @@ import { computed, watch } from 'vue';
 import { Head, Link, usePoll } from '@inertiajs/vue3';
 import { ArrowLeftIcon, ArrowTopRightOnSquareIcon, ExclamationCircleIcon, DocumentIcon } from '@heroicons/vue/24/outline';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { fileStatusLabel } from '@/utils/fileStatus';
+import ProcessingLimit from '@/Components/Domain/ProcessingLimit.vue';
 import ProcessingFailure from '@/Components/Domain/ProcessingFailure.vue';
 import ProcessingProgress from '@/Components/Domain/ProcessingProgress.vue';
 import DocumentPreview from '@/Components/Domain/DocumentPreview.vue';
@@ -22,7 +24,6 @@ const props = defineProps({
 const { start, stop } = usePoll(5000, { only: ['file', 'extractedEntities'] }, { autoStart: false });
 watch(() => ['pending', 'processing'].includes(props.file.status), active => active ? start() : stop(), { immediate: true });
 const { formatDate, formatDateTime, formatCurrency } = useDateFormatter();
-const statusLabels = { pending: 'Queued', processing: 'Processing', completed: 'Ready', needs_review: 'Needs review', failed: 'Failed' };
 const components = { voucher: VoucherCard, warranty: WarrantyCard, return_policy: ReturnPolicyCard, invoice: InvoiceCard, contract: ContractCard, bank_statement: BankStatementCard };
 const entityProps = extraction => ({ [extraction.entity_type === 'bank_statement' ? 'statement' : extraction.entity_type === 'return_policy' ? 'returnPolicy' : extraction.entity_type]: extraction.entity });
 const entityUrl = extraction => {
@@ -35,7 +36,6 @@ const legacy = computed(() => props.file.primary_receipt
 const reviewMessages = {
     uncertain_classification: 'Confirm the document type to finish extraction.',
     receipt_totals: 'The extracted total and line items need checking against the original.',
-    processing_limit: 'This document exceeds the current processing limit. Check the extraction report for coverage.',
 };
 const reviewMessage = computed(() => reviewMessages[props.file.review?.reason] || 'Check the extraction report for warnings and processing details.');
 </script>
@@ -59,9 +59,10 @@ const reviewMessage = computed(() => reviewMessages[props.file.review?.reason] |
                 <section class="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <h2 class="text-sm font-semibold text-zinc-900 dark:text-white">Document information</h2>
-                        <span :class="[file.status === 'needs_review' || file.status === 'failed' ? 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400' : file.status === 'completed' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400', 'rounded-md px-2 py-1 text-xs font-medium']">{{ statusLabels[file.status] || file.status }}</span>
+                        <span :class="[file.status === 'needs_review' || file.status === 'failed' ? 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400' : file.status === 'completed' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400', 'rounded-md px-2 py-1 text-xs font-medium']">{{ fileStatusLabel(file) }}</span>
                     </div>
-                    <ProcessingFailure v-if="file.status === 'failed' && file.can_view_extraction_report" :failure="file.failure" :processing="file.processing" :file-id="file.id" class="mt-4" />
+                    <ProcessingLimit v-if="file.review?.reason === 'processing_limit'" :review="file.review" class="mt-4" />
+                    <ProcessingFailure v-else-if="file.status === 'failed' && file.can_view_extraction_report" :failure="file.failure" :processing="file.processing" :file-id="file.id" class="mt-4" />
                     <div v-else-if="file.extraction?.has_extraction_issues" class="mt-4 flex items-start gap-2 rounded-lg bg-amber-50 p-3 dark:bg-amber-500/10">
                         <ExclamationCircleIcon class="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" /><p class="text-sm leading-5 text-amber-800 dark:text-amber-300">{{ reviewMessage }}</p>
                     </div>

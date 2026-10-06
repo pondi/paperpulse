@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DeletedReason;
 use App\Jobs\Search\ReindexFile;
+use App\Services\Files\FileProcessingFailureReporter;
 use App\Traits\BelongsToUser;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -42,6 +43,15 @@ class File extends Model
     protected static function booted(): void
     {
         static::updated(function (self $file): void {
+            if ($file->wasChanged('status') && $file->status === 'needs_review') {
+                $reason = $file->meta['review']['reason'] ?? 'unknown';
+                app(FileProcessingFailureReporter::class)->report(
+                    'File processing requires review: '.$reason,
+                    'review:'.$reason,
+                    $file,
+                    ['reason' => $reason, 'review' => $file->meta['review'] ?? [], 'coverage' => $file->meta['processing_coverage'] ?? []],
+                );
+            }
             if ($file->wasChanged('note')) {
                 ReindexFile::forFile($file->id);
             }

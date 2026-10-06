@@ -48,6 +48,7 @@ class FileProcessingRequestService
                 }
                 $path = $alreadyStored ? $request->original_path : $storage->storeToS3($content, $request->user_id, $request->guid, $request->file_type, 'original', $request->extension);
             } catch (Throwable $exception) {
+                app(FileProcessingFailureReporter::class)->report($exception, 'upload-handoff', $file);
                 $request->update(['state' => 'cleanup_pending', 'last_error' => $exception->getMessage()]);
                 app(FileDeletionService::class)->deleteFile($file, $request->user_id);
                 FileCleanupManifest::query()->where('file_id', $file->id)->update(['available_at' => now()->subSecond()]);
@@ -63,6 +64,7 @@ class FileProcessingRequestService
                     JobMetadataPersistence::store($request->job_id, $metadata);
                 });
             } catch (Throwable $exception) {
+                app(FileProcessingFailureReporter::class)->report($exception, 'upload-handoff', $file);
                 Log::error('Upload remains tracked for recovery after persistence failure', ['request_id' => $request->id, 'error' => $exception->getMessage()]);
 
                 return false;
@@ -89,6 +91,7 @@ class FileProcessingRequestService
 
             return true;
         } catch (Throwable $exception) {
+            app(FileProcessingFailureReporter::class)->report($exception, 'upload-handoff', $file);
             FileProcessingRequest::query()->whereKey($request->id)->where('claim_token', $token)->update([
                 'state' => 'pending', 'claim_token' => null, 'last_error' => $exception->getMessage(),
             ]);

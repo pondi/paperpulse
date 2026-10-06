@@ -152,6 +152,7 @@ class ProcessReceipt extends BaseJob
                     }
                 }
             } catch (Exception $statusError) {
+                $this->reportProcessingFailure($statusError, 'failure-notification');
                 Log::warning('Failed to update file status or send notification', [
                     'error' => $statusError->getMessage(),
                 ]);
@@ -304,6 +305,7 @@ class ProcessReceipt extends BaseJob
                     ]);
                 }
             } catch (Exception $e) {
+                $this->reportProcessingFailure($e, 'preview');
                 Log::error('[ProcessReceipt] Exception during preview generation', [
                     'job_id' => $this->jobID,
                     'file_guid' => $metadata['fileGuid'],
@@ -385,6 +387,7 @@ class ProcessReceipt extends BaseJob
                 }
             } catch (Exception $thumbError) {
                 $thumbnailError = $thumbError->getMessage();
+                $this->reportProcessingFailure($thumbError, 'thumbnail');
                 Log::warning('[ProcessReceipt] Thumbnail generation failed', [
                     'job_id' => $this->jobID,
                     'file_guid' => $metadata['fileGuid'],
@@ -412,6 +415,7 @@ class ProcessReceipt extends BaseJob
                 'thumbnail_error' => $thumbnailError,
             ]);
         } catch (Exception $e) {
+            $this->reportProcessingFailure($e, 'completion-status');
             Log::error('[ProcessReceipt] Failed to update file status', [
                 'job_id' => $this->jobID,
                 'file_id' => $metadata['fileId'] ?? null,
@@ -432,6 +436,7 @@ class ProcessReceipt extends BaseJob
                 }
             }
         } catch (Exception $e) {
+            $this->reportProcessingFailure($e, 'notification');
             Log::warning('Failed to send receipt processed notification', [
                 'error' => $e->getMessage(),
                 'receipt_id' => $receiptData['receiptId'] ?? null,

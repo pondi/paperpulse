@@ -71,6 +71,7 @@ class FilePreviewManager
 
             return true;
         } catch (Throwable $e) {
+            app(FileProcessingFailureReporter::class)->report($e, 'preview', $file);
             // Log error and update file record
             Log::error('[FilePreviewManager] Preview generation failed', [
                 'file_id' => $file->id,

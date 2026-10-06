@@ -14,6 +14,8 @@ use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use RuntimeException;
+use Throwable;
 
 /**
  * Handles retries and archive refreshes from stored originals.
@@ -75,8 +77,8 @@ class FileReprocessingService
                 return ['success' => true, 'jobId' => $jobId, 'message' => "File reprocessing started with job ID: {$jobId}"];
             });
 
-        } catch (Exception $e) {
-            report($e);
+        } catch (Throwable $e) {
+            app(FileProcessingFailureReporter::class)->report($e, 'reprocessing-handoff', $file);
             Log::error('[FileReprocessing] Failed to start reprocessing', [
                 'file_id' => $file->id,
                 'file_guid' => $file->guid,
@@ -170,26 +172,12 @@ class FileReprocessingService
     {
         // Check if S3 file exists
         if (empty($file->s3_original_path)) {
-            return [
-                'canReprocess' => false,
-                'reason' => 'File has no S3 path - cannot reprocess',
-            ];
+            throw new RuntimeException('File has no S3 path - cannot reprocess');
         }
 
         // Verify S3 file exists
-        try {
-            $exists = $this->storageService->existsInStorage($file->s3_original_path);
-            if (! $exists) {
-                return [
-                    'canReprocess' => false,
-                    'reason' => 'File not found in S3 storage',
-                ];
-            }
-        } catch (Exception $e) {
-            return [
-                'canReprocess' => false,
-                'reason' => "Cannot verify S3 file: {$e->getMessage()}",
-            ];
+        if (! $this->storageService->existsInStorage($file->s3_original_path)) {
+            throw new RuntimeException('File not found in S3 storage');
         }
 
         // Check if already completed (unless forced)

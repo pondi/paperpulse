@@ -1,6 +1,7 @@
 <?php
 
 use App\Contracts\Services\TextAnalysisContract;
+use App\Exceptions\FileProcessingFailedException;
 use App\Models\File;
 use App\Services\AI\TypeClassification\AutomaticTypeResolver;
 use App\Services\AI\TypeClassification\ClassificationResult;
@@ -40,7 +41,7 @@ it('uses generic document extraction for unresolved content and reports the fall
     $result = app(AutomaticTypeResolver::class)->resolve($file, new ClassificationResult('unknown', .2, 'Unclear'), 'uri', [], null, 'run', 'hash');
     expect($result->type)->toBe('document')->and($result->confidence)->toBe(.4)
         ->and($file->fresh()->meta['automatic_classification']['generic_fallback'])->toBeTrue();
-    Exceptions::assertReported(fn (RuntimeException $exception): bool => str_contains($exception->getMessage(), 'Automatic classification remained ambiguous'));
+    Exceptions::assertReported(fn (FileProcessingFailedException $exception): bool => str_contains($exception->getMessage(), 'Automatic classification remained ambiguous'));
 });
 
 it('classifies a bounded source excerpt and caches it independently of upload labels', function (): void {

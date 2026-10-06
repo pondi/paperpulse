@@ -210,6 +210,7 @@ class AnalyzeDocument extends BaseJob
 
             return $category;
         } catch (Exception $e) {
+            $this->reportProcessingFailure($e, 'category');
             Log::error('Failed to find or create category', [
                 'category_name' => $categoryName,
                 'user_id' => $userId,
@@ -254,6 +255,7 @@ class AnalyzeDocument extends BaseJob
 
             return $tag;
         } catch (Exception $e) {
+            $this->reportProcessingFailure($e, 'tag');
             Log::error('Failed to find or create tag', [
                 'tag_name' => $tagName,
                 'user_id' => $userId,

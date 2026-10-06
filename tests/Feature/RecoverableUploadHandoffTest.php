@@ -15,6 +15,7 @@ use App\Services\Files\FileProcessingRequestService;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -44,6 +45,7 @@ it('a database failure writes no untracked permanent object', function (): void 
 });
 
 it('a queue failure leaves an accepted upload with one retryable durable request', function (): void {
+    Exceptions::fake();
     $dispatcher = Mockery::mock(FileJobChainDispatcher::class);
     $dispatcher->shouldReceive('dispatch')->once()->andThrow(new RuntimeException('Queue offline'));
     $this->app->instance(FileJobChainDispatcher::class, $dispatcher);
@@ -55,6 +57,7 @@ it('a queue failure leaves an accepted upload with one retryable durable request
         ->and($request->last_error)->toBe('Queue offline')
         ->and(JobHistory::where('uuid', $result['jobId'])->first()->metadata['fileId'])->toBe($result['fileId']);
     Storage::disk('paperpulse')->assertExists($request->original_path);
+    Exceptions::assertReported(fn (RuntimeException $exception): bool => $exception->getMessage() === 'Queue offline');
     $dispatcher = Mockery::mock(FileJobChainDispatcher::class);
     $dispatcher->shouldReceive('dispatch')->once()->with($result['jobId'], 'document');
     $this->app->instance(FileJobChainDispatcher::class, $dispatcher);
@@ -92,6 +95,7 @@ it('outer transaction rollback performs neither permanent upload nor queue hando
 });
 
 it('a failed storage write surfaces failure while retaining durable asset cleanup references', function (): void {
+    Exceptions::fake();
     $storage = Mockery::mock(FileStorageService::class);
     $storage->shouldReceive('generateFileGuid')->andReturn('failed-source');
     $storage->shouldReceive('storeWorkingContent')->andReturn('/tmp/failed-source.pdf');
@@ -105,9 +109,11 @@ it('a failed storage write surfaces failure while retaining durable asset cleanu
         ->and(FileCleanupManifest::first()->objects)->not->toBeEmpty();
     Bus::assertNotDispatched(ProcessFileGemini::class);
     Bus::assertNotDispatched(ProcessFile::class);
+    Exceptions::assertReported(fn (RuntimeException $exception): bool => $exception->getMessage() === 'S3 refused write');
 });
 
 it('recovers an uploaded object after a persistence crash without losing or duplicating its chain', function (): void {
+    Exceptions::fake();
     FileProcessingRequest::updating(function (FileProcessingRequest $request): void {
         if ($request->state === 'pending') {
             throw new RuntimeException('Injected post-upload persistence failure');
@@ -121,6 +127,7 @@ it('recovers an uploaded object after a persistence crash without losing or dupl
         Storage::disk('paperpulse')->assertExists($request->original_path);
         Bus::assertNotDispatched(ProcessFileGemini::class);
         Bus::assertNotDispatched(ProcessFile::class);
+        Exceptions::assertReported(fn (RuntimeException $exception): bool => $exception->getMessage() === 'Injected post-upload persistence failure');
     } finally {
         FileProcessingRequest::flushEventListeners();
     }

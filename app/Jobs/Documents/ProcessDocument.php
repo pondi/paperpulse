@@ -266,6 +266,7 @@ class ProcessDocument extends BaseJob
                 ]);
             }
         } catch (Exception $e) {
+            $this->reportProcessingFailure($e, 'preview');
             Log::error('[ProcessDocument] Exception during preview generation', [
                 'job_id' => $this->jobID,
                 'file_guid' => $metadata['fileGuid'],

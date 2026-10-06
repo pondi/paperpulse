@@ -6,8 +6,8 @@ use App\Contracts\Services\TextAnalysisContract;
 use App\Models\File;
 use App\Services\AI\Shared\ProcessingStageCache;
 use App\Services\AI\Shared\ProcessingUsageBudget;
+use App\Services\Files\FileProcessingFailureReporter;
 use Illuminate\Support\Facades\Context;
-use RuntimeException;
 
 class AutomaticTypeResolver
 {
@@ -55,7 +55,7 @@ class AutomaticTypeResolver
         if ($fallback) {
             Context::add('classification_resolution', ['file_id' => $file->id, 'user_id' => $file->user_id,
                 'confidence' => $decision->confidence, 'selected_type' => 'document']);
-            report(new RuntimeException('Automatic classification remained ambiguous; generic document extraction selected.'));
+            app(FileProcessingFailureReporter::class)->report('Automatic classification remained ambiguous; generic document extraction selected.', 'classification-resolution', $file);
         }
 
         return $decision;

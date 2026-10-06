@@ -8,6 +8,7 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Context;
+use Laravel\Nightwatch\Facades\Nightwatch;
 
 class ReportFailedJob
 {
@@ -30,6 +31,9 @@ class ReportFailedJob
         if ($exception instanceof AIResponseException || $exception instanceof GeminiApiException) {
             $context = $exception instanceof AIResponseException ? $exception->context : $exception->getContext();
             Context::add('processing_failure', [
+                'soft' => false,
+                'stage' => Context::get('processing_stage', $event->job->resolveName()),
+                'exception_class' => $exception::class,
                 'code' => $exception instanceof AIResponseException ? $exception->errorCode : $exception->getErrorCode(),
                 'retryable' => $exception instanceof AIResponseException ? $exception->retryable : $exception->isRetryable(),
                 ...Arr::only($context, [
@@ -39,6 +43,7 @@ class ReportFailedJob
             ]);
         }
 
+        Nightwatch::sample(1.0);
         $this->exceptions->report($exception);
     }
 }

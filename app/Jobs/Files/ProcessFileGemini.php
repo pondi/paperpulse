@@ -269,6 +269,7 @@ class ProcessFileGemini extends BaseJob
                             'has_preview' => $file->fresh()->has_image_preview,
                         ]);
                     } catch (Exception $e) {
+                        $this->reportProcessingFailure($e, 'preview');
                         Log::warning('[ProcessFileGemini] Preview generation failed', [
                             'file_id' => $file->id,
                             'error' => $e->getMessage(),
@@ -300,9 +301,11 @@ class ProcessFileGemini extends BaseJob
                     ]);
                     try {
                         if (! $fileManager->deleteFile($geminiFileName)) {
+                            $this->reportProcessingFailure('Gemini uploaded file cleanup returned false.', 'provider-file-cleanup');
                             DeleteGeminiFile::dispatch($geminiFileName)->onQueue('files');
                         }
-                    } catch (Throwable) {
+                    } catch (Throwable $exception) {
+                        $this->reportProcessingFailure($exception, 'provider-file-cleanup');
                         DeleteGeminiFile::dispatch($geminiFileName)->onQueue('files');
                     }
                 }
@@ -383,6 +386,7 @@ class ProcessFileGemini extends BaseJob
                     $entityInfo['model']->load('transactions');
                     $categorizationService->categorize($entityInfo['model']->transactions);
                 } catch (Exception $e) {
+                    $this->reportProcessingFailure($e, 'transaction-categorization');
                     Log::warning('[ProcessFileGemini] Transaction categorization failed', [
                         'statement_id' => $entityInfo['model']->id,
                         'error' => $e->getMessage(),
@@ -524,6 +528,7 @@ class ProcessFileGemini extends BaseJob
             ]);
         } catch (Exception $e) {
             // Don't fail the job if analytics tracking fails
+            $this->reportProcessingFailure($e, 'analytics');
             Log::warning('[ProcessFileGemini] Failed to create analytics record', [
                 'file_id' => $file->id,
                 'error' => $e->getMessage(),

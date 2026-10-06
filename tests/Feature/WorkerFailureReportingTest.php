@@ -58,6 +58,8 @@ it('reports terminal extraction failures once with the original exception and pr
         ->and($report['context']['processing_failure']['dates'])->toBe(['return_deadline' => '30 days'])
         ->and($report['context']['processing_failure']['errors'])->toBe($exception->context['errors'])
         ->and($report['context']['processing_failure']['retryable'])->toBeFalse()
+        ->and($report['context']['processing_failure']['soft'])->toBeFalse()
+        ->and($report['context']['processing_failure']['stage'])->toBe('extraction')
         ->and(json_encode($report['context']))->not->toContain('secret', 'private receipt')
         ->and($file->fresh()->status)->toBe('failed');
     $this->assertDatabaseCount('failed_jobs', 1);

@@ -15,6 +15,7 @@ use App\Models\JobHistory;
 use App\Models\User;
 use App\Services\File\FileStorageService;
 use App\Services\Files\FileEntityCleanupService;
+use App\Services\Files\FileProcessingFailureReporter;
 use App\Services\Jobs\JobMetadataPersistence;
 use App\Services\Jobs\JobParentStatusCalculator;
 use Illuminate\Bus\Queueable;
@@ -140,9 +141,16 @@ abstract class BaseJob implements ShouldQueue
             'task_id' => $this->uuid,
             'job_class' => static::class,
             'file_id' => $metadata['fileId'] ?? null,
+            'file_guid' => $metadata['fileGuid'] ?? null,
+            'file_type' => $metadata['fileType'] ?? null,
+            'extension' => $metadata['fileExtension'] ?? null,
             'user_id' => $metadata['userId'] ?? null,
             'provider' => $metadata['processingProvider'] ?? null,
             'generation' => $metadata['processingGeneration'] ?? null,
+            'pipeline' => $metadata['pipeline'] ?? null,
+            'reprocessing' => $metadata['metadata']['reprocessing'] ?? false,
+            'original_status' => $metadata['metadata']['original_status'] ?? null,
+            'attempt' => $this->attempts(),
             'request_id' => $this->requestId,
         ]);
 
@@ -254,6 +262,11 @@ abstract class BaseJob implements ShouldQueue
      * Implemented by subclasses.
      */
     abstract protected function handleJob(): void;
+
+    protected function reportProcessingFailure(Throwable|string $failure, string $stage): void
+    {
+        app(FileProcessingFailureReporter::class)->report($failure, $stage);
+    }
 
     protected function restoreCompletedDelivery(): void {}
 

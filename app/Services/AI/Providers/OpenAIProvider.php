@@ -13,6 +13,7 @@ use App\Services\AI\Shared\AIFallbackHandler;
 use App\Services\AI\Shared\DocumentContentBudget;
 use App\Services\AI\Shared\ProcessingUsageBudget;
 use App\Services\AI\Shared\ResponseShapeValidator;
+use App\Services\Files\FileProcessingFailureReporter;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use OpenAI\Laravel\Facades\OpenAI;
@@ -113,6 +114,7 @@ class OpenAIProvider implements AIService
 
             return $finalResult;
         } catch (Exception $e) {
+            app(FileProcessingFailureReporter::class)->report($e, 'openai:'.__FUNCTION__);
             if (isset($promptData, $model, $params) && (($e instanceof AIResponseException && $e->retryable) || AIFallbackHandler::shouldAttemptFallback($e))) {
                 try {
                     $fallbackPayload = FallbackPayloadFactory::make($promptData['messages'], $model, $params);
@@ -137,6 +139,7 @@ class OpenAIProvider implements AIService
 
                     return $fallbackResult;
                 } catch (Exception $fallbackError) {
+                    app(FileProcessingFailureReporter::class)->report($fallbackError, 'openai:receipt-fallback');
                     // Fallback failed, continue to error result
                 }
             }
@@ -196,6 +199,7 @@ class OpenAIProvider implements AIService
                 'tokens_used' => $response->usage->totalTokens ?? 0,
             ]);
         } catch (Exception $e) {
+            app(FileProcessingFailureReporter::class)->report($e, 'openai:'.__FUNCTION__);
             Log::error('OpenAI document analysis failed', [
                 'error' => $e->getMessage(),
                 'content_length' => strlen($content),
@@ -226,6 +230,7 @@ class OpenAIProvider implements AIService
 
             return ResponseParser::jsonContent($response);
         } catch (Exception $e) {
+            app(FileProcessingFailureReporter::class)->report($e, 'openai:'.__FUNCTION__);
             Log::error('Merchant extraction failed', ['error' => $e->getMessage()]);
 
             return [];
@@ -251,6 +256,7 @@ class OpenAIProvider implements AIService
 
             return trim($response->choices[0]->message->content);
         } catch (Exception $e) {
+            app(FileProcessingFailureReporter::class)->report($e, 'openai:'.__FUNCTION__);
             Log::error('Summary generation failed', ['error' => $e->getMessage()]);
 
             return 'Summary generation failed';
@@ -305,6 +311,7 @@ class OpenAIProvider implements AIService
 
             return $result['tags'];
         } catch (Exception $e) {
+            app(FileProcessingFailureReporter::class)->report($e, 'openai:'.__FUNCTION__);
             Log::error('Tag suggestion failed', ['error' => $e->getMessage()]);
 
             return [];
@@ -344,6 +351,7 @@ class OpenAIProvider implements AIService
 
             return in_array($type, $types) ? $type : 'other';
         } catch (Exception $e) {
+            app(FileProcessingFailureReporter::class)->report($e, 'openai:'.__FUNCTION__);
             Log::error('Document classification failed', ['error' => $e->getMessage()]);
 
             return 'other';
@@ -386,6 +394,7 @@ class OpenAIProvider implements AIService
 
             return array_intersect_key($result, array_flip($types));
         } catch (Exception $e) {
+            app(FileProcessingFailureReporter::class)->report($e, 'openai:'.__FUNCTION__);
             Log::error('Entity extraction failed', ['error' => $e->getMessage()]);
 
             return array_fill_keys($types, []);

@@ -4,6 +4,7 @@ use App\Jobs\Maintenance\CleanupRetainedFiles;
 use App\Jobs\Notifications\SendWeeklySummary;
 use App\Jobs\PulseDav\SyncPulseDavFiles;
 use App\Jobs\PulseDav\SyncPulseDavFilesRealtime;
+use App\Jobs\SyncExchangeRates;
 use App\Services\File\FileStorageService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -79,3 +80,6 @@ Schedule::command('organization:backfill --recover')->everyFiveMinutes()->name('
 Schedule::command('exports:cleanup')->hourly()->name('cleanup-expired-exports')->withoutOverlapping();
 
 Schedule::command('files:recover-automatic')->everyFiveMinutes()->name('recover-automatic-file-processing')->withoutOverlapping();
+
+Schedule::job(new SyncExchangeRates)->dailyAt('17:00')->timezone('Europe/Oslo')
+    ->name('sync-exchange-rates')->withoutOverlapping();

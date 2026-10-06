@@ -97,9 +97,11 @@ it('generates queued ZIP exports through database workers and omits missing asse
             Storage::disk('paperpulse')->put(StoragePathBuilder::storagePath($user->id, $file->guid, 'document', 'original', 'pdf'), '%PDF-'.$index);
         }
 
+        $file->update(['s3_original_path' => StoragePathBuilder::storagePath($user->id, $file->guid, 'document', 'original', 'pdf')]);
+
         return Document::factory()->create(['user_id' => $user->id, 'file_id' => $file->id]);
     });
-    $response = $this->actingAs($user)->getJson(route('documents.download-bulk', ['ids' => $documents->pluck('id')->all()]))->assertAccepted();
+    $response = $this->actingAs($user)->getJson(route('documents.download-bulk', ['ids' => $documents->pluck('file_id')->all()]))->assertAccepted();
     $export = ArchiveExport::findOrFail($response->json('id'));
     $this->artisan('queue:work', ['connection' => 'database', '--queue' => 'exports', '--once' => true, '--no-interaction' => true])->assertSuccessful();
     expect($export->refresh()->status)->toBe('completed')->and($export->processed)->toBe(3);

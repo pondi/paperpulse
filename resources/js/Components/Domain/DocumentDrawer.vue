@@ -22,6 +22,7 @@ import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 interface Document {
     id: number;
+    file_id: number;
     title: string;
     note?: string | null;
     description?: string | null;
@@ -190,7 +191,8 @@ const closeDrawer = () => {
 
 const deleteDocument = () => {
     if (!props.document) return;
-    router.delete(route('documents.destroy', props.document.id), {
+    router.delete(route('documents.destroy-bulk'), {
+        data: { ids: [props.document.file_id] },
         onSuccess: () => {
             closeDrawer();
         },

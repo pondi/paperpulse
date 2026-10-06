@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Document;
+use App\Models\File as SourceFile;
 use App\Services\Files\StoragePathBuilder;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
@@ -22,13 +22,12 @@ class DocumentArchiveService
         }
         $processed = 0;
         try {
-            foreach (Document::withoutGlobalScope('user')->where('user_id', $userId)->whereIn('id', $ids)->with('file')->lazyById(100) as $document) {
-                $file = $document->file;
+            foreach (SourceFile::withoutGlobalScope('user')->where('user_id', $userId)->whereIn('id', $ids)->lazyById(100) as $file) {
                 $extension = $file->fileExtension ?: 'txt';
-                $source = StoragePathBuilder::storagePath($userId, $file->guid, 'document', 'original', $extension);
-                $stream = $this->storage->readStream($source);
+                $source = StoragePathBuilder::variantPath($file, 'original');
+                $stream = $source === null ? null : $this->storage->readStream($source);
                 if ($stream !== null) {
-                    $staged = $directory.'/'.$document->id;
+                    $staged = $directory.'/'.$file->id;
                     $output = fopen($staged, 'wb');
                     try {
                         if (stream_copy_to_stream($stream, $output) === false) {

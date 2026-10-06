@@ -4,13 +4,12 @@ namespace App\Http\Controllers\Documents;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DocumentDownloadRequest;
-use App\Models\Document;
-use App\Rules\ExistsForUser;
+use App\Models\File as SourceFile;
 use App\Services\ArchiveExportService;
 use App\Services\DocumentArchiveService;
 use App\Services\Files\FileDeletionService;
 use Exception;
-use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -18,30 +17,18 @@ use Symfony\Component\HttpFoundation\Response;
 
 class DocumentBulkController extends Controller
 {
-    /**
-     * Bulk delete documents
-     */
-    public function destroyBulk(Request $request)
+    public function destroyBulk(DocumentDownloadRequest $request, FileDeletionService $deletion): RedirectResponse
     {
-        $validated = $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => ['integer', new ExistsForUser('documents')],
-        ]);
-
         $deleted = 0;
-        foreach ($validated['ids'] as $id) {
-            $document = Document::find($id);
-            if ($document && auth()->user()->can('delete', $document)) {
-                try {
-                    app(FileDeletionService::class)
-                        ->deleteEntity($document, (int) auth()->id());
-                    $deleted++;
-                } catch (Exception $e) {
-                    Log::error('Failed to delete document in bulk operation', [
-                        'document_id' => $id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
+        foreach (SourceFile::query()->where('user_id', $request->user()->id)->whereIn('id', $request->validated()['ids'])->get() as $file) {
+            try {
+                $deletion->deleteFile($file, $request->user()->id);
+                $deleted++;
+            } catch (Exception $e) {
+                Log::error('Failed to delete document in bulk operation', [
+                    'file_id' => $file->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -52,7 +39,7 @@ class DocumentBulkController extends Controller
     {
         $ids = $request->validated()['ids'];
         $userId = $request->user()->id;
-        $total = Document::withoutGlobalScope('user')->where('user_id', $userId)->whereIn('id', $ids)->count();
+        $total = SourceFile::withoutGlobalScope('user')->where('user_id', $userId)->whereIn('id', $ids)->count();
         if ($total > config('exports.immediate_limit')) {
             return $exports->queue($request, 'zip', ['ids' => $ids], $total);
         }

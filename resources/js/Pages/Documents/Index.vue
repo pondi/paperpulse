@@ -161,7 +161,7 @@ const toggleAll = () => {
     if (allSelected.value) {
         selectedDocuments.value = [];
     } else {
-        selectedDocuments.value = props.documents.data.map(doc => doc.id);
+        selectedDocuments.value = props.documents.data.map(doc => doc.file_id);
     }
 };
 
@@ -415,8 +415,8 @@ const getEntityTypeBadge = (entityType?: string) => {
                             <div class="absolute top-3 right-3 z-10">
                                 <Checkbox
                                     :aria-label="`Select ${document.title} (file #${document.file_id})`"
-                                    :checked="selectedDocuments.includes(document.id)"
-                                    @change="toggleDocument(document.id)"
+                                    :checked="selectedDocuments.includes(document.file_id)"
+                                    @change="toggleDocument(document.file_id)"
                                 />
                             </div>
 
@@ -575,7 +575,7 @@ const getEntityTypeBadge = (entityType?: string) => {
                                         Download
                                     </a>
                                     <button
-                                        @click="router.delete(route('documents.destroy', document.id))"
+                                        @click="router.delete(route('documents.destroy-bulk'), { data: { ids: [document.file_id] } })"
                                         class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-bold text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-zinc-800 transition-colors"
                                     >
                                         <TrashIcon class="h-4 w-4" />
@@ -630,8 +630,8 @@ const getEntityTypeBadge = (entityType?: string) => {
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <Checkbox
                                             :aria-label="`Select ${document.title} (file #${document.file_id})`"
-                                            :checked="selectedDocuments.includes(document.id)"
-                                            @change="toggleDocument(document.id)"
+                                            :checked="selectedDocuments.includes(document.file_id)"
+                                            @change="toggleDocument(document.file_id)"
                                         />
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
@@ -736,7 +736,7 @@ const getEntityTypeBadge = (entityType?: string) => {
                                                 <ArrowDownTrayIcon class="h-5 w-5" />
                                             </a>
                                             <button
-                                                @click="router.delete(route('documents.destroy', document.id))"
+                                                @click="router.delete(route('documents.destroy-bulk'), { data: { ids: [document.file_id] } })"
                                                 class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                                                 title="Delete"
                                             >

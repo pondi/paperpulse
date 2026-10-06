@@ -5,6 +5,7 @@ use App\Models\File;
 use App\Models\User;
 use App\Services\FolderOrganizationService;
 use App\Services\FolderTreeService;
+use App\Services\OrganizationSummaryNormalizer;
 use App\Services\PropertyGroupingService;
 use Illuminate\Support\Facades\Http;
 
@@ -19,6 +20,35 @@ it('normalizes address ranges and removes floor and registry qualifiers', functi
     ['Eksempelveien 8 – 10', 'Eksempelveien 8-10'],
     ['Eksempelveien 8A', 'Eksempelveien 8A'],
     ['Eksempelveien 8, Oslo', 'Eksempelveien 8, Oslo'],
+]);
+
+it('uses stored JSON property addresses to find a canonical range without existing folders', function (array $employerAttributes): void {
+    $owner = User::factory()->create();
+    $summary = ['version' => OrganizationSummaryNormalizer::VERSION, 'property_address' => 'Eksempelveien 8-10', 'confidence' => .95];
+    File::factory()->create(['user_id' => $owner->id, 'organization_summary' => $summary + $employerAttributes]);
+    File::factory()->create(['user_id' => $owner->id, 'organization_summary' => null]);
+    File::factory()->create(['user_id' => $owner->id, 'organization_summary' => ['version' => OrganizationSummaryNormalizer::VERSION, 'confidence' => .95]]);
+
+    expect(app(PropertyGroupingService::class)->canonicalName($owner->id, 'Eksempelveien 8'))->toBe('Eksempelveien 8-10');
+})->with([
+    'missing employer' => [[]],
+    'null employer' => [['employer' => null]],
+]);
+
+it('ignores ineligible stored property ranges', function (array $overrides): void {
+    $owner = User::factory()->create();
+    File::factory()->create(['user_id' => $owner->id, 'organization_summary' => array_replace([
+        'version' => OrganizationSummaryNormalizer::VERSION, 'property_address' => 'Eksempelveien 8-10', 'confidence' => .95,
+    ], $overrides)]);
+    File::factory()->create(['user_id' => $owner->id, 'organization_summary' => [
+        'version' => OrganizationSummaryNormalizer::VERSION, 'property_address' => 'Eksempelveien 8', 'confidence' => .95,
+    ]]);
+
+    expect(app(PropertyGroupingService::class)->canonicalName($owner->id, 'Eksempelveien 8'))->toBe('Eksempelveien 8');
+})->with([
+    'low confidence' => [['confidence' => .79]],
+    'outdated summary' => [['version' => OrganizationSummaryNormalizer::VERSION - 1]],
+    'employer present' => [['employer' => ['name' => 'Employer AS']]],
 ]);
 
 it('automatically files the three Eksempelveien variants under one property including generic building documents', function (): void {

@@ -9,6 +9,11 @@ use Illuminate\Support\Str;
 
 it('runs supported PHP and isolated PostgreSQL tests', function (): void {
     expect(PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION)->toBe('8.5');
+    expect(app()->environment())->toBe('testing');
+    expect(config('session.driver'))->toBe('array');
+    expect(config('cache.default'))->toBe('array');
+    expect(config('queue.default'))->toBe('sync');
+    expect(config('scout.driver'))->toBe('collection');
     expect(config('database.connections'))->toHaveKeys(['pgsql', 'pgsql_locks']);
     expect(array_keys(config('database.connections')))->toHaveCount(2);
     $connection = app('db')->connection();

@@ -12,6 +12,12 @@
       <nav aria-label="Settings sections" class="flex flex-wrap gap-2 rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
         <a v-for="section in settingsSections" :key="section.id" :href="`#preferences-${section.id}`" class="rounded-md px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-amber-50 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ section.label }}</a>
       </nav>
+      <section aria-labelledby="application-preferences-heading" class="flex flex-col gap-6">
+        <header class="px-4 sm:px-0 text-zinc-900 dark:text-zinc-100">
+          <h2 id="application-preferences-heading" class="text-lg font-semibold">Application preferences</h2>
+          <p class="text-sm text-zinc-600 dark:text-zinc-400">Save application preferences saves language, processing, notifications, display and scanner settings together. Organization choices are saved separately.</p>
+          <p aria-live="polite" class="mt-2 text-sm">{{ form.isDirty ? 'Unsaved application preferences' : form.recentlySuccessful ? 'Application preferences saved' : 'No unsaved application preferences' }}</p>
+        </header>
       <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
         <section id="preferences-general" class="scroll-mt-24">
           <header>
@@ -492,12 +498,12 @@
       </div>
 
       <div class="flex items-center gap-4 pb-6">
-        <PrimaryButton :disabled="form.processing" @click="updatePreferences">
-          {{ __('save') }}
+        <PrimaryButton type="button" dusk="save-application-preferences" :disabled="form.processing" @click="updatePreferences">
+          Save application preferences
         </PrimaryButton>
 
         <SecondaryButton :disabled="form.processing" @click="resetPreferences">
-          {{ __('reset_to_defaults') }}
+          Reset application preferences
         </SecondaryButton>
 
         <Transition
@@ -511,9 +517,12 @@
           </p>
         </Transition>
       </div>
+      </section>
       <section id="preferences-organization" class="scroll-mt-24 flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800 dark:text-zinc-100">
         <h2 class="text-lg font-medium">Organization choices</h2>
         <p>Saved labels and aliases guide folder placement. Pinned folders and manual placements stay fixed. Declined suggestions remain suppressed until their evidence changes.</p>
+        <p aria-live="polite" class="text-sm">{{ organization.isDirty ? 'Unsaved organization choices' : organization.recentlySuccessful ? 'Organization choices saved' : 'No unsaved organization choices' }}</p>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">Save organization choices saves only the folder names, template and aliases below.</p>
         <form class="flex flex-col gap-4" @submit.prevent="saveOrganization">
           <label class="flex flex-col gap-2">Building folder name<input v-model="organization.naming_rules.building_root" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
           <label class="flex flex-col gap-2">Work folder name<input v-model="organization.naming_rules.work_root" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
@@ -530,13 +539,14 @@
           <p v-for="(message, field) in organization.errors" :key="field" role="alert" class="text-red-600 dark:text-red-400">{{ message }}</p>
           <div class="flex flex-wrap gap-3">
             <SecondaryButton type="button" :disabled="organization.aliases.length >= 100" @click="organization.aliases.push({ kind: 'property', alias: '', canonical_name: '' })">Add alias</SecondaryButton>
-            <PrimaryButton :disabled="organization.processing">Save organization choices</PrimaryButton>
+            <PrimaryButton type="submit" dusk="save-organization-choices" :disabled="organization.processing">Save organization choices</PrimaryButton>
             <SecondaryButton type="button" @click="resetOrganization">Reset labels, aliases and declined suggestions</SecondaryButton>
           </div>
         </form>
       </section>
       <section id="preferences-archive" class="scroll-mt-24 flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800 dark:text-zinc-100">
         <h2 class="text-lg font-medium">Organize an existing archive</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">Preview reads your archive without saving settings or moving files. Organize this archive applies the saved organization choices using the limits below.</p>
         <p>Preview first. Saved summaries require no paid extraction. Manual placements and pinned folders are preserved; pending recommendations must be resolved first.</p>
         <label class="flex items-center gap-2"><input v-model="backfill.extract_missing" type="checkbox" />Extract missing grouping evidence from stored text using AI</label>
         <label class="flex flex-col gap-2">Maximum provider calls<input v-model.number="backfill.max_calls" type="number" min="1" max="100" class="rounded dark:bg-zinc-700" /></label>
@@ -603,7 +613,10 @@ const organization = useForm({
   aliases: props.organizationAliases.map(alias => ({ ...alias, alias: null })),
   removed_alias_ids: [],
 });
-const saveOrganization = () => organization.patch(route('preferences.organization'), { preserveScroll: true });
+const saveOrganization = () => organization.patch(route('preferences.organization'), {
+  preserveScroll: true,
+  onSuccess: () => organization.defaults(),
+});
 const removeAlias = index => {
   const alias = organization.aliases[index];
   if (alias.id) organization.removed_alias_ids.push(alias.id);
@@ -615,6 +628,7 @@ const resetOrganization = () => router.patch(route('preferences.organization'), 
     organization.aliases = [];
     organization.removed_alias_ids = [];
     organization.naming_rules = { building_root: 'Building', work_root: 'Work', work_structure: 'role', role_labels: {} };
+    organization.defaults();
   },
 });
 
@@ -683,6 +697,7 @@ const updatePreferences = () => {
   form.patch(route('preferences.update'), {
     preserveScroll: true,
     onSuccess: () => {
+      form.defaults();
       if (form.language !== props.preferences.language) {
         router.reload();
       }

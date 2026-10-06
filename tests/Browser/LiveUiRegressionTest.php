@@ -882,3 +882,24 @@ it('uses page scrolling for long details and expands tables when hiding the sour
         }
     });
 });
+
+it('identifies independent settings save scopes and tracks their pending changes', function (): void {
+    $user = $this->createUser();
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/preferences')->waitForText('Save application preferences')
+            ->assertSee('No unsaved application preferences')->assertSee('No unsaved organization choices')
+            ->select('#currency', 'EUR')->waitForText('Unsaved application preferences')
+            ->assertSee('No unsaved organization choices');
+        $browser->script('document.querySelector("#preferences-organization input").scrollIntoView({block: "center"})');
+        $browser->type('#preferences-organization input', 'Properties')->waitForText('Unsaved organization choices');
+        $browser->script('document.querySelector("[dusk=save-application-preferences]").scrollIntoView({block: "center"})');
+        $browser->click('@save-application-preferences')->waitForText('Application preferences saved')
+            ->assertSee('Unsaved organization choices');
+        expect($user->fresh()->preference('currency'))->toBe('EUR');
+        $browser->script('document.querySelector("#preferences-organization button[type=submit]").scrollIntoView({block: "center"})');
+        $browser->click('@save-organization-choices')->waitForText('Organization choices saved')
+            ->assertSee('Preview reads your archive without saving settings or moving files.')
+            ->refresh()->waitForText('No unsaved organization choices')
+            ->assertSelected('#currency', 'EUR')->assertInputValue('#preferences-organization input', 'Properties');
+    });
+});

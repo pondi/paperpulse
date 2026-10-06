@@ -20,6 +20,8 @@ use App\Models\Receipt;
 use App\Models\Tag;
 use App\Models\UserPreference;
 use App\Models\Vendor;
+use App\Models\Voucher;
+use App\Models\Warranty;
 use App\Services\Files\StoragePathBuilder;
 use Dompdf\Dompdf;
 use Facebook\WebDriver\WebDriverKeys;
@@ -27,6 +29,10 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
 use Smalot\PdfParser\Parser;
+
+beforeEach(function (): void {
+    $this->browse(fn (Browser $browser) => $browser->resize(1440, 1000));
+});
 
 it('explains processing usage limits on failed file reports', function (): void {
     $user = $this->createUser();
@@ -36,7 +42,7 @@ it('explains processing usage limits on failed file reports', function (): void 
     $this->browse(function (Browser $browser) use ($user, $file): void {
         $browser->loginAs($user)->visit('/files/'.$file->id.'/extraction-report')
             ->waitForText('The processing usage limit was reached.')
-            ->assertSee('Retry after the daily limit resets, or contact support to review the processing limit.')
+            ->assertSee('This file exceeded its processing allowance. Contact support before retrying.')
             ->assertDontSee('The failure cause was not recorded.');
     });
 });
@@ -55,7 +61,7 @@ it('distinguishes recommendation generation failures pending work and successful
     $this->browse(function (Browser $browser) use ($user, $status, $message): void {
         $browser->loginAs($user)->visit('/collections/recommendations')->waitForText($message)->assertSee('Archive folder review');
         if ($status === 'failed') {
-            $browser->assertDontSee('No folder changes to review')->assertSee('Failed')->assertSee('Retry')->assertSee('Dismiss failed run');
+            $browser->assertDontSee('No folder changes to review')->assertSee('Failed')->assertSee('RETRY')->assertSee('DISMISS FAILED RUN');
         } else {
             $browser->assertDontSee('Folder recommendation generation failed');
         }
@@ -158,18 +164,15 @@ it('shows actual document category counts including zero and singular usage', fu
     });
 });
 
-it('keeps failed file recovery actions visible on narrow activity pages', function (): void {
+it('keeps failed file retry actions visible on narrow activity pages', function (): void {
     $user = $this->createUser();
     File::factory()->create(['user_id' => $user->id, 'status' => 'failed', 'fileName' => str_repeat('Long filename ', 15).'.pdf']);
 
     $this->browse(function (Browser $browser) use ($user): void {
-        $browser->loginAs($user)->visit('/files-processing?status=failed')->waitForText('Show actions')->press('Show actions')->waitForText('CHANGE TYPE & RETRY');
+        $browser->loginAs($user)->visit('/files-processing?status=failed')->waitForText('Show details')->press('Show details')->waitForText('RETRY PROCESSING');
         foreach ([320, 390] as $width) {
-            $browser->resize($width, 844)->assertSee('RETRY PROCESSING')->assertSee('CHANGE TYPE & RETRY');
-            $browser->assertScript("Array.from(document.querySelectorAll('button')).filter(el => /Retry Processing|Change Type & Retry/.test(el.textContent)).every(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })", true);
-            $browser->press('CHANGE TYPE & RETRY')->waitForText('APPLY & RETRY');
-            $browser->assertScript("Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Apply & Retry')).getBoundingClientRect().right <= innerWidth", true);
-            $browser->press('CHANGE TYPE & RETRY');
+            $browser->resize($width, 844)->assertSee('RETRY PROCESSING');
+            $browser->assertScript("Array.from(document.querySelectorAll('button')).filter(el => /Retry Processing/.test(el.textContent)).every(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })", true);
         }
     });
 });
@@ -438,12 +441,12 @@ it('discards receipt edits on cancel and saves only through Save Changes', funct
 
     $this->browse(function (Browser $browser) use ($user, $receipt): void {
         $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitForText('Persisted description')
-            ->press('Edit Receipt')->press('Cancel')->waitForText('Edit Receipt')
+            ->press('Edit Receipt')->tap(fn (Browser $browser) => $browser->script('window.scrollTo(0, 0)'))->press('Cancel')->waitForText('Edit Receipt')
             ->press('Edit Receipt')->type('dl input[type="number"]', '99')
-            ->press('Cancel')->waitForText('Edit Receipt');
+            ->tap(fn (Browser $browser) => $browser->script('window.scrollTo(0, 0)'))->press('Cancel')->waitForText('Edit Receipt');
         expect($receipt->fresh()->total_amount)->toEqual(42);
         $browser->press('Edit Receipt')->assertInputValue('dl input[type="number"]', '42.00')
-            ->type('dl input[type="number"]', '55')->press('Save Changes')->waitForText('Edit Receipt');
+            ->type('dl input[type="number"]', '55')->tap(fn (Browser $browser) => $browser->script('window.scrollTo(0, 0)'))->press('Save Changes')->waitForText('Edit Receipt');
     });
 
     expect($receipt->fresh()->total_amount)->toEqual(55);
@@ -469,27 +472,21 @@ it('wraps long receipt descriptions and preserves multiline notes while editing'
                 JS, true);
         }
         $browser->type('dl > div:last-child textarea', $note."\nSaved fourth line")
-            ->press('Save Changes')->waitForText('Edit Receipt')
+            ->tap(fn (Browser $browser) => $browser->script('window.scrollTo(0, 0)'))->press('Save Changes')->waitForText('Edit Receipt')
             ->refresh()->waitForText('Saved fourth line')->press('Edit Receipt')
             ->assertInputValue('dl > div:last-child textarea', $note."\nSaved fourth line");
     });
 });
 
-it('explains upload modes and updates supported formats when switching modes', function (): void {
+it('explains automatic upload classification and accepts supported document and image formats', function (): void {
     $user = $this->createUser();
 
     $this->browse(function (Browser $browser) use ($user): void {
-        $browser->loginAs($user)->visit('/documents/upload')->waitForText('Receipt mode accepts')
-            ->assertAttribute('button[aria-pressed="true"]', 'aria-pressed', 'true')
-            ->assertSee('Automatic classification determines the final type');
-        $browser->assertScript("document.querySelector('input[type=file]').accept.includes('.docx')", false);
+        $browser->loginAs($user)->visit('/documents/upload')->waitForText('We detect the file type')
+            ->assertMissing('[aria-label="Upload mode"]');
+        $browser->assertScript("document.querySelector('input[type=file]').accept.includes('.docx') && document.querySelector('input[type=file]').accept.includes('.jpg')", true);
         $browser->attach('input[type=file]', base_path('tests/Browser/fixtures/test-image.jpg'))
-            ->waitForText('test-image.jpg')->press('Document')
-            ->waitForText('Document mode accepts invoices, contracts, bank statements')
-            ->assertDontSee('test-image.jpg');
-        $browser->assertScript("document.querySelector('input[type=file]').accept.includes('.docx')", true);
-        $browser->press('Receipt')->waitForText('Receipt mode accepts');
-        $browser->assertScript("document.querySelector('input[type=file]').accept.includes('.docx')", false);
+            ->waitForText('test-image.jpg')->assertSee('Upload 1 file');
     });
 });
 
@@ -631,7 +628,7 @@ it('reconciles the activity summary including review and pending files', functio
                 for (const label of document.querySelectorAll('p.text-sm.font-bold')) {
                     counts[label.textContent] = Number(label.nextElementSibling.textContent);
                 }
-                return counts['Total Files'] === 5 && counts.Completed === 1 && counts['In Progress'] === 2
+                return counts['Total Files'] === 5 && counts.Ready === 1 && counts['In Progress'] === 2
                     && counts.Failed === 1 && counts['Needs review'] === 1;
             })()
             JS, true);
@@ -684,10 +681,10 @@ it('edits receipts using managed categories and an uncategorized option', functi
             ->press('Edit Receipt')->waitForText('Save Changes')
             ->assertScript("document.querySelector('select').value", (string) $category->id)
             ->assertScript("Array.from(document.querySelector('select').options).map(option => option.textContent.trim())", ['Uncategorized', 'Garden & Plants'])
-            ->type('dl input[type="number"]', '43')->press('Save Changes')->waitForText('Receipt updated successfully')
+            ->type('dl input[type="number"]', '43')->tap(fn (Browser $browser) => $browser->script('window.scrollTo(0, 0)'))->press('Save Changes')->waitForText('Receipt updated successfully')
             ->refresh()->waitForText('Edit Receipt')->press('Edit Receipt')->waitForText('Save Changes')
             ->assertScript("document.querySelector('select').value", (string) $category->id)
-            ->select('select', 'Uncategorized')->assertScript("document.querySelector('select').selectedIndex", 0)->press('Save Changes')->waitForText('Receipt updated successfully')->refresh()->waitForText('Edit Receipt')
+            ->select('select', 'Uncategorized')->assertScript("document.querySelector('select').selectedIndex", 0)->tap(fn (Browser $browser) => $browser->script('window.scrollTo(0, 0)'))->press('Save Changes')->waitForText('Receipt updated successfully')->refresh()->waitForText('Edit Receipt')
             ->press('Edit Receipt')->assertScript("document.querySelector('select').selectedIndex", 0);
     });
 });
@@ -695,10 +692,12 @@ it('edits receipts using managed categories and an uncategorized option', functi
 it('renders translated expiry scanner and review labels', function (): void {
     $user = $this->createUser();
     $file = File::factory()->create(['user_id' => $user->id, 'status' => 'needs_review']);
+    Voucher::factory()->create(['user_id' => $user->id, 'expiry_date' => now()->addDays(10)]);
+    Warranty::factory()->create(['user_id' => $user->id, 'warranty_end_date' => now()->addDays(10)]);
     $this->browse(function (Browser $browser) use ($user, $file): void {
         $browser->loginAs($user)->visit('/dashboard')->waitForText('Expiring Vouchers')
             ->assertSee('Ending Warranties')->assertSee('Expiring within 30 days')
-            ->assertSee('No vouchers expiring soon.')->assertSee('No warranties ending soon.')
+            ->assertDontSee('No vouchers expiring soon.')->assertDontSee('No warranties ending soon.')
             ->visit('/preferences')->waitForText('Scanner Preferences')
             ->visit('/files/'.$file->id.'/extraction-report')->waitForText('Extraction report')
             ->assertSee('Needs review')->assertDontSee('needs_review');
@@ -733,7 +732,7 @@ it('saves receipt folder edits and cancels them without changing saved membershi
             $browser->press('Edit Receipt')->waitForText('Save Changes')
                 ->click('div:has(> input[placeholder="Add to collections..."]) > span > button')
                 ->type('input[placeholder="Add to collections..."]', 'New Folder')->waitForText('New Folder')
-                ->click('div.absolute.z-10 div.cursor-pointer:has(> span.flex)')->press($action);
+                ->click('div.absolute.z-10 div.cursor-pointer:has(> span.flex)')->tap(fn (Browser $browser) => $browser->script('window.scrollTo(0, 0)'))->press($action);
             if ($action === 'Save Changes') {
                 $browser->waitForText('Receipt updated successfully');
             } else {
@@ -771,7 +770,7 @@ it('names the target parent when managing and creating empty subfolders', functi
             ->type('#collection-name', 'Plans')->press('Create')->waitUntilMissing('#collection-name')
             ->assertSee('Plans');
         $browser->clickLink('Back to Eksempelveien')->waitForLocation('/collections/'.$leaf->id);
-        expect(Collection::where('name', 'Plans')->sole()->parent_id)->toBe($leaf->id);
+        expect(Collection::where('user_id', $user->id)->where('name', 'Plans')->sole()->parent_id)->toBe($leaf->id);
     });
 });
 
@@ -839,7 +838,7 @@ it('keeps recent receipt merchant and amount pairs visible at phone widths', fun
     }
     $this->browse(function (Browser $browser) use ($user): void {
         foreach ([320, 390] as $width) {
-            $browser->resize($width, 844)->loginAs($user)->visit('/dashboard')->waitFor('tbody tr')
+            $browser->resize($width, 844)->loginAs($user)->visit('/dashboard')->waitFor('details summary')->click('details summary')->waitFor('tbody tr')
                 ->assertSee('€42.00')->assertSee('€1,234.56')
                 ->assertScript("Array.from(document.querySelectorAll('tbody tr td:nth-child(3)')).every(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.width > 0; })", true)
                 ->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
@@ -1210,7 +1209,7 @@ it('applies real search range and folder filters with the collection engine in t
     $file->collections()->attach($folder);
     $this->browse(function (Browser $browser) use ($user, $folder): void {
         $this->loginAs($browser, $user);
-        $browser->visit('/search?type=receipt&date_from=2026-02-01&date_to=2026-02-28&amount_min=10&amount_max=20&collection_id='.$folder->id)
+        $browser->resize(1440, 1000)->visit('/search?type=receipt&date_from=2026-02-01&date_to=2026-02-28&amount_min=10&amount_max=20&collection_id='.$folder->id)
             ->waitForText('Range matched merchant')->assertSelected('#search-collection', (string) $folder->id)
             ->type('#search-amount-max', '15')->waitForText('No results found')->assertDontSee('Range matched merchant');
     });
@@ -1227,9 +1226,9 @@ it('finds activity by filename and reviews compact failed rows with per-file act
             ->select('select[aria-label="Sort activity"]', 'name')->waitForText('A batch scan.pdf')->waitUntilMissing('a[title="Completed scan.pdf"]');
         $browser->assertScript("document.querySelector('[dusk=activity-file-".$first->id."]').getBoundingClientRect().height < 140", true);
         $browser->resize(390, 844)->type('@activity-query', 'target')->waitUntilMissing('@activity-file-'.$first->id)
-            ->assertPresent('@activity-file-'.$second->id)->press('Show actions')->waitForText('RETRY PROCESSING')->assertSee('Extraction report');
+            ->assertPresent('@activity-file-'.$second->id)->press('Show details')->waitForText('RETRY PROCESSING')->assertSee('Extraction report');
         $browser->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
-        $browser->press('Hide actions')->waitUntilMissing('#activity-actions-'.$second->id)->type('@activity-query', 'missing')->waitForText('No files yet');
+        $browser->press('Hide details')->waitUntilMissing('#activity-details-'.$second->id)->type('@activity-query', 'missing')->waitForText('No files yet');
     });
 });
 

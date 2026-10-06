@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Receipt;
 use Laravel\Dusk\Browser;
 
 beforeEach(function (): void {
@@ -21,11 +22,12 @@ test('dashboard page loads after login', function () {
 
 test('dashboard shows stat cards', function () {
     $user = $this->createUser();
+    Receipt::factory()->create(['user_id' => $user->id]);
 
     $this->browse(function (Browser $browser) use ($user) {
         $this->loginAs($browser, $user)
             ->assertPathIs('/dashboard')
-            ->waitFor('.grid.grid-cols-1')
+            ->click('details summary')->waitFor('.grid.grid-cols-1')
             ->assertPresent('.grid.grid-cols-1 .border-l-4.border-amber-600')
             ->assertPresent('.grid.grid-cols-1 .border-l-4.border-orange-600')
             ->assertPresent('.grid.grid-cols-1 .border-l-4.border-red-600')
@@ -60,7 +62,7 @@ test('library receipts tab filters the document workspace', function () {
             ->waitFor('nav')
             ->click('aside a[href$="/library"]')
             ->waitFor('@library-query')
-            ->click('nav[aria-label="Workspace navigation"] a[href$="type=receipt"]')
+            ->select('select[aria-label="Document type"]', 'receipt')
             ->waitUsing(5, 100, fn (): bool => str_contains($browser->driver->getCurrentURL(), 'type=receipt'))
             ->assertPathIs('/library')->assertQueryStringHas('type', 'receipt');
     });
@@ -75,7 +77,7 @@ test('library documents tab filters the document workspace', function () {
             ->waitFor('nav')
             ->click('aside a[href$="/library"]')
             ->waitFor('@library-query')
-            ->click('nav[aria-label="Workspace navigation"] a[href$="type=document"]')
+            ->select('select[aria-label="Document type"]', 'document')
             ->waitUsing(5, 100, fn (): bool => str_contains($browser->driver->getCurrentURL(), 'type=document'))
             ->assertPathIs('/library')->assertQueryStringHas('type', 'document');
     });
@@ -148,7 +150,7 @@ test('library invoices tab filters the document workspace', function () {
             ->waitFor('nav')
             ->click('aside a[href$="/library"]')
             ->waitFor('@library-query')
-            ->click('nav[aria-label="Workspace navigation"] a[href$="type=invoice"]')
+            ->select('select[aria-label="Document type"]', 'invoice')
             ->waitUsing(5, 100, fn (): bool => str_contains($browser->driver->getCurrentURL(), 'type=invoice'))
             ->assertPathIs('/library')->assertQueryStringHas('type', 'invoice');
     });
@@ -163,7 +165,7 @@ test('library contracts tab filters the document workspace', function () {
             ->waitFor('nav')
             ->click('aside a[href$="/library"]')
             ->waitFor('@library-query')
-            ->click('nav[aria-label="Workspace navigation"] a[href$="type=contract"]')
+            ->select('select[aria-label="Document type"]', 'contract')
             ->waitUsing(5, 100, fn (): bool => str_contains($browser->driver->getCurrentURL(), 'type=contract'))
             ->assertPathIs('/library')->assertQueryStringHas('type', 'contract');
     });
@@ -178,7 +180,7 @@ test('library bank statements tab filters the document workspace', function () {
             ->waitFor('nav')
             ->click('aside a[href$="/library"]')
             ->waitFor('@library-query')
-            ->click('nav[aria-label="Workspace navigation"] a[href$="type=bank_statement"]')
+            ->select('select[aria-label="Document type"]', 'bank_statement')
             ->waitUsing(5, 100, fn (): bool => str_contains($browser->driver->getCurrentURL(), 'type=bank_statement'))
             ->assertPathIs('/library')->assertQueryStringHas('type', 'bank_statement');
     });

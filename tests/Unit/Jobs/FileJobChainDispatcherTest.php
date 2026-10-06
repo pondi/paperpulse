@@ -3,13 +3,10 @@
 declare(strict_types=1);
 
 use App\Jobs\BankStatements\ProcessCsvImport;
-use App\Jobs\Documents\AnalyzeDocument;
-use App\Jobs\Documents\ProcessDocument;
+use App\Jobs\Files\ClassifyFile;
 use App\Jobs\Files\ProcessFile;
 use App\Jobs\Files\ProcessFileGemini;
 use App\Jobs\Maintenance\DeleteWorkingFiles;
-use App\Jobs\Receipts\MatchMerchant;
-use App\Jobs\Receipts\ProcessReceipt;
 use App\Models\File;
 use App\Services\Files\FileJobChainDispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -82,8 +79,7 @@ it('dispatches legacy receipt pipeline', function () {
 
     Bus::assertChained([
         ProcessFile::class,
-        ProcessReceipt::class,
-        MatchMerchant::class,
+        ClassifyFile::class,
         DeleteWorkingFiles::class,
     ]);
 });
@@ -102,8 +98,7 @@ it('dispatches legacy document pipeline', function () {
 
     Bus::assertChained([
         ProcessFile::class,
-        ProcessDocument::class,
-        AnalyzeDocument::class,
+        ClassifyFile::class,
         DeleteWorkingFiles::class,
     ]);
 });

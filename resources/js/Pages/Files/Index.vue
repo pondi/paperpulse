@@ -6,6 +6,7 @@ import { fileStatusLabel } from '@/utils/fileStatus';
 import ProcessingLimit from '@/Components/Domain/ProcessingLimit.vue';
 import ProcessingProgress from '@/Components/Domain/ProcessingProgress.vue';
 import Pagination from '@/Pages/Jobs/Components/Pagination.vue';
+import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 const { formatDate } = useDateFormatter();
@@ -92,6 +93,12 @@ const form = reactive({
 });
 
 const selectedFileId = ref<number | null>(props.filters.file_id ?? null);
+const retryingFileId = ref<number | null>(null);
+const retryFile = (file: FileItem) => router.post(route('files.reprocess', file.id), {}, {
+    preserveScroll: true,
+    onStart: () => { retryingFileId.value = file.id; },
+    onFinish: () => { retryingFileId.value = null; },
+});
 let filterTimer: ReturnType<typeof setTimeout>;
 watch(
     () => [form.query, form.sort, form.status, form.per_page, form.page],
@@ -372,6 +379,7 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
                                 </a>
 
                                 <template v-if="file.status === 'failed'">
+                                    <PrimaryButton :disabled="retryingFileId !== null" @click="retryFile(file)">Retry Processing</PrimaryButton>
                                     <Link v-if="file.extension?.toLowerCase() === 'csv'"
                                         :href="route('bank-statements.csv-mapping.edit', file.id)"
                                         class="text-blue-600 dark:text-blue-400 hover:underline">

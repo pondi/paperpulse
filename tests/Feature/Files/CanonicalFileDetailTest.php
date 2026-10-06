@@ -35,7 +35,7 @@ it('opens every extracted type using the actual file relationship despite overla
     ]);
     $this->actingAs($this->owner)->get(route('files.show', $this->file))
         ->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->component('Files/Show')
-        ->where('file.id', $this->file->id)->where('file.name', 'source.pdf')
+        ->where('file.id', $this->file->id)->where('file.original_name', 'source.pdf')
         ->has('extractedEntities', 1)->where('extractedEntities.0.entity_type', $type)
         ->where('extractedEntities.0.entity_id', $entity->id)->where('extractedEntities.0.entity.id', $entity->id));
     expect(FileInertiaResource::forIndex($this->file)->withDetailsUrl()->toArray(request())['detailsUrl'])

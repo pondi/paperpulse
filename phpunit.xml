@@ -36,6 +36,7 @@
         <env name="TEXTRACT_KEY" value="isolated-test" force="true"/>
         <env name="TEXTRACT_SECRET" value="isolated-test" force="true"/>
         <env name="RUN_GEMINI_INTEGRATION_TESTS" value="false" force="true"/>
+        <server name="BROADCAST_CONNECTION" value="log" force="true"/>
         <server name="MAIL_MAILER" value="array"/>
         <server name="PULSE_ENABLED" value="false"/>
         <server name="QUEUE_CONNECTION" value="sync"/>

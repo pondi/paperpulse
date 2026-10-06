@@ -33,6 +33,7 @@ class FileProcessingFailureReporter
         $failureContext = Arr::only($providerContext + $details, [
             'field', 'errors', 'dates', 'status', 'provider_attempts', 'reason', 'review', 'coverage',
             'run_calls', 'daily_calls', 'run_reserved_tokens', 'daily_reserved_tokens', 'requested_tokens',
+            'budget_scope', 'limit', 'limit_value', 'retry_after',
         ]) + [
             'stage' => $stage,
             'soft' => $soft,

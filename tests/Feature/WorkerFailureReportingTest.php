@@ -3,6 +3,7 @@
 use App\Exceptions\AIResponseException;
 use App\Jobs\Files\ProcessFileGemini;
 use App\Models\File;
+use App\Models\JobHistory;
 use App\Services\AI\Shared\ProcessingUsageBudget;
 use App\Services\Jobs\JobMetadataPersistence;
 use App\Services\Workers\WorkerFileManager;
@@ -85,6 +86,68 @@ it('reports manually failed jobs as unhandled and captures each new failure', fu
     expect($this->reports)->toHaveCount(2);
     $this->assertDatabaseCount('failed_jobs', 2);
 });
+
+it('keeps daily budget waits queued across repeated days and resumes the same job without failures', function (): void {
+    config(['ai.limits.max_calls_per_user_day' => 1]);
+    $file = File::factory()->create(['status' => 'processing']);
+    $jobId = (string) Str::uuid();
+    JobMetadataPersistence::store($jobId, ['fileId' => $file->id, 'fileGuid' => $file->guid]);
+    DailyAllowanceWorkerJob::dispatch($jobId)->allOnConnection('database')->allOnQueue('files')
+        ->chain([new ManualWorkerFailureReportingJob]);
+
+    for ($day = 0; $day < 6; $day++) {
+        ProcessingUsageBudget::run($file->user_id, 'other-'.$day, 'extraction', fn () => ProcessingUsageBudget::reserve(1));
+        $this->artisan('queue:work', ['connection' => 'database', '--queue' => 'files', '--once' => true, '--sleep' => 0])->assertSuccessful();
+        $file->refresh()->load('processingJobs.tasks');
+        expect($file->status)->toBe('pending')
+            ->and($file->processingSummary()['state'])->toBe('waiting')
+            ->and($file->processingSummary()['resume_at'])->toBe(now()->utc()->addDay()->startOfDay()->addMinutes(5)->toIso8601String())
+            ->and($this->reports)->toBeEmpty();
+        $this->assertDatabaseCount('failed_jobs', 0);
+        $this->assertDatabaseCount('jobs', 1);
+        $this->travelTo(now()->utc()->addDay()->startOfDay()->addMinutes(6));
+    }
+
+    $this->artisan('queue:work', ['connection' => 'database', '--queue' => 'files', '--once' => true, '--sleep' => 0])->assertSuccessful();
+    expect($file->fresh()->status)->toBe('completed')
+        ->and($file->fresh()->meta)->not->toHaveKey('processing_wait')
+        ->and(JobHistory::query()->where('parent_uuid', $jobId)->value('status'))->toBe('completed');
+    $this->assertDatabaseCount('failed_jobs', 0);
+    $this->assertDatabaseCount('jobs', 1);
+    $this->assertDatabaseHas('jobs', ['queue' => 'files']);
+});
+
+it('fails an exhausted per-run budget without scheduling a daily allowance retry', function (): void {
+    $file = File::factory()->create(['status' => 'processing']);
+    $jobId = (string) Str::uuid();
+    JobMetadataPersistence::store($jobId, ['fileId' => $file->id, 'fileExtension' => 'pdf', 's3OriginalPath' => 'source.pdf']);
+    config(['ai.limits.max_tokens_per_run' => 1]);
+    $this->mock(WorkerFileManager::class)->shouldReceive('processWithCleanup')->once()
+        ->andReturnUsing(fn () => ProcessingUsageBudget::run($file->user_id, $jobId, 'extraction', fn () => ProcessingUsageBudget::reserve(2)));
+    ProcessFileGemini::dispatch($jobId)->onConnection('database')->onQueue('files');
+    $this->artisan('queue:work', ['connection' => 'database', '--queue' => 'files', '--once' => true, '--sleep' => 0])->assertSuccessful();
+
+    expect($file->fresh()->status)->toBe('failed')
+        ->and($file->fresh()->meta['last_processing_error']['retryable'])->toBeFalse()
+        ->and($file->fresh()->meta['last_processing_error']['retry_after'])->toBeNull()
+        ->and($file->fresh()->meta)->not->toHaveKey('processing_wait')
+        ->and($this->reports)->toHaveCount(1);
+    $this->assertDatabaseCount('failed_jobs', 1);
+    $this->assertDatabaseCount('jobs', 0);
+});
+
+class DailyAllowanceWorkerJob extends ProcessFileGemini
+{
+    protected function handleJob(): void
+    {
+        $file = File::withoutGlobalScope('user')->findOrFail($this->getMetadata()['fileId']);
+        ProcessingUsageBudget::run($file->user_id, $this->jobID, 'extraction', function (): void {
+            ProcessingUsageBudget::reserve(10);
+            ProcessingUsageBudget::record(5, 2);
+        });
+        $file->update(['status' => 'completed']);
+    }
+}
 
 class ManualWorkerFailureReportingJob implements ShouldQueue
 {

@@ -3,6 +3,7 @@
 use App\Http\Controllers\CategoryController;
 use App\Models\Category;
 use App\Models\Document;
+use App\Models\ExchangeRateObservation;
 use App\Models\Invoice;
 use App\Models\Receipt;
 use App\Models\User;
@@ -55,7 +56,7 @@ it('deletes categories while preserving active and deleted documents as uncatego
 });
 
 it('computes converted category totals with a bounded query count', function (): void {
-    Http::fake(['*' => Http::response("BASE_CUR;QUOTE_CUR;UNIT_MULT;TIME_PERIOD;OBS_VALUE\nEUR;NOK;0;2026-09-25;12\n")]);
+    ExchangeRateObservation::query()->create(['provider' => 'norges-bank', 'currency' => 'EUR', 'observation_date' => '2026-09-25', 'rate' => 12, 'units' => 1]);
     Receipt::factory()->create(['user_id' => $this->user->id, 'category_id' => $this->category->id, 'total_amount' => 10, 'currency' => 'EUR', 'receipt_date' => '2026-09-27']);
     $small = app(CategoryController::class)->index()->toResponse(request())->getOriginalContent()->getData()['page']['props']['categories'];
     expect($small[0]['total_amount'])->toBe(120.0);

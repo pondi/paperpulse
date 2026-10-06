@@ -173,5 +173,5 @@ it('links legacy receipt extraction to its owner scoped primary entity', functio
     expect($file->primaryEntity->entity_id)->toBe($receipt->id)->and($file->primaryEntity->user_id)->toBe($file->user_id);
     $request = organizationRequest($file);
     (new OrganizeProcessedFile($request->id))->handle(app(FileOrganizationSummaryService::class));
-    expect($request->fresh()->status)->toBe('completed')->and($file->fresh()->primaryFolder->name)->toBe('Needs review');
+    expect($request->fresh()->status)->toBe('completed')->and($file->fresh()->primaryFolder->name)->toBe('Receipts');
 });

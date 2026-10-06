@@ -122,8 +122,10 @@ class File extends Model
         $startedAt = $job->started_at ?? $job->tasks->whereNotNull('started_at')->min('started_at');
         $finishedAt = $job->finished_at;
         $active = in_array($this->status, ['pending', 'processing'], true);
+        $waiting = $this->status === 'pending' && isset($this->meta['processing_wait']);
 
-        return ['state' => $active ? ($task?->status ?? $job->status) : $this->status,
+        return ['state' => $waiting ? 'waiting' : ($active ? ($task?->status ?? $job->status) : $this->status),
+            'resume_at' => $waiting ? ($this->meta['processing_wait']['resume_at'] ?? null) : null,
             'stage' => $task?->name, 'queued_at' => $job->created_at?->toIso8601String(),
             'started_at' => $startedAt?->toIso8601String(), 'finished_at' => $finishedAt?->toIso8601String(),
             'elapsed_seconds' => $startedAt && ($active || $finishedAt) ? (int) $startedAt->diffInSeconds($finishedAt ?? now()) : null,

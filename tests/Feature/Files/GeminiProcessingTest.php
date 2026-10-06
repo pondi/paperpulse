@@ -50,6 +50,9 @@ beforeEach(function (): void {
                 : (isset($properties['merchant_name'])
                     ? ['merchant_name' => 'Fixture Store', 'total_amount' => 10, 'receipt_date' => '2026-01-01', 'description' => 'Purchase', 'category' => 'Groceries', 'confidence_score' => 0.99]
                     : ['document_type' => $this->classificationType, 'confidence' => 0.99, 'reasoning' => 'Fixture classification']);
+            if (isset($properties['organization'])) {
+                $data['organization'] = ['group_path' => [], 'confidence' => 0.99];
+            }
 
             return Http::response(['candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => json_encode($data)]]]]]]);
         }

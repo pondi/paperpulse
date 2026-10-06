@@ -114,7 +114,14 @@ class GeminiProvider
 
             if ($response->successful()) {
                 $responseBody = $response->json();
-                ProcessingUsageBudget::record((int) ($responseBody['usageMetadata']['promptTokenCount'] ?? 0), (int) ($responseBody['usageMetadata']['candidatesTokenCount'] ?? 0));
+                $usage = $responseBody['usageMetadata'] ?? null;
+                if (is_array($usage) && isset($usage['promptTokenCount']) && (isset($usage['totalTokenCount']) || isset($usage['candidatesTokenCount']))) {
+                    $inputTokens = (int) $usage['promptTokenCount'];
+                    $outputTokens = isset($usage['totalTokenCount'])
+                        ? max(0, (int) $usage['totalTokenCount'] - $inputTokens)
+                        : (int) $usage['candidatesTokenCount'] + (int) ($usage['thoughtsTokenCount'] ?? 0);
+                    ProcessingUsageBudget::record($inputTokens, $outputTokens);
+                }
                 $textResponse = $this->responseParser->extractTextResponse($responseBody);
 
                 return ['body' => $responseBody, 'text' => $textResponse];
@@ -299,7 +306,7 @@ class GeminiProvider
             'conversation_turns' => count($contents),
         ]);
 
-        ProcessingUsageBudget::reserve(0);
+        ProcessingUsageBudget::check();
         $count = Http::timeout(30)->post(sprintf('https://generativelanguage.googleapis.com/v1beta/models/%s:countTokens?key=%s', $model, $apiKey), ['contents' => $contents]);
         $inputTokens = $count->json('totalTokens');
         if (! $count->successful() || ! is_int($inputTokens)) {

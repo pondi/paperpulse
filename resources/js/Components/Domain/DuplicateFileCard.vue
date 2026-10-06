@@ -37,6 +37,7 @@ const handleDelete = () => emit('delete-file', props.file.id);
                     <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100" v-else>
                         {{ __('file_missing') }}
                     </p>
+                    <p v-if="file?.original_name && file.original_name !== file.name" class="break-words text-xs text-zinc-500">{{ file.original_name }}</p>
                     <p v-if="file" class="text-xs text-zinc-500">{{ formatDate(file.uploaded_at) }}</p>
                 </div>
                 <Link

@@ -134,6 +134,20 @@ abstract class BaseJob implements ShouldQueue
      */
     final public function handle(): void
     {
+        try {
+            $this->handleWithContext();
+        } catch (AIResponseException $exception) {
+            if (! $this instanceof ProcessFileGemini || $this->job === null
+                || $exception->errorCode !== AIResponseException::CODE_USAGE_BUDGET_EXCEEDED
+                || ($exception->context['budget_scope'] ?? null) !== 'daily') {
+                throw $exception;
+            }
+            $this->waitForProcessingAllowance($exception);
+        }
+    }
+
+    protected function handleWithContext(): void
+    {
         $metadata = $this->getMetadata();
         Context::forget(['processing_failure', 'processing_stage', 'queue_failure', 'classification_resolution', 'automatic_recovery', 'organization']);
         Context::add('processing', [
@@ -169,6 +183,11 @@ abstract class BaseJob implements ShouldQueue
                 if ($replace) {
                     app(FileEntityCleanupService::class)->softDeleteAndUnindexEntities($file);
                 }
+                if (isset($file->meta['processing_wait'])) {
+                    $fileMeta = $file->meta;
+                    unset($fileMeta['processing_wait']);
+                    $file->update(['meta' => $fileMeta]);
+                }
                 $this->execute();
                 if ($replace && ! app(FileEntityCleanupService::class)->hasEntities($file)) {
                     throw new RuntimeException('Replacement extraction produced no entities.');
@@ -198,6 +217,32 @@ abstract class BaseJob implements ShouldQueue
             return;
         }
         $this->execute();
+    }
+
+    protected function waitForProcessingAllowance(AIResponseException $exception): void
+    {
+        $metadata = $this->getMetadata();
+        $resumeAt = now()->utc()->addDay()->startOfDay()->addMinutes(5);
+        $waiting = (new File)->getConnection()->transaction(function () use ($metadata, $resumeAt, $exception): bool {
+            $file = File::withoutGlobalScope('user')->where('user_id', $metadata['userId'])
+                ->lockForUpdate()->find($metadata['fileId']);
+            if (! $file || ($file->meta['processing_generation'] ?? null) !== ($metadata['processingGeneration'] ?? null)) {
+                $this->delete();
+
+                return false;
+            }
+            $file->update(['status' => 'pending', 'meta' => array_merge($file->meta ?? [], [
+                'processing_wait' => ['reason' => 'usage_budget_exceeded', 'resume_at' => $resumeAt->toIso8601String(), 'limit' => $exception->context['limit'] ?? null],
+            ])]);
+            $this->createOrUpdateJobHistory();
+            JobHistory::query()->where('uuid', $this->uuid)->update(['status' => 'retrying', 'exception' => null]);
+            $this->updateParentJobStatus();
+
+            return true;
+        });
+        if ($waiting) {
+            $this->release($resumeAt);
+        }
     }
 
     protected function commitsExtraction(): bool
@@ -476,8 +521,8 @@ abstract class BaseJob implements ShouldQueue
                         'job' => static::class,
                         'job_id' => $this->jobID,
                         'failed_at' => now()->toISOString(),
-                        'retryable' => $exception instanceof AIResponseException ? ($exception->retryable || $exception->errorCode === AIResponseException::CODE_USAGE_BUDGET_EXCEEDED) : ($exception instanceof GeminiApiException && $exception->isRetryable()),
-                        'retry_after' => $exception instanceof AIResponseException && $exception->errorCode === AIResponseException::CODE_USAGE_BUDGET_EXCEEDED ? now()->utc()->addDay()->startOfDay()->addMinutes(5)->toIso8601String() : null,
+                        'retryable' => $exception instanceof AIResponseException ? ($exception->retryable || ($exception->context['budget_scope'] ?? null) === 'daily') : ($exception instanceof GeminiApiException && $exception->isRetryable()),
+                        'retry_after' => $exception instanceof AIResponseException ? ($exception->context['retry_after'] ?? null) : null,
                     ];
 
                     $file->status = 'failed';

@@ -9,6 +9,8 @@ use App\Services\AI\Shared\ProcessingUsageBudget;
 use App\Services\FolderTreeService;
 use App\Services\OrganizationPlanner;
 use App\Services\OrganizationRunService;
+use Illuminate\Bus\UniqueLock;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
@@ -96,6 +98,7 @@ it('continues large archives in queued segments without exhausting the archive c
     $runs = app(OrganizationRunService::class);
     $run = $runs->start($owner->id);
     $job = new GenerateOrganizationRecommendations($owner->id, $run->id);
+    (new UniqueLock(app(Repository::class)))->release($job);
     $job->handle($runs, app(OrganizationPlanner::class));
     expect($run->fresh()->cursor)->toBe($first->id)->and($run->fresh()->calls)->toBe(1)
         ->and($run->fresh()->status)->toBe('queued')->and($run->fresh()->attempts)->toBe(0);
@@ -135,7 +138,9 @@ it('defers an exhausted daily allowance and resumes from its saved cursor instea
     fakeOrganizationAnalysis([], 2);
     $runs = app(OrganizationRunService::class);
     $run = $runs->start($owner->id);
-    (new GenerateOrganizationRecommendations($owner->id, $run->id))->handle($runs, app(OrganizationPlanner::class));
+    $job = new GenerateOrganizationRecommendations($owner->id, $run->id);
+    (new UniqueLock(app(Repository::class)))->release($job);
+    $job->handle($runs, app(OrganizationPlanner::class));
     expect($run->fresh()->status)->toBe('queued')->and($run->fresh()->cursor)->toBe($first->id)
         ->and($run->fresh()->calls)->toBe(1)->and($run->fresh()->attempts)->toBe(0);
     Queue::assertPushed(GenerateOrganizationRecommendations::class, fn ($job): bool => $job->delay !== null && $job->delay->isFuture());

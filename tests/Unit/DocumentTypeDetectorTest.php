@@ -13,7 +13,7 @@ it('classifies documents using filename extension and MIME hints', function (str
     $provider->shouldReceive('analyzeFileByUri')->once()
         ->with('https://gemini.test/fixture', ClassificationSchema::get(),
             Mockery::on(fn (string $prompt): bool => str_contains($prompt, 'Filename: '.$filename) && str_contains($prompt, 'Extension: '.$extension)),
-            [], $mime)
+            [], $mime, 512)
         ->andReturn(['data' => ['document_type' => $type, 'confidence' => 0.99, 'reasoning' => 'Fixture classification']]);
 
     $result = (new GeminiTypeClassifier($provider))->classify('https://gemini.test/fixture', [

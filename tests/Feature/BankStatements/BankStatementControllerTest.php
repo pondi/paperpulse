@@ -266,6 +266,7 @@ it('can download a bank statement file', function () {
         'user_id' => $user->id,
         'file_type' => 'bank_statement',
         'guid' => 'test-guid-bs-download',
+        's3_original_path' => 'bank-statement.pdf',
         'fileExtension' => 'pdf',
     ]);
     $statement = BankStatement::factory()->create([
@@ -274,7 +275,7 @@ it('can download a bank statement file', function () {
     ]);
 
     $storageService = $this->mock(StorageService::class);
-    $storageService->shouldReceive('getFileByUserAndGuid')
+    $storageService->shouldReceive('getFile')
         ->once()
         ->andReturn('fake-pdf-content');
 

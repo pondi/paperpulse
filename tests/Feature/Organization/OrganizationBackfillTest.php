@@ -92,12 +92,12 @@ it('extracts only absent grouping metadata from bounded stored text', function (
     $missing->update(['organization_summary' => null]);
     archiveEntity($missing, ['extracted_text' => str_repeat('Lease for 42 Birch Road. ', 500)]);
     $this->analysis->shouldReceive('analyze')->once()->andReturnUsing(function (string $prompt, array $schema): array {
-        expect(strlen($prompt))->toBeLessThan(3500)->and($prompt)->toContain('only property/employer grouping evidence');
+        expect(strlen($prompt))->toBeLessThan(3500)->and($prompt)->toContain('evidence-backed collection subjects', 'never incidental mentions', 'untrusted data');
         expect($schema['required'])->toBe(['organization']);
         ProcessingUsageBudget::reserve(strlen($prompt) + 100);
         ProcessingUsageBudget::record(100, 100);
 
-        return ['organization' => ['property_address' => '42 Birch Road', 'address_kind' => 'property_subject', 'role' => 'contracts', 'confidence' => .95]];
+        return ['organization' => ['group_path' => [], 'property_address' => '42 Birch Road', 'address_kind' => 'property_subject', 'role' => 'contracts', 'confidence' => .95]];
     });
     $service = app(OrganizationBackfillService::class);
     expect($service->preview($owner->id)['maximum_calls_with_extraction'])->toBe(1);
@@ -131,6 +131,22 @@ it('retains paid usage after provider failure and resumes without exceeding the 
     $service->resume($owner->id, $backfill->id, backfillOptions());
     $job->handle($service);
     expect($backfill->fresh()->processed)->toBe(1)->and($backfill->fresh()->status)->toBe('completed')->and($backfill->fresh()->calls)->toBe(1);
+});
+
+it('preserves stored subject evidence when refreshing a summary from its entity', function (): void {
+    $owner = User::factory()->create();
+    $file = archiveFile($owner->id);
+    archiveEntity($file, ['title' => 'Property lease', 'extracted_text' => 'Stored lease']);
+    $this->analysis->shouldNotReceive('analyze');
+    $service = app(OrganizationBackfillService::class);
+    $backfill = $service->start($owner->id, backfillOptions());
+
+    (new BackfillOrganization($owner->id, $backfill->id))->handle($service);
+
+    expect($file->fresh()->organization_summary['property_address'])->toBe('42 Birch Road')
+        ->and($file->fresh()->primaryFolder->name)->toBe('Contracts')
+        ->and($file->fresh()->primaryFolder->parent->name)->toBe('42 Birch Road')
+        ->and($backfill->fresh()->calls)->toBe(0);
 });
 
 it('uses stored extraction without paid calls and files missing source metadata in a general role folder', function () {

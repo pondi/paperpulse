@@ -40,7 +40,9 @@ class ProcessFileGemini extends BaseJob
 {
     public int $timeout = 600;
 
-    public int $tries = 5;
+    public int $tries = 0;
+
+    public int $maxExceptions = 5;
 
     public $backoff = [60, 120, 300, 600, 900];
 

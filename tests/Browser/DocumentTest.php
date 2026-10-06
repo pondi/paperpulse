@@ -25,7 +25,9 @@ it('uses source file downloads in mixed document cards rows and drawers', functi
             ->click('a[download="Invoice.pdf"]')->assertPathIs('/documents')
             ->click('div.flex.items-center.space-x-2 > button:last-child')->waitFor('table')
             ->assertPresent('tbody a[download="Invoice.pdf"]')
-            ->click('tbody tr td:nth-child(3)')->waitFor('div.fixed.right-0')
+            ->click('tbody tr td:nth-child(3) button')->waitFor('div.fixed.right-0')
+            ->waitFor('div.fixed.right-0 button[aria-haspopup="menu"]')
+            ->waitUntil("document.querySelector('div.fixed.right-0 button[aria-haspopup=menu]').getBoundingClientRect().width > 0 && document.querySelector('div.fixed.right-0 button[aria-haspopup=menu]').getBoundingClientRect().right <= innerWidth")
             ->click('div.fixed.right-0 button[aria-haspopup="menu"]')->waitFor('div.fixed.right-0 a[download]')
             ->assertScript("document.querySelector('div.fixed.right-0 a[download]').href.includes('/documents/serve?guid=')", true);
     });
@@ -61,31 +63,25 @@ test('upload page loads', function () {
         $this->loginAs($browser, $user);
 
         $browser->visit('/documents/upload')
-            ->waitForText('Upload Your Documents')
-            ->assertSee('Upload Your Documents')
+            ->waitForText('Upload files')
             ->assertSee('Upload files')
             ->assertSee('or drag and drop')
             ->assertPresent('input[type="file"]');
     });
 });
 
-test('file type toggle works', function () {
+test('unified upload accepts supported formats and detects their type automatically', function () {
     $user = $this->createUser();
     $config = app(FileUploadConfigService::class)->getUploadConfig();
-    $receiptHint = strtoupper(implode(', ', array_keys($config['capabilities']['receipt']))).' up to '.$config['maxFileSizeMb']['receipt'].'MB';
-    $documentHint = strtoupper(implode(', ', array_keys($config['capabilities']['document']))).' up to '.$config['maxFileSizeMb']['document'].'MB';
+    $hint = strtoupper(implode(', ', array_keys($config['capabilities']['document']))).' up to '.$config['maxFileSizeMb']['document'].'MB';
 
-    $this->browse(function (Browser $browser) use ($user, $receiptHint, $documentHint) {
+    $this->browse(function (Browser $browser) use ($user, $hint) {
         $this->loginAs($browser, $user);
         $browser->visit('/documents/upload')
-            ->waitForText('Upload Your Documents')
-            ->assertSee($receiptHint)
-            ->click('button[class*="rounded-r-lg"]')
-            ->waitForText($documentHint)
-            ->assertSee($documentHint)
-            ->click('button[class*="rounded-l-lg"]')
-            ->waitForText($receiptHint)
-            ->assertSee($receiptHint);
+            ->waitForText('Upload files')
+            ->assertSee($hint)
+            ->assertSee('We detect the file type')
+            ->assertMissing('[aria-label="Upload mode"]');
     });
 });
 
@@ -112,7 +108,7 @@ test('can attach file for upload', function () {
         $this->loginAs($browser, $user);
 
         $browser->visit('/documents/upload')
-            ->waitForText('Upload Your Documents')
+            ->waitForText('Upload files')
             ->attach('input[type="file"]', realpath(__DIR__.'/fixtures/test-receipt.pdf'))
             ->pause(1000)
             ->assertSee('test-receipt.pdf')
@@ -127,7 +123,7 @@ test('can attach image file for upload', function () {
         $this->loginAs($browser, $user);
 
         $browser->visit('/documents/upload')
-            ->waitForText('Upload Your Documents')
+            ->waitForText('Upload files')
             ->attach('input[type="file"]', realpath(__DIR__.'/fixtures/test-image.jpg'))
             ->pause(1000)
             ->assertSee('test-image.jpg')
@@ -142,7 +138,7 @@ test('upload submit button is disabled with no files', function () {
         $this->loginAs($browser, $user);
 
         $browser->visit('/documents/upload')
-            ->waitForText('Upload Your Documents')
+            ->waitForText('Upload files')
             ->assertSee('Upload 0 files')
             ->assertPresent('button[disabled]');
     });

@@ -93,6 +93,7 @@ class OrganizationBackfillService
             if (! is_array($summary) || ($summary['version'] ?? null) !== OrganizationSummaryNormalizer::VERSION
                 || ($file->meta['organization_grouping_version'] ?? null) !== FolderOrganizationService::GROUPING_VERSION) {
                 $entity = $file->primaryEntity()->where('user_id', $userId)->first()?->entity;
+                $previous = $summary;
                 $summary = null;
                 if ($entity && (int) $entity->user_id === $userId && (int) $entity->file_id === $file->id) {
                     $evidence = data_get($file->meta, 'gemini.entities.0.data.organization', []);
@@ -102,11 +103,11 @@ class OrganizationBackfillService
                         $evidence = $this->extract($backfill, $text);
                     }
                     $summary = $this->summaries->summarize($entity, $evidence);
-                    $previous = $file->organization_summary;
-                    if (is_array($previous) && ($previous['version'] ?? null) === OrganizationSummaryNormalizer::VERSION
-                        && (! empty($previous['group_path']) || ! empty($previous['collection_id']))) {
-                        $summary = array_replace($summary, $previous, ['abstract' => $summary['abstract'] ?? ($previous['abstract'] ?? null)]);
-                    }
+                }
+                if (is_array($previous) && ($previous['version'] ?? null) === OrganizationSummaryNormalizer::VERSION
+                    && (! empty($previous['group_path']) || ! empty($previous['collection_id'])
+                        || ! empty($previous['property_address']) || ! empty($previous['employer']))) {
+                    $summary = array_replace($summary ?? [], $previous, ['abstract' => $summary['abstract'] ?? ($previous['abstract'] ?? null)]);
                 }
                 if ($summary === null && ! $backfill->extract_missing) {
                     $summary = app(OrganizationSummaryNormalizer::class)->normalize($file->file_type, ['title' => $file->fileName]);

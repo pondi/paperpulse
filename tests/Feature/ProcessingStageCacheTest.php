@@ -2,6 +2,7 @@
 
 use App\Exceptions\AIResponseException;
 use App\Models\File;
+use App\Models\ProcessingUsageCounter;
 use App\Models\User;
 use App\Services\AI\Extractors\EntityExtractorFactory;
 use App\Services\AI\Providers\GeminiProvider;
@@ -75,7 +76,7 @@ it('counts and stops provider retries before they exceed the run budget', functi
     Http::fake(['*countTokens*' => Http::response(['totalTokens' => 100]), '*generateContent*' => Http::response(['error' => 'transient'], 503)]);
     $user = User::factory()->create();
     expect(fn () => ProcessingUsageBudget::run($user->id, 'retry', 'extraction', fn () => app(GeminiProvider::class)->analyzeFileByUri('https://files.test/source', ['responseSchema' => ['type' => 'object']], 'Extract')))->toThrow(AIResponseException::class);
-    Http::assertSentCount(2);
+    Http::assertSentCount(3);
     expect(ProcessingUsageBudget::usage($user->id, 'retry')['calls'])->toBe(2);
 });
 
@@ -91,6 +92,8 @@ it('identifies exhausted usage budgets without making another provider request',
     } catch (AIResponseException $exception) {
         expect($exception->errorCode)->toBe(AIResponseException::CODE_USAGE_BUDGET_EXCEEDED)
             ->and($exception->retryable)->toBeFalse()
+            ->and($exception->context['budget_scope'])->toBe(str_contains($limit, 'user_day') ? 'daily' : 'run')
+            ->and($exception->context['retry_after'] !== null)->toBe(str_contains($limit, 'user_day'))
             ->and($exception->context)->toMatchArray(['stage' => 'extraction', 'run_calls' => 1, 'daily_calls' => 1, 'requested_tokens' => $tokens]);
     }
     expect(ProcessingUsageBudget::usage($user->id, 'budget-report')['calls'])->toBe(1);
@@ -117,9 +120,75 @@ it('extracts a controlled receipt after correcting the daily processing limit', 
     $created = app(EntityFactory::class)->createEntitiesFromParsedData(['entities' => [$extract()]], $file, 'receipt');
     expect($created)->toHaveCount(1)
         ->and($created[0]['model']->total_amount)->toBe('10.00')
-        ->and(ProcessingUsageBudget::usage($file->user_id, 'controlled-file')['calls'])->toBe(2);
+        ->and(ProcessingUsageBudget::usage($file->user_id, 'controlled-file')['calls'])->toBe(1);
     Http::assertSentCount(2);
 });
+
+it('releases unused reservations from the run stage and original UTC day', function (): void {
+    $this->travelTo(now()->utc()->setTime(23, 59, 59));
+    $user = User::factory()->create();
+    $dayKey = 'daily:'.$user->id.':'.now()->utc()->format('Y-m-d');
+    config(['ai.limits.max_tokens_per_run' => 1000, 'ai.limits.max_tokens_per_user_day' => 1000]);
+    ProcessingUsageBudget::run($user->id, 'settled', 'extraction', function (): void {
+        ProcessingUsageBudget::reserve(1000);
+        $this->travel(2)->seconds();
+        ProcessingUsageBudget::record(100, 50);
+        ProcessingUsageBudget::reserve(800);
+        ProcessingUsageBudget::record(200, 50);
+    });
+    $usage = ProcessingUsageBudget::usage($user->id, 'settled');
+    expect($usage['reserved_tokens'])->toBe(400)
+        ->and($usage['stages']['extraction'])->toMatchArray(['calls' => 2, 'reserved_tokens' => 400, 'input_tokens' => 300, 'output_tokens' => 100])
+        ->and(ProcessingUsageCounter::query()->where('scope_key', $dayKey)->value('usage')['reserved_tokens'])->toBe(150)
+        ->and(ProcessingUsageCounter::query()->where('scope_key', 'daily:'.$user->id.':'.now()->utc()->format('Y-m-d'))->value('usage')['reserved_tokens'])->toBe(250);
+});
+
+it('does not promise a daily reset for a request that cannot fit its daily allowance', function (): void {
+    $user = User::factory()->create();
+    config(['ai.limits.max_tokens_per_user_day' => 100]);
+    try {
+        ProcessingUsageBudget::run($user->id, 'oversized-request', 'extraction', fn () => ProcessingUsageBudget::reserve(101));
+        $this->fail('An oversized request was allowed.');
+    } catch (AIResponseException $exception) {
+        expect($exception->context)->toMatchArray(['budget_scope' => 'request', 'limit' => 'daily_tokens', 'retry_after' => null]);
+    }
+    expect(ProcessingUsageBudget::usage($user->id, 'oversized-request')['calls'])->toBe(0);
+});
+
+it('processes a bulk receipt allowance beyond the former daily cap with the default limits', function (): void {
+    $user = User::factory()->create();
+    for ($file = 0; $file < 100; $file++) {
+        foreach (['classification', 'extraction'] as $stage) {
+            ProcessingUsageBudget::run($user->id, 'bulk-'.$file, $stage, function (): void {
+                ProcessingUsageBudget::check();
+                ProcessingUsageBudget::reserve(100000);
+                ProcessingUsageBudget::record(2000, 1000);
+            });
+        }
+    }
+    $usage = ProcessingUsageCounter::query()->where('scope_key', 'daily:'.$user->id.':'.now()->utc()->format('Y-m-d'))->value('usage');
+    expect($usage)->toMatchArray(['calls' => 200, 'reserved_tokens' => 600000]);
+});
+
+it('counts Gemini generation once and accounts for thinking tokens while retaining unknown usage', function (bool $hasUsage): void {
+    config(['ai.providers.gemini.api_key' => 'test', 'ai.limits.max_calls_per_run' => 1]);
+    $response = ['candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => '{"value":1}']]]]]];
+    if ($hasUsage) {
+        $response['usageMetadata'] = ['promptTokenCount' => 100, 'candidatesTokenCount' => 20, 'thoughtsTokenCount' => 30, 'totalTokenCount' => 150];
+    }
+    Http::fake(['*countTokens*' => Http::response(['totalTokens' => 100]), '*generateContent*' => Http::response($response)]);
+    $user = User::factory()->create();
+    ProcessingUsageBudget::run($user->id, 'gemini-usage', 'extraction', fn () => app(GeminiProvider::class)->analyzeFileByUri('https://files.test/source', ['responseSchema' => ['type' => 'object']], 'Extract'));
+    $usage = ProcessingUsageBudget::usage($user->id, 'gemini-usage');
+    expect($usage['calls'])->toBe(1);
+    if ($hasUsage) {
+        expect($usage['reserved_tokens'])->toBe(150)
+            ->and($usage['stages']['extraction']['output_tokens'])->toBe(50);
+    } else {
+        expect($usage['reserved_tokens'])->toBeGreaterThan(100);
+    }
+    Http::assertSentCount(2);
+})->with([true, false]);
 
 it('reuses OCR checkpoints by tenant and bytes, preserves partial coverage, and clears indexed stages', function () {
     OCRServiceFactory::clearCache();

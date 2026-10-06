@@ -27,7 +27,7 @@ it('processes an office upload through native database workers and serves its ow
     Storage::fake('local');
     Http::preventStrayRequests();
     Http::fake(['*' => Http::response(['totalTokens' => 100, 'candidates' => [['finishReason' => 'STOP',
-        'content' => ['parts' => [['text' => json_encode(['document_title' => 'Forge fixture', 'document_type' => 'report', 'summary' => 'An isolated native worker fixture', 'confidence_score' => 0.98])]]]]]])]);
+        'content' => ['parts' => [['text' => json_encode(['organization' => ['group_path' => [], 'confidence' => 0.98], 'document_title' => 'Forge fixture', 'document_type' => 'report', 'summary' => 'An isolated native worker fixture', 'confidence_score' => 0.98])]]]]]])]);
     $this->mock(GeminiFileManager::class, function ($mock): void {
         $mock->shouldReceive('uploadFile')->once()->andReturn(['fileUri' => 'https://test/file', 'name' => 'files/test', 'mimeType' => 'application/pdf']);
         $mock->shouldReceive('waitUntilActive')->once();
@@ -58,7 +58,7 @@ it('processes an office upload through native database workers and serves its ow
     $this->actingAs(User::factory()->create())->get(route('documents.download', $document))->assertNotFound();
     $user->notify((new BulkOperationCompleted('export', 1))->onConnection('database'));
     $this->artisan('queue:work', ['connection' => 'database', '--queue' => 'default', '--stop-when-empty' => true, '--sleep' => 0, '--memory' => 512, '--no-interaction' => true])->assertSuccessful();
-    expect($user->notifications()->count())->toBe(1);
+    expect($user->notifications()->where('type', BulkOperationCompleted::class)->count())->toBe(1);
     $this->artisan('queue:restart', ['--no-interaction' => true])->assertSuccessful();
     expect(Cache::get('illuminate:queue:restart'))->not->toBeNull();
     expect(DB::table('failed_jobs')->count())->toBe(0);

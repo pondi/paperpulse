@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ExchangeRateObservation;
 use App\Models\LineItem;
 use App\Models\Merchant;
 use App\Models\Receipt;
@@ -50,7 +51,7 @@ it('excludes deleted and foreign activity from converted merchant and vendor tot
     LineItem::create(['receipt_id' => $deleted->id, 'vendor_id' => $vendor->id, 'qty' => 100, 'price' => 100]);
     LineItem::create(['receipt_id' => $foreign->id, 'vendor_id' => $foreignVendor->id, 'qty' => 100, 'price' => 100]);
     $deleted->delete();
-    Http::fake(['*' => Http::response("BASE_CUR;QUOTE_CUR;UNIT_MULT;TIME_PERIOD;OBS_VALUE\nEUR;NOK;0;2026-09-25;12\n")]);
+    ExchangeRateObservation::query()->create(['provider' => 'norges-bank', 'currency' => 'EUR', 'observation_date' => '2026-09-25', 'rate' => 12, 'units' => 1]);
     $this->actingAs($user);
     $this->get(route('merchants.index'))->assertOk()->assertInertia(fn (Assert $page) => $page
         ->has('merchants.data', 1)->where('merchants.data.0.lastInvoice.amount', 120)

@@ -3,12 +3,13 @@ import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 defineProps({ processing: { type: Object, required: true } });
 const { formatDateTime } = useDateFormatter();
-const states = { pending: 'Queued', queued: 'Queued', processing: 'Active', retrying: 'Waiting to retry', completed: 'Ready', failed: 'Failed', needs_review: 'Needs review' };
+const states = { pending: 'Queued', queued: 'Queued', waiting: 'Waiting for processing allowance', processing: 'Active', retrying: 'Waiting to retry', completed: 'Ready', failed: 'Failed', needs_review: 'Needs review' };
 </script>
 
 <template>
     <div class="flex flex-col gap-2 text-xs text-zinc-600 dark:text-zinc-400" aria-live="polite">
         <p class="font-medium">{{ states[processing.state] || processing.state }}<span v-if="processing.stage"> · Stage: {{ processing.stage }}</span></p>
+        <p v-if="processing.state === 'waiting' && processing.resume_at">Processing will resume automatically after {{ formatDateTime(processing.resume_at) }}.</p>
         <p v-if="processing.queued_at">Queued {{ formatDateTime(processing.queued_at) }}</p>
         <p v-if="processing.started_at">Started {{ formatDateTime(processing.started_at) }}<span v-if="processing.elapsed_seconds != null"> · {{ Math.floor(processing.elapsed_seconds / 60) }} min {{ processing.elapsed_seconds % 60 }} sec elapsed</span></p>
         <p v-if="processing.finished_at">Finished {{ formatDateTime(processing.finished_at) }}</p>

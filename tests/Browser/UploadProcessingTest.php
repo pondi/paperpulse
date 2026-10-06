@@ -71,17 +71,18 @@ function fakeBrowserProcessingProvider(string $entityType = 'receipt', bool $ref
                     'category' => 'Groceries', 'confidence_score' => 0.99,
                     'items' => [['name' => 'Browser fixture item', 'quantity' => 1, 'unit_price' => 42.50, 'total_price' => 42.50]]]);
 
+        if (! $isClassification) {
+            $data['organization'] = ['group_path' => [], 'confidence' => 0.99];
+        }
+
         return Http::response(['candidates' => [['finishReason' => 'STOP',
             'content' => ['parts' => [['text' => json_encode($data, JSON_THROW_ON_ERROR)]]]]]]);
     }]);
 }
 
-function uploadBrowserFixture(Browser $browser, string $filename = 'test-image.jpg', string $fileType = 'receipt'): void
+function uploadBrowserFixture(Browser $browser, string $filename = 'test-image.jpg'): void
 {
-    $browser->visit('/documents/upload')->waitForText('Upload Your Documents');
-    if ($fileType === 'document') {
-        $browser->click('button[class*="rounded-r-lg"]');
-    }
+    $browser->visit('/documents/upload')->waitForText('Upload files');
     $browser->attach('input[type="file"].sr-only', __DIR__.'/fixtures/'.$filename)
         ->waitForText('Upload 1 file')
         ->click('button[type="submit"]')
@@ -137,7 +138,7 @@ test('uploaded file reaches completed status through the database queue', functi
         $this->loginAs($browser, $this->uploadUser);
         uploadBrowserFixture($browser);
         runBrowserProcessingQueue();
-        $browser->visit('/files-processing')->waitForText('Completed')->assertSee('Completed');
+        $browser->visit('/files-processing')->waitForText('Ready')->assertSee('Ready');
     });
 
     $file = File::query()->where('user_id', $this->uploadUser->id)->sole();
@@ -150,7 +151,7 @@ test('upload document type file', function (): void {
     fakeBrowserProcessingProvider('document');
     $this->browse(function (Browser $browser): void {
         $this->loginAs($browser, $this->uploadUser);
-        uploadBrowserFixture($browser, 'test-receipt.pdf', 'document');
+        uploadBrowserFixture($browser, 'test-receipt.pdf');
         runBrowserProcessingQueue();
         $browser->visit('/documents')->waitForText('Local E2E Document')->assertSee('Local E2E Document');
     });
@@ -163,7 +164,7 @@ test('upload document type file', function (): void {
 test('upload without selecting file shows disabled submit button', function (): void {
     $this->browse(function (Browser $browser): void {
         $this->loginAs($browser, $this->uploadUser);
-        $browser->visit('/documents/upload')->waitForText('Upload Your Documents')
+        $browser->visit('/documents/upload')->waitForText('Upload files')
             ->assertPresent('button[type="submit"][disabled]');
     });
     expect(File::query()->where('user_id', $this->uploadUser->id)->count())->toBe(0);
@@ -192,7 +193,7 @@ test('duplicate browser uploads keep one file and report the existing filename',
     $this->browse(function (Browser $browser): void {
         $this->loginAs($browser, $this->uploadUser);
         uploadBrowserFixture($browser);
-        $browser->visit('/documents/upload')->waitForText('Upload Your Documents')
+        $browser->visit('/documents/upload')->waitForText('Upload files')
             ->attach('input[type="file"].sr-only', __DIR__.'/fixtures/test-image.jpg')
             ->waitForText('Upload 1 file')->click('button[type="submit"]')
             ->waitForText('Already exists as "test-image.jpg"')
@@ -216,14 +217,14 @@ test('provider refusal is shown as failed and can be retried from the browser', 
         $file = File::query()->where('user_id', $this->uploadUser->id)->sole();
         $job = new ProcessFileGemini(JobHistory::query()->where('file_id', $file->id)->whereNull('parent_uuid')->sole()->uuid);
         try {
-            for ($attempt = 0; $attempt < $job->tries; $attempt++) {
+            for ($attempt = 0; $attempt < $job->maxExceptions; $attempt++) {
                 runBrowserProcessingQueue();
                 $this->travel(max($job->backoff) + 1)->seconds();
             }
         } finally {
             $this->travelBack();
         }
-        $browser->visit('/files-processing')->waitForText('RETRY PROCESSING')->assertSee('Failed');
+        $browser->visit('/files-processing')->waitForText('Show details')->press('Show details')->waitForText('RETRY PROCESSING')->assertSee('Failed');
     });
 
     expect(File::query()->where('user_id', $this->uploadUser->id)->sole()->status)->toBe('failed');
@@ -234,7 +235,7 @@ test('provider refusal is shown as failed and can be retried from the browser', 
     $this->browse(function (Browser $browser): void {
         $browser->click('main button.bg-zinc-900')->waitUntilMissingText('RETRY PROCESSING');
         runBrowserProcessingQueue();
-        $browser->visit('/files-processing')->waitForText('Completed');
+        $browser->visit('/files-processing')->waitForText('Ready');
     });
     expect(File::query()->where('user_id', $this->uploadUser->id)->sole()->status)->toBe('completed');
     expect(Receipt::query()->where('user_id', $this->uploadUser->id)->count())->toBe(1);
@@ -244,8 +245,7 @@ test('office uploads convert to PDF and display their extracted document', funct
     fakeBrowserProcessingProvider('document');
     $this->browse(function (Browser $browser): void {
         $this->loginAs($browser, $this->uploadUser);
-        $browser->visit('/documents/upload')->waitForText('Upload Your Documents')
-            ->click('button[class*="rounded-r-lg"]')
+        $browser->visit('/documents/upload')->waitForText('Upload files')
             ->attach('input[type="file"].sr-only', base_path('tests/fixtures/office/fixture.docx'))
             ->waitForText('Upload 1 file')->click('button[type="submit"]')
             ->waitForText('Upload 0 files', 15)

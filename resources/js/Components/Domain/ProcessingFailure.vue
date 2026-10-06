@@ -9,7 +9,7 @@ const causes = {
     unsupported_format: ['The source format is not supported.', 'Upload a supported PDF, image, office document or text file.'],
     file_too_large: ['The source exceeds the processing size limit.', 'Split or reduce the file and upload the smaller files.'],
     file_missing: ['The stored source file is unavailable.', 'Upload the original file again.'],
-    usage_budget_exceeded: ['The processing usage limit was reached.', 'Processing resumes when its usage allowance is available.'],
+    usage_budget_exceeded: ['The processing usage limit was reached.', 'This file exceeded its processing allowance. Contact support before retrying.'],
     extraction_validation_failed: ['The extracted information could not be validated.', 'Check that the original is readable. Contact support if it persists.'],
     api_timeout: ['The extraction service timed out.', 'Temporary failures are retried automatically.'],
     api_rate_limited: ['The extraction service is temporarily at capacity.', 'Temporary failures are retried automatically.'],

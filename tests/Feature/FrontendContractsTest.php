@@ -293,6 +293,15 @@ if (scenario === 'processing limits') {
     assert.equal(fileStatus.fileStatusLabel({ status: 'needs_review', review: { reason: 'receipt_totals' } }), 'Needs review');
 }
 if (scenario === 'state semantics') {
+    for (const status of ['failed', 'pending']) {
+        const activity = await render('Pages/Files/Index.vue', { files: { data: [{ id: 402, name: 'Upload.pdf', status }], links: [], meta: {} }, filters: { file_id: 402 } });
+        assert.equal(activity.includes('Retry Processing'), status === 'failed');
+    }
+    const waiting = { state: 'waiting', stage: 'Process File (Gemini)', resume_at: '2026-10-07T00:05:00Z' };
+    const progress = await render('Components/Domain/ProcessingProgress.vue', { processing: waiting });
+    assert.ok(progress.includes('Waiting for processing allowance'));
+    assert.ok(progress.includes('Processing will resume automatically after 2026-10-07T00:05:00Z'));
+    assert.equal(fileStatus.fileStatusLabel({ status: 'pending', processing: waiting }), 'Waiting for processing allowance');
     for (const status of ['completed', 'needs_review']) {
         const file = { id: 391, status, name: 'Receipt.pdf', file_type: 'receipt', detailsUrl: route('files.show', 391), review: status === 'needs_review' ? { reason: 'receipt_totals' } : null, folder: { name: 'Needs review' }, collections: [{ id: 1, name: 'Needs review' }] };
         const label = fileStatus.fileStatusLabel(file);

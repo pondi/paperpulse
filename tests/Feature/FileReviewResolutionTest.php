@@ -20,7 +20,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 it('automatically resolves uncertain classification and extracts without asking the owner for a type', function () {
     config(['ai.providers.gemini.api_key' => 'test']);
     Http::fake(['*' => Http::response([
-        'totalTokens' => 100, 'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => '{"conditions":"Unopened items accepted"}']]]]],
+        'totalTokens' => 100, 'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => '{"conditions":"Unopened items accepted","organization":{"group_path":[],"confidence":0.99}}']]]]],
     ])]);
     $this->mock(AutomaticTypeResolver::class)->shouldReceive('resolve')->once()->andReturn(new ClassificationResult('return_policy', .95, 'Automatically resolved'));
     $this->mock(FilePreviewManager::class)->shouldReceive('generatePreviewForFile')->once()->andReturnFalse();
@@ -109,7 +109,7 @@ it('rejects out-of-range or unsupported classification decisions', function (str
 it('uses the corrected type for extraction without classifying the document again', function () {
     config(['ai.providers.gemini.api_key' => 'test']);
     Http::fake(['*' => Http::response([
-        'totalTokens' => 100, 'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => '{"conditions":"Unopened items accepted"}']]]]],
+        'totalTokens' => 100, 'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => '{"conditions":"Unopened items accepted","organization":{"group_path":[],"confidence":0.99}}']]]]],
     ])]);
     $path = tempnam(sys_get_temp_dir(), 'corrected_').'.txt';
     file_put_contents($path, 'Return unopened items');

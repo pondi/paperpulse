@@ -101,8 +101,16 @@ it('preserves protected existing context folders and never adds files to shared 
     $file = File::factory()->create(['user_id' => $owner->id, 'organization_summary' => contextSummary([
         contextNode('person', 'Alex Example'), contextNode('category', 'Education', 'subgroup'),
     ])]);
-    expect(app(FolderOrganizationService::class)->placeFromSummary($file)->primaryFolder->name)->toBe('Needs review')
-        ->and($folder->children()->count())->toBe(0)->and($folder->files()->count())->toBe(0);
+    $placed = app(FolderOrganizationService::class)->placeFromSummary($file);
+    if ($protection === 'manual') {
+        expect($placed->primaryFolder->name)->toBe('Education')
+            ->and($placed->primaryFolder->parent_id)->toBe($folder->id)
+            ->and($folder->fresh()->organization_source)->toBe('manual');
+    } else {
+        expect($placed->primaryFolder->name)->toBe('Needs review')
+            ->and($folder->children()->count())->toBe(0);
+    }
+    expect($folder->files()->count())->toBe(0);
 })->with(['pinned', 'manual', 'shared']);
 
 it('reuses existing system collection roots rather than duplicating them with a different context type', function (): void {

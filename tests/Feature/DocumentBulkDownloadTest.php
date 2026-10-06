@@ -99,9 +99,9 @@ it('preserves safe uploaded filenames and resolves ZIP collisions', function ():
 
 it('downloads the uploaded filename instead of the entity title', function (string $model, string $route, string $name, string $expected): void {
     $entity = $model::factory()->create();
-    $entity->file->update(['fileName' => $name, 'fileExtension' => 'pdf']);
+    $entity->file->update(['fileName' => $name, 'fileExtension' => 'pdf', 's3_original_path' => 'original.pdf']);
     $this->mock(StorageService::class)
-        ->shouldReceive('getFileByUserAndGuid')
+        ->shouldReceive($model === Document::class ? 'getFileByUserAndGuid' : 'getFile')
         ->once()
         ->andReturn('%PDF-original');
 

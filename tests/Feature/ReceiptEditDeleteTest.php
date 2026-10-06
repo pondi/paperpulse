@@ -131,3 +131,19 @@ it('retains owner folders when a shared editor changes receipt fields', function
     $this->patch(route('receipts.update', $receipt), $payload + ['collection_ids' => []])->assertForbidden();
     expect($file->collections()->withoutGlobalScope('user')->pluck('collections.id')->all())->toBe([$folder->id]);
 });
+
+it('shows persisted source discounts and current receipt totals', function (bool $encoded): void {
+    $this->withoutVite();
+    $receipt = Receipt::factory()->create(['total_amount' => '21.56', 'tax_amount' => '0.00', 'currency' => 'EUR',
+        'receipt_data' => $encoded ? json_encode(['totals' => ['total_discount' => '1.14']]) : ['totals' => ['total_discount' => '1.14']]]);
+    $receipt->lineItems()->createMany([
+        ['text' => 'Wine', 'qty' => 1, 'price' => '14.80', 'total' => '14.80'],
+        ['text' => 'Wine', 'qty' => 1, 'price' => '7.90', 'total' => '7.90'],
+    ]);
+    $this->actingAs($receipt->user)->get(route('receipts.show', $receipt))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('receipt.reconciliation.calculated_total', '22.70')
+            ->where('receipt.reconciliation.discount_amount', '1.14')
+            ->where('receipt.reconciliation.total_amount', '21.56')
+            ->where('receipt.reconciliation.needs_review', false));
+})->with([false, true]);

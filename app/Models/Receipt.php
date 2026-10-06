@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Contracts\Services\ReceiptParserContract;
 use App\Contracts\Taggable;
 use App\Enums\DeletedReason;
+use App\Services\Receipts\TotalsCalculator;
 use App\Traits\BelongsToUser;
 use App\Traits\InvalidatesSearchFacets;
 use App\Traits\ShareableModel;
@@ -143,6 +145,25 @@ class Receipt extends Model implements Taggable
     public function merchant(): BelongsTo
     {
         return $this->belongsTo(Merchant::class);
+    }
+
+    public function sourceData(): array
+    {
+        $data = $this->receipt_data;
+
+        return is_string($data) ? json_decode($data, true, 512, JSON_THROW_ON_ERROR) : ($data ?? []);
+    }
+
+    public function totalsReconciliation(): array
+    {
+        $parser = app(ReceiptParserContract::class);
+        $totals = $parser->extractTotals($this->sourceData());
+        $totals['total_amount'] = $this->total_amount;
+        $totals['tax_amount'] = $this->tax_amount;
+
+        return TotalsCalculator::calculate($this->lineItems->map(fn (LineItem $item): array => [
+            'total_price' => $item->total, 'unit_price' => $item->price, 'quantity' => $item->qty,
+        ])->all(), ['totals' => $totals], $parser);
     }
 
     /** @return HasMany<LineItem, $this> */

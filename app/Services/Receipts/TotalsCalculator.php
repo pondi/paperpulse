@@ -23,12 +23,14 @@ class TotalsCalculator
         $tax = DecimalAmount::minorUnits($totals['tax_amount'] ?? 0);
         $tip = DecimalAmount::minorUnits($totals['tip_amount'] ?? 0);
         $discount = DecimalAmount::minorUnits($totals['discount_amount'] ?? 0);
-        $candidates = [$calculated, $calculated + $tax + $tip - $discount, $calculated + $tip - $discount];
+        $candidates = [$calculated + $tax + $tip - $discount, $calculated + $tip - $discount];
         $matches = $source !== null && min(array_map(static fn (int $candidate): int => abs($candidate - $source), $candidates)) <= 1;
 
         return [
             'total_amount' => DecimalAmount::format($source ?? ($calculated + $tax + $tip - $discount)),
             'tax_amount' => DecimalAmount::format($tax),
+            'tip_amount' => DecimalAmount::format($tip),
+            'discount_amount' => DecimalAmount::format($discount),
             'source_total' => $source === null ? null : DecimalAmount::format($source),
             'calculated_total' => DecimalAmount::format($calculated),
             'processed_items' => $covered,

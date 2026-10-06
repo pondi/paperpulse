@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\AI\Extractors\Receipt\ReceiptDataNormalizer;
 use App\Services\Receipt\ReceiptParserService;
 use App\Services\Receipts\TotalsCalculator;
 
@@ -40,3 +41,13 @@ it('reconciles nested receipt VAT without discarding tax', function () {
     expect($parser->extractTotals($data)['tax_amount'])->toBe('25.50')
         ->and(TotalsCalculator::calculate([['total_price' => 100]], $data, $parser)['needs_review'])->toBeFalse();
 });
+
+it('reconciles source discounts through normalized extraction and preserves inconsistencies', function (string $total, bool $review): void {
+    $data = app(ReceiptDataNormalizer::class)->normalize([
+        'items' => [['total_price' => '14.80'], ['total_price' => '7.90']],
+        'total_amount' => $total, 'total_discount' => '1.14',
+    ]);
+    $totals = TotalsCalculator::calculate($data['items'], $data, app(ReceiptParserService::class));
+    expect($totals['calculated_total'])->toBe('22.70')->and($totals['discount_amount'])->toBe('1.14')
+        ->and($totals['total_amount'])->toBe($total)->and($totals['needs_review'])->toBe($review);
+})->with([['21.56', false], ['21.57', false], ['22.70', true], ['20.00', true]]);

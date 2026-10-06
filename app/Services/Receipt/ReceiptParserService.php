@@ -195,7 +195,7 @@ class ReceiptParserService implements ReceiptParserContract
             'total_amount' => $total,
             'tax_amount' => $totals['tax_amount'] ?? $totals['vat_amount'] ?? $totals['tax'] ?? DecimalAmount::format($vatMinor),
             'tip_amount' => $totals['tip_amount'] ?? $totals['tip'] ?? 0,
-            'discount_amount' => $totals['discount_amount'] ?? 0,
+            'discount_amount' => $totals['discount_amount'] ?? $totals['total_discount'] ?? 0,
         ];
     }
 

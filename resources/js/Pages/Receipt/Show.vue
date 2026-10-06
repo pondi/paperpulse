@@ -102,6 +102,13 @@
                 </div>
               </div>
             </dl>
+            <dl v-if="receipt.reconciliation" class="mt-6 flex flex-col gap-3 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-700">
+              <div class="flex justify-between gap-3"><dt>Line item total</dt><dd>{{ formatCurrency(receipt.reconciliation.calculated_total, receipt.currency) }}</dd></div>
+              <div v-if="Number(receipt.reconciliation.discount_amount)" class="flex justify-between gap-3"><dt>Source discount</dt><dd>− {{ formatCurrency(receipt.reconciliation.discount_amount, receipt.currency) }}</dd></div>
+              <div v-if="Number(receipt.reconciliation.tip_amount)" class="flex justify-between gap-3"><dt>Source tip</dt><dd>{{ formatCurrency(receipt.reconciliation.tip_amount, receipt.currency) }}</dd></div>
+              <div class="flex justify-between gap-3 font-semibold"><dt>Final amount</dt><dd>{{ formatCurrency(receipt.total_amount, receipt.currency) }}</dd></div>
+              <p class="text-zinc-500 dark:text-zinc-400">Tax may already be included in the line item prices. Source adjustments are included when checking the final amount.</p>
+            </dl>
           </div>
 
           <!-- Tags -->

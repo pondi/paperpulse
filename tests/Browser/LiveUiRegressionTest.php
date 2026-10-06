@@ -150,7 +150,7 @@ it('keeps failed file recovery actions visible on narrow activity pages', functi
     File::factory()->create(['user_id' => $user->id, 'status' => 'failed', 'fileName' => str_repeat('Long filename ', 15).'.pdf']);
 
     $this->browse(function (Browser $browser) use ($user): void {
-        $browser->loginAs($user)->visit('/files-processing?status=failed')->waitForText('CHANGE TYPE & RETRY');
+        $browser->loginAs($user)->visit('/files-processing?status=failed')->waitForText('Show actions')->press('Show actions')->waitForText('CHANGE TYPE & RETRY');
         foreach ([320, 390] as $width) {
             $browser->resize($width, 844)->assertSee('RETRY PROCESSING')->assertSee('CHANGE TYPE & RETRY');
             $browser->assertScript("Array.from(document.querySelectorAll('button')).filter(el => /Retry Processing|Change Type & Retry/.test(el.textContent)).every(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })", true);
@@ -1200,5 +1200,22 @@ it('applies real search range and folder filters with the collection engine in t
         $browser->visit('/search?type=receipt&date_from=2026-02-01&date_to=2026-02-28&amount_min=10&amount_max=20&collection_id='.$folder->id)
             ->waitForText('Range matched merchant')->assertSelected('#search-collection', (string) $folder->id)
             ->type('#search-amount-max', '15')->waitForText('No results found')->assertDontSee('Range matched merchant');
+    });
+});
+
+it('finds activity by filename and reviews compact failed rows with per-file actions', function (): void {
+    $user = $this->createUser();
+    $first = File::factory()->create(['user_id' => $user->id, 'status' => 'failed', 'fileName' => 'A batch scan.pdf']);
+    $second = File::factory()->create(['user_id' => $user->id, 'status' => 'failed', 'fileName' => 'B target scan.pdf']);
+    File::factory()->create(['user_id' => $user->id, 'status' => 'completed', 'fileName' => 'Completed scan.pdf']);
+    $this->browse(function (Browser $browser) use ($user, $first, $second): void {
+        $this->loginAs($browser, $user);
+        $browser->visit('/files-processing')->waitFor('@activity-query')->select('select[aria-label="Processing status"]', 'failed')
+            ->select('select[aria-label="Sort activity"]', 'name')->waitForText('A batch scan.pdf')->waitUntilMissing('a[title="Completed scan.pdf"]');
+        $browser->assertScript("document.querySelector('[dusk=activity-file-".$first->id."]').getBoundingClientRect().height < 140", true);
+        $browser->resize(390, 844)->type('@activity-query', 'target')->waitUntilMissing('@activity-file-'.$first->id)
+            ->assertPresent('@activity-file-'.$second->id)->press('Show actions')->waitForText('RETRY PROCESSING')->assertSee('Extraction report');
+        $browser->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
+        $browser->press('Hide actions')->waitUntilMissing('#activity-actions-'.$second->id)->type('@activity-query', 'missing')->waitForText('No files yet');
     });
 });

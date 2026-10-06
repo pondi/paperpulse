@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Files;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Files\CorrectFileTypeRequest;
+use App\Http\Requests\Files\FileActivityRequest;
 use App\Http\Resources\Inertia\FileInertiaResource;
 use App\Models\File;
 use App\Services\AI\Extractors\EntityExtractorFactory;
@@ -11,20 +12,30 @@ use App\Services\Files\FileReprocessingService;
 use App\Services\Files\FileReviewService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class FileManagementController extends Controller
 {
-    public function index(Request $request)
+    public function index(FileActivityRequest $request): Response
     {
-        // Validate and get per_page value (50, 100, 200, or 999999 for "all")
-        $perPage = $request->input('per_page', 50);
-        $perPage = in_array($perPage, [50, 100, 200, 999999]) ? (int) $perPage : 50;
-
+        $perPage = $request->integer('per_page', 50);
+        $sort = $request->input('sort', 'newest');
+        $term = $request->string('query')->trim()->toString();
         $filesQuery = File::query()
             ->whereIn('status', ['failed', 'processing', 'pending', 'completed', 'needs_review'])
             ->when($request->filled('file_id'), fn ($query) => $query->whereKey($request->integer('file_id')))
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->status))
-            ->orderByDesc('uploaded_at');
+            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->status));
+        if ($term !== '') {
+            $pattern = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term).'%';
+            $filesQuery->whereLike('fileName', $pattern);
+        }
+        match ($sort) {
+            'oldest' => $filesQuery->orderBy('uploaded_at'),
+            'name' => $filesQuery->orderBy('fileName'),
+            'status' => $filesQuery->orderBy('status')->orderByDesc('uploaded_at'),
+            default => $filesQuery->orderByDesc('uploaded_at'),
+        };
+        $filesQuery->orderByDesc('id');
 
         $files = $filesQuery
             ->paginate($perPage)
@@ -46,6 +57,8 @@ class FileManagementController extends Controller
             'reviewTypes' => EntityExtractorFactory::getSupportedTypes(),
             'filters' => [
                 'file_id' => $request->filled('file_id') ? $request->integer('file_id') : null,
+                'query' => $term,
+                'sort' => $sort,
                 'status' => $request->input('status', ''),
                 'per_page' => $perPage,
             ],

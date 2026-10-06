@@ -133,3 +133,23 @@ it('deep links to the exact owned processing record', function (string $status):
     $this->get(route('files.index', ['file_id' => $foreign->id]))->assertOk()
         ->assertInertia(fn (Assert $page) => $page->has('files.data', 0));
 })->with(['completed', 'failed', 'needs_review']);
+
+it('searches activity filenames across pages and sorts owned status groups', function (): void {
+    $user = User::factory()->create();
+    File::factory()->count(50)->create(['user_id' => $user->id, 'fileName' => 'Other upload.pdf', 'status' => 'failed', 'uploaded_at' => now()]);
+    $target = File::factory()->create(['user_id' => $user->id, 'fileName' => 'Find 100%_invoice.pdf', 'status' => 'failed', 'uploaded_at' => now()->subYear()]);
+    File::factory()->create(['user_id' => $user->id, 'fileName' => 'Find 100XXinvoice.pdf', 'status' => 'failed']);
+    File::factory()->create(['fileName' => $target->fileName, 'status' => 'failed']);
+    $this->actingAs($user)->get(route('files.index', ['query' => '100%_', 'status' => 'failed', 'sort' => 'name']))
+        ->assertOk()->assertInertia(fn (Assert $page) => $page->has('files.data', 1)->where('files.data.0.id', $target->id)->where('filters.query', '100%_')->where('filters.sort', 'name'));
+    $completed = File::factory()->create(['user_id' => $user->id, 'status' => 'completed']);
+    $this->get(route('files.index', ['sort' => 'status']))->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('files.data.0.id', $completed->id)->where('files.data.1.status', 'failed'));
+});
+
+it('rejects unsupported activity sorts and oversized filename queries', function (array $filters, string $error): void {
+    $this->actingAs(User::factory()->create())->getJson(route('files.index', $filters))->assertUnprocessable()->assertJsonValidationErrors($error);
+})->with([
+    [['sort' => 'untrusted_column'], 'sort'],
+    [['query' => str_repeat('a', 201)], 'query'],
+]);

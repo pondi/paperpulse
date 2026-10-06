@@ -9,11 +9,12 @@ use App\Models\Receipt;
 use App\Models\Tag;
 use App\Models\User;
 use App\Services\Factories\ReceiptFactory;
+use App\Services\Receipts\Analysis\DateUpdateNotifier;
 use App\Services\Receipts\Analysis\ReceiptAnalysisRunner;
 use App\Services\Receipts\Analysis\UserPreferencesLoader;
 use Carbon\Carbon;
 
-it('honors disabled categorization and item extraction in both receipt pipelines', function (string $pipeline) {
+it('honors disabled categorization and item extraction in both receipt pipelines', function (string $pipeline, bool $dateExtracted) {
     $user = User::factory()->create();
     $category = Category::create(['user_id' => $user->id, 'name' => 'User default', 'slug' => 'default']);
     $user->preferences()->create(['auto_categorize' => false, 'extract_line_items' => false, 'default_category_id' => $category->id, 'currency' => 'EUR']);
@@ -23,9 +24,9 @@ it('honors disabled categorization and item extraction in both receipt pipelines
     if ($pipeline === 'gemini') {
         $receipt = app(ReceiptFactory::class)->create($data, $file);
     } else {
-        $parser = $this->mock(ReceiptParserContract::class, function ($mock) use ($data): void {
+        $parser = $this->mock(ReceiptParserContract::class, function ($mock) use ($data, $dateExtracted): void {
             $mock->shouldReceive('extractMerchantData')->andReturn([]);
-            $mock->shouldReceive('extractDateTime')->andReturn(Carbon::parse('2024-01-01'));
+            $mock->shouldReceive('extractDateTime')->andReturn($dateExtracted ? Carbon::parse('2024-01-01') : null);
             $mock->shouldReceive('extractCurrency')->with($data, 'EUR')->andReturn('EUR');
             $mock->shouldReceive('extractItems')->andReturn($data['items']);
             $mock->shouldReceive('extractTotals')->andReturn($data['totals']);
@@ -47,7 +48,19 @@ it('honors disabled categorization and item extraction in both receipt pipelines
     expect($receipt->category_id)->toBe($category->id)->and($receipt->receipt_category)->toBe($category->name)
         ->and($receipt->currency)->toBe('EUR')->and($receipt->lineItems()->count())->toBe(0)
         ->and($file->fresh()->meta['processing_preferences']['values']['extract_line_items'])->toBeFalse();
-})->with(['gemini', 'legacy']);
+    $receipt->refresh();
+    expect($receipt->receipt_data)->toBeArray()
+        ->and(json_decode($receipt->getRawOriginal('receipt_data'), true))->toBeArray()
+        ->and($receipt->sourceData()['total_reconciliation']['total_amount'])->toBe('10.00');
+    if ($pipeline === 'legacy') {
+        expect($receipt->sourceData()['data'])->toBe($data)
+            ->and(DateUpdateNotifier::needsDateUpdate($receipt))->toBe(! $dateExtracted);
+        if (! $dateExtracted) {
+            expect($receipt->receipt_data['metadata']['date_extraction_failed'])->toBeTrue()
+                ->and($receipt->receipt_data['metadata']['fallback_date_used'])->toBeTrue();
+        }
+    }
+})->with([['gemini', true], ['legacy', true], ['legacy', false]]);
 
 it('validates tenant defaults and keeps preferences stable within a processing generation', function () {
     $user = User::factory()->create();
@@ -75,3 +88,16 @@ it('preserves stored user category, notes and tags during receipt replacement an
         ->and($file->fresh()->meta['review']['reason'])->toBe('receipt_totals')
         ->and($receipt->receipt_data['total_reconciliation']['calculated_total'])->toBe('80.00');
 });
+
+it('reads existing receipt source data and clears date fallback flags without losing source metadata', function (bool $encoded): void {
+    $source = ['data' => ['merchant' => ['name' => 'Original merchant']], 'metadata' => [
+        'language' => 'nb', 'needs_date_update' => true, 'date_extraction_failed' => true, 'fallback_date_used' => true,
+    ]];
+    $receipt = Receipt::factory()->create(['receipt_data' => $encoded ? json_encode($source) : $source]);
+    $receipt->refresh();
+    expect($receipt->sourceData())->toBe($source)
+        ->and(DateUpdateNotifier::needsDateUpdate($receipt))->toBeTrue();
+    DateUpdateNotifier::clearDateUpdateFlag($receipt);
+    expect($receipt->fresh()->sourceData())->toBe(['data' => $source['data'], 'metadata' => ['language' => 'nb']])
+        ->and(DateUpdateNotifier::needsDateUpdate($receipt->fresh()))->toBeFalse();
+})->with([false, true]);

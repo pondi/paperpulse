@@ -18,19 +18,17 @@ class ReceiptCreator
      */
     public static function create(array $payload, array $data, ReceiptParserContract $parser): Receipt
     {
-        // Check if date extraction failed (fallback was used)
         $originalDateTime = $parser->extractDateTime($data);
         $dateExtractionFailed = ! DateFallbackHandler::isDateExtractionSuccessful($originalDateTime);
 
-        // Add metadata if date extraction failed
         if ($dateExtractionFailed) {
-            $receiptData = json_decode($payload['receipt_data'] ?? '{}', true);
+            $receiptData = $payload['receipt_data'] ?? [];
             $receiptData['metadata'] = array_merge($receiptData['metadata'] ?? [], [
                 'needs_date_update' => true,
                 'date_extraction_failed' => true,
                 'fallback_date_used' => Carbon::now()->toDateString(),
             ]);
-            $payload['receipt_data'] = json_encode($receiptData);
+            $payload['receipt_data'] = $receiptData;
         }
 
         $receipt = Receipt::create($payload);
@@ -40,7 +38,6 @@ class ReceiptCreator
             'extraction_provider' => 'textract_openai', 'extracted_at' => now(),
         ]);
 
-        // Mark for date update if extraction failed
         if ($dateExtractionFailed) {
             DateUpdateNotifier::markForDateUpdate($receipt);
         }

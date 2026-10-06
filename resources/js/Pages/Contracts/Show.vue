@@ -636,9 +636,9 @@ const getContractTypeClass = () => {
         </div>
 
         <!-- Delete Confirmation Modal -->
-        <Modal :show="showDeleteModal" @close="showDeleteModal = false">
+        <Modal :show="showDeleteModal" @close="showDeleteModal = false" v-slot="{ titleId }">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-zinc-900 dark:text-white">
+                <h2 :id="titleId" class="text-lg font-medium text-zinc-900 dark:text-white">
                     Delete Contract
                 </h2>
                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">

@@ -217,9 +217,9 @@ const openDeleteModal = (category: Category) => {
         </div>
 
         <!-- Create Category Modal -->
-        <Modal :show="showCreateModal" @close="showCreateModal = false">
+        <Modal :show="showCreateModal" @close="showCreateModal = false" v-slot="{ titleId }">
             <div class="p-6">
-                <h2 class="text-lg font-black text-zinc-900 dark:text-zinc-100 mb-4">
+                <h2 :id="titleId" class="text-lg font-black text-zinc-900 dark:text-zinc-100 mb-4">
                     Create New Category
                 </h2>
                 
@@ -267,9 +267,9 @@ const openDeleteModal = (category: Category) => {
         </Modal>
 
         <!-- Edit Category Modal -->
-        <Modal :show="showEditModal" @close="showEditModal = false">
+        <Modal :show="showEditModal" @close="showEditModal = false" v-slot="{ titleId }">
             <div class="p-6">
-                <h2 class="text-lg font-black text-zinc-900 dark:text-zinc-100 mb-4">
+                <h2 :id="titleId" class="text-lg font-black text-zinc-900 dark:text-zinc-100 mb-4">
                     Edit Category
                 </h2>
                 
@@ -317,9 +317,9 @@ const openDeleteModal = (category: Category) => {
 
 
         <!-- Delete Confirmation Modal -->
-        <Modal :show="showDeleteModal" @close="showDeleteModal = false">
+        <Modal :show="showDeleteModal" @close="showDeleteModal = false" v-slot="{ titleId }">
             <div class="p-6">
-                <h2 class="text-lg font-black text-zinc-900 dark:text-zinc-100">
+                <h2 :id="titleId" class="text-lg font-black text-zinc-900 dark:text-zinc-100">
                     Delete Category
                 </h2>
                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">

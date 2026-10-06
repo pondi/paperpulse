@@ -53,9 +53,9 @@
         </div>
 
         <!-- Share Modal -->
-        <Modal :show="showShareModal" @close="closeShareModal">
+        <Modal :show="showShareModal" @close="closeShareModal" v-slot="{ titleId }">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                <h2 :id="titleId" class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
                     Share {{ fileType === 'document' ? 'Document' : 'Receipt' }}
                 </h2>
 

@@ -192,9 +192,9 @@ function getLinkStatus(link) {
     </div>
 
     <!-- Create Link Modal -->
-    <Modal :show="showCreateModal" max-width="md" @close="showCreateModal = false">
+    <Modal :show="showCreateModal" max-width="md" @close="showCreateModal = false" v-slot="{ titleId }">
         <div class="p-6">
-            <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-4">Create Public Link</h3>
+            <h3 :id="titleId" class="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-4">Create Public Link</h3>
 
             <div class="space-y-4">
                 <div>
@@ -281,7 +281,7 @@ function getLinkStatus(link) {
     </Modal>
 
     <!-- Success Modal -->
-    <Modal :show="showSuccessModal" max-width="md" @close="showSuccessModal = false">
+    <Modal :show="showSuccessModal" max-width="md" @close="showSuccessModal = false" v-slot="{ titleId }">
         <div class="p-6" v-if="createdLink">
             <div class="text-center mb-4">
                 <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-3">
@@ -289,7 +289,7 @@ function getLinkStatus(link) {
                         <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                     </svg>
                 </div>
-                <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-100">Link Created</h3>
+                <h3 :id="titleId" class="text-lg font-bold text-zinc-900 dark:text-zinc-100">Link Created</h3>
             </div>
 
             <div class="space-y-4">
@@ -345,8 +345,8 @@ function getLinkStatus(link) {
     </Modal>
 
     <!-- Audit Log Modal -->
-    <Modal :show="showAuditModal" max-width="lg" @close="showAuditModal = false">
-        <PublicLinkAuditLog
+    <Modal :show="showAuditModal" max-width="lg" @close="showAuditModal = false" v-slot="{ titleId }">
+        <PublicLinkAuditLog :title-id="titleId"
             v-if="showAuditModal && auditLinkId"
             :collection-id="collectionId"
             :link-id="auditLinkId"

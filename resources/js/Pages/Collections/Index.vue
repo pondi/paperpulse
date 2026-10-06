@@ -107,9 +107,9 @@
         </div>
 
         <!-- Create/Edit Modal -->
-        <Modal :show="showModal" @close="closeModal">
+        <Modal :show="showModal" @close="closeModal" v-slot="{ titleId }">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                <h2 :id="titleId" class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
                     {{ editingCollection ? 'Edit Collection' : parentName ? `Create subfolder in ${parentName}` : 'Create New Collection' }}
                 </h2>
 

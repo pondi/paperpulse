@@ -1,5 +1,5 @@
 <template>
-  <Modal :show="show" @close="close" max-width="6xl">
+  <Modal :show="show" @close="close" max-width="6xl" v-slot="{ titleId }">
     <div class="flex h-[80vh] flex-col overflow-y-auto md:flex-row md:overflow-hidden">
       <!-- Left Panel - File Preview -->
       <div class="order-2 min-h-[40vh] shrink-0 bg-zinc-100 dark:bg-zinc-950 overflow-auto border-t border-zinc-200 md:order-1 md:min-h-0 md:flex-1 md:border-r md:border-t-0 dark:border-zinc-700">
@@ -52,7 +52,7 @@
               <DocumentIcon v-else class="size-5 text-zinc-400" />
               <span class="text-xs font-medium text-zinc-500 uppercase">{{ item?.type }}</span>
             </div>
-            <h3 class="text-lg font-semibold text-zinc-900 dark:text-white line-clamp-2">
+            <h3 :id="titleId" class="text-lg font-semibold text-zinc-900 dark:text-white line-clamp-2">
               {{ item?.title }}
             </h3>
           </div>

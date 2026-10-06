@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
 const props = defineProps({
+    titleId: String,
     collectionId: {
         type: Number,
         required: true,
@@ -69,7 +70,7 @@ function truncateUserAgent(ua) {
 <template>
     <div class="p-6">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-100">Access Logs</h3>
+            <h3 :id="titleId" class="text-lg font-bold text-zinc-900 dark:text-zinc-100">Access Logs</h3>
             <button @click="emit('close')" class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
                 <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />

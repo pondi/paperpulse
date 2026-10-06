@@ -76,14 +76,14 @@ function summary(view) {
                 </div>
             </section>
         </div>
-        <Modal :show="Boolean(editing)" max-width="md" @close="!busy && (editing = null)">
+        <Modal :show="Boolean(editing)" max-width="md" @close="!busy && (editing = null)" v-slot="{ titleId }">
             <form @submit.prevent="request('patch', editing, { name }, () => { editing = null; })" class="flex flex-col gap-4 p-6">
-                <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">Rename view</h2><label for="rename-view" class="text-sm text-zinc-600 dark:text-zinc-400">View name</label><input id="rename-view" v-model="name" required maxlength="80" class="rounded-lg border-zinc-300 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
+                <h2 :id="titleId" class="text-lg font-semibold text-zinc-900 dark:text-white">Rename view</h2><label for="rename-view" class="text-sm text-zinc-600 dark:text-zinc-400">View name</label><input id="rename-view" v-model="name" required maxlength="80" class="rounded-lg border-zinc-300 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
                 <p v-if="error" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p><div class="flex justify-end gap-3"><button type="button" :disabled="busy" @click="editing = null" class="px-3 py-2 text-sm text-zinc-500">Cancel</button><button type="submit" :disabled="busy" class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Save name</button></div>
             </form>
         </Modal>
-        <Modal :show="Boolean(removing)" max-width="md" @close="!busy && (removing = null)">
-            <div class="flex flex-col gap-4 p-6"><h2 class="text-lg font-semibold text-zinc-900 dark:text-white">Remove “{{ removing?.name }}”?</h2><p class="text-sm text-zinc-500 dark:text-zinc-400">This removes the saved view. Your documents remain in the library.</p><p v-if="error" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p><div class="flex justify-end gap-3"><button type="button" :disabled="busy" @click="removing = null" class="px-3 py-2 text-sm text-zinc-500">Cancel</button><button type="button" :disabled="busy" @click="request('delete', removing, {}, () => { removing = null; })" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Remove view</button></div></div>
+        <Modal :show="Boolean(removing)" max-width="md" @close="!busy && (removing = null)" v-slot="{ titleId }">
+            <div class="flex flex-col gap-4 p-6"><h2 :id="titleId" class="text-lg font-semibold text-zinc-900 dark:text-white">Remove “{{ removing?.name }}”?</h2><p class="text-sm text-zinc-500 dark:text-zinc-400">This removes the saved view. Your documents remain in the library.</p><p v-if="error" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p><div class="flex justify-end gap-3"><button type="button" :disabled="busy" @click="removing = null" class="px-3 py-2 text-sm text-zinc-500">Cancel</button><button type="button" :disabled="busy" @click="request('delete', removing, {}, () => { removing = null; })" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Remove view</button></div></div>
         </Modal>
     </AuthenticatedLayout>
 </template>

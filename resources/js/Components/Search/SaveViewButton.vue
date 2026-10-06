@@ -40,10 +40,10 @@ function save() {
         <button type="button" dusk="save-view" @click="show" class="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800">
             <BookmarkIcon class="h-4 w-4" aria-hidden="true" />{{ activeView ? 'Save changes' : 'Save view' }}
         </button>
-        <Modal :show="open" max-width="md" @close="!saving && (open = false)">
+        <Modal :show="open" max-width="md" @close="!saving && (open = false)" v-slot="{ titleId }">
             <form @submit.prevent="save" class="flex flex-col gap-5 p-6">
                 <div>
-                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">{{ title }}</h2>
+                    <h2 :id="titleId" class="text-lg font-semibold text-zinc-900 dark:text-white">{{ title }}</h2>
                     <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Keep these filters for next time. Matching documents update automatically.</p>
                 </div>
                 <div>

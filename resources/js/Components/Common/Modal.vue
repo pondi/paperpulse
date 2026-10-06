@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, useId, watch } from 'vue';
 
 const props = defineProps({
     show: {
@@ -15,6 +15,8 @@ const props = defineProps({
         default: true,
     },
 });
+
+const titleId = useId();
 
 const emit = defineEmits(['close']);
 
@@ -121,7 +123,7 @@ const maxWidthClass = computed(() => {
 <template>
     <Teleport v-if="isMounted" to="body">
         <Transition leave-active-class="duration-200">
-            <div v-show="show" ref="modalRef" class="fixed inset-0 overflow-y-auto px-4 py-6 sm:px-0 z-50" role="dialog" aria-modal="true" scroll-region>
+            <div v-if="show" ref="modalRef" class="fixed inset-0 overflow-y-auto px-4 py-6 sm:px-0 z-50" role="dialog" aria-modal="true" :aria-labelledby="titleId" scroll-region>
                 <Transition
                     enter-active-class="ease-out duration-300"
                     enter-from-class="opacity-0"
@@ -148,7 +150,7 @@ const maxWidthClass = computed(() => {
                         class="mb-6 bg-white dark:bg-zinc-800 rounded-lg overflow-hidden shadow-2xl border-2 border-amber-200 dark:border-zinc-700 transform transition-all sm:w-full sm:mx-auto"
                         :class="maxWidthClass"
                     >
-                        <slot v-if="show" />
+                        <slot v-if="show" :title-id="titleId" />
                     </div>
                 </Transition>
             </div>

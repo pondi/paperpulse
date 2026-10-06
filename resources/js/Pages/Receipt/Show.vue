@@ -205,9 +205,9 @@
     </div>
 
     <!-- Add/Edit Line Item Modal -->
-    <Modal :show="showAddLineItem" @close="closeAddLineItem">
+    <Modal :show="showAddLineItem" @close="closeAddLineItem" v-slot="{ titleId }">
       <div class="p-6">
-        <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200 mb-5">
+        <h3 :id="titleId" class="text-lg font-medium text-zinc-900 dark:text-zinc-200 mb-5">
           {{ editingLineItem ? __('edit_line_item') : __('add_line_item') }}
         </h3>
         

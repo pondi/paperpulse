@@ -143,9 +143,9 @@
         </div>
 
         <!-- Create/Edit Tag Modal -->
-        <Modal :show="showTagModal" @close="closeTagModal">
+        <Modal :show="showTagModal" @close="closeTagModal" v-slot="{ titleId }">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                <h2 :id="titleId" class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
                     {{ editingTag ? 'Edit Tag' : 'Create New Tag' }}
                 </h2>
 
@@ -193,9 +193,9 @@
         </Modal>
 
         <!-- Merge Tag Modal -->
-        <Modal :show="showMergeModal" @close="closeMergeModal">
+        <Modal :show="showMergeModal" @close="closeMergeModal" v-slot="{ titleId }">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                <h2 :id="titleId" class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
                     Merge Tag
                 </h2>
 
@@ -234,9 +234,9 @@
         </Modal>
 
         <!-- Delete Confirmation Modal -->
-        <Modal :show="showDeleteModal" @close="closeDeleteModal">
+        <Modal :show="showDeleteModal" @close="closeDeleteModal" v-slot="{ titleId }">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                <h2 :id="titleId" class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
                     Delete Tag
                 </h2>
 

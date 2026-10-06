@@ -808,9 +808,9 @@ const getEntityTypeBadge = (entityType?: string) => {
                 </div>
 
                 <!-- Delete Confirmation Modal (bulk) -->
-                <Modal :show="showDeleteModal" @close="showDeleteModal = false">
+                <Modal :show="showDeleteModal" @close="showDeleteModal = false" v-slot="{ titleId }">
                     <div class="p-6">
-                        <h2 class="text-lg font-black text-zinc-900 dark:text-zinc-100">
+                        <h2 :id="titleId" class="text-lg font-black text-zinc-900 dark:text-zinc-100">
                             Delete Documents
                         </h2>
                         <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">

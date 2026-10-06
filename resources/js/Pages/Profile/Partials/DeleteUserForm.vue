@@ -50,9 +50,9 @@ const closeModal = () => {
 
         <DangerButton @click="confirmUserDeletion">Delete Account</DangerButton>
 
-        <Modal :show="confirmingUserDeletion" @close="closeModal">
+        <Modal :show="confirmingUserDeletion" @close="closeModal" v-slot="{ titleId }">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                <h2 :id="titleId" class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
                     Are you sure you want to delete your account?
                 </h2>
 

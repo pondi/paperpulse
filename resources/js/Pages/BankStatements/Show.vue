@@ -579,9 +579,9 @@ const handleTagRemoved = (tag: Tag) => {
         </div>
 
         <!-- Delete Confirmation Modal -->
-        <Modal :show="showDeleteModal" @close="showDeleteModal = false">
+        <Modal :show="showDeleteModal" @close="showDeleteModal = false" v-slot="{ titleId }">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-zinc-900 dark:text-white">Delete Bank Statement</h2>
+                <h2 :id="titleId" class="text-lg font-medium text-zinc-900 dark:text-white">Delete Bank Statement</h2>
                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                     Are you sure you want to delete this bank statement and all its transactions? This action cannot be undone.
                 </p>

@@ -73,9 +73,9 @@
         </div>
 
         <!-- Create/Edit Tag Modal -->
-        <Modal :show="showTagModal" @close="closeTagModal">
+        <Modal :show="showTagModal" @close="closeTagModal" v-slot="{ titleId }">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                <h2 :id="titleId" class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
                     {{ editingTag ? 'Edit Tag' : 'Create New Tag' }}
                 </h2>
 

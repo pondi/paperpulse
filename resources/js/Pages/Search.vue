@@ -424,9 +424,9 @@
     />
 
     <!-- Bulk Actions Modal -->
-    <Modal :show="showBulkActions" @close="closeBulkActions">
+    <Modal :show="showBulkActions" @close="closeBulkActions" v-slot="{ titleId }">
       <div class="p-6">
-        <h3 class="text-lg font-medium text-zinc-900 dark:text-white mb-4">
+        <h3 :id="titleId" class="text-lg font-medium text-zinc-900 dark:text-white mb-4">
           {{ bulkActionType === 'add' ? 'Add to Collection' : 'Remove from Collection' }}
         </h3>
 

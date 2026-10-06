@@ -987,3 +987,30 @@ it('browses compact folder rows with visible child paths at desktop and mobile w
         }
     });
 });
+
+it('names active dialogs with their headings and restores focus after Escape', function (string $path, string $trigger, string $heading): void {
+    $user = $this->createUser();
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
+    $path = $path === 'receipt' ? '/receipts/'.$receipt->id : $path;
+    $this->browse(function (Browser $browser) use ($user, $path, $trigger, $heading): void {
+        $browser->loginAs($user)->visit($path)->waitFor($trigger)
+            ->assertMissing('[role="dialog"]')->click($trigger)->waitFor('[role="dialog"] input')
+            ->assertScript(<<<'JS'
+                (() => {
+                    const dialogs = document.querySelectorAll('[role="dialog"]');
+                    const dialog = dialogs[0];
+                    const title = document.getElementById(dialog?.getAttribute('aria-labelledby'));
+                    return dialogs.length === 1 && dialog.contains(title) && title.textContent.trim();
+                })()
+                JS, $heading)
+            ->assertScript("document.querySelector('[role=dialog]').contains(document.activeElement)", true)
+            ->keys('[role="dialog"] input', '{escape}')->waitUntilMissing('[role="dialog"]')
+            ->assertScript("document.activeElement.matches('".$trigger."')", true);
+    });
+})->with([
+    ['/collections', 'button:has(svg path[d="M12 4v16m8-8H4"])', 'Create New Collection'],
+    ['receipt', '.sharing-controls > button', 'Share Receipt'],
+    ['/tags', 'button:has(svg path[d="M12 4v16m8-8H4"])', 'Create New Tag'],
+    ['/library', '[dusk=save-view]', 'Save a view'],
+    ['/search', '[dusk=save-view]', 'Save a view'],
+]);

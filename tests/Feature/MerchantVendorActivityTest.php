@@ -15,6 +15,26 @@ beforeEach(function (): void {
     Http::preventStrayRequests();
 });
 
+it('shows vendor details and only the current owners active purchase history', function (): void {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    $vendor = Vendor::create(['user_id' => $user->id, 'name' => 'DigitalOcean', 'description' => 'Cloud hosting', 'contact_email' => 'support@example.test']);
+    $receipt = Receipt::factory()->create(['user_id' => $user->id, 'currency' => 'NOK']);
+    $foreign = Receipt::factory()->create(['user_id' => $other->id]);
+    LineItem::create(['receipt_id' => $receipt->id, 'vendor_id' => $vendor->id, 'text' => 'Cloud subscription', 'qty' => 1, 'price' => 100]);
+    LineItem::create(['receipt_id' => $foreign->id, 'vendor_id' => $vendor->id, 'text' => 'Foreign item', 'qty' => 1, 'price' => 200]);
+    LineItem::create(['receipt_id' => $receipt->id, 'vendor_id' => $vendor->id, 'text' => 'Deleted item', 'qty' => 1, 'price' => 300])->delete();
+
+    $this->actingAs($user)->get(route('vendors.show', $vendor))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('Receipt/VendorShow')
+            ->where('vendor.name', 'DigitalOcean')->where('vendor.description', 'Cloud hosting')
+            ->where('vendor.contact_email', 'support@example.test')->has('items.data', 1)
+            ->where('items.data.0.text', 'Cloud subscription')->where('items.data.0.receipt_id', $receipt->id));
+
+    $receipt->delete();
+    $this->get(route('vendors.show', $vendor))->assertForbidden();
+});
+
 it('excludes deleted and foreign activity from converted merchant and vendor totals', function (): void {
     $user = User::factory()->create();
     $other = User::factory()->create();

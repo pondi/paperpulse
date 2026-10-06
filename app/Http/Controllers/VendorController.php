@@ -92,7 +92,7 @@ class VendorController extends Controller
         ]);
     }
 
-    public function show(Vendor $vendor): RedirectResponse
+    public function show(Vendor $vendor): Response
     {
         // Verify user has access to this vendor through their receipts
         $hasAccess = $vendor->lineItems()
@@ -105,9 +105,26 @@ class VendorController extends Controller
             abort(403, 'Unauthorized access to vendor');
         }
 
-        // No dedicated VendorDetails page exists. Redirect to vendors index,
-        // optionally passing focus parameter for UI to highlight if implemented.
-        return redirect()->route('vendors.index', ['focus' => $vendor->id]);
+        $items = $vendor->lineItems()
+            ->whereHas('receipt', fn ($query) => $query->where('user_id', auth()->id()))
+            ->with('receipt.merchant')
+            ->latest('id')
+            ->paginate(50)
+            ->through(fn (LineItem $item): array => [
+                'id' => $item->id,
+                'text' => $item->text,
+                'qty' => $item->qty,
+                'price' => $item->price,
+                'currency' => $item->receipt->currency,
+                'receipt_id' => $item->receipt_id,
+                'receipt_date' => $item->receipt->receipt_date,
+                'merchant' => $item->receipt->merchant?->name,
+            ]);
+
+        return Inertia::render('Receipt/VendorShow', [
+            'vendor' => $vendor->only(['id', 'name', 'description', 'website', 'contact_email', 'contact_phone']),
+            'items' => $items,
+        ]);
     }
 
     public function updateLogo(Request $request, Vendor $vendor): RedirectResponse

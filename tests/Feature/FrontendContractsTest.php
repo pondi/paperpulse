@@ -89,13 +89,25 @@ if (scenario === 'category browsing') {
     assert.ok(receipts.includes('All Receipts'));
     assert.ok(!receipts.includes('upload_first_receipts'));
 }
+if (scenario === 'vendor details') {
+    const html = await render('Pages/Receipt/VendorShow.vue', { vendor: { name: 'DigitalOcean', description: 'Cloud hosting', contact_email: 'support@example.test' },
+        items: { total: 1, data: [{ id: 1, text: 'Cloud subscription', qty: 1, price: 100, currency: 'NOK', receipt_id: 9, merchant: 'Store', receipt_date: '2026-10-06' }], links: [] } });
+    for (const text of ['DigitalOcean', 'Vendor details', 'Cloud hosting', 'support@example.test', 'Cloud subscription', '100 NOK', '/receipts/9', 'All vendors']) {
+        assert.ok(html.includes(text), text);
+    }
+    const optional = await render('Pages/Receipt/VendorShow.vue', { vendor: { name: 'DigitalOcean' },
+        items: { total: 1, data: [{ id: 1, text: null, qty: null, price: null, receipt_id: 9 }], links: [] } });
+    assert.ok(optional.includes('Unnamed item'));
+    assert.ok(optional.includes('Receipt #9'));
+    assert.ok(!optional.includes('undefined'));
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode($scenario));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing']);
+})->with(['original downloads', 'category browsing', 'vendor details']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

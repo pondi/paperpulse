@@ -7,13 +7,30 @@ use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Invoice;
+use App\Models\LineItem;
 use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Models\Tag;
 use App\Models\UserPreference;
+use App\Models\Vendor;
 use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
+
+it('opens useful vendor details through the menu and direct links with working back navigation', function (): void {
+    $user = $this->createUser();
+    $vendor = Vendor::create(['user_id' => $user->id, 'name' => 'DigitalOcean', 'description' => 'Cloud hosting', 'contact_email' => 'support@example.test']);
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id, 'currency' => 'NOK']);
+    LineItem::create(['receipt_id' => $receipt->id, 'vendor_id' => $vendor->id, 'text' => 'Cloud subscription', 'qty' => 1, 'price' => 100]);
+    $this->browse(function (Browser $browser) use ($user, $vendor): void {
+        $browser->loginAs($user)->visit('/vendors')->waitForText('DigitalOcean')
+            ->click('li button[aria-haspopup="menu"]')->click('a[href$="/vendors/'.$vendor->id.'"]')
+            ->waitForText('Vendor details')->assertSee('Cloud hosting')->assertSee('support@example.test')
+            ->assertSee('Cloud subscription')->clickLink('All vendors')->waitForLocation('/vendors')
+            ->back()->waitForLocation('/vendors/'.$vendor->id)->assertSee('Cloud subscription')
+            ->visit('/vendors/'.$vendor->id)->waitForText('Purchased items (1)');
+    });
+});
 
 it('browses categorized receipts and explains filtered empty document and receipt lists', function (): void {
     $user = $this->createUser();

@@ -10,8 +10,10 @@ use App\Models\Receipt;
 use App\Models\ReturnPolicy;
 use App\Models\Voucher;
 use App\Models\Warranty;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Http\Request;
 use Laravel\Scout\Builder;
+use Laravel\Scout\Engines\CollectionEngine;
 use Meilisearch\Endpoints\Indexes;
 
 class SearchFilterBuilder
@@ -34,6 +36,63 @@ class SearchFilterBuilder
             BankStatement::class => 'closing_balance',
             default => 'total_amount',
         };
+        if ($search->model->searchableUsing() instanceof CollectionEngine) {
+            $search->callback = function (EloquentBuilder $query, Builder $builder) use ($filters, $dateField, $amountField): void {
+                $query->with('file');
+                foreach ($builder->wheres as $column => $value) {
+                    $query->where($column, $value);
+                }
+                foreach ($builder->whereIns as $column => $values) {
+                    $query->whereIn($column, $values);
+                }
+                foreach ($builder->whereNotIns as $column => $values) {
+                    $query->whereNotIn($column, $values);
+                }
+                foreach (['date_from' => '>=', 'date_to' => '<='] as $key => $operator) {
+                    if (isset($filters[$key])) {
+                        $query->whereDate($dateField, $operator, $filters[$key]);
+                    }
+                }
+                foreach (['amount_min' => '>=', 'amount_max' => '<='] as $key => $operator) {
+                    if (isset($filters[$key])) {
+                        if (in_array($builder->model::class, [Document::class, Warranty::class, ReturnPolicy::class], true)) {
+                            $query->whereKey([]);
+                        } else {
+                            $query->where($amountField, $operator, $filters[$key]);
+                        }
+                    }
+                }
+                if (isset($filters['collection_id'])) {
+                    $query->whereHas('file.collections', fn (EloquentBuilder $collections) => $collections->whereKey($filters['collection_id']));
+                }
+                if (isset($filters['category'])) {
+                    if ($builder->model instanceof Receipt) {
+                        $query->where('receipt_category', $filters['category']);
+                    } elseif (in_array($builder->model::class, [Document::class, Invoice::class], true)) {
+                        $query->whereHas('category', fn (EloquentBuilder $categories) => $categories->where('name', $filters['category']));
+                    } else {
+                        $query->whereKey([]);
+                    }
+                }
+                if (isset($filters['document_type'])) {
+                    $builder->model instanceof Document ? $query->where('document_type', $filters['document_type']) : $query->whereKey([]);
+                }
+                if (! empty($filters['tags'])) {
+                    $query->whereHas('tags', fn (EloquentBuilder $tags) => $tags->whereIn('name', $filters['tags']));
+                }
+                $vendors = array_merge(isset($filters['vendor']) ? [$filters['vendor']] : [], $filters['vendors'] ?? []);
+                if ($vendors !== []) {
+                    if ($builder->model instanceof Receipt) {
+                        $query->whereHas('lineItems.vendor', fn (EloquentBuilder $vendorsQuery) => $vendorsQuery->whereIn('name', $vendors));
+                    } else {
+                        $query->whereKey([]);
+                    }
+                }
+            };
+
+            return $search;
+        }
+
         $clauses = [];
         foreach (['date_from' => '>=', 'date_to' => '<='] as $key => $operator) {
             if (isset($filters[$key])) {

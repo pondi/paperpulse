@@ -1187,3 +1187,18 @@ it('identifies library scans by extracted titles while retaining readable filena
         $browser->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
     });
 });
+
+it('applies real search range and folder filters with the collection engine in the browser', function (): void {
+    $user = $this->createUser();
+    $folder = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Filtered folder']);
+    $file = File::factory()->create(['user_id' => $user->id, 'status' => 'completed', 'file_type' => 'receipt']);
+    $merchant = Merchant::create(['user_id' => $user->id, 'name' => 'Range matched merchant']);
+    Receipt::factory()->create(['user_id' => $user->id, 'file_id' => $file->id, 'merchant_id' => $merchant->id, 'receipt_date' => '2026-02-10', 'total_amount' => 20]);
+    $file->collections()->attach($folder);
+    $this->browse(function (Browser $browser) use ($user, $folder): void {
+        $this->loginAs($browser, $user);
+        $browser->visit('/search?type=receipt&date_from=2026-02-01&date_to=2026-02-28&amount_min=10&amount_max=20&collection_id='.$folder->id)
+            ->waitForText('Range matched merchant')->assertSelected('#search-collection', (string) $folder->id)
+            ->type('#search-amount-max', '15')->waitForText('No results found')->assertDontSee('Range matched merchant');
+    });
+});

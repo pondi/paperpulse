@@ -102,3 +102,40 @@ it('validates ranges and ownership before web and API engine searches', function
     ['/search', ['date_from' => '2026-02-30'], 'date_from'],
     ['/api/v1/search', ['collection_id' => 99999], 'collection_id'],
 ]);
+
+it('filters collection engine date amount and folder ranges without losing tenant constraints', function (string $model, string $method, string $date, ?string $amount): void {
+    config(['scout.driver' => 'collection']);
+    $owner = User::factory()->create();
+    $other = User::factory()->create();
+    $folder = Collection::factory()->create(['user_id' => $owner->id]);
+    $entities = collect();
+    foreach ([[$owner, '2026-02-01', 10], [$owner, '2026-02-28', 20], [$owner, '2026-03-01', 30], [$other, '2026-02-10', 15]] as [$user, $day, $value]) {
+        $file = File::factory()->create(['user_id' => $user->id, 'status' => 'completed']);
+        $attributes = ['user_id' => $user->id, 'file_id' => $file->id, $date => $day];
+        if ($amount) {
+            $attributes[$amount] = $value;
+        }
+        $entities->push($model::factory()->create($attributes));
+        if ($entities->count() === 1) {
+            $file->collections()->attach($folder);
+        }
+    }
+    $this->actingAs($owner);
+    $filters = ['date_from' => '2026-02-01', 'date_to' => '2026-02-28'];
+    if ($amount) {
+        $filters += ['amount_min' => 10, 'amount_max' => 20];
+    }
+    $query = app(SearchQueryBuilder::class);
+    expect($query->{$method}('', $filters)['results']->pluck('id')->sort()->values()->all())->toBe($entities->take(2)->pluck('id')->sort()->values()->all());
+    expect($query->{$method}('', $filters + ['collection_id' => $folder->id])['results']->pluck('id')->all())->toBe([$entities[0]->id]);
+    expect($query->{$method}('', ['date_from' => '2027-01-01'])['results'])->toBeEmpty();
+})->with([
+    [Receipt::class, 'searchReceipts', 'receipt_date', 'total_amount'],
+    [Document::class, 'searchDocuments', 'document_date', null],
+    [Invoice::class, 'searchInvoices', 'invoice_date', 'total_amount'],
+    [Contract::class, 'searchContracts', 'effective_date', 'contract_value'],
+    [Voucher::class, 'searchVouchers', 'expiry_date', 'current_value'],
+    [Warranty::class, 'searchWarranties', 'warranty_end_date', null],
+    [ReturnPolicy::class, 'searchReturnPolicies', 'return_deadline', null],
+    [BankStatement::class, 'searchBankStatements', 'statement_date', 'closing_balance'],
+]);

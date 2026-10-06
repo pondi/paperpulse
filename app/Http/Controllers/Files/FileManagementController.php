@@ -22,6 +22,7 @@ class FileManagementController extends Controller
 
         $filesQuery = File::query()
             ->whereIn('status', ['failed', 'processing', 'pending', 'completed', 'needs_review'])
+            ->when($request->filled('file_id'), fn ($query) => $query->whereKey($request->integer('file_id')))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->status))
             ->orderByDesc('uploaded_at');
 
@@ -44,6 +45,7 @@ class FileManagementController extends Controller
             'stats' => $stats,
             'reviewTypes' => EntityExtractorFactory::getSupportedTypes(),
             'filters' => [
+                'file_id' => $request->filled('file_id') ? $request->integer('file_id') : null,
                 'status' => $request->input('status', ''),
                 'per_page' => $perPage,
             ],

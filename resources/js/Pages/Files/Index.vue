@@ -49,6 +49,7 @@ interface Props {
     };
     stats?: Stats;
     filters?: {
+        file_id?: number | null;
         status: string;
         per_page: number;
     };
@@ -91,7 +92,7 @@ const selectedTypeById = ref<Record<number, string>>(
     ) as Record<number, string>
 );
 
-const expandedFileId = ref<number | null>(null);
+const expandedFileId = ref<number | null>(props.filters.file_id ?? null);
 
 // Watch for filter changes and update URL
 // Use debounce to prevent rapid navigation
@@ -106,6 +107,7 @@ watch(
         router.get(
             route('files.index'),
             {
+                file_id: props.filters.file_id || undefined,
                 status: form.status || undefined,
                 per_page: form.per_page,
                 page: form.page,
@@ -250,14 +252,15 @@ const toggleExpanded = (fileId: number) => {
                     </div>
                 </div>
 
+                <Link v-if="filters.file_id" :href="route('files.index')" class="mb-4 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline">All processing activity</Link>
                 <!-- Files List -->
                 <div v-if="props.files.data.length === 0" class="rounded-lg bg-white p-12 text-center shadow dark:bg-zinc-800">
                     <svg class="mx-auto h-12 w-12 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <h3 class="mt-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">No files yet</h3>
+                    <h3 class="mt-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">{{ filters.file_id ? 'Processing record unavailable' : 'No files yet' }}</h3>
                     <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                        Upload files to get started with document processing
+                        {{ filters.file_id ? 'This file is unavailable or no longer has a processing record.' : 'Upload files to get started with document processing' }}
                     </p>
                 </div>
 
@@ -380,6 +383,7 @@ const toggleExpanded = (fileId: number) => {
                                 <Link :href="route('files.extraction-report', file.id)" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                                     Extraction report
                                 </Link>
+                                <Link :href="route('files.show', file.id)" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">Open file workspace</Link>
                                 <a
                                     :href="file.viewUrl"
                                     target="_blank"
@@ -389,7 +393,7 @@ const toggleExpanded = (fileId: number) => {
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                     </svg>
-                                    View File
+                                    Open original
                                 </a>
 
                                 <template v-if="file.status === 'failed'">

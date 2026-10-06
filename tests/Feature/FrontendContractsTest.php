@@ -45,6 +45,7 @@ async function render(file, props) {
                 : name === 'usePage' ? () => page
                 : name === 'useForm' ? data => vue.reactive({ ...data, processing: false, errors: {} })
                 : name === 'useDateFormatter' ? () => ({ formatDate: value => value, formatDateTime: value => value, formatCurrency: (value, currency) => `${value} ${currency}` })
+                : name === 'useTranslations' ? () => ({ __: key => key })
                 : name === 'router' ? {} : stub;
         }
         return '';
@@ -185,13 +186,26 @@ if (scenario === 'invoice native line values') {
     assert.ok(!html.includes('Conversion unavailable'));
     assert.ok(!html.includes('>%<'));
 }
+if (scenario === 'report navigation') {
+    for (const status of ['completed', 'failed', 'needs_review']) {
+        const html = await render('Pages/Files/ExtractionReport.vue', { report: {
+            file: { id: 42, name: 'source.pdf', status, file_type: 'invoice' }, classification: {}, coverage: {}, review: {}, failure: {},
+            extraction: { has_extraction_issues: status !== 'completed', validation_warnings: [] },
+            entities: [{ id: 9, type: 'invoice', is_primary: true, confidence_score: 0.95 }] } });
+        assert.ok(html.includes('/invoices/9'));
+        assert.ok(html.includes('invoice #9'));
+        assert.ok(html.includes('/files-processing?file_id=42'));
+        assert.ok(html.includes('/files/42'));
+        assert.ok(html.includes('Open file workspace'));
+    }
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

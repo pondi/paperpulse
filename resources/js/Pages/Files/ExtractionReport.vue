@@ -2,9 +2,10 @@
   <AuthenticatedLayout>
     <Head title="Extraction Report" />
     <template #header>
-      <div class="flex items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center justify-between gap-4">
         <h2 class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Extraction report</h2>
-        <Link :href="route('files.show', report.file.id)" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">Back to file</Link>
+        <Link :href="route('files.show', report.file.id)" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">Open file workspace</Link>
+        <Link :href="route('files.index', { file_id: report.file.id })" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">View processing record</Link>
       </div>
     </template>
 
@@ -29,14 +30,14 @@
         <ul v-if="report.extraction.validation_warnings.length" class="flex list-disc flex-col gap-2 pl-5">
           <li v-for="(warning, index) in report.extraction.validation_warnings" :key="index">{{ warning }}</li>
         </ul>
-        <Link :href="route('files.index')" class="font-medium underline">Open file processing</Link>
+        <Link :href="route('files.index', { file_id: report.file.id })" class="font-medium underline">Open file processing</Link>
       </section>
 
       <section class="rounded-lg bg-white p-6 shadow dark:bg-zinc-800">
         <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Extracted entities</h3>
         <ul v-if="report.entities.length" class="mt-4 flex flex-col gap-3 text-sm text-zinc-700 dark:text-zinc-300">
           <li v-for="entity in report.entities" :key="`${entity.type}-${entity.id}`" class="flex flex-wrap items-center gap-3">
-            <span class="capitalize">{{ label(entity.type) }}</span>
+            <Link :href="entityUrl(entity)" class="capitalize text-blue-600 hover:underline dark:text-blue-400">{{ label(entity.type) }} #{{ entity.id }}</Link>
             <span v-if="entity.is_primary" class="rounded bg-blue-100 px-2 py-1 text-xs text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">Primary</span>
             <span>{{ confidence(entity.confidence_score) }}</span>
             <span v-if="entity.provider">{{ entity.provider }}</span>
@@ -53,7 +54,9 @@ import { Head, Link } from '@inertiajs/vue3';
 import { useTranslations } from '@/Composables/useTranslations';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
-defineProps({ report: { type: Object, required: true } });
+const props = defineProps({ report: { type: Object, required: true } });
+const entityRoutes = { receipt: 'receipts.show', document: 'documents.show', invoice: 'invoices.show', contract: 'contracts.show', bank_statement: 'bank-statements.show', voucher: 'vouchers.show' };
+const entityUrl = entity => entityRoutes[entity.type] ? route(entityRoutes[entity.type], entity.id) : route('files.show', props.report.file.id);
 
 const { __ } = useTranslations();
 const confidence = value => value == null ? 'Not recorded' : `${Math.round(Number(value) * 100)}%`;

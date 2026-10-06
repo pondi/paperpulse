@@ -121,3 +121,15 @@ it('can change type, move storage, and restart a failed file', function () {
     Storage::disk('paperpulse')->assertMissing($oldPath);
     Storage::disk('paperpulse')->assertExists($newPath);
 });
+
+it('deep links to the exact owned processing record', function (string $status): void {
+    $user = User::factory()->create();
+    $file = File::factory()->for($user)->create(['status' => $status]);
+    File::factory()->for($user)->create(['status' => $status]);
+    $foreign = File::factory()->create(['status' => $status]);
+    $this->actingAs($user)->get(route('files.index', ['file_id' => $file->id]))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->has('files.data', 1)
+            ->where('files.data.0.id', $file->id)->where('filters.file_id', $file->id));
+    $this->get(route('files.index', ['file_id' => $foreign->id]))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->has('files.data', 0));
+})->with(['completed', 'failed', 'needs_review']);

@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\ArchiveExport;
+use App\Models\BankStatement;
+use App\Models\BankTransaction;
 use App\Models\Category;
 use App\Models\Collection;
 use App\Models\Document;
@@ -1029,5 +1031,40 @@ it('discloses native currency range semantics before applying search filters', f
                 ->assertSee('100 NOK, 100 EUR and 100 USD')
                 ->assertScript("['search-amount-min', 'search-amount-max'].every(id => document.getElementById(id).getAttribute('aria-describedby') === 'search-amount-basis')", true);
         }
+    });
+});
+
+it('distinguishes banking report loading missing sources empty periods and failed requests', function (): void {
+    $user = $this->createUser();
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->resize(1440, 900)->loginAs($user)->visit('/analytics?tab=banking')->waitForText('No bank statements uploaded')
+            ->assertSee('Upload a bank statement')->assertMissing('canvas')
+            ->assertDontSee('Money In vs Money Out');
+        $statement = BankStatement::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
+        $browser->refresh()->waitForText('No bank transactions available')->assertSee('no dated transactions to report');
+        BankTransaction::factory()->create(['bank_statement_id' => $statement->id, 'user_id' => $user->id,
+            'transaction_date' => '2020-01-01', 'amount' => 42, 'currency' => 'NOK', 'balance_after' => 800,
+        ]);
+        $browser->refresh()->waitFor('canvas')->assertSee('Money In vs Money Out')->assertSee('No data available');
+        $browser->script(<<<'JS'
+            window.reportOriginalSend = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.send = function(...args) {
+                setTimeout(() => window.reportOriginalSend.apply(this, args), 800);
+            };
+            JS);
+        $browser->select('select', 'month')->waitForText('Loading report…')
+            ->waitForText('No bank transactions in the selected period')->assertMissing('canvas');
+        $browser->script(<<<'JS'
+            XMLHttpRequest.prototype.send = window.reportOriginalSend;
+            window.reportOriginalOpen = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function(method, url, ...args) {
+                return window.reportOriginalOpen.call(this, method, '/missing-banking-report', ...args);
+            };
+            JS);
+        $browser->select('select', 'all')->waitForText('The report could not be loaded. Try again.')
+            ->assertDontSee('No bank statements uploaded')->assertMissing('canvas');
+        $browser->script('XMLHttpRequest.prototype.open = window.reportOriginalOpen');
+        $browser->press('Try again')->waitFor('canvas')->assertDontSee('The report could not be loaded.')
+            ->assertScript("document.querySelector('canvas').height > 0", true);
     });
 });

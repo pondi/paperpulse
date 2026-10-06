@@ -45,6 +45,12 @@
                     </select>
                 </div>
 
+                <p v-if="reportLoading" role="status" class="rounded-lg bg-white p-6 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">Loading report…</p>
+                <div v-else-if="reportError" role="alert" class="rounded-lg bg-white p-6 text-red-700 dark:bg-zinc-800 dark:text-red-400">
+                    <p>{{ reportError }}</p>
+                    <button type="button" @click="updateParams" class="mt-3 underline">Try again</button>
+                </div>
+                <template v-else>
                 <!-- Overview Tab -->
                 <div v-if="activeTab === 'overview'">
                     <!-- Entity Count Cards -->
@@ -276,7 +282,12 @@
                         <StatCard label="Net Cash Flow" :value="formatCurrency(tab_data.stats?.net_flow)" :alert="tab_data.stats?.net_flow < 0" />
                     </div>
 
-                    <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                    <div v-if="!tab_data.stats?.transaction_count" class="rounded-lg bg-white p-6 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                        <h3 class="text-lg font-medium">{{ !overview_counts.bank_statements ? 'No bank statements uploaded' : selectedPeriod === 'all' ? 'No bank transactions available' : 'No bank transactions in the selected period' }}</h3>
+                        <p class="mt-2 text-sm">{{ !overview_counts.bank_statements ? 'Upload a bank statement to report on cash flow, categories, balances and counterparties.' : selectedPeriod === 'all' ? 'Your bank statements have no dated transactions to report.' : 'Choose All Time or another period to see your transactions.' }}</p>
+                        <Link :href="route('documents.upload')" class="mt-4 inline-block text-amber-700 underline dark:text-amber-400">Upload a bank statement</Link>
+                    </div>
+                    <div v-else class="grid grid-cols-1 gap-8 lg:grid-cols-2">
                         <!-- Money In vs Money Out -->
                         <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
@@ -477,13 +488,14 @@
                         </div>
                     </div>
                 </div>
+                </template>
             </div>
         </div>
     </AuthenticatedLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue';
+import { h, ref, computed, onMounted, nextTick, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { Link } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -507,7 +519,7 @@ const StatCard = {
 };
 
 const EmptyState = {
-    template: `<div class="text-zinc-500 dark:text-zinc-400 text-center py-8">No data available</div>`,
+    render: () => h('p', { class: 'text-zinc-500 dark:text-zinc-400 text-center py-8' }, 'No data available'),
 };
 
 const props = defineProps({
@@ -519,6 +531,8 @@ const props = defineProps({
 
 const selectedPeriod = ref(props.current_period);
 const activeTab = ref(props.current_tab);
+const reportLoading = ref(false);
+const reportError = ref('');
 const { formatCurrency } = useDateFormatter();
 
 // Chart refs
@@ -557,14 +571,20 @@ const totalExpiring = computed(() => {
 
 const changeTab = (tab) => {
     activeTab.value = tab;
-    router.visit(route('analytics.index', { tab, period: selectedPeriod.value }), {
-        preserveScroll: true,
-    });
+    updateParams();
 };
 
 const updateParams = () => {
     router.visit(route('analytics.index', { tab: activeTab.value, period: selectedPeriod.value }), {
         preserveScroll: true,
+        preserveState: true,
+        onStart: () => { reportLoading.value = true; reportError.value = ''; },
+        onFinish: () => { reportLoading.value = false; initCharts(); },
+        onHttpException: () => {
+            reportError.value = 'The report could not be loaded. Try again.';
+            return false;
+        },
+        onNetworkError: () => { reportError.value = 'The report could not be loaded. Check your connection and try again.'; },
     });
 };
 
@@ -753,6 +773,5 @@ onMounted(() => {
 
 watch(() => props.current_tab, () => {
     activeTab.value = props.current_tab;
-    nextTick(initCharts);
 });
 </script>

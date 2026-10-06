@@ -15,6 +15,7 @@ use App\Models\ReturnPolicy;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Models\Warranty;
+use App\Services\FolderTreeService;
 use App\Services\Search\SearchResultFormatter;
 use Inertia\Testing\AssertableInertia;
 
@@ -110,4 +111,29 @@ it('uses real destinations for warranty return-policy and statement search resul
         expect($result['url'])->toBe($entity instanceof BankStatement ? route('bank-statements.show', $entity) : route('files.show', $this->file));
         $this->get($result['url'])->assertOk();
     }
+});
+
+it('shows the same canonical folder memberships in file and invoice details after a move', function (): void {
+    $invoice = Invoice::factory()->create(['user_id' => $this->owner->id, 'file_id' => $this->file->id]);
+    $tree = app(FolderTreeService::class);
+    $first = Collection::factory()->create(['user_id' => $this->owner->id, 'name' => 'Needs review']);
+    $second = Collection::factory()->create(['user_id' => $this->owner->id, 'name' => 'Archive']);
+    $this->actingAs($this->owner);
+    foreach ([$first, $second] as $folder) {
+        $tree->place($this->file, $folder);
+        $this->get(route('files.show', $this->file))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('file.collections', 1)->where('file.collections.0.id', $folder->id));
+        $this->get(route('invoices.show', $invoice))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('invoice.collections', 1)->where('invoice.collections.0.id', $folder->id)->where('invoice.collections.0.name', $folder->name));
+    }
+    $this->actingAs(User::factory()->create())->get(route('invoices.show', $invoice))->assertNotFound();
+});
+
+it('exposes only collections accessible to a shared invoice viewer', function (): void {
+    $invoice = Invoice::factory()->create(['user_id' => $this->owner->id, 'file_id' => $this->file->id]);
+    $folder = Collection::factory()->create(['user_id' => $this->owner->id, 'name' => 'Private owner folder']);
+    $this->file->collections()->attach($folder);
+    $viewer = User::factory()->create();
+    FileShare::create(['file_id' => $this->file->id, 'file_type' => 'document', 'shared_by_user_id' => $this->owner->id, 'shared_with_user_id' => $viewer->id, 'permission' => 'view']);
+    $this->actingAs($viewer)->get(route('invoices.show', $invoice))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->has('invoice.collections', 0));
 });

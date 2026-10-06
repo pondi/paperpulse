@@ -68,6 +68,7 @@ class InvoiceInertiaResource extends JsonResource
                 'notes' => $this->notes,
                 'line_items' => $this->mapLineItems(),
                 'file' => $this->buildFileInfo(),
+                'collections' => $this->file?->collections->map(fn ($collection) => $collection->only(['id', 'name', 'icon', 'color']))->all() ?? [],
                 'tags' => $this->mapTags(),
                 'created_at' => $this->created_at,
                 'updated_at' => $this->updated_at,

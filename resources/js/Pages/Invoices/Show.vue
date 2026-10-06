@@ -529,6 +529,7 @@ const getInvoiceTypeClass = () => {
                             <RectangleStackIcon class="size-5" />
                             Collections
                         </h3>
+                        <p class="mb-3 text-sm text-zinc-500 dark:text-zinc-400">These collections organize the source file and its extracted invoice.</p>
                         <CollectionSelector
                             v-model="invoiceCollections"
                             placeholder="Add to collections..."

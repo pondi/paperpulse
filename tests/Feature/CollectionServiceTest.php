@@ -6,8 +6,10 @@ use App\Models\File;
 use App\Models\User;
 use App\Services\CollectionService;
 use App\Services\CollectionSharingService;
+use App\Services\FolderTreeService;
 use App\Services\LibraryService;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 
 beforeEach(function () {
     $this->collectionService = app(CollectionService::class);
@@ -354,4 +356,32 @@ it('labels nested selector folders with distinct ancestor paths and excludes for
         ->and($options[$otherLeaf->id]->path)->toBe('Home → Hønsfaret')->and($options->has($foreign->id))->toBeFalse();
     $this->actingAs($user)->getJson(route('collections.all'))->assertOk()->assertJsonFragment(['path' => 'Building → Contracts → Hønsfaret']);
     expect(app(LibraryService::class)->options($user)['collections']->keyBy('id')[$leaf->id]->path)->toBe('Building → Contracts → Hønsfaret');
+});
+
+it('clears primary placement when removing membership and preserves other memberships', function (): void {
+    $owner = User::factory()->create();
+    $folders = Collection::factory()->count(3)->create(['user_id' => $owner->id]);
+    $file = File::factory()->create(['user_id' => $owner->id]);
+    app(FolderTreeService::class)->place($file, $folders[0]);
+    $file->collections()->attach([$folders[1]->id, $folders[2]->id]);
+    $version = $file->fresh()->placement_version;
+
+    $this->collectionService->removeFiles($folders[1], [$file->id]);
+    expect($file->fresh()->primary_folder_id)->toBe($folders[0]->id)
+        ->and($file->fresh()->placement_version)->toBe($version);
+    $this->collectionService->removeFiles($folders[0], [$file->id]);
+    expect($file->fresh()->primary_folder_id)->toBeNull()
+        ->and($file->fresh()->placement_source)->toBeNull()
+        ->and($file->fresh()->placement_version)->toBe($version + 1)
+        ->and($file->fresh()->collections->modelKeys())->toBe([$folders[2]->id]);
+});
+
+it('rejects removing foreign file memberships atomically', function (): void {
+    $folder = Collection::factory()->create();
+    $owned = File::factory()->create(['user_id' => $folder->user_id]);
+    $foreign = File::factory()->create();
+    $folder->files()->attach([$owned->id, $foreign->id]);
+    expect(fn () => $this->collectionService->removeFiles($folder, [$owned->id, $foreign->id]))
+        ->toThrow(ValidationException::class);
+    expect($folder->fresh()->files)->toHaveCount(2);
 });

@@ -7,6 +7,7 @@ use App\Models\File;
 use App\Models\User;
 use App\Support\AuthorizedEntityRelations;
 use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Validation\ValidationException;
 
 class CollectionService
 {
@@ -60,7 +61,19 @@ class CollectionService
      */
     public function removeFiles(Collection $collection, array $fileIds): void
     {
-        $collection->files()->detach($fileIds);
+        $collection->getConnection()->transaction(function () use ($collection, $fileIds): void {
+            $files = File::query()->where('user_id', $collection->user_id)->whereIn('id', $fileIds)->lockForUpdate()->get();
+            if ($files->count() !== count(array_unique($fileIds))) {
+                throw ValidationException::withMessages(['file_ids' => 'Select files owned by the collection owner.']);
+            }
+            foreach ($files as $file) {
+                if ($file->primary_folder_id === $collection->id) {
+                    $file->update(['primary_folder_id' => null, 'placement_source' => null,
+                        'placement_version' => $file->placement_version + 1]);
+                }
+            }
+            $collection->files()->detach($fileIds);
+        });
     }
 
     /**

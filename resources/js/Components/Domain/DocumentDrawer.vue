@@ -330,7 +330,8 @@ const deleteDocument = () => {
                                                                     <MenuItem v-slot="{ active }">
                                                                         <a
                                                                             v-if="document"
-                                                                            :href="route('documents.download', document.id)"
+                                                                            :href="document.file?.url"
+                                                                            :download="document.file_name"
                                                                             :class="[active ? 'bg-orange-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100' : 'text-zinc-700 dark:text-zinc-300', 'block w-full text-left px-4 py-2 text-sm font-medium transition-colors duration-200']"
                                                                         >
                                                                             Download

@@ -12,6 +12,25 @@ use App\Models\Warranty;
 use App\Services\Files\FileUploadConfigService;
 use Laravel\Dusk\Browser;
 
+it('uses source file downloads in mixed document cards rows and drawers', function (): void {
+    $user = $this->createUser();
+    foreach ([Document::class, Invoice::class] as $model) {
+        $file = File::factory()->for($user)->create(['file_type' => 'document', 'status' => 'completed', 'fileExtension' => 'pdf', 'fileName' => class_basename($model).'.pdf']);
+        $entity = $model::factory()->create(['user_id' => $user->id, 'file_id' => $file->id]);
+        ExtractableEntity::create(['user_id' => $user->id, 'file_id' => $file->id, 'entity_type' => strtolower(class_basename($model)), 'entity_id' => $entity->id, 'is_primary' => true, 'extracted_at' => now()]);
+    }
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/documents')->waitFor('a[download="Invoice.pdf"]')
+            ->assertScript("Array.from(document.querySelectorAll('a[download]')).every(a => a.href.includes('/documents/serve?guid='))", true)
+            ->click('a[download="Invoice.pdf"]')->assertPathIs('/documents')
+            ->click('div.flex.items-center.space-x-2 > button:last-child')->waitFor('table')
+            ->assertPresent('tbody a[download="Invoice.pdf"]')
+            ->click('tbody tr td:nth-child(3)')->waitFor('div.fixed.right-0')
+            ->click('div.fixed.right-0 button[aria-haspopup="menu"]')->waitFor('div.fixed.right-0 a[download]')
+            ->assertScript("document.querySelector('div.fixed.right-0 a[download]').href.includes('/documents/serve?guid=')", true);
+    });
+});
+
 it('renders disabled document pagination without null URL errors', function (): void {
     $user = $this->createUser();
     $documents = [];

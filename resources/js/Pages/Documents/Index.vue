@@ -22,6 +22,7 @@ import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 interface Document {
     id: number;
+    file_id: number;
     title: string;
     note?: string | null;
     description?: string | null;
@@ -404,7 +405,7 @@ const getEntityTypeBadge = (entityType?: string) => {
                     <div v-else-if="viewMode === 'grid'" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div
                             v-for="document in documents.data"
-                            :key="document.id"
+                            :key="document.file_id"
                             class="relative group bg-white dark:bg-zinc-900 border border-amber-200 dark:border-zinc-700 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex flex-col"
                         >
                             <!-- Checkbox -->
@@ -562,7 +563,8 @@ const getEntityTypeBadge = (entityType?: string) => {
                                         View
                                     </Link>
                                     <a
-                                        :href="route('documents.download', document.id)"
+                                        :href="document.file?.url"
+                                        :download="document.file_name"
                                         class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-bold text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-800 transition-colors"
                                     >
                                         <ArrowDownTrayIcon class="h-4 w-4" />
@@ -619,7 +621,7 @@ const getEntityTypeBadge = (entityType?: string) => {
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-zinc-900 divide-y divide-amber-200 dark:divide-zinc-700">
-                                <tr v-for="document in documents.data" :key="document.id" class="hover:bg-amber-50 dark:hover:bg-zinc-800 transition-colors duration-200">
+                                <tr v-for="document in documents.data" :key="document.file_id" class="hover:bg-amber-50 dark:hover:bg-zinc-800 transition-colors duration-200">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <Checkbox
                                             :checked="selectedDocuments.includes(document.id)"
@@ -720,7 +722,8 @@ const getEntityTypeBadge = (entityType?: string) => {
                                                 <EyeIcon class="h-5 w-5" />
                                             </Link>
                                             <a
-                                                :href="route('documents.download', document.id)"
+                                                :href="document.file?.url"
+                                                :download="document.file_name"
                                                 class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                                                 title="Download"
                                             >

@@ -16,6 +16,72 @@ beforeEach(function (): void {
     $this->withoutVite();
 });
 
+it('renders the audited live UI contracts', function (string $scenario): void {
+    $script = <<<'JS'
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
+import * as vue from 'vue';
+import { parse, compileScript } from '@vue/compiler-sfc';
+import { renderToString } from '@vue/server-renderer';
+import { Link } from '@inertiajs/vue3';
+import { route as ziggyRoute } from './vendor/tightenco/ziggy/dist/index.js';
+import { Ziggy } from './resources/js/ziggy.js';
+
+const scenario = JSON.parse(fs.readFileSync(0, 'utf8'));
+const route = (name, params) => ziggyRoute(name, params, true, Ziggy);
+const page = { props: { flash: {}, language: { messages: {} } } };
+const stub = (props, { slots }) => props.show === false ? null : vue.h('div', [slots.header?.(), slots.default?.({ active: false })]);
+const warnings = [];
+async function render(file, props) {
+    const { descriptor } = parse(fs.readFileSync('resources/js/' + file, 'utf8'));
+    const compiled = compileScript(descriptor, { id: file, genDefaultAs: 'ContractPage', inlineTemplate: true });
+    const bindings = { route, window: { innerWidth: 1440 } };
+    let code = compiled.content.replace(/import\s+\{([\s\S]*?)\}\s+from\s+['"]([^'"]+)['"];?/g, (_, specifiers, module) => {
+        for (const specifier of specifiers.split(',').filter(value => value.trim())) {
+            const [name, alias = name] = specifier.trim().split(/\s+as\s+/);
+            bindings[alias] = module === 'vue' ? vue[name]
+                : name === 'Link' ? Link : name === 'Head' ? () => null
+                : name === 'usePage' ? () => page
+                : name === 'useForm' ? data => vue.reactive({ ...data, processing: false })
+                : name === 'useDateFormatter' ? () => ({ formatDate: value => value, formatDateTime: value => value, formatCurrency: (value, currency) => `${value} ${currency}` })
+                : name === 'router' ? {} : stub;
+        }
+        return '';
+    }).replace(/import\s+(\w+)\s+from\s+['"][^'"]+['"];?/g, (_, name) => {
+        bindings[name] = name === 'Checkbox' ? props => vue.h('input', { ...props, type: 'checkbox' }) : stub;
+        return '';
+    });
+    code = stripTypeScriptTypes(code, { mode: 'strip' });
+    const component = new Function(...Object.keys(bindings), code + '; return ContractPage;')(...Object.values(bindings));
+    const app = vue.createSSRApp(component, props);
+    app.config.globalProperties.$page = page;
+    app.config.globalProperties.route = route;
+    app.config.warnHandler = message => warnings.push(message);
+    return renderToString(app);
+}
+
+if (scenario === 'original downloads') {
+    const rows = ['document', 'invoice'].map((type, index) => ({ id: 7, file_id: index + 1, title: type,
+        entity_type: type, file_name: `${type}.pdf`, size: 100, tags: [], shared_with_count: 0,
+        file: { url: route('documents.serve', { guid: `source-${index}`, type: 'documents', extension: 'pdf' }), extension: 'pdf' } }));
+    const html = await render('Pages/Documents/Index.vue', { documents: { data: rows, links: [] }, categories: [], filters: {} });
+    for (const row of rows) {
+        assert.ok(html.includes(`download="${row.file_name}"`));
+        assert.ok(html.includes(row.file.url.replaceAll('&', '&amp;')));
+    }
+    const drawer = await render('Components/Domain/DocumentDrawer.vue', { document: rows[1], show: true });
+    assert.ok(drawer.includes('download="invoice.pdf"'));
+    assert.ok(!drawer.includes('/documents/7/download'));
+}
+assert.deepEqual(warnings, []);
+JS;
+    $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
+    $process->setInput(json_encode($scenario));
+    $process->run();
+    expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
+})->with(['original downloads']);
+
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {
         if (! in_array($file->getExtension(), ['vue', 'js', 'ts']) || $file->getFilename() === 'ziggy.js') {

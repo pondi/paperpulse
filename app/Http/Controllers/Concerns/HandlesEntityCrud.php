@@ -28,20 +28,14 @@ trait HandlesEntityCrud
 
         $entity->loadMissing('file');
 
-        if (! $entity->file || ! $entity->file->guid) {
+        if (! $entity->file || ! $entity->file->s3_original_path) {
             abort(404, 'File not found');
         }
 
         try {
             $storageService = app(StorageService::class);
             $extension = $entity->file->fileExtension ?? 'pdf';
-            $content = $storageService->getFileByUserAndGuid(
-                $entity->user_id,
-                $entity->file->guid,
-                'document',
-                'original',
-                $extension
-            );
+            $content = $storageService->getFile($entity->file->s3_original_path);
 
             if ($content === null) {
                 abort(404, 'File not found');

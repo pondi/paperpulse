@@ -296,6 +296,7 @@ it('can download an invoice file', function () {
         'user_id' => $user->id,
         'file_type' => 'invoice',
         'guid' => 'test-guid-download',
+        's3_original_path' => 'originals/invoice.pdf',
         'fileExtension' => 'pdf',
     ]);
     $invoice = Invoice::factory()->create([
@@ -304,7 +305,7 @@ it('can download an invoice file', function () {
     ]);
 
     $storageService = $this->mock(StorageService::class);
-    $storageService->shouldReceive('getFileByUserAndGuid')
+    $storageService->shouldReceive('getFile')
         ->once()
         ->andReturn('fake-pdf-content');
 
@@ -448,6 +449,7 @@ it('can download a contract file', function () {
         'user_id' => $user->id,
         'file_type' => 'contract',
         'guid' => 'test-guid-contract-dl',
+        's3_original_path' => 'originals/contract.pdf',
         'fileExtension' => 'pdf',
     ]);
     $contract = Contract::factory()->create([
@@ -456,7 +458,7 @@ it('can download a contract file', function () {
     ]);
 
     $storageService = $this->mock(StorageService::class);
-    $storageService->shouldReceive('getFileByUserAndGuid')
+    $storageService->shouldReceive('getFile')
         ->once()
         ->andReturn('fake-pdf-content');
 

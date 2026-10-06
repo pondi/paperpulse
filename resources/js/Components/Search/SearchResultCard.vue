@@ -14,6 +14,7 @@
       <div class="flex-shrink-0 flex items-center">
         <input
           type="checkbox"
+          :aria-label="`Select ${typeLabel.toLowerCase()} ${result.title} (#${result.id})`"
           :checked="selected"
           @change.stop="emit('toggle-select')"
           class="h-4 w-4 text-amber-600 focus:ring-amber-500 border-zinc-300 dark:border-zinc-600 rounded"
@@ -164,6 +165,7 @@
         </button>
         <a
           :href="result.url"
+          :aria-label="`Open ${typeLabel.toLowerCase()} ${result.title} (#${result.id}) in new tab`"
           @click.stop
           class="p-2 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-100 dark:hover:bg-zinc-700 rounded"
           title="Open in new tab"

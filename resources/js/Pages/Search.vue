@@ -324,6 +324,7 @@
                 <label v-if="results.length > 0" class="flex items-center">
                   <input
                     type="checkbox"
+                    aria-label="Select all search results on this page"
                     :checked="allSelected"
                     :indeterminate="someSelected"
                     @change="toggleSelectAll"

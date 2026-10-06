@@ -414,6 +414,7 @@ const getEntityTypeBadge = (entityType?: string) => {
                             <!-- Checkbox -->
                             <div class="absolute top-3 right-3 z-10">
                                 <Checkbox
+                                    :aria-label="`Select ${document.title} (file #${document.file_id})`"
                                     :checked="selectedDocuments.includes(document.id)"
                                     @change="toggleDocument(document.id)"
                                 />
@@ -592,6 +593,7 @@ const getEntityTypeBadge = (entityType?: string) => {
                                 <tr>
                                     <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left">
                                         <Checkbox
+                                            aria-label="Select all documents on this page"
                                             :checked="allSelected"
                                             :indeterminate="someSelected"
                                             @change="toggleAll"
@@ -627,6 +629,7 @@ const getEntityTypeBadge = (entityType?: string) => {
                                 <tr v-for="document in documents.data" :key="document.file_id" class="hover:bg-amber-50 dark:hover:bg-zinc-800 transition-colors duration-200">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <Checkbox
+                                            :aria-label="`Select ${document.title} (file #${document.file_id})`"
                                             :checked="selectedDocuments.includes(document.id)"
                                             @change="toggleDocument(document.id)"
                                         />

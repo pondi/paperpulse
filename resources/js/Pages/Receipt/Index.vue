@@ -67,7 +67,7 @@
                       <td class="px-6 py-4 whitespace-nowrap" @click.stop>
                         <input
                           type="checkbox"
-                          :aria-label="`Select receipt from ${receipt.merchant?.name || 'unknown merchant'}`"
+                          :aria-label="`Select receipt #${receipt.id} from ${receipt.merchant?.name || 'unknown merchant'}`"
                           class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
                           :value="receipt.id"
                           :checked="selectedReceipts.includes(receipt.id)"

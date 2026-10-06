@@ -17,6 +17,26 @@ use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Str;
 use Laravel\Dusk\Browser;
 
+it('names row selection and search result links with distinct record identities', function (): void {
+    $user = $this->createUser();
+    $merchant = Merchant::create(['user_id' => $user->id, 'name' => 'Same store']);
+    Receipt::factory()->count(2)->for(File::factory()->for($user))->create(['user_id' => $user->id, 'merchant_id' => $merchant->id]);
+    $file = File::factory()->for($user)->create(['file_type' => 'document', 'status' => 'completed']);
+    $document = Document::factory()->create(['user_id' => $user->id, 'file_id' => $file->id, 'title' => 'Named source']);
+    ExtractableEntity::create(['user_id' => $user->id, 'file_id' => $file->id, 'entity_type' => 'document', 'entity_id' => $document->id, 'is_primary' => true, 'extracted_at' => now()]);
+    $this->browse(function (Browser $browser) use ($user, $file): void {
+        $browser->loginAs($user)->visit('/receipts')->waitFor('tbody input[type="checkbox"]')
+            ->assertScript("new Set(Array.from(document.querySelectorAll('tbody input[type=checkbox]')).map(el => el.getAttribute('aria-label'))).size", 2)
+            ->visit('/documents')->waitFor('input[aria-label="Select Named source (file #'.$file->id.')"]')
+            ->click('div.flex.items-center.space-x-2 > button:last-child')->waitFor('table')
+            ->assertPresent('thead input[aria-label="Select all documents on this page"]')
+            ->check('thead input[type="checkbox"]')->assertChecked('tbody input[type="checkbox"]')
+            ->visit('/search?query=Same%20store&type=receipt')->waitFor('input[aria-label^="Select receipt"]')
+            ->assertPresent('input[aria-label="Select all search results on this page"]')
+            ->assertScript("Array.from(document.querySelectorAll('a[target=_blank]')).filter(a => a.title === 'Open in new tab').every(a => a.getAttribute('aria-label')?.includes('Same store'))", true);
+    });
+});
+
 it('opens useful vendor details through the menu and direct links with working back navigation', function (): void {
     $user = $this->createUser();
     $vendor = Vendor::create(['user_id' => $user->id, 'name' => 'DigitalOcean', 'description' => 'Cloud hosting', 'contact_email' => 'support@example.test']);

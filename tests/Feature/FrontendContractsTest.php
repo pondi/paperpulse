@@ -101,13 +101,30 @@ if (scenario === 'vendor details') {
     assert.ok(optional.includes('Receipt #9'));
     assert.ok(!optional.includes('undefined'));
 }
+if (scenario === 'row names') {
+    for (const id of [1, 2]) {
+        const card = await render('Components/Search/SearchResultCard.vue', { result: { id, type: 'receipt', title: 'Same store', url: route('receipts.show', id), tags: [], items: [] } });
+        assert.ok(card.includes(`aria-label="Select receipt Same store (#${id})"`));
+        assert.ok(card.includes(`aria-label="Open receipt Same store (#${id}) in new tab"`));
+    }
+    const rows = [1, 2].map(id => ({ id, file_id: id, title: 'Named source', file_name: 'source.pdf', size: 100, tags: [] }));
+    const documents = await render('Pages/Documents/Index.vue', { documents: { data: rows, links: [] }, categories: [], filters: {} });
+    for (const id of [1, 2]) {
+        assert.ok(documents.includes(`aria-label="Select Named source (file #${id})"`));
+    }
+    const receipts = await render('Pages/Receipt/Index.vue', { receipts: [1, 2].map(id => ({ id, merchant: { name: 'Same store' }, tags: [], total_amount: 100, currency: 'NOK' })), categories: [] });
+    for (const id of [1, 2]) {
+        assert.ok(receipts.includes(`aria-label="Select receipt #${id} from Same store"`));
+    }
+    assert.ok(receipts.includes('aria-label="Select all receipts"'));
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode($scenario));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

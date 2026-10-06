@@ -25,6 +25,21 @@
       <section v-if="report.extraction.has_extraction_issues" class="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 p-6 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
         <h3 class="font-semibold">Extraction needs attention</h3>
         <p v-if="report.review.reason">Review: {{ label(report.review.reason) }}<span v-if="report.review.page_limit"> (page limit: {{ report.review.page_limit }})</span></p>
+        <div v-if="report.review.reason === 'receipt_totals'" class="flex flex-col gap-3">
+          <dl v-if="report.reconciliation" class="flex flex-col gap-2">
+            <div><dt class="inline font-medium">Line item total: </dt><dd class="inline">{{ formatCurrency(report.reconciliation.calculated_total, report.receipt_currency) }}</dd></div>
+            <div><dt class="inline font-medium">Source discount: </dt><dd class="inline">− {{ formatCurrency(report.reconciliation.discount_amount, report.receipt_currency) }}</dd></div>
+            <div v-if="Number(report.reconciliation.tip_amount)"><dt class="inline font-medium">Source tip: </dt><dd class="inline">{{ formatCurrency(report.reconciliation.tip_amount, report.receipt_currency) }}</dd></div>
+            <div><dt class="inline font-medium">Final amount: </dt><dd class="inline">{{ formatCurrency(report.reconciliation.total_amount, report.receipt_currency) }}</dd></div>
+          </dl>
+          <p>Compare these values with the original in the file workspace. Correct saved values using the receipt details below, then return here to confirm. Missing source discounts or line items require correcting extraction and retrying; confirmation does not rerun extraction.</p>
+          <form @submit.prevent="resolveReview" class="flex flex-col items-start gap-3">
+            <label class="flex items-start gap-2"><input v-model="confirmed" type="checkbox" class="mt-1 rounded border-amber-400" />I checked the extracted values against the source.</label>
+            <p v-if="reviewError" role="alert">{{ reviewError }}</p>
+            <button type="submit" :disabled="!confirmed || resolving" class="rounded-md bg-amber-700 px-4 py-2 font-semibold text-white disabled:opacity-50">Confirm reconciled totals</button>
+          </form>
+          <button type="button" @click="router.post(route('files.reprocess', report.file.id))" class="self-start font-medium underline">Retry extraction for missing source values</button>
+        </div>
         <p v-if="report.review.reasoning">{{ report.review.reasoning }}</p>
         <p v-if="report.failure.category">Processing failed: {{ label(report.failure.category) }}. {{ report.failure.retryable ? 'You can retry processing from the file list.' : 'Review the source file before retrying.' }}</p>
         <ul v-if="report.extraction.validation_warnings.length" class="flex list-disc flex-col gap-2 pl-5">
@@ -50,13 +65,27 @@
 </template>
 
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
+import { ref } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { useDateFormatter } from '@/Composables/useDateFormatter';
 import { useTranslations } from '@/Composables/useTranslations';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
 const props = defineProps({ report: { type: Object, required: true } });
 const entityRoutes = { receipt: 'receipts.show', document: 'documents.show', invoice: 'invoices.show', contract: 'contracts.show', bank_statement: 'bank-statements.show', voucher: 'vouchers.show' };
 const entityUrl = entity => entityRoutes[entity.type] ? route(entityRoutes[entity.type], entity.id) : route('files.show', props.report.file.id);
+
+const { formatCurrency } = useDateFormatter();
+const confirmed = ref(false);
+const resolving = ref(false);
+const reviewError = ref('');
+const resolveReview = () => {
+    resolving.value = true;
+    router.post(route('files.resolve-review', props.report.file.id), { confirmed: confirmed.value }, {
+        onError: errors => { reviewError.value = errors.review || errors.confirmed; },
+        onFinish: () => { resolving.value = false; },
+    });
+};
 
 const { __ } = useTranslations();
 const confidence = value => value == null ? 'Not recorded' : `${Math.round(Number(value) * 100)}%`;

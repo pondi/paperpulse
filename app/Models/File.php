@@ -130,6 +130,12 @@ class File extends Model
         return $this->belongsTo(Collection::class, 'primary_folder_id');
     }
 
+    /** @return HasMany<Receipt, $this> */
+    public function receipts(): HasMany
+    {
+        return $this->hasMany(Receipt::class);
+    }
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {

@@ -105,6 +105,7 @@ class ReceiptInertiaResource extends JsonResource
                 : null,
             'extension' => $this->file->fileExtension ?? 'jpg',
             'mime_type' => $this->file->mime_type,
+            'needs_review' => $this->file->status === 'needs_review',
             'has_preview' => StoragePathBuilder::variantPath($this->file, 'preview') !== null,
             'is_pdf' => StoragePathBuilder::pdfVariant($this->file) !== null,
         ];

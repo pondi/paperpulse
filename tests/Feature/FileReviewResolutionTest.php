@@ -3,12 +3,14 @@
 use App\Jobs\Files\ProcessFileGemini;
 use App\Models\File;
 use App\Models\JobHistory;
+use App\Models\Receipt;
 use App\Models\ReturnPolicy;
 use App\Models\User;
 use App\Services\AI\FileManager\GeminiFileManager;
 use App\Services\AI\TypeClassification\ClassificationResult;
 use App\Services\AI\TypeClassification\GeminiTypeClassifier;
 use App\Services\Files\FilePreviewManager;
+use App\Services\Files\FileReprocessingService;
 use App\Services\Workers\WorkerFileManager;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -142,4 +144,54 @@ it('uses the corrected type for extraction without classifying the document agai
     } finally {
         unlink($path);
     }
+});
+
+it('resolves reconciled receipt review without rerunning extraction and updates all views', function (bool $encoded): void {
+    $this->withoutVite();
+    Queue::fake();
+    $file = File::factory()->create(['status' => 'needs_review', 'meta' => ['review' => ['reason' => 'receipt_totals']]]);
+    $receipt = Receipt::factory()->create(['user_id' => $file->user_id, 'file_id' => $file->id,
+        'total_amount' => '21.56', 'tax_amount' => 0, 'receipt_data' => $encoded ? json_encode(['totals' => ['total_discount' => '1.14']]) : ['totals' => ['total_discount' => '1.14']]]);
+    $receipt->lineItems()->createMany([
+        ['text' => 'Wine', 'qty' => 1, 'price' => '14.80', 'total' => '14.80'],
+        ['text' => 'Wine', 'qty' => 1, 'price' => '7.90', 'total' => '7.90'],
+    ]);
+    $this->actingAs($file->user)->get(route('files.extraction-report', $file))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('report.reconciliation.needs_review', false)
+            ->where('report.reconciliation.discount_amount', '1.14'));
+    $this->post(route('files.resolve-review', $file), ['confirmed' => true])->assertRedirect()->assertSessionHasNoErrors();
+    expect($file->fresh()->status)->toBe('completed')->and($file->fresh()->meta['review_resolution']['reviewed_by'])->toBe($file->user_id)
+        ->and($file->fresh()->meta)->not->toHaveKey('review');
+    $this->get(route('files.show', $file))->assertInertia(fn (Assert $page) => $page->where('file.status', 'completed'));
+    $this->get(route('files.index', ['file_id' => $file->id]))->assertInertia(fn (Assert $page) => $page->where('files.data.0.status', 'completed')->where('stats.needs_review', 0));
+    $this->get(route('library.index'))->assertInertia(fn (Assert $page) => $page->where('files.data.0.status', 'completed'));
+    $this->get(route('receipts.show', $receipt))->assertInertia(fn (Assert $page) => $page->where('receipt.file.needs_review', false));
+    Queue::assertNotPushed(ProcessFileGemini::class);
+})->with([false, true]);
+
+it('rejects blind inconsistent foreign and non-totals review confirmations', function (string $scenario): void {
+    Queue::fake();
+    $file = File::factory()->create(['status' => 'needs_review', 'meta' => ['review' => ['reason' => $scenario === 'limit' ? 'processing_limit' : 'receipt_totals']]]);
+    $receipt = Receipt::factory()->create(['user_id' => $file->user_id, 'file_id' => $file->id, 'tax_amount' => 0,
+        'total_amount' => $scenario === 'inconsistent' ? '40.00' : '10.00']);
+    if ($scenario !== 'no items') {
+        $receipt->lineItems()->create(['text' => 'Item', 'qty' => 1, 'price' => 10, 'total' => 10]);
+    }
+    $user = $scenario === 'foreign' ? User::factory()->create() : $file->user;
+    $response = $this->actingAs($user)->postJson(route('files.resolve-review', $file), ['confirmed' => $scenario !== 'blind']);
+    if ($scenario === 'foreign') {
+        $response->assertNotFound();
+    } else {
+        $response->assertUnprocessable()->assertJsonValidationErrors($scenario === 'blind' ? 'confirmed' : 'review');
+    }
+    expect($file->fresh()->status)->toBe('needs_review');
+    Queue::assertNotPushed(ProcessFileGemini::class);
+})->with(['blind', 'inconsistent', 'foreign', 'limit', 'no items']);
+
+it('retries extraction separately when receipt source values are missing', function (): void {
+    $file = File::factory()->create(['status' => 'needs_review', 'meta' => ['review' => ['reason' => 'receipt_totals']]]);
+    $this->mock(FileReprocessingService::class)->shouldReceive('reprocessFile')->once()
+        ->withArgs(fn (File $selected, bool $force, ?string $provider, bool $fresh): bool => $selected->id === $file->id && ! $force && $provider === null && $fresh)
+        ->andReturn(['success' => true, 'message' => 'Queued', 'jobId' => 'retry']);
+    $this->actingAs($file->user)->post(route('files.reprocess', $file))->assertRedirect()->assertSessionHas('success', 'Queued');
 });

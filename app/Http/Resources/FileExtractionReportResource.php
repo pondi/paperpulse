@@ -20,6 +20,9 @@ class FileExtractionReportResource extends JsonResource
         $warnings = data_get($this->meta, 'gemini.extraction.validation_warnings', []);
         $coverage = Arr::only($this->meta['processing_coverage'] ?? [], ['total_pages', 'processed_pages', 'complete']);
 
+        $receipt = ($this->meta['review']['reason'] ?? null) === 'receipt_totals'
+            ? $this->receipts()->where('user_id', $this->user_id)->with('lineItems')->first() : null;
+
         return [
             'file' => ['id' => $this->id, 'name' => $this->fileName, 'status' => $this->status, 'file_type' => $this->file_type, 'processing_provider' => $this->processing_type],
             'classification' => Arr::only(data_get($this->meta, 'gemini.classification', []), ['type', 'confidence', 'reasoning']),
@@ -30,6 +33,8 @@ class FileExtractionReportResource extends JsonResource
             ],
             'coverage' => $coverage,
             'review' => Arr::only($this->meta['review'] ?? [], ['reason', 'confidence', 'reasoning', 'page_limit', 'corrected_type']),
+            'reconciliation' => $receipt?->totalsReconciliation(),
+            'receipt_currency' => $receipt?->currency,
             'failure' => Arr::only($this->meta['gemini_error'] ?? [], ['category', 'retryable']),
             'entities' => $this->extractableEntities->map(fn ($entity): array => [
                 'type' => $entity->entity_type, 'id' => $entity->entity_id, 'is_primary' => $entity->is_primary,

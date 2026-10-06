@@ -65,6 +65,10 @@
               Save Changes saves your edits. Cancel or leaving this page discards unsaved edits.
             </p>
 
+            <p v-if="receipt.file?.needs_review" class="mt-4 text-sm text-amber-800 dark:text-amber-200">
+              Editing saves corrected values. Complete the review by checking and confirming them in the
+              <Link :href="route('files.extraction-report', receipt.file.id)" class="font-semibold underline">extraction report</Link>.
+            </p>
             <dl class="mt-6 space-y-6">
               <div v-for="(field, index) in receiptFields" :key="index" class="flex flex-col">
                 <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">{{ field.label }}</dt>

@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Files;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Files\CorrectFileTypeRequest;
 use App\Http\Requests\Files\FileActivityRequest;
+use App\Http\Requests\Files\ResolveFileReviewRequest;
 use App\Http\Resources\Inertia\FileInertiaResource;
 use App\Models\File;
 use App\Services\AI\Extractors\EntityExtractorFactory;
 use App\Services\Files\FileReprocessingService;
 use App\Services\Files\FileReviewService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -71,13 +73,21 @@ class FileManagementController extends Controller
         ]);
     }
 
+    public function resolveReview(ResolveFileReviewRequest $request, File $file, FileReviewService $review): RedirectResponse
+    {
+        $review->resolveTotals($file, $request->user()->id);
+
+        return back()->with('success', 'Receipt totals verified. The review is complete.');
+    }
+
     public function reprocess(Request $request, File $file, FileReprocessingService $reprocessingService)
     {
-        if ($file->status !== 'failed') {
-            return back()->with('error', 'Only failed files can be restarted.');
+        $totalsReview = $file->status === 'needs_review' && ($file->meta['review']['reason'] ?? null) === 'receipt_totals';
+        if ($file->status !== 'failed' && ! $totalsReview) {
+            return back()->with('error', 'Only failed files or receipt totals reviews can be restarted.');
         }
 
-        $result = $reprocessingService->reprocessFile($file);
+        $result = $reprocessingService->reprocessFile($file, fresh: $totalsReview);
 
         return back()->with($result['success'] ? 'success' : 'error', $result['message']);
     }

@@ -233,13 +233,22 @@ if (scenario === 'mobile dashboard amounts') {
     assert.equal((html.match(/hidden sm:table-cell/g) || []).length, 4);
     assert.ok(html.includes('2026-10-06'));
 }
+if (scenario === 'receipt totals review') {
+    const reconciliation = { calculated_total: '22.70', discount_amount: '1.14', tip_amount: '0.00', total_amount: '21.56', needs_review: false };
+    const html = await render('Pages/Files/ExtractionReport.vue', { report: { file: { id: 391, name: 'Wine.pdf', status: 'needs_review', file_type: 'receipt' },
+        classification: {}, extraction: { has_extraction_issues: true, validation_warnings: [] }, coverage: {},
+        review: { reason: 'receipt_totals' }, reconciliation, receipt_currency: 'EUR', failure: {}, entities: [{ type: 'receipt', id: 1246 }] } });
+    for (const text of ['22.70 EUR', '1.14 EUR', '21.56 EUR', 'Confirm reconciled totals', 'checked the extracted values against the source', '/receipts/1246', 'does not rerun extraction']) assert.ok(html.includes(text), text);
+    const receipt = await render('Pages/Receipt/Show.vue', { receipt: { id: 1246, file_id: 391, file: { id: 391, needs_review: true }, currency: 'EUR', total_amount: '21.56', reconciliation, lineItems: [] }, categories: [] });
+    for (const text of ['Source discount', '1.14 EUR', 'Final amount', '21.56 EUR', '/files/391/extraction-report']) assert.ok(receipt.includes(text), text);
+}
 assert.deepEqual(warnings, []);
 JS;
     $process = new Process(['node', '--input-type=module', '--eval', $script], base_path());
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts']);
+})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts', 'receipt totals review']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

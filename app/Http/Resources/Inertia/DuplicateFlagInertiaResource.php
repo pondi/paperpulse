@@ -71,7 +71,8 @@ class DuplicateFlagInertiaResource extends JsonResource
             ],
             'invoice' => [
                 'type' => 'invoice',
-                'vendor_name' => $entity->vendor_name ?? $entity->from_name,
+                'vendor_name' => $entity->from_name,
+                'date' => $entity->invoice_date?->toDateString(),
                 'total_amount' => $entity->total_amount,
                 'currency' => $entity->currency,
             ],

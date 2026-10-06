@@ -262,6 +262,7 @@ return [
     'no_expiring_vouchers' => 'Ingen gavekort utløper snart.',
     'no_ending_warranties' => 'Ingen garantier utløper snart.',
     'scanner_preferences' => 'Skannerinnstillinger',
+    'file_missing' => 'Kildefilen er utilgjengelig eller slettet.',
     'ignore_duplicate' => 'Ignorer duplikat',
     'needs_review' => 'Trenger gjennomgang',
 ];

@@ -271,6 +271,7 @@ return [
     'no_expiring_vouchers' => 'No vouchers expiring soon.',
     'no_ending_warranties' => 'No warranties ending soon.',
     'scanner_preferences' => 'Scanner Preferences',
+    'file_missing' => 'Source file is unavailable or deleted.',
     'ignore_duplicate' => 'Ignore Duplicate',
     'needs_review' => 'Needs review',
 ];

@@ -46,7 +46,6 @@
                             <div class="rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
                                 <FileCard
                                     :file="flag.file"
-                                    :flag-id="flag.id"
                                     :busy="isBusy(flag.id)"
                                     @delete-file="resolveDuplicate(flag, $event)"
                                 />
@@ -54,7 +53,6 @@
                             <div class="rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
                                 <FileCard
                                     :file="flag.duplicate_file"
-                                    :flag-id="flag.id"
                                     :busy="isBusy(flag.id)"
                                     @delete-file="resolveDuplicate(flag, $event)"
                                 />
@@ -68,10 +66,10 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { Link } from '@inertiajs/vue3';
+import FileCard from '@/Components/Domain/DuplicateFileCard.vue';
 import { useTranslations } from '@/Composables/useTranslations';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 
@@ -152,107 +150,4 @@ const resolveDuplicate = (flag, fileId) => {
     });
 };
 
-const FileCard = {
-    components: { Link },
-    props: {
-        file: {
-            type: Object,
-            default: null
-        },
-        flagId: {
-            type: Number,
-            required: true
-        },
-        busy: {
-            type: Boolean,
-            default: false
-        }
-    },
-    emits: ['delete-file'],
-    setup(props, { emit }) {
-        const { __ } = useTranslations();
-        const { formatDate, formatCurrency } = useDateFormatter();
-
-        const summaryLabel = computed(() => {
-            if (!props.file?.summary) {
-                return null;
-            }
-
-            const summary = props.file.summary;
-            if (summary.type === 'receipt') {
-                return {
-                    title: summary.merchant_name || __('receipt_details'),
-                    date: summary.date,
-                    amount: summary.total_amount,
-                    currency: summary.currency,
-                };
-            }
-
-            if (summary.type === 'document') {
-                return {
-                    title: summary.title || __('document'),
-                    date: null,
-                    amount: null,
-                    currency: null,
-                };
-            }
-
-            return null;
-        });
-
-        const handleDelete = () => {
-            if (!props.file?.id) {
-                return;
-            }
-
-            emit('delete-file', props.file.id);
-        };
-
-        return {
-            __,
-            formatDate,
-            formatCurrency,
-            summaryLabel,
-            handleDelete,
-        };
-    },
-    template: `
-        <div>
-            <div class="flex items-start justify-between gap-3">
-                <div>
-                    <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100" v-if="file">
-                        {{ file.name }}
-                    </p>
-                    <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100" v-else>
-                        {{ __('file_missing') }}
-                    </p>
-                    <p v-if="file" class="text-xs text-zinc-500">{{ formatDate(file.uploaded_at) }}</p>
-                </div>
-                <Link
-                    v-if="file"
-                    :href="file.detailsUrl"
-                    class="text-xs font-semibold text-amber-700 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
-                >
-                    {{ __('view_details') }}
-                </Link>
-            </div>
-
-            <div v-if="summaryLabel" class="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-                <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ summaryLabel.title }}</p>
-                <p v-if="summaryLabel.date">{{ __('date') }}: {{ formatDate(summaryLabel.date) }}</p>
-                <p v-if="summaryLabel.amount !== null">{{ __('total_amount') }}: {{ formatCurrency(summaryLabel.amount, summaryLabel.currency) }}</p>
-            </div>
-
-            <button
-                v-if="file"
-                type="button"
-                class="mt-4 inline-flex w-full items-center justify-center rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-900/40 dark:bg-red-900/30 dark:text-red-200"
-                :disabled="busy"
-                @click="handleDelete"
-            >
-                {{ __('delete_file') }}
-            </button>
-        </div>
-    `
-};
 </script>

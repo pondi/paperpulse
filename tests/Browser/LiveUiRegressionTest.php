@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Collection;
 use App\Models\Contract;
 use App\Models\Document;
+use App\Models\DuplicateFlag;
 use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Invoice;
@@ -1090,3 +1091,18 @@ it('renders report statistic labels and zero or populated values with the produc
         expect(collect($logs)->pluck('message')->implode(' '))->not->toContain('runtime compilation');
     });
 })->with([false, true]);
+
+it('renders both duplicate candidates including files with missing extracted metadata', function (): void {
+    $user = $this->createUser();
+    $first = File::factory()->create(['user_id' => $user->id, 'fileName' => 'First scan.pdf', 'status' => 'completed']);
+    $second = File::factory()->create(['user_id' => $user->id, 'fileName' => 'Second scan.pdf', 'status' => 'processing']);
+    $document = Document::factory()->create(['user_id' => $user->id, 'file_id' => $first->id, 'title' => 'Source agreement']);
+    ExtractableEntity::create(['user_id' => $user->id, 'file_id' => $first->id, 'entity_type' => 'document', 'entity_id' => $document->id, 'is_primary' => true, 'extracted_at' => now()]);
+    DuplicateFlag::create(['user_id' => $user->id, 'file_id' => $first->id, 'duplicate_file_id' => $second->id, 'reasons' => ['matching_hash'], 'status' => 'open']);
+    $this->browse(function (Browser $browser) use ($user, $first, $second): void {
+        $this->loginAs($browser, $user);
+        $browser->visit('/duplicates')->waitForText('First scan.pdf')->assertSee('Second scan.pdf')->assertSee('Source agreement')
+            ->assertPresent('a[href$="/files/'.$first->id.'"]')->assertPresent('a[href$="/files/'.$second->id.'"]');
+        $browser->resize(390, 844)->assertSee('First scan.pdf')->assertSee('Second scan.pdf');
+    });
+});

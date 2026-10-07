@@ -6,25 +6,25 @@
             <div class="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
                 <div class="flex min-w-0 items-center gap-4">
                     <div
-                        class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                        class="w-7 h-7 rounded flex items-center justify-center flex-shrink-0"
                         :style="{ backgroundColor: collection.color }"
                     >
                         <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getIconPath(collection.icon)" />
                         </svg>
                     </div>
-                    <h2 class="min-w-0 break-words font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
+                    <h2 class="min-w-0 break-words font-semibold text-xl text-zinc-900 dark:text-zinc-200 leading-tight">
                         {{ collection.name }}
                         <span v-if="collection.is_archived" class="ml-2 text-sm font-normal text-zinc-500 dark:text-zinc-400">(Archived)</span>
                     </h2>
                 </div>
                 <div class="flex flex-wrap items-center gap-4">
-                    <Link v-if="isOwner" :href="route('collections.organization.index')" class="text-orange-600 dark:text-orange-400">Review recommendations</Link>
+                    <Link v-if="isOwner" :href="route('collections.organization.index')" class="text-zinc-600 dark:text-zinc-400">Review recommendations</Link>
                     <button
                         v-if="isOwner"
                         @click="isEditing = !isEditing"
                         class="inline-flex items-center gap-x-2 px-3 py-2 text-sm font-semibold rounded-md"
-                        :class="isEditing ? 'text-zinc-900 bg-blue-100 hover:bg-blue-200 dark:text-zinc-100 dark:bg-zinc-700 dark:hover:bg-blue-600' : 'text-zinc-100 bg-zinc-700 hover:bg-blue-600 dark:bg-zinc-600 dark:hover:bg-zinc-500'"
+                        :class="isEditing ? 'text-zinc-900 bg-zinc-100 hover:bg-zinc-200 dark:text-zinc-100 dark:bg-zinc-700 dark:hover:bg-zinc-600' : 'text-zinc-100 bg-zinc-700 hover:bg-zinc-600 dark:bg-zinc-600 dark:hover:bg-zinc-500'"
                     >
                         <svg v-if="!isEditing" class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -54,13 +54,13 @@
             </div>
         </template>
 
-        <Breadcrumbs v-if="breadcrumbs.length" :crumbs="breadcrumbs" class="px-6 pt-4 max-w-7xl mx-auto" />
+        <Breadcrumbs v-if="breadcrumbs.length" :crumbs="breadcrumbs" class="pb-3" />
 
-        <div class="py-6">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="py-0">
+            <div class="min-w-0">
                 <!-- Collection Details Card -->
-                <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg border-l-4 p-6 mb-6" :style="{ borderLeftColor: collection.color }">
-                    <div class="space-y-6">
+                <div class="bg-white dark:bg-zinc-800 border-b border-zinc-200 px-0 py-3 mb-3 dark:border-zinc-700" :style="{ borderLeftColor: collection.color }">
+                    <div class="space-y-3">
                         <template v-if="isEditing">
                             <label class="text-sm text-zinc-700 dark:text-zinc-300">Name
                                 <input v-model="editedCollection.name" class="block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100" />
@@ -78,7 +78,7 @@
                             v-model="editedCollection.description"
                             rows="2"
                             placeholder="Collection description..."
-                            class="block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            class="block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100  focus:border-orange-600 focus:ring-orange-600 sm:text-sm"
                         ></textarea>
 
                         <!-- Icon and Color Pickers (only in edit mode) -->
@@ -94,19 +94,19 @@
                         </div>
 
                         <dl class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-600 dark:text-zinc-300">
-                            <div class="flex gap-2"><dt>Files directly here</dt><dd class="font-bold">{{ stats.total_files }}</dd></div>
-                            <div class="flex gap-2"><dt>Documents directly here</dt><dd class="font-bold">{{ stats.documents_count }}</dd></div>
-                            <div class="flex gap-2"><dt>Receipts directly here</dt><dd class="font-bold">{{ stats.receipts_count }}</dd></div>
-                            <div class="flex gap-2"><dt>Invoices directly here</dt><dd class="font-bold">{{ stats.invoices_count }}</dd></div>
-                            <div v-if="treePreview" class="flex gap-2"><dt>Files including subfolders</dt><dd class="font-bold">{{ treePreview.files }}</dd></div>
+                            <div class="flex gap-2"><dt>Files directly here</dt><dd class="font-semibold">{{ stats.total_files }}</dd></div>
+                            <div class="flex gap-2"><dt>Documents directly here</dt><dd class="font-semibold">{{ stats.documents_count }}</dd></div>
+                            <div class="flex gap-2"><dt>Receipts directly here</dt><dd class="font-semibold">{{ stats.receipts_count }}</dd></div>
+                            <div class="flex gap-2"><dt>Invoices directly here</dt><dd class="font-semibold">{{ stats.invoices_count }}</dd></div>
+                            <div v-if="treePreview" class="flex gap-2"><dt>Files including subfolders</dt><dd class="font-semibold">{{ treePreview.files }}</dd></div>
                         </dl>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg p-6 mb-6">
+                <div class="bg-white dark:bg-zinc-800 border-b border-zinc-200 px-0 py-3 mb-3 dark:border-zinc-700">
                     <div class="flex items-center justify-between gap-3 mb-4">
-                        <h3 class="font-bold text-zinc-900 dark:text-zinc-100">Subfolders</h3>
-                        <Link v-if="isOwner" :href="route('collections.index', { parent_id: collection.id })" class="text-blue-600 dark:text-blue-400">Manage subfolders</Link>
+                        <h3 class="font-semibold text-zinc-900 dark:text-zinc-100">Subfolders</h3>
+                        <Link v-if="isOwner" :href="route('collections.index', { parent_id: collection.id })" class="text-zinc-600 dark:text-zinc-400">Manage subfolders</Link>
                     </div>
                     <div class="flex flex-wrap gap-3">
                         <Link v-for="child in children.data" :key="child.id" :href="route('collections.show', child.id)" class="rounded-md bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 px-4 py-2">{{ child.name }}</Link>
@@ -115,46 +115,16 @@
                     <Pagination v-if="children.last_page > 1" :links="children.links" :from="children.from" :to="children.to" :total="children.total" class="mt-4" />
                 </div>
                 <!-- Files Grid -->
-                <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg p-6">
+                <div class="bg-white dark:bg-zinc-800 min-w-0">
                     <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-100">Files in this Collection</h3>
+                        <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Files in this Collection</h3>
                     </div>
 
-                    <div v-if="collection.files && collection.files.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div
-                            v-for="file in collection.files"
-                            :key="file.id"
-                            class="relative group bg-zinc-50 dark:bg-zinc-700 rounded-lg p-4 hover:shadow-md transition-shadow border border-zinc-200 dark:border-zinc-600"
-                        >
-                            <div class="flex items-start justify-between mb-2">
-                                <div class="flex-1 min-w-0">
-                                    <h4 class="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
-                                        {{ file.fileName || file.original_filename || 'Unnamed File' }}
-                                    </h4>
-                                    <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                        {{ getFileType(file) }}
-                                    </p>
-                                </div>
-                                <button
-                                    v-if="isOwner"
-                                    @click="removeFile(file.id)"
-                                    class="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                                >
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                            <div class="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mt-2">
-                                <span>{{ formatDate(file.created_at) }}</span>
-                                <Link
-                                    :href="getFileUrl(file)"
-                                    class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                                >
-                                    View
-                                </Link>
-                            </div>
-                        </div>
+                    <FileWorkspace :files="workspaceFiles" :tags="workspaceTags" />
+                    <div v-if="isOwner && workspaceFiles.length" class="mt-3 flex flex-wrap items-center gap-2">
+                        <label class="text-xs text-zinc-500" for="remove-collection-file">Remove from collection</label>
+                        <select id="remove-collection-file" v-model="removeFileId" class="workspace-filter"><option value="">Choose file</option><option v-for="file in workspaceFiles" :key="file.id" :value="file.id">{{ file.name }}</option></select>
+                        <button class="workspace-button" :disabled="!removeFileId" @click="removeFile(removeFileId)">Remove</button>
                     </div>
 
                     <Pagination v-if="filePagination" :links="filePagination" class="mt-4" />
@@ -168,13 +138,13 @@
                             Files in subfolders are listed separately. Upload a file here or browse a subfolder above.
                         </p>
                         <div class="mt-4 flex flex-wrap justify-center gap-3">
-                            <Link v-for="child in children.data" :key="child.id" :href="route('collections.show', child.id)" class="text-blue-600 hover:underline dark:text-blue-400">Browse {{ child.name }}</Link>
-                            <Link v-if="isOwner" :href="route('documents.upload', { collection_ids: [collection.id] })" class="text-blue-600 hover:underline dark:text-blue-400">Upload to this collection</Link>
+                            <Link v-for="child in children.data" :key="child.id" :href="route('collections.show', child.id)" class="text-zinc-600 hover:underline dark:text-zinc-400">Browse {{ child.name }}</Link>
+                            <Link v-if="isOwner" :href="route('documents.upload', { collection_ids: [collection.id] })" class="text-zinc-600 hover:underline dark:text-zinc-400">Upload to this collection</Link>
                         </div>
                     </div>
                 </div>
-                <details v-if="isOwner" class="mt-6 rounded-lg bg-white p-6 shadow dark:bg-zinc-800">
-                    <summary class="cursor-pointer font-bold text-zinc-900 dark:text-zinc-100">Public sharing</summary>
+                <details v-if="isOwner" class="mt-4 border-t border-zinc-200 bg-white py-3 dark:bg-zinc-800">
+                    <summary class="cursor-pointer font-semibold text-zinc-900 dark:text-zinc-100">Public sharing</summary>
                     <PublicLinkManager
                         :collection-id="collection.id"
                         :public-links="publicLinks"
@@ -188,8 +158,6 @@
 </template>
 
 <script setup>
-import { useDateFormatter } from '@/Composables/useDateFormatter';
-const { formatDate } = useDateFormatter();
 import { ref, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -198,9 +166,13 @@ import Pagination from '@/Components/Common/Pagination.vue';
 import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import IconPicker from '@/Components/Forms/IconPicker.vue';
 import ColorPicker from '@/Components/Forms/ColorPicker.vue';
+import FileWorkspace from '@/Components/Domain/FileWorkspace.vue';
 import PublicLinkManager from '@/Components/Domain/PublicLinkManager.vue';
 
+const removeFileId = ref('');
 const props = defineProps({
+    workspaceFiles: { type: Array, default: () => [] },
+    workspaceTags: { type: Array, default: () => [] },
     children: { type: Object, default: () => ({ data: [] }) },
     filePagination: { type: Array, default: null },
     treePreview: { type: Object, default: null },
@@ -273,36 +245,12 @@ const getIconPath = (iconName) => {
     return icons[iconName] || icons['folder'];
 };
 
-const getFileType = (file) => {
-    // Check for primary entity first (invoices, contracts, etc.)
-    if (file.primary_entity && file.primary_entity.entity_type) {
-        const entityType = file.primary_entity.entity_type.split('\\').pop().toLowerCase();
-        return entityType.charAt(0).toUpperCase() + entityType.slice(1);
-    }
-    // Then check for primary receipt
-    if (file.primary_receipt) {
-        return 'Receipt';
-    }
-    // Then check for primary document
-    if (file.primary_document) {
-        return 'Document';
-    }
-    // Fallback to file_type if available
-    if (file.file_type) {
-        return file.file_type.charAt(0).toUpperCase() + file.file_type.slice(1);
-    }
-    return 'File';
-};
-
-const getFileUrl = (file) => route('files.show', file.id);
-
-
-
 const removeFile = (fileId) => {
     if (confirm('Remove this file from the collection?')) {
         router.delete(route('collections.files.remove', props.collection.id), {
             data: { file_ids: [fileId] },
-            preserveScroll: true
+            preserveScroll: true,
+            onSuccess: () => { removeFileId.value = ''; }
         });
     }
 };

@@ -241,9 +241,13 @@ class DocumentController extends BaseResourceController
      *
      * @param  Document  $document  Route-bound Document model
      */
-    public function show($document): Response
+    public function show($document): Response|\Illuminate\Http\RedirectResponse
     {
         $this->authorize('view', $document);
+
+        if (File::withoutGlobalScope('user')->where('user_id', $document->user_id)->whereKey($document->file_id)->exists()) {
+            return redirect()->route('files.show', $document->file_id);
+        }
 
         $meta = $this->getShowMeta();
 

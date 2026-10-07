@@ -4,13 +4,13 @@
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center justify-between">
-                <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
+                <h2 class="font-semibold text-xl text-zinc-900 dark:text-zinc-200 leading-tight">
                     {{ parentName ? `Subfolders in ${parentName}` : 'Collections' }}
                 </h2>
                 <button
                     @click="openCreateModal"
                     type="button"
-                    class="inline-flex items-center px-4 py-2 bg-zinc-900 dark:bg-orange-600 border border-transparent rounded-md font-bold text-sm text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200"
+                    class="inline-flex items-center px-4 py-2 bg-zinc-900 dark:bg-orange-600 border border-transparent rounded-md font-bold text-sm text-white   hover:bg-zinc-800 dark:hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200"
                 >
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -20,14 +20,14 @@
             </div>
         </template>
 
-        <div class="py-6">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="py-0">
+            <div class="min-w-0">
                 <Breadcrumbs :crumbs="[{ label: 'Collections', href: route('collections.index') }, ...breadcrumbs]" />
-                <Link v-if="parentName" :href="breadcrumbs[breadcrumbs.length - 1].href" class="mb-4 mr-4 inline-block text-blue-600 dark:text-blue-400">Back to {{ parentName }}</Link>
+                <Link v-if="parentName" :href="breadcrumbs[breadcrumbs.length - 1].href" class="mb-4 mr-4 inline-block text-zinc-600 dark:text-zinc-400">Back to {{ parentName }}</Link>
                 <Link :href="route('collections.organization.index')" class="mb-4 inline-block text-orange-600 dark:text-orange-400">Review folder recommendations</Link>
                 <p v-if="actionError" role="alert" class="mb-4 text-red-600 dark:text-red-400">{{ actionError }}</p>
                 <!-- Search and Filters -->
-                <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg mb-6">
+                <div class="bg-white dark:bg-zinc-900 overflow-hidden  sm:rounded mb-6">
                     <div class="p-4">
                         <div class="flex flex-col sm:flex-row gap-4">
                             <div class="flex-1">
@@ -35,15 +35,17 @@
                                     v-model="searchQuery"
                                     @input="debounceSearch"
                                     type="search"
-                                    placeholder="Search collections..."
-                                    class="w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 focus:border-amber-500 dark:focus:border-amber-600 focus:ring-amber-500 dark:focus:ring-amber-600"
+                                    placeholder="Find a collection…"
+                                    aria-label="Search collections"
+                                    class="w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 focus:border-orange-500 dark:focus:border-orange-600 focus:ring-orange-500 dark:focus:ring-orange-600"
                                 />
                             </div>
                             <div class="flex gap-2">
                                 <select
+                                    aria-label="Collection status"
                                     v-model="showArchived"
                                     @change="applyFilters"
-                                    class="rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 focus:border-amber-500 dark:focus:border-amber-600 focus:ring-amber-500 dark:focus:ring-amber-600"
+                                    class="rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 focus:border-orange-500 dark:focus:border-orange-600 focus:ring-orange-500 dark:focus:ring-orange-600"
                                 >
                                     <option :value="false">Active Collections</option>
                                     <option :value="true">Archived Collections</option>
@@ -54,21 +56,21 @@
                 </div>
 
                 <!-- Collections Grid -->
-                <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-orange-600 dark:border-orange-500">
+                <div class="bg-white dark:bg-zinc-900 overflow-hidden  sm:rounded border border-zinc-200 dark:border-zinc-800">
                     <div class="p-4">
-                        <div v-if="collections.data.length > 0" class="flex flex-col gap-3">
-                            <CollectionCard
-                                v-for="collection in collections.data"
-                                :key="collection.id"
-                                :collection="collection"
-                                :show-edit="true"
-                                :show-archive="true"
-                                :show-delete="true"
-                                @edit="editCollection(collection)"
-                                @archive="archiveCollection(collection)"
-                                @unarchive="unarchiveCollection(collection)"
-                                @delete="deleteCollection(collection)"
-                            />
+                        <div v-if="collections.data.length" class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="border-b border-zinc-200 bg-zinc-50 text-xs text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950"><tr><th class="px-3 py-3 font-medium">Collection</th><th class="px-3 py-3 text-right font-medium">Files</th><th class="px-3 py-3 text-right font-medium">Subfolders</th><th class="px-3 py-3 font-medium">Status</th><th class="px-3 py-3 text-right font-medium">Actions</th></tr></thead>
+                                <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                                    <tr v-for="collection in collections.data" :key="collection.id" class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                                        <td class="max-w-xs px-3 py-3"><Link :href="route('collections.show', collection.id)" class="block truncate font-medium text-zinc-900 dark:text-zinc-100">{{ collection.name }}</Link><p v-if="collection.description" class="mt-1 truncate text-xs text-zinc-500">{{ collection.description }}</p></td>
+                                        <td class="px-3 py-3 text-right tabular-nums text-zinc-600 dark:text-zinc-400">{{ collection.files_count || 0 }}</td>
+                                        <td class="px-3 py-3 text-right tabular-nums"><Link :href="route('collections.index', { parent_id: collection.id })" class="text-zinc-600 underline dark:text-zinc-400">{{ collection.children_count || 0 }}</Link></td>
+                                        <td class="px-3 py-3 text-xs text-zinc-500">{{ collection.is_archived ? 'Archived' : 'Active' }}<span v-if="collection.is_pinned"> · Fixed</span></td>
+                                        <td class="px-3 py-3"><div class="flex justify-end gap-2"><button class="workspace-button" :aria-label="'Edit ' + collection.name" @click="editCollection(collection)">Edit</button><button class="workspace-button" :aria-label="(collection.is_archived ? 'Restore ' : 'Archive ') + collection.name" @click="collection.is_archived ? unarchiveCollection(collection) : archiveCollection(collection)">{{ collection.is_archived ? 'Restore' : 'Archive' }}</button><button v-if="!collection.files_count && !collection.children_count" class="workspace-button" :aria-label="'Delete ' + collection.name" @click="deleteCollection(collection)">Delete</button></div></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
 
                         <!-- Empty State -->
@@ -76,13 +78,13 @@
                             <svg class="mx-auto h-16 w-16 text-zinc-400 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                             </svg>
-                            <h3 class="mt-4 text-lg font-black text-zinc-900 dark:text-zinc-100">{{ parentName ? `No subfolders in ${parentName}` : 'No collections' }}</h3>
+                            <h3 class="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ parentName ? `No subfolders in ${parentName}` : 'No collections' }}</h3>
                             <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{{ parentName ? `Create a subfolder in ${parentName} to organize its files.` : 'Get started by creating a new collection to organize your files.' }}</p>
                             <div class="mt-8">
                                 <button
                                     @click="openCreateModal"
                                     type="button"
-                                    class="inline-flex items-center px-6 py-3 bg-zinc-900 dark:bg-orange-600 border border-transparent rounded-md font-bold text-sm text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-orange-700 transition-all duration-200"
+                                    class="inline-flex items-center px-6 py-3 bg-zinc-900 dark:bg-orange-600 border border-transparent rounded-md font-bold text-sm text-white   hover:bg-zinc-800 dark:hover:bg-orange-700 transition-all duration-200"
                                 >
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -123,7 +125,7 @@
                             v-model="form.name"
                             type="text"
                             required
-                            class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
+                            class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100  focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
                             :class="{ 'border-red-300': form.errors.name }"
                         />
                         <p v-if="form.errors.name" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.errors.name }}</p>
@@ -137,7 +139,7 @@
                             id="collection-description"
                             v-model="form.description"
                             rows="3"
-                            class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
+                            class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100  focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
                         ></textarea>
                     </div>
 
@@ -159,14 +161,14 @@
                         <button
                             type="button"
                             @click="closeModal"
-                            class="inline-flex justify-center rounded-md bg-white dark:bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-900 dark:text-zinc-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700"
+                            class="inline-flex justify-center rounded-md bg-white dark:bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-900 dark:text-zinc-100  ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             :disabled="form.processing"
-                            class="inline-flex justify-center rounded-md bg-zinc-900 dark:bg-orange-600 px-3 py-2 text-sm font-bold text-white shadow-sm hover:bg-zinc-800 dark:hover:bg-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:opacity-50"
+                            class="inline-flex justify-center rounded-md bg-zinc-900 dark:bg-orange-600 px-3 py-2 text-sm font-bold text-white  hover:bg-zinc-800 dark:hover:bg-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:opacity-50"
                         >
                             {{ editingCollection ? 'Update' : 'Create' }}
                         </button>
@@ -178,13 +180,12 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import axios from 'axios';
 import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
 import FolderLocationPicker from '@/Components/Domain/FolderLocationPicker.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import CollectionCard from '@/Components/Domain/CollectionCard.vue';
 import Modal from '@/Components/Common/Modal.vue';
 import Pagination from '@/Components/Common/Pagination.vue';
 import IconPicker from '@/Components/Forms/IconPicker.vue';
@@ -215,10 +216,11 @@ const form = useForm({
     name: '',
     description: '',
     icon: 'folder',
-    color: '#3B82F6'
+    color: '#64748B'
 });
 
 let searchTimeout = null;
+onBeforeUnmount(() => clearTimeout(searchTimeout));
 const debounceSearch = () => {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
@@ -242,7 +244,7 @@ const openCreateModal = () => {
     form.reset();
     form.parent_id = props.filters.parent_id ?? null;
     form.icon = 'folder';
-    form.color = '#3B82F6';
+    form.color = '#64748B';
     showModal.value = true;
 };
 

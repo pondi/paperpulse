@@ -150,6 +150,8 @@ class CollectionController extends Controller
 
         return Inertia::render('Collections/Show', [
             'collection' => $collection,
+            'workspaceTags' => \App\Models\Tag::query()->where('user_id', auth()->id())->orderBy('name')->get(['id', 'name']),
+            'workspaceFiles' => $filePage->getCollection()->map(fn ($file) => \App\Http\Resources\Inertia\FileInertiaResource::forIndex($file)->toArray(request())),
             'children' => $children,
             'filePagination' => $filePage->toArray()['links'],
             'treePreview' => $collection->user_id === auth()->id() ? app(FolderTreeService::class)->preview($collection) : null,

@@ -68,13 +68,17 @@ class ReceiptController extends BaseResourceController
     /**
      * Override show method to pass correct prop name for Vue component.
      */
-    public function show($id): Response
+    public function show($id): Response|\Illuminate\Http\RedirectResponse
     {
         $receipt = $this->model::accessibleBy(auth()->user())->with($this->showWith)->with(['file' => fn ($query) => $query->withoutGlobalScope('user'),
             'merchant' => fn ($query) => $query->withoutGlobalScope('user'),
             'category' => fn ($query) => $query->withoutGlobalScope('user')])->findOrFail($id instanceof Receipt ? $id->id : $id);
 
         $this->authorize('view', $receipt);
+
+        if ($receipt->file) {
+            return redirect()->route('files.show', $receipt->file_id);
+        }
 
         return Inertia::render("{$this->resource}/Show", [
             'receipt' => ReceiptInertiaResource::forShow($receipt)->toArray(request()),

@@ -6,6 +6,7 @@ use App\Http\Controllers\Files\FileManagementController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'web'])->group(function () {
+    Route::post('/workspace/actions', [\App\Http\Controllers\Files\WorkspaceActionController::class, 'store'])->name('workspace.actions');
     Route::get('/files/{file}', [FileDetailController::class, 'show'])->name('files.show');
     Route::get('/files/{file}/extraction-report', [ExtractionReportController::class, 'page'])->name('files.extraction-report');
 

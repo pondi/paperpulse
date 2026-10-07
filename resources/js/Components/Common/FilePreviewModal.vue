@@ -1,212 +1,23 @@
-<template>
-  <Modal :show="show" @close="close" max-width="6xl" v-slot="{ titleId }">
-    <div class="flex h-[80vh] flex-col overflow-y-auto md:flex-row md:overflow-hidden">
-      <!-- Left Panel - File Preview -->
-      <div class="order-2 min-h-[40vh] shrink-0 bg-zinc-100 dark:bg-zinc-950 overflow-auto border-t border-zinc-200 md:order-1 md:min-h-0 md:flex-1 md:border-r md:border-t-0 dark:border-zinc-700">
-        <!-- PDF Viewer -->
-        <template v-if="item?.file?.pdfUrl">
-          <iframe
-            :src="`${item.file.pdfUrl}#navpanes=0&amp;view=Fit`"
-            class="w-full h-full border-0"
-            title="Document Viewer"
-          ></iframe>
-        </template>
-
-        <!-- Image Preview -->
-        <template v-else-if="item?.type === 'receipt'">
-          <ReceiptImage
-            v-if="item.file"
-            :file="item.file"
-            :alt-text="item.title"
-            error-message="Failed to load receipt image"
-            no-image-message="No receipt image available"
-            :show-pdf-button="false"
-          />
-        </template>
-        <template v-else-if="item?.type === 'document'">
-          <DocumentImage
-            v-if="item.file"
-            :file="item.file"
-            :alt-text="item.title"
-            error-message="Failed to load document preview"
-            no-image-message="No document preview available"
-            :show-pdf-button="false"
-          />
-        </template>
-
-        <!-- No Preview Available -->
-        <template v-else>
-          <div class="flex flex-col items-center justify-center h-full bg-amber-50 dark:bg-zinc-900">
-            <DocumentIcon class="size-16 text-zinc-400 mb-4" />
-            <span class="text-sm text-zinc-500 dark:text-zinc-400">No preview available</span>
-          </div>
-        </template>
-      </div>
-
-      <!-- Right Panel - Details -->
-      <div class="order-1 w-full shrink-0 bg-white dark:bg-zinc-800 md:order-2 md:w-96 md:overflow-y-auto">
-        <div class="sticky top-0 bg-white dark:bg-zinc-800 border-b border-amber-200 dark:border-zinc-700 p-4 flex justify-between items-start z-10">
-          <div class="flex-1">
-            <div class="flex items-center gap-2 mb-2">
-              <ReceiptRefundIcon v-if="item?.type === 'receipt'" class="size-5 text-zinc-400" />
-              <DocumentIcon v-else class="size-5 text-zinc-400" />
-              <span class="text-xs font-medium text-zinc-500 uppercase">{{ item?.type }}</span>
-            </div>
-            <h3 :id="titleId" class="text-lg font-semibold text-zinc-900 dark:text-white line-clamp-2">
-              {{ item?.title }}
-            </h3>
-          </div>
-          <button
-            @click="close"
-            aria-label="Close preview"
-            class="ml-4 text-zinc-400 hover:text-zinc-500 dark:hover:text-zinc-300"
-          >
-            <XMarkIcon class="size-6" aria-hidden="true" />
-          </button>
-        </div>
-
-        <div class="p-4 space-y-4">
-          <!-- Receipt Details -->
-          <template v-if="item?.type === 'receipt'">
-            <div v-if="item.total != null" class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
-              <div class="text-sm text-amber-600 dark:text-amber-400 font-medium mb-1">Total Amount</div>
-              <div class="text-2xl font-bold text-amber-900 dark:text-amber-100">{{ formatCurrency(item.total, item.currency) }}</div>
-            </div>
-
-            <div v-if="item.date">
-              <div class="text-xs font-medium text-zinc-500 uppercase mb-1">Date</div>
-              <div class="text-sm text-zinc-900 dark:text-white">{{ formatDate(item.date) }}</div>
-            </div>
-
-            <div v-if="item.category">
-              <div class="text-xs font-medium text-zinc-500 uppercase mb-1">Category</div>
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                {{ item.category }}
-              </span>
-            </div>
-
-            <div v-if="item.description">
-              <div class="text-xs font-medium text-zinc-500 uppercase mb-1">Description</div>
-              <div class="text-sm text-zinc-900 dark:text-white">{{ item.description }}</div>
-            </div>
-
-            <div v-if="item.items && item.items.length > 0">
-              <div class="text-xs font-medium text-zinc-500 uppercase mb-2">Line Items ({{ item.items.length }})</div>
-              <div class="space-y-2">
-                <div
-                  v-for="(lineItem, idx) in item.items"
-                  :key="idx"
-                  class="text-sm p-2 bg-amber-50 dark:bg-zinc-900 rounded border border-amber-200 dark:border-zinc-700"
-                >
-                  <div class="font-medium text-zinc-900 dark:text-white">{{ lineItem.description }}</div>
-                  <div class="text-xs text-zinc-500 mt-1">
-                    Qty: {{ lineItem.quantity }} × {{ lineItem.price }}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="item.tags && item.tags.length > 0">
-              <div class="text-xs font-medium text-zinc-500 uppercase mb-2">Tags</div>
-              <div class="flex flex-wrap gap-1">
-                <span
-                  v-for="tag in item.tags"
-                  :key="tag"
-                  class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-amber-100 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300"
-                >
-                  {{ tag }}
-                </span>
-              </div>
-            </div>
-          </template>
-
-          <!-- Document Details -->
-          <template v-else-if="item?.type === 'document'">
-            <div v-if="item.date">
-              <div class="text-xs font-medium text-zinc-500 uppercase mb-1">Date</div>
-              <div class="text-sm text-zinc-900 dark:text-white">{{ formatDate(item.date) }}</div>
-            </div>
-
-            <div v-if="item.document_type">
-              <div class="text-xs font-medium text-zinc-500 uppercase mb-1">Document Type</div>
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
-                {{ item.document_type }}
-              </span>
-            </div>
-
-            <div v-if="item.description">
-              <div class="text-xs font-medium text-zinc-500 uppercase mb-1">Description</div>
-              <div class="text-sm text-zinc-900 dark:text-white">{{ item.description }}</div>
-            </div>
-
-            <div v-if="item.tags && item.tags.length > 0">
-              <div class="text-xs font-medium text-zinc-500 uppercase mb-2">Tags</div>
-              <div class="flex flex-wrap gap-1">
-                <span
-                  v-for="tag in item.tags"
-                  :key="tag"
-                  class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-amber-100 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300"
-                >
-                  {{ tag }}
-                </span>
-              </div>
-            </div>
-          </template>
-
-          <!-- Actions -->
-          <div class="pt-4 border-t border-amber-200 dark:border-zinc-700 space-y-2">
-            <Link
-              :href="workspaceUrl"
-              @click="close"
-              class="w-full inline-flex justify-center items-center gap-x-2 px-4 py-2 bg-zinc-900 dark:bg-amber-600 border border-transparent rounded-md font-bold text-sm text-white hover:bg-zinc-800 dark:hover:bg-amber-700 shadow-sm hover:shadow focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-all duration-200"
-            >
-              <ArrowTopRightOnSquareIcon class="size-4" />
-              {{ item?.file_id || item?.file?.id ? 'Open document workspace' : 'Open full view' }}
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  </Modal>
-</template>
-
 <script setup>
-import { useDateFormatter } from '@/Composables/useDateFormatter';
-
-import { computed } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
+import { Link } from '@inertiajs/vue3';
 import Modal from '@/Components/Common/Modal.vue';
-import ReceiptImage from '@/Components/Domain/ReceiptImage.vue';
-import DocumentImage from '@/Components/Domain/DocumentImage.vue';
-import {
-  XMarkIcon,
-  DocumentIcon,
-  ReceiptRefundIcon,
-  ArrowTopRightOnSquareIcon
-} from '@heroicons/vue/24/outline';
-
-const { formatDate, formatCurrency } = useDateFormatter();
-
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  item: {
-    type: Object,
-    default: null
-  }
-});
-
+import FileInspector from '@/Components/Domain/FileInspector.vue';
+import DocumentPreview from '@/Components/Domain/DocumentPreview.vue';
+const props = defineProps({ show: Boolean, item: { type: Object, default: null } });
 const emit = defineEmits(['close']);
-const page = usePage();
-const workspaceUrl = computed(() => {
-  const fileId = props.item?.file_id || props.item?.file?.id;
-  const returnTo = /^\/(library|search)(\?|$)/.test(page.url) && page.url.length <= 2048 ? page.url : undefined;
-  return fileId ? route('files.show', { file: fileId, return_to: returnTo }) : props.item?.url || '#';
-});
-
-const close = () => {
-  emit('close');
-};
+const dirty = ref(false);
+const fileId = computed(() => props.item?.file_id || props.item?.file?.id);
+watch(() => props.show, () => { dirty.value = false; });
+function close() { if (!dirty.value || confirm('Discard unsaved changes?')) emit('close'); }
 </script>
+<template>
+    <Modal :show="show" max-width="6xl" @close="close" v-slot="{ titleId }">
+        <div class="max-h-[85vh] overflow-auto">
+            <div class="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"><h2 :id="titleId" class="truncate text-sm font-semibold">{{ item?.title || 'Document workspace' }}</h2><button class="workspace-button" aria-label="Close preview" @click="close">Close</button></div>
+            <FileInspector v-if="show && fileId" :file-id="Number(fileId)" @dirty="dirty = $event" />
+            <DocumentPreview v-else-if="item?.file" :file="item.file" />
+            <div class="border-t border-zinc-200 p-3 dark:border-zinc-800"><Link v-if="fileId" :href="route('files.show', fileId)" class="workspace-button" @click="event => { if (dirty && !confirm('Discard unsaved changes?')) event.preventDefault(); else emit('close'); }">Open document workspace</Link></div>
+        </div>
+    </Modal>
+</template>

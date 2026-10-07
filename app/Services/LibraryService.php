@@ -48,6 +48,31 @@ class LibraryService
             });
         }
 
+        if ($reviewStatus = $filters['review_status'] ?? null) {
+            if ($reviewStatus === 'pending') {
+                $query->whereNull('meta->workspace_review->status')->whereNotIn('files.status', ['failed', 'needs_review']);
+            } elseif ($reviewStatus === 'flagged') {
+                $query->where(fn (Builder $files) => $files->where('meta->workspace_review->status', 'flagged')->orWhereIn('files.status', ['failed', 'needs_review']));
+            } else {
+                $query->where('meta->workspace_review->status', 'approved')->where('files.status', 'completed');
+            }
+        }
+        if ($confidence = $filters['confidence'] ?? null) {
+            $relation = fn (Builder $entities) => $entities->whereColumn('extractable_entities.user_id', 'files.user_id')->whereNotNull('confidence_score');
+            if ($confidence === 'unknown') {
+                $query->whereDoesntHave('primaryEntity', $relation);
+            } else {
+                $query->whereHas('primaryEntity', function (Builder $entities) use ($confidence, $relation): void {
+                    $relation($entities);
+                    match ($confidence) {
+                        'high' => $entities->where('confidence_score', '>=', 0.9),
+                        'medium' => $entities->where('confidence_score', '>=', 0.7)->where('confidence_score', '<', 0.9),
+                        'low' => $entities->where('confidence_score', '<', 0.7),
+                    };
+                });
+            }
+        }
+
         if (! empty($filters['status'])) {
             $query->where('files.status', $filters['status']);
         }
@@ -75,7 +100,7 @@ class LibraryService
             $query->where('uploaded_at', '<', Carbon::parse($to, $today->getTimezone())->addDay()->startOfDay()->utc());
         }
         if ($view === 'needs-review') {
-            $query->whereIn('files.status', ['needs_review', 'failed']);
+            $query->where(fn (Builder $files) => $files->whereIn('files.status', ['needs_review', 'failed'])->orWhere('meta->workspace_review->status', 'flagged'));
         } elseif ($view === 'processing') {
             $query->whereIn('files.status', ['pending', 'processing']);
         } elseif ($view === 'unpaid') {

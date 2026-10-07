@@ -47,7 +47,7 @@ class HandleInertiaRequests extends Middleware
                 'messages' => $this->getTranslations(),
             ],
             'navigation' => fn (): array => $request->user() ? [
-                'attention_count' => File::query()->where('user_id', $request->user()->id)->whereIn('status', ['needs_review', 'failed'])->count(),
+                'attention_count' => File::query()->where('user_id', $request->user()->id)->where(fn ($files) => $files->whereIn('status', ['needs_review', 'failed'])->orWhere('meta->workspace_review->status', 'flagged'))->count(),
                 'saved_views' => SavedSearch::query()->where('user_id', $request->user()->id)->where('is_pinned', true)
                     ->orderBy('name')->limit(8)->get(['id', 'name', 'scope']),
             ] : ['attention_count' => 0, 'saved_views' => []],

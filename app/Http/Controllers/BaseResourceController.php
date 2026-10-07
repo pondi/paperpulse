@@ -101,7 +101,7 @@ abstract class BaseResourceController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show($id): Response
+    public function show($id): Response|\Illuminate\Http\RedirectResponse
     {
         $item = $this->model::with($this->showWith)->findOrFail($id);
 

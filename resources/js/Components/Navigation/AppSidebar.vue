@@ -27,18 +27,18 @@ const utility = computed(() => [
 ]);
 const pinned = computed(() => page.props.navigation?.saved_views || []);
 const linkClass = active => [
-    active ? 'bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-400' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white',
-    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500',
+    active ? 'bg-orange-50 text-orange-900 dark:bg-orange-500/10 dark:text-orange-400' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white',
+    'flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500',
 ];
 </script>
 
 <template>
     <div class="flex h-full flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <Link :href="route('dashboard')" class="flex h-16 shrink-0 items-center gap-2.5 px-6" @click="emit('navigate')">
+        <Link :href="route('dashboard')" class="flex h-14 shrink-0 items-center gap-2.5 px-6" @click="emit('navigate')">
             <ApplicationLogo class="h-8 w-8" />
             <span class="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">PaperPulse</span>
         </Link>
-        <nav aria-label="Main navigation" class="flex flex-1 flex-col gap-7 overflow-y-auto px-3 py-4">
+        <nav aria-label="Main navigation" class="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
             <div class="flex flex-col gap-1">
                 <Link v-for="item in main" :key="item.label" :href="item.href" :class="linkClass(item.active)" :aria-current="item.active ? 'page' : undefined" @click="emit('navigate')">
                     <component :is="item.icon" class="h-5 w-5 shrink-0" aria-hidden="true" />{{ item.label }}
@@ -49,13 +49,13 @@ const linkClass = active => [
                 <Link v-for="item in shortcuts" :key="item.label" :href="item.href" :class="linkClass(item.active)" :aria-current="item.active ? 'page' : undefined" @click="emit('navigate')">
                     <component :is="item.icon" class="h-4 w-4 shrink-0" aria-hidden="true" />
                     <span class="flex-1">{{ item.label }}</span>
-                    <span v-if="item.count" class="rounded-md bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">{{ item.count }}</span>
+                    <span v-if="item.count" class="rounded-md bg-orange-100 px-1.5 py-0.5 text-xs text-orange-800 dark:bg-orange-500/20 dark:text-orange-300">{{ item.count }}</span>
                 </Link>
             </div>
             <div class="flex flex-col gap-1">
                 <div class="flex items-center justify-between px-3 pb-1">
                     <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400">Saved views</p>
-                    <Link :href="route('saved-searches.index')" class="text-xs font-medium text-zinc-500 hover:text-amber-700 dark:hover:text-amber-400" @click="emit('navigate')">Manage</Link>
+                    <Link :href="route('saved-searches.index')" class="text-xs font-medium text-zinc-500 hover:text-orange-700 dark:hover:text-orange-400" @click="emit('navigate')">Manage</Link>
                 </div>
                 <Link v-for="view in pinned" :key="view.id" :href="route('saved-searches.show', view.id)"
                     :class="linkClass(savedId === String(view.id))" :aria-current="savedId === String(view.id) ? 'page' : undefined" @click="emit('navigate')">

@@ -68,6 +68,19 @@ class FileInertiaResource extends JsonResource
             ]),
         ];
 
+        $primary = $this->relationLoaded('primaryEntity') ? $this->primaryEntity : null;
+        $entity = $primary?->relationLoaded('entity') ? $primary->entity : null;
+        $ownedEntity = $entity && $entity->user_id === $this->user_id && $entity->file_id === $this->id;
+        $data['can_edit'] = $this->user_id === $request->user()?->id;
+        $data['review_status'] = data_get($this->meta, 'workspace_review.status');
+        $data['confidence'] = $ownedEntity ? $primary->confidence_score : null;
+        $data['identity'] = $ownedEntity ? [
+            'title' => $entity instanceof \App\Models\Receipt ? $entity->merchant?->name : ($entity->from_name ?? $entity->title ?? $entity->contract_title),
+            'amount' => $entity->total_amount,
+            'tax' => $entity->tax_amount,
+            'currency' => $entity->currency,
+        ] : null;
+
         if ($this->relationLoaded('processingJobs')) {
             $data['processing'] = $this->resource->processingSummary();
         }

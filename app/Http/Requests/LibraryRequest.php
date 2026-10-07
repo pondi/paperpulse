@@ -18,6 +18,8 @@ class LibraryRequest extends FormRequest
             $prefix.'query' => 'nullable|string|max:200',
             $prefix.'type' => 'nullable|in:all,receipt,document,invoice,contract,bank_statement,voucher,warranty,return_policy',
             $prefix.'view' => 'nullable|in:all,recent,needs-review,processing,unpaid,expiring,shared',
+            $prefix.'review_status' => 'nullable|in:pending,approved,flagged',
+            $prefix.'confidence' => 'nullable|in:high,medium,low,unknown',
             $prefix.'status' => 'nullable|in:pending,processing,completed,failed,needs_review',
             $prefix.'date_range' => 'nullable|in:all,last_30_days,this_month,this_year,custom',
             $prefix.'date_from' => 'nullable|date_format:Y-m-d',

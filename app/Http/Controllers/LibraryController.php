@@ -46,6 +46,7 @@ class LibraryController extends Controller
                             default => null,
                         },
                         'currency' => $entity->currency,
+                        'tax' => $entity->tax_amount,
                     ];
                 }
 

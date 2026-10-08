@@ -13,6 +13,8 @@ use Throwable;
 
 class NorgesBankExchangeRateService
 {
+    private const array KRONE_INDEX_SERIES = ['I44', 'TWI'];
+
     public function sync(string $from, string $to): int
     {
         Validator::make(['from' => $from, 'to' => $to], [
@@ -49,7 +51,7 @@ class NorgesBankExchangeRateService
                 throw new RuntimeException('Norges Bank returned a malformed exchange rate row.');
             }
             $row = array_combine($headers, $values);
-            if ($row['OBS_VALUE'] === '') {
+            if (in_array($row['BASE_CUR'], self::KRONE_INDEX_SERIES, true) || $row['OBS_VALUE'] === '') {
                 continue;
             }
             $date = DateTimeImmutable::createFromFormat('!Y-m-d', $row['TIME_PERIOD']);

@@ -38,12 +38,24 @@ it('imports all currencies and updates corrected observations without duplicates
         && $request['startPeriod'] === '2026-09-25' && $request['endPeriod'] === '2026-09-27');
 });
 
+it('excludes krone indices while importing currency observations', function (string $index): void {
+    Http::fake(['*' => Http::response(norgesBankCsv("B;USD;NOK;SP;0;1989-07-03;7\nB;{$index};NOK;SP;0;1989-07-03;102.58\nB;JPY;NOK;SP;2;1989-07-03;5\n"))]);
+
+    expect(app(NorgesBankExchangeRateService::class)->sync('1989-01-01', '1989-12-31'))->toBe(2);
+
+    $this->assertDatabaseCount('exchange_rate_observations', 2);
+    $this->assertDatabaseHas('exchange_rate_observations', ['currency' => 'USD', 'rate' => 7, 'units' => 1]);
+    $this->assertDatabaseHas('exchange_rate_observations', ['currency' => 'JPY', 'rate' => 5, 'units' => 100]);
+    $this->assertDatabaseMissing('exchange_rate_observations', ['currency' => $index]);
+})->with(['import-weighted index' => 'I44', 'trade-weighted index' => 'TWI']);
+
 it('rejects malformed provider data without storing a partial response', function (string $row): void {
     Http::fake(['*' => Http::response(norgesBankCsv("B;EUR;NOK;SP;0;2026-09-25;12\n".$row))]);
     expect(fn () => app(NorgesBankExchangeRateService::class)->sync('2026-09-25', '2026-09-27'))->toThrow(RuntimeException::class);
     $this->assertDatabaseCount('exchange_rate_observations', 0);
 })->with([
     'invalid units' => ['B;JPY;NOK;SP;-1;2026-09-25;6'],
+    'invalid currency code' => ['B;J12;NOK;SP;2;2026-09-25;6'],
     'wrong quote currency' => ['B;JPY;USD;SP;2;2026-09-25;6'],
     'future observation' => ['B;JPY;NOK;SP;2;2026-09-28;6'],
     'negative rate' => ['B;JPY;NOK;SP;2;2026-09-25;-6'],
@@ -111,6 +123,22 @@ it('resumes an interrupted yearly backfill and then refreshes a recent overlap',
     expect(Cache::store('database')->get('norges-bank:exchange-rates:synced-through'))->toBe('1961-01-02');
     Http::assertSent(fn ($request): bool => $request['startPeriod'] === '1960-12-24');
     $this->assertDatabaseCount('exchange_rate_observations', 2);
+});
+
+it('backfills past 1989 when the provider includes krone indices', function (): void {
+    $this->travelTo(now()->setDate(1990, 1, 2)->startOfDay());
+    Cache::store('database')->forever('norges-bank:exchange-rates:synced-through', '1988-12-31');
+    Http::fakeSequence()
+        ->push(norgesBankCsv('B;USD;NOK;SP;0;1988-12-30;6.5'))
+        ->push(norgesBankCsv("B;USD;NOK;SP;0;1989-07-03;7\nB;I44;NOK;SP;0;1989-07-03;102.58\n"))
+        ->push(norgesBankCsv("B;USD;NOK;SP;0;1990-01-02;7.1\nB;TWI;NOK;SP;0;1990-01-02;100\n"));
+
+    (new SyncExchangeRates)->handle(app(NorgesBankExchangeRateService::class));
+
+    expect(Cache::store('database')->get('norges-bank:exchange-rates:synced-through'))->toBe('1990-01-02');
+    $this->assertDatabaseCount('exchange_rate_observations', 3);
+    expect(ExchangeRateObservation::query()->distinct()->pluck('currency')->all())->toBe(['USD']);
+    Http::assertSentCount(3);
 });
 
 it('refreshes from the sync cursor rather than skipping history based on a single stored rate', function (): void {

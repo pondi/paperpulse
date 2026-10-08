@@ -155,3 +155,57 @@ it('throws retryable timeout exception after exhausting provider retries', funct
 
     $this->fail('Expected GeminiApiException was not thrown');
 });
+
+it('retries a connection reset during token counting and continues processing', function () {
+    Http::fake([
+        'generativelanguage.googleapis.com/*' => Http::sequence()
+            ->pushResponse(fn () => throw new ConnectionException('cURL error 56: Recv failure: Connection reset by peer'))
+            ->push(['totalTokens' => 100], 200)
+            ->push([
+                'candidates' => [[
+                    'finishReason' => 'STOP',
+                    'content' => ['parts' => [['text' => '{"result":"recovered"}']]],
+                ]],
+            ], 200),
+    ]);
+
+    $result = (new GeminiProvider)->analyzeFileByUri(
+        'https://files.test/source',
+        ['responseSchema' => ['type' => 'object']],
+        'Extract the data.',
+        [],
+        'application/pdf'
+    );
+
+    expect($result['data'])->toBe(['result' => 'recovered']);
+    Http::assertSentCount(2);
+});
+
+it('throws a retryable Gemini exception after token counting connection failures', function () {
+    $attempts = 0;
+
+    Http::fake([
+        'generativelanguage.googleapis.com/*' => function () use (&$attempts) {
+            $attempts++;
+
+            throw new ConnectionException('cURL error 56: Recv failure: Connection reset by peer');
+        },
+    ]);
+
+    try {
+        (new GeminiProvider)->analyzeFileByUri(
+            'https://files.test/source',
+            ['responseSchema' => ['type' => 'object']],
+            'Extract the data.',
+            [],
+            'application/pdf'
+        );
+    } catch (GeminiApiException $exception) {
+        expect($exception->isRetryable())->toBeTrue();
+        expect($attempts)->toBe(3);
+
+        return;
+    }
+
+    $this->fail('Expected GeminiApiException was not thrown');
+});

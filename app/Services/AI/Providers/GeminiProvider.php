@@ -307,11 +307,7 @@ class GeminiProvider
         ]);
 
         ProcessingUsageBudget::check();
-        $count = Http::timeout(30)->post(sprintf('https://generativelanguage.googleapis.com/v1beta/models/%s:countTokens?key=%s', $model, $apiKey), ['contents' => $contents]);
-        $inputTokens = $count->json('totalTokens');
-        if (! $count->successful() || ! is_int($inputTokens)) {
-            throw new GeminiApiException('Unable to validate Gemini input budget', GeminiApiException::CODE_API_ERROR, true);
-        }
+        $inputTokens = $this->countInputTokens($contents, $model, $apiKey);
         if ($inputTokens > (int) config('ai.providers.gemini.max_input_tokens', 32768)) {
             throw new GeminiApiException('Gemini input token budget exceeded', GeminiApiException::CODE_FILE_TOO_LARGE, false);
         }
@@ -331,6 +327,74 @@ class GeminiProvider
             'raw_text' => $result['text'],
             'raw_json' => $result['body'],
         ];
+    }
+
+    /**
+     * Count input tokens, retrying transient transport and API failures.
+     *
+     * @param  array<int, array<string, mixed>>  $contents
+     */
+    protected function countInputTokens(array $contents, string $model, string $apiKey): int
+    {
+        $endpoint = sprintf(
+            'https://generativelanguage.googleapis.com/v1beta/models/%s:countTokens?key=%s',
+            $model,
+            $apiKey
+        );
+
+        for ($attempt = 1; $attempt <= $this->maxProviderRetries; $attempt++) {
+            try {
+                $response = Http::timeout(30)
+                    ->asJson()
+                    ->post($endpoint, ['contents' => $contents]);
+            } catch (Exception $exception) {
+                if ($attempt < $this->maxProviderRetries) {
+                    Log::warning('[GeminiProvider] Token count request exception, retrying', [
+                        'attempt' => $attempt,
+                        'max_attempts' => $this->maxProviderRetries,
+                        'error' => $exception->getMessage(),
+                    ]);
+                    usleep($this->retryDelayMicroseconds($attempt));
+
+                    continue;
+                }
+
+                $this->handleRequestException($exception);
+            }
+
+            $inputTokens = $response->json('totalTokens');
+            if ($response->successful() && is_int($inputTokens)) {
+                return $inputTokens;
+            }
+
+            $status = $response->status();
+            $retryable = in_array($status, [408, 429, 500, 502, 503, 504], true);
+
+            if ($retryable && $attempt < $this->maxProviderRetries) {
+                Log::warning('[GeminiProvider] Transient token count error, retrying', [
+                    'status' => $status,
+                    'attempt' => $attempt,
+                    'max_attempts' => $this->maxProviderRetries,
+                ]);
+                usleep($this->retryDelayMicroseconds($attempt));
+
+                continue;
+            }
+
+            throw new GeminiApiException(
+                'Unable to validate Gemini input budget',
+                $status === 429 ? GeminiApiException::CODE_RATE_LIMIT : GeminiApiException::CODE_API_ERROR,
+                $retryable || $response->successful(),
+                ['status' => $status, 'body' => $response->body(), 'provider_attempts' => $attempt]
+            );
+        }
+
+        throw new GeminiApiException(
+            'Unable to validate Gemini input budget after all provider retries.',
+            GeminiApiException::CODE_API_ERROR,
+            true,
+            ['provider_attempts' => $this->maxProviderRetries]
+        );
     }
 
     /**

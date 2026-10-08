@@ -44,7 +44,8 @@ class PropertyGroupingService
                 ->where('organization_summary->version', OrganizationSummaryNormalizer::VERSION)
                 ->where('organization_summary->confidence', '>=', 0.8)
                 ->whereNull('organization_summary->employer')->whereNotNull('organization_summary->property_address')
-                ->distinct()->pluck('organization_summary->property_address as property_address')->all()];
+                ->selectRaw("organization_summary->>'property_address' as property_address")
+                ->distinct()->pluck('property_address')->all()];
         }
         $addresses = $addresses->merge($this->summaryAddresses[$userId]['addresses'] ?? [])->push($normalized);
         $matches = [];

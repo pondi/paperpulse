@@ -73,7 +73,7 @@ abstract class DuskTestCase extends BaseTestCase
         return $browser
             ->loginAs($user)
             ->visit('/dashboard')
-            ->waitForText('Dashboard', 10);
+            ->waitFor('#main-content', 10);
     }
 
     /**

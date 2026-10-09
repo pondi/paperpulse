@@ -227,14 +227,11 @@ if (scenario === 'scanner onboarding') {
     }
 }
 if (scenario === 'mobile dashboard amounts') {
-    const html = await render('Pages/Dashboard.vue', { receiptCount: 1, expiringVouchers: { items: [], total: 0 }, endingWarranties: { items: [], total: 0 },
-        recentReceipts: [{ id: 5, merchant: { name: 'Long merchant name' }, receipt_date: '2026-10-06', total_amount: 42, currency: 'EUR', receipt_category: 'Groceries' }] });
-    assert.ok(html.includes('Long merchant name'));
-    assert.ok(html.includes('42 EUR'));
-    assert.ok(html.includes('Groceries'));
-    assert.ok(html.includes('max-w-[10rem] break-words'));
-    assert.equal((html.match(/hidden sm:table-cell/g) || []).length, 4);
-    assert.ok(html.includes('2026-10-06'));
+    const html = await render('Pages/Dashboard.vue', { archiveStats: { total: 1, failed: 0, needs_review: 0, processing: 0 },
+        recentUploads: [{ id: 5, name: 'Receipt.pdf', original_name: 'Receipt.pdf', status: 'completed', uploaded_at: '2026-10-06',
+            identity: { title: 'Long merchant name', amount: 42, currency: 'EUR' } }] });
+    for (const text of ['Long merchant name', '42 EUR', '2026-10-06', '/files/5', 'No action needed']) assert.ok(html.includes(text), text);
+    assert.ok(!html.includes('hidden text-sm'));
 }
 if (scenario === 'receipt totals review') {
     const reconciliation = { calculated_total: '22.70', discount_amount: '1.14', tip_amount: '0.00', total_amount: '21.56', needs_review: false };
@@ -328,19 +325,18 @@ if (scenario === 'archive home') {
     const props = { archiveStats: { total: 67, processing: 3, failed: 39, needs_review: 2 },
         recentUploads: [{ id: 10, name: 'New invoice.pdf', file_type: 'invoice', status: 'failed', uploaded_at: '2026-10-06T10:00:00Z' },
             { id: 11, name: 'New contract.pdf', file_type: 'contract', status: 'completed', uploaded_at: '2026-10-06T09:00:00Z' }],
-        receiptCount: 6, recentReceipts: [], expiringVouchers: { total: 0, items: [] }, endingWarranties: { total: 0, items: [] } };
+        expiringVouchers: { total: 0, items: [] }, endingWarranties: { total: 0, items: [] } };
     const html = await render('Pages/Dashboard.vue', props);
-    for (const text of ['Archive overview', 'Recent uploads', 'New invoice.pdf', 'New contract.pdf', '/files/10', '/files/11', 'Receipt overview', 'Needs review', 'Failed']) assert.ok(html.includes(text), text);
-    assert.ok(html.indexOf('Recent uploads') < html.indexOf('Receipt overview'));
-    assert.match(html, /<details[^>]*>/);
-    assert.ok(!html.includes('data-widget'));
-    assert.ok(html.includes('view=attention&amp;status=failed'));
-    const empty = await render('Pages/Dashboard.vue', { ...props, receiptCount: 0, recentUploads: [] });
+    for (const text of ['Needs attention', 'Recent uploads', 'New invoice.pdf', 'New contract.pdf', '/files/10', '/files/11',
+        '39 files could not be processed', '2 files need a review', '3 files processing', 'view=needs-review&amp;status=failed']) assert.ok(html.includes(text), text);
+    assert.ok(html.indexOf('Needs attention') < html.indexOf('Recent uploads'));
+    assert.ok(!html.includes('No action needed'));
+    const empty = await render('Pages/Dashboard.vue', { ...props, archiveStats: { total: 0, failed: 0, needs_review: 0, processing: 0 }, recentUploads: [] });
     assert.ok(empty.includes('Upload your first files'));
-    assert.ok(!empty.includes('Receipt overview'));
     const expiry = await render('Pages/Dashboard.vue', { ...props, expiringVouchers: { total: 1, items: [{ id: 1 }] } });
-    assert.ok(expiry.includes('data-widget="ExpiringVouchersWidget"'));
-    assert.ok(!expiry.includes('data-widget="EndingWarrantiesWidget"'));
+    assert.ok(expiry.includes('1 expiring voucher'));
+    assert.ok(expiry.includes('type=voucher&amp;view=expiring'));
+    assert.ok(!expiry.includes('warranties ending'));
 }
 assert.deepEqual(warnings, []);
 JS;

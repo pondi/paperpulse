@@ -4,25 +4,38 @@
 
 @layer base {
   :root {
-    color-scheme: light dark;
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
   }
   body {
-    @apply bg-zinc-50 text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100;
+    @apply bg-zinc-50 text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply text-zinc-900 dark:text-zinc-100 font-bold;
+    @apply font-semibold tracking-tight text-zinc-900 dark:text-zinc-100;
   }
   hr {
     @apply border-zinc-200 dark:border-zinc-700;
+  }
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    @apply outline outline-2 outline-offset-2 outline-orange-600;
+  }
+  ::selection {
+    @apply bg-orange-100 text-orange-950;
+  }
+  [id] {
+    scroll-margin-top: 6rem;
   }
 }
 
 @layer components {
   .workspace-scroll {
-    scrollbar-width: none;
+    scrollbar-width: thin;
+    scrollbar-color: #a1a1aa transparent;
   }
   .workspace-scroll::-webkit-scrollbar {
-    display: none;
+    height: 4px;
   }
   .workspace-page > .py-12,
   .workspace-page > .py-8 {
@@ -36,12 +49,42 @@
 
 @layer components {
   .workspace-button {
-    @apply inline-flex items-center justify-center gap-1.5 rounded border border-zinc-300 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800;
+    @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium leading-5 text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800;
   }
   .workspace-primary {
-    @apply inline-flex items-center justify-center gap-1.5 rounded border border-orange-700 bg-orange-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-orange-700 bg-orange-700 px-3 py-2 text-sm font-semibold leading-5 text-white transition-colors hover:border-orange-800 hover:bg-orange-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .workspace-danger {
+    @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-red-700 bg-red-700 px-3 py-2 text-sm font-semibold leading-5 text-white transition-colors hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .workspace-filter {
-    @apply min-w-0 rounded border-zinc-300 py-2 text-sm focus:border-orange-600 focus:ring-orange-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200;
+    @apply min-w-0 rounded-md border-zinc-300 bg-white py-2 text-sm text-zinc-900 focus:border-orange-600 focus:ring-orange-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100;
+  }
+  .page-heading {
+    @apply text-2xl font-semibold leading-tight tracking-tight text-zinc-900 dark:text-zinc-100;
+  }
+  .page-description {
+    @apply mt-2 max-w-2xl text-sm leading-6 text-zinc-500 dark:text-zinc-400;
+  }
+  .workspace-surface {
+    @apply min-w-0 rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900;
+  }
+  .section-heading {
+    @apply text-sm font-semibold text-zinc-900 dark:text-zinc-100;
+  }
+  .field-label {
+    @apply flex min-w-0 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300;
+  }
+  .workspace-empty {
+    @apply flex flex-col items-center gap-3 px-6 py-12 text-center text-sm text-zinc-500 dark:text-zinc-400;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

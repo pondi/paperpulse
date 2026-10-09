@@ -46,9 +46,11 @@ async function render(component) {
 }
 for (const [name, active, tab] of [
     ['library.index', 'Library', 'Invoices'], ['documents.show', 'Library', 'Documents'],
-    ['documents.categories', 'Collections', 'Categories'], ['tags.index', 'Collections', 'Tags'],
-    ['categories.index', 'Collections', 'Categories'],
-    ['analytics.index', 'Reports', 'Analytics'], ['exports.index', 'Reports', 'Exports'],
+    ['documents.categories', 'Organization', 'Categories'], ['tags.index', 'Organization', 'Tags'],
+    ['categories.index', 'Organization', 'Categories'],
+    ['collections.index', 'Collections', 'My collections'], ['collections.shared', 'Collections', 'Shared collections'],
+    ['analytics.index', 'Reports', 'Reports'], ['exports.index', 'Reports', 'Exports'],
+    ['duplicates.index', 'Activity', 'Duplicates'], ['preferences.index', 'Settings', 'Preferences'],
     ['files.index', 'Activity', 'Processing'], ['pulsedav.index', 'Imports', 'Scanner imports'],
 ]) {
     current = name;
@@ -80,6 +82,10 @@ assert.equal(((await render(sidebar)).match(/aria-current="page"/g) || []).lengt
 current = 'files.index';
 page.props.auth.user.is_admin = true;
 assert.ok((await render(workspace)).includes('Job status'));
+assert.ok((await render(workspace)).includes('Processing analytics'));
+current = 'analytics.processing';
+assert.equal(((await render(sidebar)).match(/aria-current="page"/g) || []).length, 1);
+assert.match(await render(sidebar), /aria-current="page"[^>]*>[\s\S]*?Activity/);
 current = 'documents.show';
 page.props.document = { file_id: 123 };
 assert.ok((await render(workspace)).includes('/files/123'));

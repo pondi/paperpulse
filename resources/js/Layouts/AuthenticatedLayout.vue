@@ -1,7 +1,7 @@
 <script setup>
-import { ref } from 'vue';
-import { Dialog, DialogPanel, Menu, MenuButton, MenuItem, MenuItems, TransitionChild, TransitionRoot } from '@headlessui/vue';
-import { Bars3Icon, XMarkIcon, PlusIcon, ArrowUpTrayIcon, CameraIcon, ArrowDownTrayIcon, UserCircleIcon, ChevronDownIcon } from '@heroicons/vue/24/outline';
+import { nextTick, ref } from 'vue';
+import { Dialog, DialogPanel, DialogTitle, Menu, MenuButton, MenuItem, MenuItems, TransitionChild, TransitionRoot } from '@headlessui/vue';
+import { Bars3Icon, XMarkIcon, PlusIcon, ArrowUpTrayIcon, CameraIcon, ArrowDownTrayIcon, UserCircleIcon, ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import AppSidebar from '@/Components/Navigation/AppSidebar.vue';
 import WorkspaceNavigation from '@/Components/Navigation/WorkspaceNavigation.vue';
@@ -13,6 +13,11 @@ import Toast from '@/Components/Common/Toast.vue';
 
 const page = usePage();
 const sidebarOpen = ref(false);
+const navigationButton = ref(null);
+const restoreNavigationFocus = async () => {
+    await nextTick();
+    requestAnimationFrame(() => navigationButton.value?.focus());
+};
 const showPreviewModal = ref(false);
 const previewItem = ref(null);
 const openPreview = item => { previewItem.value = item; showPreviewModal.value = true; };
@@ -38,7 +43,8 @@ const addActions = [
 
 <template>
     <div class="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-        <TransitionRoot as="template" :show="sidebarOpen">
+        <a href="#main-content" class="sr-only z-[100] rounded-md bg-zinc-900 px-4 py-3 text-sm font-medium text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to content</a>
+        <TransitionRoot as="template" :show="sidebarOpen" @after-leave="restoreNavigationFocus">
             <Dialog class="relative z-50 lg:hidden" @close="sidebarOpen = false">
                 <TransitionChild as="template" enter="transition-opacity duration-200" enter-from="opacity-0" enter-to="opacity-100" leave="transition-opacity duration-200" leave-from="opacity-100" leave-to="opacity-0">
                     <div class="fixed inset-0 bg-zinc-950/60" />
@@ -46,6 +52,7 @@ const addActions = [
                 <div class="fixed inset-0 flex">
                     <TransitionChild as="template" enter="transition duration-200" enter-from="-translate-x-full" enter-to="translate-x-0" leave="transition duration-200" leave-from="translate-x-0" leave-to="-translate-x-full">
                         <DialogPanel class="relative w-72 max-w-[85vw]">
+                            <DialogTitle class="sr-only">Workspace navigation</DialogTitle>
                             <button type="button" aria-label="Close navigation" class="absolute right-3 top-5 z-10 rounded p-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white" @click="sidebarOpen = false"><XMarkIcon class="h-5 w-5" /></button>
                             <AppSidebar @navigate="sidebarOpen = false" />
                         </DialogPanel>
@@ -53,15 +60,18 @@ const addActions = [
                 </div>
             </Dialog>
         </TransitionRoot>
-        <aside class="fixed inset-y-0 left-0 z-40 hidden w-48 lg:block"><AppSidebar /></aside>
+        <aside class="fixed inset-y-0 left-0 z-40 hidden w-60 lg:block"><AppSidebar /></aside>
 
-        <div class="lg:pl-48">
-            <header class="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-zinc-200 bg-white px-4  sm:gap-5 sm:px-6 lg:px-5 dark:border-zinc-800 dark:bg-zinc-900">
-                <button type="button" aria-label="Open navigation" class="rounded p-2 text-zinc-600 hover:bg-zinc-100 lg:hidden dark:text-zinc-300 dark:hover:bg-zinc-800" @click="sidebarOpen = true"><Bars3Icon class="h-5 w-5" /></button>
-                <div class="flex min-w-0 flex-1 items-center"><SearchBar v-if="page.url.split('?')[0] !== '/library'" @preview="openPreview" /></div>
+        <div class="min-w-0 lg:pl-60">
+            <header class="app-toolbar sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-zinc-200 bg-white px-4 sm:gap-5 sm:px-6 lg:px-8 dark:border-zinc-800 dark:bg-zinc-900">
+                <button ref="navigationButton" type="button" aria-label="Open navigation" class="rounded p-2 text-zinc-600 hover:bg-zinc-100 lg:hidden dark:text-zinc-300 dark:hover:bg-zinc-800" @click="sidebarOpen = true"><Bars3Icon class="h-5 w-5" /></button>
+                <div class="flex min-w-0 flex-1 items-center">
+                    <div v-if="!['/library', '/search'].includes(page.url.split('?')[0])" class="hidden w-full max-w-xl sm:block"><SearchBar @preview="openPreview" /></div>
+                    <Link :href="route('search')" aria-label="Search your library" class="rounded-md p-2 text-zinc-500 hover:bg-zinc-100 sm:hidden dark:hover:bg-zinc-800"><MagnifyingGlassIcon class="h-5 w-5" aria-hidden="true" /></Link>
+                </div>
                 <div class="flex shrink-0 items-center gap-2 sm:gap-3">
                     <Menu as="div" class="relative">
-                        <MenuButton dusk="add-document" class="inline-flex items-center gap-2 rounded bg-orange-600 px-3 py-2 text-sm font-semibold text-white  hover:bg-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600">
+                        <MenuButton dusk="add-document" class="workspace-primary">
                             <PlusIcon class="h-4 w-4" aria-hidden="true" /><span class="hidden sm:inline">Add document</span><span class="sr-only sm:hidden">Add document</span><ChevronDownIcon class="hidden h-3.5 w-3.5 sm:block" aria-hidden="true" />
                         </MenuButton>
                         <MenuItems class="absolute right-0 mt-2 w-72 rounded border border-zinc-200 bg-white p-1.5 shadow-lg focus:outline-none dark:border-zinc-700 dark:bg-zinc-900">
@@ -86,8 +96,8 @@ const addActions = [
                 </div>
             </header>
             <WorkspaceNavigation />
-            <main class="mx-auto max-w-none px-4 py-6 sm:px-6 lg:px-5">
-                <header v-if="$slots.header" class="mb-4"><slot name="header" /></header>
+            <main id="main-content" tabindex="-1" class="mx-auto min-w-0 max-w-[1600px] px-4 py-6 focus:outline-none sm:px-6 lg:px-8 lg:py-8">
+                <header v-if="$slots.header" class="mb-6"><slot name="header" /></header>
                 <div class="workspace-page"><slot /></div>
             </main>
         </div>

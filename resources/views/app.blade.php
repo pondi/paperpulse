@@ -39,7 +39,7 @@
         @vite('resources/js/app.js')
         @inertiaHead
     </head>
-    <body class="h-full bg-amber-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
+    <body class="h-full">
         @inertia
     </body>
 </html>

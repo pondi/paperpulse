@@ -1,7 +1,7 @@
 <template>
-  <Menu as="div" v-slot="{ close }" class="relative ml-3">
+  <Menu as="div" v-slot="{ close }" class="relative">
     <div @keydown.esc.stop.prevent="close">
-      <MenuButton class="relative flex rounded-full bg-white dark:bg-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-800 border border-amber-200 dark:border-transparent">
+      <MenuButton class="relative flex rounded-md p-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
         <span class="absolute -inset-1.5" />
         <span class="sr-only">View notifications</span>
         <BellIcon class="h-6 w-6 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300" aria-hidden="true" />

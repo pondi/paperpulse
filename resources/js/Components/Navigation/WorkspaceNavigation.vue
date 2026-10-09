@@ -21,27 +21,40 @@ const tabs = computed(() => {
             active: !['search', 'saved-searches.index'].includes(currentRoute.value) && activeType.value === type.value,
         }));
     }
-    if (/^(collections\.|tags\.|categories\.|documents\.categories|merchants\.|vendors\.|duplicates\.)/.test(currentRoute.value)) {
+    if (currentRoute.value.startsWith('collections.')) {
         return [
-            ['Collections', 'collections.index', 'collections.'],
+            { label: 'My collections', href: route('collections.index'), active: !['collections.shared', 'collections.organization.index'].includes(currentRoute.value) },
+            { label: 'Shared collections', href: route('collections.shared'), active: currentRoute.value === 'collections.shared' },
+            { label: 'Folder recommendations', href: route('collections.organization.index'), active: currentRoute.value === 'collections.organization.index' },
+        ];
+    }
+    if (/^(tags\.|categories\.|documents\.categories|merchants\.|vendors\.)/.test(currentRoute.value)) {
+        return [
             ['Tags', 'tags.index', 'tags.'],
             ['Categories', 'documents.categories', 'documents.categories'],
             ['Merchants', 'merchants.index', 'merchants.'],
             ['Vendors', 'vendors.index', 'vendors.'],
-            ['Duplicates', 'duplicates.index', 'duplicates.'],
         ].map(([label, name, prefix]) => ({ label, href: route(name), active: currentRoute.value.startsWith(prefix) || (label === 'Categories' && currentRoute.value.startsWith('categories.')) }));
     }
-    if (/^(analytics\.|exports\.)/.test(currentRoute.value)) {
+    if (/^(analytics\.|exports\.)/.test(currentRoute.value) && currentRoute.value !== 'analytics.processing') {
         return [
-            { label: 'Analytics', href: route('analytics.index'), active: currentRoute.value.startsWith('analytics.') },
+            { label: 'Reports', href: route('analytics.index'), active: currentRoute.value === 'analytics.index' },
             { label: 'Exports', href: route('exports.index'), active: currentRoute.value.startsWith('exports.') },
         ];
     }
-    if (/^(files\.index|jobs\.|pulsedav\.)/.test(currentRoute.value)) {
+    if (/^(files\.index|jobs\.|pulsedav\.|duplicates\.|analytics\.processing)/.test(currentRoute.value)) {
         return [
             { label: 'Processing', href: route('files.index'), active: currentRoute.value === 'files.index' },
             { label: 'Scanner imports', href: route('pulsedav.index'), active: currentRoute.value.startsWith('pulsedav.') },
+            { label: 'Duplicates', href: route('duplicates.index'), active: currentRoute.value.startsWith('duplicates.') },
             ...(page.props.auth?.user?.is_admin ? [{ label: 'Job status', href: route('jobs.index'), active: currentRoute.value.startsWith('jobs.') }] : []),
+            ...(page.props.auth?.user?.is_admin ? [{ label: 'Processing analytics', href: route('analytics.processing'), active: currentRoute.value === 'analytics.processing' }] : []),
+        ];
+    }
+    if (/^(preferences\.|profile\.)/.test(currentRoute.value)) {
+        return [
+            { label: 'Preferences', href: route('preferences.index'), active: currentRoute.value.startsWith('preferences.') },
+            { label: 'Profile & security', href: route('profile.edit'), active: currentRoute.value.startsWith('profile.') },
         ];
     }
     return [];
@@ -49,10 +62,10 @@ const tabs = computed(() => {
 </script>
 
 <template>
-    <div v-if="tabs.length" class="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <div v-if="tabs.length" class="workspace-navigation border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <nav aria-label="Workspace navigation" class="workspace-scroll mx-auto flex max-w-screen-2xl items-center gap-1 overflow-x-auto px-4 sm:px-6 lg:px-8">
             <Link v-for="tab in tabs" :key="tab.label" :href="tab.href" :aria-current="tab.active ? 'page' : undefined"
-                :class="[tab.active ? 'border-amber-600 text-amber-800 dark:border-amber-500 dark:text-amber-400' : 'border-transparent text-zinc-500 hover:border-zinc-300 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white', 'shrink-0 border-b-2 px-3 py-3 text-sm font-medium transition-colors']">
+                :class="[tab.active ? 'border-orange-600 text-zinc-900 dark:border-orange-500 dark:text-zinc-100' : 'border-transparent text-zinc-500 hover:border-zinc-300 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white', 'shrink-0 border-b-2 px-3 py-3 text-sm font-medium transition-colors']">
                 {{ tab.label }}
             </Link>
             <Link v-if="isLibrary" :href="route('library.index', { view: 'shared' })" class="ml-auto shrink-0 px-3 py-3 text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">Shared with me</Link>

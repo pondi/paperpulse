@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Models\Receipt;
+use App\Models\File;
 use Laravel\Dusk\Browser;
 
 beforeEach(function (): void {
@@ -20,18 +20,26 @@ test('dashboard page loads after login', function () {
     });
 });
 
-test('dashboard shows stat cards', function () {
+test('dashboard identifies failed work and opens the filtered review queue', function (): void {
     $user = $this->createUser();
-    Receipt::factory()->create(['user_id' => $user->id]);
+    $file = File::factory()->for($user)->create(['status' => 'failed', 'fileName' => 'Failed statement.pdf']);
 
-    $this->browse(function (Browser $browser) use ($user) {
-        $this->loginAs($browser, $user)
-            ->assertPathIs('/dashboard')
-            ->click('details summary')->waitFor('.grid.grid-cols-1')
-            ->assertPresent('.grid.grid-cols-1 .border-l-4.border-amber-600')
-            ->assertPresent('.grid.grid-cols-1 .border-l-4.border-orange-600')
-            ->assertPresent('.grid.grid-cols-1 .border-l-4.border-red-600')
-            ->assertPresent('.grid.grid-cols-1 .border-l-4.border-amber-500');
+    $this->browse(function (Browser $browser) use ($user, $file): void {
+        $this->loginAs($browser, $user)->assertSee('1 file could not be processed')
+            ->assertPresent('a[href$="/files/'.$file->id.'"]')
+            ->click('main a[href*="status=failed"]')->waitFor('@library-query')
+            ->assertQueryStringHas('view', 'needs-review')->assertQueryStringHas('status', 'failed')
+            ->assertSee('Failed statement.pdf');
+    });
+});
+
+test('dashboard explains first use and an archive with no outstanding work', function (): void {
+    $user = $this->createUser();
+    $this->browse(function (Browser $browser) use ($user): void {
+        $this->loginAs($browser, $user)->assertSee('Upload your first files')->assertDontSee('No action needed');
+        File::factory()->for($user)->create(['status' => 'completed']);
+        $browser->refresh()->waitForText('Your archive is up to date')->assertSee('No action needed')
+            ->assertDontSee('Upload your first files');
     });
 });
 
@@ -105,9 +113,7 @@ test('clicking tags link navigates to tags page', function () {
         $this->loginAs($browser, $user)
             ->assertPathIs('/dashboard')
             ->waitFor('nav')
-            ->click('aside a[href$="/collections"]')
-            ->waitForLocation('/collections')
-            ->click('nav[aria-label="Workspace navigation"] a[href$="/tags"]')
+            ->click('aside a[href$="/tags"]')
             ->waitForLocation('/tags')
             ->assertPathIs('/tags');
     });
@@ -193,8 +199,8 @@ test('clicking categories child link navigates to categories page', function () 
         $this->loginAs($browser, $user)
             ->assertPathIs('/dashboard')
             ->waitFor('nav')
-            ->click('aside a[href$="/collections"]')
-            ->waitForLocation('/collections')
+            ->click('aside a[href$="/tags"]')
+            ->waitForLocation('/tags')
             ->click('nav[aria-label="Workspace navigation"] a[href$="/documents/categories"]')
             ->waitForLocation('/documents/categories')
             ->assertPathIs('/documents/categories');

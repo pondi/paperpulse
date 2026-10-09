@@ -173,7 +173,9 @@ it('resolves reconciled receipt review without rerunning extraction and updates 
     $this->get(route('files.show', $file))->assertInertia(fn (Assert $page) => $page->where('file.status', 'completed'));
     $this->get(route('files.index', ['file_id' => $file->id]))->assertInertia(fn (Assert $page) => $page->where('files.data.0.status', 'completed')->where('stats.needs_review', 0));
     $this->get(route('library.index'))->assertInertia(fn (Assert $page) => $page->where('files.data.0.status', 'completed'));
-    $this->get(route('receipts.show', $receipt))->assertInertia(fn (Assert $page) => $page->where('receipt.file.needs_review', false));
+    $this->get(route('receipts.show', $receipt))->assertRedirectToRoute('files.show', $file);
+    $this->getJson(route('files.show', $file))->assertOk()->assertJsonPath('file.status', 'completed')
+        ->assertJsonPath('extractedEntities.0.entity.file.needs_review', false);
     Queue::assertNotPushed(ProcessFileGemini::class);
 })->with([false, true]);
 

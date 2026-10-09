@@ -3,7 +3,7 @@
     type="button"
     :aria-label="`${label} theme. Switch to ${nextLabel} mode`"
     :title="`${label} theme`"
-    class="relative flex rounded-full bg-white dark:bg-zinc-800 p-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-800 border border-amber-200 dark:border-transparent hover:bg-amber-50 dark:hover:bg-zinc-700"
+    class="relative flex rounded-md p-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
     @click="toggleTheme"
   >
     <span class="sr-only">Toggle theme</span>
@@ -14,11 +14,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { MoonIcon, SunIcon, ComputerDesktopIcon } from '@heroicons/vue/24/outline';
 
 // Modes: 'light' | 'dark' | 'system'
 const mode = ref('system');
+let removeMediaListener;
 
 const applyMode = (m) => {
   if (m === 'system') {
@@ -77,6 +78,8 @@ onMounted(() => {
       if (mode.value === 'system') applyMode('system');
     };
     media.addEventListener?.('change', handler);
+    removeMediaListener = () => media.removeEventListener?.('change', handler);
   } catch {}
 });
+onBeforeUnmount(() => removeMediaListener?.());
 </script>

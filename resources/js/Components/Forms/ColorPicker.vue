@@ -9,7 +9,7 @@
                 :key="color.value"
                 type="button"
                 @click="selectColor(color.value)"
-                class="relative flex items-center justify-center w-10 h-10 rounded-lg border-2 transition-all hover:scale-110"
+                class="relative flex items-center justify-center w-11 h-11 rounded-lg border-2 transition-all hover:scale-110"
                 :class="[
                     modelValue === color.value
                         ? 'border-zinc-900 dark:border-zinc-100 ring-2 ring-offset-2 ring-zinc-400 dark:ring-zinc-600'
@@ -17,6 +17,8 @@
                 ]"
                 :style="{ backgroundColor: color.value }"
                 :title="color.name"
+                :aria-label="color.name"
+                :aria-pressed="modelValue === color.value"
             >
                 <div v-if="modelValue === color.value" class="absolute inset-0 flex items-center justify-center">
                     <svg class="w-5 h-5 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">

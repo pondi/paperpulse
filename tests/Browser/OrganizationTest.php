@@ -336,112 +336,107 @@ test('collections page loads', function () {
     });
 });
 
-test('create collection', function () {
+test('create collection', function (): void {
     $user = $this->createUser();
 
-    $this->browse(function (Browser $browser) use ($user) {
-        $this->loginAs($browser, $user);
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->resize(320, 844)->loginAs($user)->visit('/collections')->waitForText('No collections')
+            ->press('Create Collection')->waitFor('#collection-name')
+            ->type('#collection-name', 'My Test Collection')->type('#collection-description', 'A test collection description')
+            ->click('button[aria-label="Home"]')->assertAttribute('button[aria-label="Home"]', 'aria-pressed', 'true')
+            ->click('button[aria-label="Blue"]')->assertAttribute('button[aria-label="Blue"]', 'aria-pressed', 'true')
+            ->assertScript('document.querySelector("[role=dialog]").scrollWidth <= innerWidth', true)
+            ->screenshot('redesign-folder-create-mobile')->press('Create')->waitUntilMissing('#collection-name')
+            ->waitForText('My Test Collection')->assertSee('0 direct files')->assertSee('No subfolders');
+    });
+    $collection = Collection::where('user_id', $user->id)->where('name', 'My Test Collection')->firstOrFail();
+    expect($collection->icon)->toBe('home')->and($collection->color)->toBe('#3B82F6');
+});
 
-        $browser->visit('/collections')
-            ->waitForText('Collections')
-            ->pause(500);
+test('opens a collection by keyboard and keeps edit actions independent', function (): void {
+    $user = $this->createUser();
+    $collection = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Viewable Collection']);
 
-        // Click the "Create Collection" button
-        $browser->script("
-            const buttons = document.querySelectorAll('button');
-            for (const btn of buttons) {
-                if (btn.textContent.includes('Create Collection')) {
-                    btn.click();
-                    break;
-                }
-            }
-        ");
+    $this->browse(function (Browser $browser) use ($user, $collection): void {
+        $browser->resize(1440, 1000)->loginAs($user)->visit('/collections')->waitForText('Viewable Collection');
+        $menu = 'button[aria-label="Actions for Viewable Collection"]';
+        $browser->keys($menu, WebDriverKeys::ENTER)->waitFor('[role="menu"]')
+            ->keys('[role="menu"]', WebDriverKeys::HOME, WebDriverKeys::ENTER)
+            ->waitFor('#collection-name')->assertPathIs('/collections')
+            ->type('#collection-name', 'Edited Collection')->press('Update')->waitUntilMissing('#collection-name')
+            ->waitForText('Edited Collection');
+        $browser->assertScript('document.activeElement.getAttribute("aria-label")', 'Actions for Edited Collection');
+        $link = 'article a[href$="/collections/'.$collection->id.'"]';
+        $browser->keys('button[aria-label="Actions for Edited Collection"]', [WebDriverKeys::SHIFT, WebDriverKeys::TAB]);
+        $browser->assertScript('getComputedStyle(document.activeElement).outlineStyle', 'solid')
+            ->keys($link, WebDriverKeys::ENTER)->waitForLocation('/collections/'.$collection->id)->assertSee('Edited Collection');
+    });
+    expect($collection->fresh()->name)->toBe('Edited Collection');
+});
 
-        $browser->pause(500)
-            ->waitFor('#collection-name')
-            ->type('#collection-name', 'My Test Collection')
-            ->type('#collection-description', 'A test collection description')
-            ->pause(300);
+test('delete collection', function (): void {
+    $user = $this->createUser();
+    $collection = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Collection To Delete']);
 
-        // Click the "Create" submit button inside the modal
-        $browser->script("
-            const buttons = document.querySelectorAll('.fixed button[type=\"submit\"], [class*=\"modal\"] button[type=\"submit\"]');
-            for (const btn of buttons) {
-                if (btn.textContent.trim() === 'Create') {
-                    btn.click();
-                    break;
-                }
-            }
-        ");
+    $this->browse(function (Browser $browser) use ($user, $collection): void {
+        $browser->resize(390, 844)->loginAs($user)->visit('/collections')->waitForText('Collection To Delete')
+            ->click('button[aria-label="Actions for Collection To Delete"]')->press('Delete folder')->waitForDialog();
+        expect($browser->driver->switchTo()->alert()->getText())->toContain('1 folder(s) and 0 unique file(s)', 'Original files are kept');
+        $browser->dismissDialog()->waitFor('button[aria-label="Actions for Collection To Delete"]:not([disabled])')
+            ->assertPresent('article[data-folder-id="'.$collection->id.'"]')
+            ->click('button[aria-label="Actions for Collection To Delete"]')->press('Delete folder')->waitForDialog()->acceptDialog()
+            ->waitUntilMissing('article[data-folder-id="'.$collection->id.'"]')->assertSee('No collections');
+    });
+    expect($collection->fresh()->trashed())->toBeTrue();
+});
 
-        $browser->pause(1000)
-            ->waitForText('My Test Collection')
-            ->assertSee('My Test Collection');
+test('folder explorer confirms recursive archive and restore', function (): void {
+    $user = $this->createUser();
+    $parent = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Home records']);
+    $child = Collection::factory()->create(['user_id' => $user->id, 'parent_id' => $parent->id, 'name' => 'Insurance']);
+
+    $this->browse(function (Browser $browser) use ($user, $parent, $child): void {
+        $browser->resize(390, 844)->loginAs($user)->visit('/collections')->waitForText('Home records')
+            ->click('button[aria-label="Actions for Home records"]')->assertDontSee('Delete folder')
+            ->press('Archive folder')->waitForDialog();
+        expect($browser->driver->switchTo()->alert()->getText())->toContain('2 folder(s)', 'explicitly shared', 'Original files are kept');
+        $browser->acceptDialog()->waitUntilMissing('article[data-folder-id="'.$parent->id.'"]');
+        expect($parent->fresh()->is_archived)->toBeTrue()->and($child->fresh()->is_archived)->toBeTrue();
+        $browser->press('Close')->select('#folder-status', 'true')->waitFor('article[data-folder-id="'.$parent->id.'"]')->assertSee('Archived')
+            ->click('button[aria-label="Actions for Home records"]')->press('Restore folder')->waitForDialog()->acceptDialog()
+            ->waitForText('Home records restored.')->assertDontSeeIn('article', 'Archived');
+        expect($parent->fresh()->is_archived)->toBeFalse()->and($child->fresh()->is_archived)->toBeFalse();
+        $browser->press('Close')->click('a[aria-label="Browse 1 subfolders in Home records"]')->waitForText('Subfolders in Home records')
+            ->assertSee('Insurance')->assertSee('Back to Home records');
     });
 });
 
-test('opens a collection by keyboard and keeps edit actions independent', function () {
+test('folder explorer preserves scoped filtering sorting and pagination on narrow screens', function (): void {
     $user = $this->createUser();
+    $parent = Collection::factory()->create(['user_id' => $user->id, 'name' => str_repeat('LongFolderName', 7)]);
+    Collection::factory()->create(['user_id' => $user->id, 'name' => 'Outside folder']);
+    foreach (range(1, 21) as $number) {
+        Collection::factory()->create(['user_id' => $user->id, 'parent_id' => $parent->id, 'name' => sprintf('Folder %02d', $number), 'description' => 'Annual archive']);
+    }
 
-    $collection = Collection::factory()->create([
-        'user_id' => $user->id,
-        'name' => 'Viewable Collection',
-        'description' => 'A collection to view',
-    ]);
-
-    $this->browse(function (Browser $browser) use ($user, $collection) {
-        $this->loginAs($browser, $user);
-
-        $browser->visit('/collections')
-            ->waitForText('Viewable Collection')
-            ->pause(500);
-
-        $browser->script("document.querySelector('a[href$=\"/collections/{$collection->id}\"]').closest('[class*=\"border-l-4\"]').querySelector('button').click()");
-        $browser->waitFor('#collection-name')->assertPathIs('/collections');
-        $browser->keys('#collection-name', WebDriverKeys::ESCAPE)->waitUntilMissing('#collection-name');
-        $link = 'a[href$="/collections/'.$collection->id.'"]';
-        $browser->script("document.querySelector('$link').focus()");
-        $browser->assertScript('getComputedStyle(document.activeElement).outlineStyle', 'solid');
-        $browser->keys($link, WebDriverKeys::ENTER)
-            ->waitForLocation('/collections/'.$collection->id)->assertSee('Viewable Collection');
+    $this->browse(function (Browser $browser) use ($user, $parent): void {
+        $browser->resize(1440, 1000)->loginAs($user)->visit('/collections?parent_id='.$parent->id)
+            ->waitForText('Folder 01')->assertDontSee('Outside folder')->select('#folder-sort', '-name')
+            ->waitForText('Folder 21')->type('#folder-search', 'Annual')->waitUntil('new URL(location.href).searchParams.get("search") === "Annual"');
+        $browser->waitUntil('document.querySelector("section[aria-label=Folders]").getAttribute("aria-busy") === "false"')
+            ->screenshot('redesign-folder-explorer-desktop')->clickLink('Next')->waitForText('Page 2 of 2')
+            ->assertSee('Folder 01')->assertInputValue('#folder-search', 'Annual')->assertSelected('#folder-sort', '-name');
+        $browser->type('#folder-search', 'Missing folder')->waitForText('No folders match your search')->assertDontSee('No collections')
+            ->press('Clear search')->waitForText('Folder 21');
+        foreach ([320, 390, 768] as $width) {
+            $browser->resize($width, 844)->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+                ->scrollTo('section[aria-label="Folders"]')->screenshot('redesign-folder-explorer-'.$width);
+        }
+        $browser->script('document.documentElement.classList.add("dark")');
+        $browser->screenshot('redesign-folder-explorer-dark');
+        $browser->script('window.scrollTo(0, 0)');
+        $browser->press('Create Subfolder')->waitFor('#collection-name')
+            ->type('#collection-name', 'New subfolder')->press('Create')->waitUntilMissing('#collection-name')->waitForText('New subfolder');
     });
-});
-
-test('delete collection', function () {
-    $user = $this->createUser();
-
-    Collection::factory()->create([
-        'user_id' => $user->id,
-        'name' => 'Collection To Delete',
-    ]);
-
-    $this->browse(function (Browser $browser) use ($user) {
-        $this->loginAs($browser, $user);
-
-        $browser->visit('/collections')
-            ->waitForText('Collection To Delete')
-            ->pause(500);
-
-        // Accept the upcoming confirmation dialog
-        $browser->driver->executeScript('window.confirm = () => true;');
-
-        // Click the delete (trash/red) button on the collection card
-        // The delete button is only shown when files_count === 0
-        $browser->script("
-            const cards = document.querySelectorAll('[class*=\"border-l-4\"]');
-            for (const card of cards) {
-                if (card.textContent.includes('Collection To Delete')) {
-                    const deleteBtn = card.querySelector('button.text-red-600');
-                    if (deleteBtn) {
-                        // Stop propagation to prevent navigating to show page
-                        deleteBtn.click();
-                    }
-                    break;
-                }
-            }
-        ");
-
-        $browser->pause(1000)
-            ->assertDontSee('Collection To Delete');
-    });
+    expect(Collection::where('user_id', $user->id)->where('name', 'New subfolder')->firstOrFail()->parent_id)->toBe($parent->id);
 });

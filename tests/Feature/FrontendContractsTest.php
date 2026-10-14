@@ -181,6 +181,18 @@ if (scenario === 'subfolder context') {
     assert.ok(root.includes('No collections'));
     assert.ok(root.includes('Create Collection'));
     assert.ok(!root.includes('No subfolders'));
+    const filtered = await render('Pages/Collections/Index.vue', { collections: { data: [], total: 0 }, filters: { search: 'missing' } });
+    assert.ok(filtered.includes('No folders match your search'));
+    assert.ok(filtered.includes('Clear search'));
+    assert.ok(!filtered.includes('No collections'));
+    const collection = { id: 8, name: 'Property records', files_count: 3, children_count: 2, is_archived: true, is_pinned: true };
+    const card = await render('Components/Domain/CollectionCard.vue', { collection });
+    for (const text of ['Property records', '3 direct files', '2 subfolders', 'Archived', 'Fixed location', 'Restore folder', 'Edit folder']) assert.ok(card.includes(text), text);
+    assert.ok(!card.includes('Delete folder'));
+    const readOnly = await render('Components/Domain/CollectionCard.vue', { collection, showEdit: false, showArchive: false, showDelete: false });
+    assert.ok(!readOnly.includes('Actions for'));
+    assert.ok(!readOnly.includes('Edit folder'));
+    assert.ok(readOnly.includes('/collections/8'));
 }
 if (scenario === 'settings sections') {
     const html = await render('Pages/Preferences/Index.vue', { preferences: {}, categories: [], options: {}, timezones: [], organizationAliases: [] });

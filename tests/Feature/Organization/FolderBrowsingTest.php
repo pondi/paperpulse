@@ -79,3 +79,27 @@ test('lazy folder pages bound large trees and retain separate file pagination an
         ->has('children.data', 1)->has('collection.files', 1)->where('children.current_page', 2)
         ->where('stats.total_files', 51)->where('treePreview.files', 51));
 });
+
+test('folder explorer scopes search and counts while retaining sorting and archive filters across pages', function (): void {
+    $owner = User::factory()->create();
+    $parent = Collection::factory()->for($owner, 'user')->create();
+    Collection::factory()->for($owner, 'user')->create(['name' => 'Folder outside']);
+    Collection::factory()->create(['name' => 'Folder private']);
+    foreach (range(1, 21) as $number) {
+        Collection::factory()->for($owner, 'user')->create(['parent_id' => $parent->id, 'name' => sprintf('Folder %02d', $number)]);
+    }
+    $archived = Collection::factory()->for($owner, 'user')->archived()->create(['parent_id' => $parent->id, 'name' => 'Folder 22']);
+    Collection::factory()->for($owner, 'user')->create(['parent_id' => $archived->id]);
+    $archived->files()->attach(File::factory()->for($owner, 'user')->create()->id);
+
+    $this->actingAs($owner)->get(route('collections.index', ['parent_id' => $parent->id, 'search' => 'Folder', 'sort' => '-name']))
+        ->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->where('collections.total', 21)->where('collections.data.0.name', 'Folder 21'));
+    $this->get(route('collections.index', ['parent_id' => $parent->id, 'search' => 'Folder', 'archived' => 1, 'sort' => 'files']))
+        ->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->where('collections.total', 22)
+        ->where('collections.data.0.id', $archived->id)->where('collections.data.0.files_count', 1)->where('collections.data.0.children_count', 1)
+        ->where('collections.next_page_url', fn ($url) => str_contains($url, 'parent_id='.$parent->id) && str_contains($url, 'search=Folder') && str_contains($url, 'sort=files') && str_contains($url, 'archived=1')));
+    $this->get(route('collections.index', ['parent_id' => $parent->id, 'search' => 'Folder', 'archived' => 1, 'sort' => '-name', 'page' => 2]))
+        ->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->has('collections.data', 2)->where('collections.data.0.name', 'Folder 02'));
+    $this->get(route('collections.index', ['parent_id' => $parent->id, 'search' => 'missing']))
+        ->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->where('collections.total', 0));
+});

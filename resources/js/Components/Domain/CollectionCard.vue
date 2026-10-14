@@ -1,97 +1,56 @@
 <template>
-    <div
-        class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 border-l-4 p-4"
-        :style="{ borderLeftColor: collection.color }"
-    >
-        <div class="flex flex-wrap items-start justify-between gap-3 mb-2">
-            <Link :href="route('collections.show', collection.id)" class="flex min-w-0 flex-1 basis-full sm:basis-auto items-center gap-3 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600">
-                <div
-                    class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                    :style="{ backgroundColor: collection.color }"
-                >
-                    <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getIconPath(collection.icon)" />
-                    </svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <h3 class="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
-                        {{ collection.name }}
-                        <span v-if="collection.is_archived" class="ml-2 text-xs font-normal text-zinc-500 dark:text-zinc-400">(Archived)</span>
-                    </h3>
+    <article :data-folder-id="collection.id" class="workspace-surface relative flex min-w-0 flex-col gap-4 p-4">
+        <div class="flex items-start gap-2">
+            <Link :href="route('collections.show', collection.id)" class="group flex min-w-0 flex-1 items-start gap-3 rounded">
+                <span class="relative shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden="true">
+                    <FolderIcon class="h-10 w-10" />
+                    <svg v-if="collection.icon && collection.icon !== 'folder'" class="absolute bottom-0 right-0 h-5 w-5 rounded bg-white p-0.5 dark:bg-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getIconPath(collection.icon)" /></svg>
+                    <span class="absolute left-1 top-1 h-1.5 w-3 rounded-full" :style="{ backgroundColor: collection.color }" />
+                </span>
+                <div class="min-w-0 flex-1 pt-1">
+                    <h2 class="font-medium text-zinc-900 group-hover:underline [overflow-wrap:anywhere] dark:text-zinc-100">{{ collection.name }}</h2>
+                    <div v-if="collection.is_archived || collection.is_pinned" class="mt-1 flex flex-wrap gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                        <span v-if="collection.is_archived">Archived</span>
+                        <span v-if="collection.is_pinned" title="Kept in place during automatic organization">Fixed location</span>
+                    </div>
                 </div>
             </Link>
-            <div class="flex items-center gap-2 flex-shrink-0">
-                <button
-                    v-if="showEdit"
-                    :aria-label="`Edit ${collection.name}`"
-                    @click.stop="$emit('edit', collection)"
-                    type="button"
-                    class="inline-flex h-11 w-11 items-center justify-center rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600 text-blue-600 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-400 transition-colors duration-200"
-                >
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                </button>
-                <button
-                    v-if="showArchive"
-                    :aria-label="`${collection.is_archived ? 'Unarchive' : 'Archive'} ${collection.name}`"
-                    @click.stop="$emit(collection.is_archived ? 'unarchive' : 'archive', collection)"
-                    type="button"
-                    class="inline-flex h-11 w-11 items-center justify-center rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600 text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 transition-colors duration-200"
-                    :title="collection.is_archived ? 'Unarchive' : 'Archive'"
-                >
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                    </svg>
-                </button>
-                <button
-                    v-if="showDelete && collection.files_count === 0"
-                    :aria-label="`Delete ${collection.name}`"
-                    @click.stop="$emit('delete', collection)"
-                    type="button"
-                    class="inline-flex h-11 w-11 items-center justify-center rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600 text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400 transition-colors duration-200"
-                >
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
-            </div>
+            <Menu v-if="showEdit || showArchive || canDelete" as="div" class="relative shrink-0">
+                <MenuButton :disabled="busy" :aria-label="`Actions for ${collection.name}`" class="inline-flex h-11 w-11 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-400 dark:hover:bg-zinc-800">
+                    <EllipsisHorizontalIcon class="h-5 w-5" aria-hidden="true" />
+                </MenuButton>
+                <MenuItems class="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-zinc-200 bg-white p-1 text-sm shadow-lg focus:outline-none dark:border-zinc-700 dark:bg-zinc-900">
+                    <MenuItem v-if="showEdit" v-slot="{ active }"><button class="min-h-11 w-full rounded px-3 py-2 text-left" :class="active ? 'bg-zinc-100 dark:bg-zinc-800' : ''" @click="$emit('edit', collection)">Edit folder</button></MenuItem>
+                    <MenuItem v-if="showArchive" v-slot="{ active }"><button class="min-h-11 w-full rounded px-3 py-2 text-left" :class="active ? 'bg-zinc-100 dark:bg-zinc-800' : ''" @click="$emit(collection.is_archived ? 'unarchive' : 'archive', collection)">{{ collection.is_archived ? 'Restore folder' : 'Archive folder' }}</button></MenuItem>
+                    <MenuItem v-if="canDelete" v-slot="{ active }"><button class="min-h-11 w-full rounded px-3 py-2 text-left text-red-700 dark:text-red-400" :class="active ? 'bg-zinc-100 dark:bg-zinc-800' : ''" @click="$emit('delete', collection)">Delete folder</button></MenuItem>
+                </MenuItems>
+            </Menu>
         </div>
-        <p v-if="collection.description" class="text-sm text-zinc-600 dark:text-zinc-400 mb-4 line-clamp-2">
-            {{ collection.description }}
-        </p>
+        <p v-if="collection.description" class="line-clamp-2 text-sm text-zinc-600 [overflow-wrap:anywhere] dark:text-zinc-400">{{ collection.description }}</p>
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-zinc-600 dark:text-zinc-400">
-            <span>{{ collection.files_count || 0 }} direct files</span>
-            <span v-if="collection.children_count">{{ collection.children_count }} subfolder{{ collection.children_count === 1 ? '' : 's' }}</span>
-            <Link v-if="collection.children_count" :href="route('collections.index', { parent_id: collection.id })" class="text-blue-600 hover:underline dark:text-blue-400">Browse subfolders</Link>
+            <span>{{ collection.files_count || 0 }} direct file{{ collection.files_count === 1 ? '' : 's' }}</span>
+            <Link v-if="collection.children_count" :href="route('collections.index', { parent_id: collection.id })" class="inline-flex min-h-11 items-center gap-1 underline underline-offset-4" :aria-label="`Browse ${collection.children_count} subfolders in ${collection.name}`">
+                {{ collection.children_count }} subfolder{{ collection.children_count === 1 ? '' : 's' }}<ChevronRightIcon class="h-4 w-4" aria-hidden="true" />
+            </Link>
+            <span v-else>No subfolders</span>
         </div>
-        <nav v-if="collection.children?.length" :aria-label="`Subfolders in ${collection.name}`" class="mt-3 flex flex-wrap gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
-            <Link v-for="child in collection.children" :key="child.id" :href="route('collections.show', child.id)" class="rounded bg-zinc-100 px-3 py-2 text-sm text-zinc-700 hover:bg-amber-50 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600">{{ collection.name }} → {{ child.name }}</Link>
-        </nav>
-    </div>
+    </article>
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
-const props = defineProps({
-    collection: {
-        type: Object,
-        required: true
-    },
-    showEdit: {
-        type: Boolean,
-        default: true
-    },
-    showArchive: {
-        type: Boolean,
-        default: true
-    },
-    showDelete: {
-        type: Boolean,
-        default: true
-    }
-});
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue';
+import { ChevronRightIcon, EllipsisHorizontalIcon, FolderIcon } from '@heroicons/vue/24/outline';
 
+const props = defineProps({
+    collection: { type: Object, required: true },
+    showEdit: { type: Boolean, default: true },
+    showArchive: { type: Boolean, default: true },
+    showDelete: { type: Boolean, default: true },
+    busy: { type: Boolean, default: false },
+});
+const canDelete = computed(() => props.showDelete && props.collection.files_count === 0 && props.collection.children_count === 0);
 defineEmits(['edit', 'archive', 'unarchive', 'delete']);
 
 const getIconPath = (iconName) => {

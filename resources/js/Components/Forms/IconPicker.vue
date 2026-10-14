@@ -3,19 +3,21 @@
         <label v-if="label" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
             {{ label }}
         </label>
-        <div class="grid grid-cols-6 sm:grid-cols-8 gap-2">
+        <div class="flex flex-wrap gap-2">
             <button
                 v-for="(iconPath, iconName) in icons"
                 :key="iconName"
                 type="button"
                 @click="selectIcon(iconName)"
-                class="relative flex items-center justify-center w-12 h-12 rounded-lg border-2 transition-all hover:scale-110"
+                class="relative flex items-center justify-center w-11 h-11 rounded-lg border-2 transition-all hover:scale-110"
                 :class="[
                     modelValue === iconName
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                         : 'border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 hover:border-blue-400 dark:hover:border-blue-500'
                 ]"
                 :title="formatIconName(iconName)"
+                :aria-label="formatIconName(iconName)"
+                :aria-pressed="modelValue === iconName"
             >
                 <svg class="w-6 h-6" :class="modelValue === iconName ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-600 dark:text-zinc-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPath" />

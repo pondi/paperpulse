@@ -5,7 +5,7 @@ use Tests\TestCase;
 
 uses(TestCase::class);
 
-it('keeps only the latest search state and permits recovery after search failures', function () {
+it('keeps only the latest search state and permits recovery after search failures', function (): void {
     $script = <<<'JS'
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -27,6 +27,7 @@ const context = {
   computed: getter => ({ get value() { return getter(); } }),
   watch: (target, callback) => watchers.set(target, callback),
   onMounted: () => {},
+  nextTick: callback => Promise.resolve().then(callback),
   onBeforeUnmount: callback => { unmount = callback; },
   defineProps: () => ({ query: 'initial', initialResults: [], initialFacets: {}, initialPagination: { page: 1, total: 0, last_page: 0 }, initialSearchStatus: 'available' }),
   axios: { get: (url, options) => new Promise((resolve, reject) => requests.push({ resolve, reject, ...options })) },
@@ -38,7 +39,7 @@ const context = {
   clearTimeout: id => timers.delete(id),
 };
 vm.createContext(context);
-vm.runInContext(descriptor.scriptSetup.content.replace(/^import .*;$/gm, '') + '\nglobalThis.state = { performSearch, searchQuery, filters, results, searching, searchError, facets, pagination, hasActiveFilters, clearFilters, sortBy, sortedResults };', context);
+vm.runInContext(descriptor.scriptSetup.content.replace(/^import .*;$/gm, '') + '\nglobalThis.state = { performSearch, searchQuery, filters, results, searching, searchError, facets, pagination, hasActiveFilters, clearFilters, sortBy, sortedResults, executeBulkAction, selectedResults, showBulkActions, bulkActionCollection, bulkActionType, bulkError, bulkBusy, bulkSuccess };', context);
 const state = context.state;
 state.results.value = [{ id: 'larger', total: '1234.56' }, { id: 'smaller', total: '999.00' }];
 state.sortBy.value = 'amount_asc';
@@ -93,9 +94,9 @@ await failed;
 assert.match(state.searchError.value, /unavailable/);
 assert.equal(state.searching.value, false);
 const invalid = state.performSearch();
-requests[8].reject({ response: { status: 422 } });
+requests[8].reject({ response: { status: 422, data: { errors: { amount_max: ['The maximum amount must be at least the minimum amount.'] } } } });
 await invalid;
-assert.match(state.searchError.value, /filters/);
+assert.match(state.searchError.value, /maximum amount/);
 
 const beforeClear = state.performSearch();
 state.searchQuery.value = '';
@@ -111,6 +112,9 @@ await state.performSearch();
 assert.equal(history.at(-1).props({}).query, '');
 assert.equal(history.at(-1).props({}).initialResults.length, 0);
 
+state.filters.value.amount_min = '';
+state.filters.value.amount_max = '';
+assert.ok(!state.hasActiveFilters.value);
 state.filters.value.tags = ['Travel'];
 assert.ok(state.hasActiveFilters.value);
 const tagged = state.performSearch();
@@ -145,6 +149,25 @@ assert.equal(requests[11].signal.aborted, true);
 requests[11].resolve(data('unmounted'));
 await latest;
 assert.equal(state.results.value.length, 0);
+state.results.value = [{ id: 1, type: 'receipt', file_id: 9 }, { id: 2, type: 'invoice', file_id: 9 }];
+state.selectedResults.value = new Set(['receipt-1', 'invoice-2']);
+state.showBulkActions.value = true;
+state.bulkActionCollection.value = 11;
+state.bulkActionType.value = 'add';
+context.axios = async () => { throw { response: { data: { message: 'Permission denied.' } } }; };
+await state.executeBulkAction();
+assert.equal(state.bulkError.value, 'Permission denied.');
+assert.equal(state.showBulkActions.value, true);
+assert.equal(state.bulkBusy.value, false);
+assert.equal(state.selectedResults.value.size, 2);
+let mutation;
+context.axios = async options => { mutation = options; };
+await state.executeBulkAction();
+assert.deepEqual(Array.from(mutation.data.file_ids), [9]);
+assert.equal(state.bulkError.value, '');
+assert.equal(state.bulkSuccess.value, 'Files added to the collection.');
+assert.equal(state.selectedResults.value.size, 0);
+assert.equal(state.showBulkActions.value, false);
 JS;
     $process = new Process(['node', '--input-type=module', '-e', $script], base_path());
     $process->run();

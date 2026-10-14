@@ -108,6 +108,18 @@ if (scenario === 'vendor details') {
     assert.ok(optional.includes('Receipt #9'));
     assert.ok(!optional.includes('undefined'));
 }
+if (scenario === 'search discovery') {
+    const result = { id: 17, file_id: 91, type: 'bank_statement', title: '<img src=x onerror=alert(1)> & Savings', filename: 'Statement.pdf', description: 'Savings & interest', total: 0, currency: 'NOK', url: route('bank-statements.show', 17), tags: ['Tax'], transaction_count: 3 };
+    for (const query of ['<img', '&', 'Savings', '(.*)']) {
+        const card = await render('Components/Search/SearchResultCard.vue', { result, searchQuery: query });
+        assert.ok(!card.includes('<img'));
+        for (const text of ['Statement.pdf', 'Closing balance', '0 NOK', 'Details &amp; tags', 'noopener noreferrer', 'Quick preview of', '3 transactions']) assert.ok(card.includes(text), text);
+        assert.ok(!card.includes('opacity-0'));
+        if (query !== '(.*)') assert.ok(card.includes('<mark'));
+    }
+    const html = await render('Pages/Search.vue', { initialFilters: { type: 'receipt', amount_min: 0, tags: ['Travel'], vendor: 'Northstar' }, initialPagination: { page: 1, total: 0, last_page: 0 } });
+    for (const text of ['Matches the receipt date', 'No currency conversion', 'Minimum: 0', 'Tags: Travel', 'Item vendor: Northstar', 'Find original files', 'No results found']) assert.ok(html.includes(text), text);
+}
 if (scenario === 'row names') {
     for (const id of [1, 2]) {
         const card = await render('Components/Search/SearchResultCard.vue', { result: { id, type: 'receipt', title: 'Same store', url: route('receipts.show', id), tags: [], items: [] } });
@@ -344,7 +356,7 @@ JS;
     $process->setInput(json_encode(['scenario' => $scenario, 'ziggy' => (new Ziggy)->toArray()]));
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-})->with(['original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts', 'receipt totals review', 'processing timing', 'failure diagnostics', 'processing limits', 'state semantics', 'archive home']);
+})->with(['search discovery', 'original downloads', 'category browsing', 'vendor details', 'row names', 'recommendation states', 'folder content priority', 'subfolder context', 'settings sections', 'invoice native line values', 'report navigation', 'pdf initial fit', 'scanner onboarding', 'mobile dashboard amounts', 'receipt totals review', 'processing timing', 'failure diagnostics', 'processing limits', 'state semantics', 'archive home']);
 
 it('resolves literal frontend route calls against the registered route inventory', function (): void {
     foreach (Filesystem::allFiles(resource_path('js')) as $file) {

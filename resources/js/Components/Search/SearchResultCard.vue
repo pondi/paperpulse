@@ -1,272 +1,50 @@
-<template>
-  <div
-    class="group relative bg-white dark:bg-zinc-800 rounded-lg border border-amber-200 dark:border-zinc-700 hover:border-amber-300 dark:hover:border-amber-600 hover:shadow-lg transition-all duration-200 overflow-hidden"
-    :class="{ 'ring-2 ring-amber-500 dark:ring-amber-400': selected }"
-  >
-    <!-- Type indicator stripe -->
-    <div
-      class="absolute top-0 left-0 w-1 h-full"
-      :class="typeStripeColor"
-    />
-
-    <div class="flex gap-2 sm:gap-4 p-4 pl-5">
-      <!-- Selection checkbox -->
-      <div class="flex-shrink-0 flex items-center">
-        <input
-          type="checkbox"
-          :aria-label="`Select ${typeLabel.toLowerCase()} ${result.title} (#${result.id})`"
-          :checked="selected"
-          @change.stop="emit('toggle-select')"
-          class="h-4 w-4 text-amber-600 focus:ring-amber-500 border-zinc-300 dark:border-zinc-600 rounded"
-        />
-      </div>
-      <!-- Thumbnail (if available) -->
-      <div
-        v-if="result.file?.url"
-        class="flex-shrink-0 w-10 h-14 sm:w-16 sm:h-20 bg-amber-100 dark:bg-zinc-700 rounded overflow-hidden border border-amber-200 dark:border-zinc-600"
-      >
-        <img
-          :src="result.file.previewUrl || result.file.url"
-          :alt="result.title"
-          class="w-full h-full object-cover"
-          @error="handleImageError"
-        />
-      </div>
-      <div
-        v-else
-        class="flex-shrink-0 w-10 h-14 sm:w-16 sm:h-20 bg-amber-100 dark:bg-zinc-700 rounded flex items-center justify-center border border-amber-200 dark:border-zinc-600"
-      >
-        <ReceiptRefundIcon v-if="result.type === 'receipt'" class="size-8 text-zinc-400" />
-        <BanknotesIcon v-else-if="result.type === 'invoice'" class="size-8 text-zinc-400" />
-        <DocumentDuplicateIcon v-else-if="result.type === 'contract'" class="size-8 text-zinc-400" />
-        <TicketIcon v-else-if="result.type === 'voucher'" class="size-8 text-zinc-400" />
-        <ShieldCheckIcon v-else-if="result.type === 'warranty'" class="size-8 text-zinc-400" />
-        <ArrowUturnLeftIcon v-else-if="result.type === 'return_policy'" class="size-8 text-zinc-400" />
-        <BuildingLibraryIcon v-else-if="result.type === 'bank_statement'" class="size-8 text-zinc-400" />
-        <DocumentIcon v-else class="size-8 text-zinc-400" />
-      </div>
-
-      <!-- Content -->
-      <div class="flex-1 min-w-0 cursor-pointer" @click="handleClick">
-        <!-- Header -->
-        <div class="flex flex-col sm:flex-row items-start justify-between gap-2 mb-2">
-          <div class="w-full sm:flex-1 min-w-0">
-            <div class="flex flex-wrap items-center gap-2 mb-1">
-              <span
-                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                :class="typeBadgeClass"
-              >
-                <component :is="typeIcon" class="size-3 mr-1" />
-                {{ typeLabel }}
-              </span>
-              <span v-if="result.date" class="text-xs text-zinc-500 dark:text-zinc-400">
-                {{ formatDate(result.date) }}
-              </span>
-            </div>
-            <h3
-              class="break-words text-base font-semibold text-zinc-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400"
-              v-html="highlightText(result.title)"
-            />
-          </div>
-
-          <!-- Total amount -->
-          <div v-if="result.total != null" class="max-w-full sm:flex-shrink-0">
-            <div class="break-words text-left sm:text-right">
-              <div class="text-lg font-bold text-zinc-900 dark:text-white">
-                {{ formatCurrency(result.total, result.currency) }}
-              </div>
-              <div v-if="result.payment_status" class="text-xs text-zinc-500 dark:text-zinc-400">
-                {{ result.payment_status }}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Description -->
-        <p
-          v-if="result.description"
-          class="text-sm text-zinc-600 dark:text-zinc-300 line-clamp-2 mb-2"
-          v-html="highlightText(result.description)"
-        />
-
-        <!-- Receipt specific: Line items preview -->
-        <div v-if="result.type === 'receipt' && result.items && result.items.length > 0" class="mb-2">
-          <div class="flex flex-wrap gap-1">
-            <span
-              v-for="(item, idx) in result.items.slice(0, 3)"
-              :key="idx"
-              class="inline-flex items-center text-xs text-zinc-600 dark:text-zinc-400 bg-amber-100 dark:bg-zinc-700 rounded px-2 py-0.5"
-            >
-              {{ item.description }}
-            </span>
-            <span
-              v-if="result.items.length > 3"
-              class="inline-flex items-center text-xs text-zinc-500 dark:text-zinc-500"
-            >
-              +{{ result.items.length - 3 }} more
-            </span>
-          </div>
-        </div>
-
-        <!-- Meta information -->
-        <div class="flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
-          <div v-if="result.category" class="flex items-center gap-1">
-            <FolderIcon class="size-3" />
-            <span>{{ result.category }}</span>
-          </div>
-          <div v-if="result.document_type" class="flex items-center gap-1">
-            <DocumentTextIcon class="size-3" />
-            <span>{{ result.document_type }}</span>
-          </div>
-          <div v-if="result.invoice_number" class="flex items-center gap-1">
-            <DocumentTextIcon class="size-3" />
-            <span>#{{ result.invoice_number }}</span>
-          </div>
-          <div v-if="result.contract_type" class="flex items-center gap-1">
-            <DocumentTextIcon class="size-3" />
-            <span>{{ result.contract_type }}</span>
-          </div>
-          <div v-if="result.status" class="flex items-center gap-1">
-            <SparklesIcon class="size-3" />
-            <span>{{ result.status }}</span>
-          </div>
-          <div v-if="result.voucher_type" class="flex items-center gap-1">
-            <TicketIcon class="size-3" />
-            <span>{{ result.voucher_type }}</span>
-          </div>
-          <div v-if="result.manufacturer" class="flex items-center gap-1">
-            <BuildingLibraryIcon class="size-3" />
-            <span>{{ result.manufacturer }}</span>
-          </div>
-          <div v-if="result.transaction_count" class="flex items-center gap-1">
-            <DocumentTextIcon class="size-3" />
-            <span>{{ result.transaction_count }} transactions</span>
-          </div>
-          <div v-if="result.tags && result.tags.length > 0" class="flex items-center gap-1">
-            <TagIcon class="size-3" />
-            <span>{{ result.tags.slice(0, 2).join(', ') }}</span>
-            <span v-if="result.tags.length > 2">+{{ result.tags.length - 2 }}</span>
-          </div>
-          <div v-if="result._rankingScore !== undefined" class="ml-auto flex items-center gap-1">
-            <SparklesIcon class="size-3" />
-            <span>{{ Math.round(result._rankingScore * 100) }}% match</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick actions -->
-      <div class="flex-shrink-0 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          @click.stop="handlePreview"
-          class="p-2 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-100 dark:hover:bg-zinc-700 rounded"
-          title="Quick preview"
-        >
-          <EyeIcon class="size-5" />
-        </button>
-        <a
-          :href="result.url"
-          :aria-label="`Open ${typeLabel.toLowerCase()} ${result.title} (#${result.id}) in new tab`"
-          @click.stop
-          class="p-2 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-100 dark:hover:bg-zinc-700 rounded"
-          title="Open in new tab"
-          target="_blank"
-        >
-          <ArrowTopRightOnSquareIcon class="size-5" />
-        </a>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup>
+import { computed } from 'vue';
+import { DocumentTextIcon, EyeIcon, ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 
-import { computed } from 'vue';
-import {
-  DocumentIcon,
-  ReceiptRefundIcon,
-  FolderIcon,
-  TagIcon,
-  EyeIcon,
-  ArrowTopRightOnSquareIcon,
-  DocumentTextIcon,
-  SparklesIcon,
-  BanknotesIcon,
-  DocumentDuplicateIcon,
-  TicketIcon,
-  ShieldCheckIcon,
-  ArrowUturnLeftIcon,
-  BuildingLibraryIcon,
-} from '@heroicons/vue/24/outline';
-
+const props = defineProps({ result: { type: Object, required: true }, searchQuery: { type: String, default: '' }, selected: Boolean });
+const emit = defineEmits(['preview', 'toggle-select']);
 const { formatDate, formatCurrency } = useDateFormatter();
-
-const props = defineProps({
-  result: {
-    type: Object,
-    required: true
-  },
-  searchQuery: {
-    type: String,
-    default: ''
-  },
-  selected: {
-    type: Boolean,
-    default: false
-  }
-});
-
-const emit = defineEmits(['preview', 'click', 'toggle-select']);
-
-const typeConfig = {
-  receipt:        { label: 'Receipt',        badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',     stripe: 'bg-amber-500',  icon: ReceiptRefundIcon },
-  document:       { label: 'Document',       badge: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',  stripe: 'bg-purple-500', icon: DocumentIcon },
-  invoice:        { label: 'Invoice',        badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',          stripe: 'bg-blue-500',   icon: BanknotesIcon },
-  contract:       { label: 'Contract',       badge: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',  stripe: 'bg-violet-500', icon: DocumentDuplicateIcon },
-  voucher:        { label: 'Voucher',        badge: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',      stripe: 'bg-green-500',  icon: TicketIcon },
-  warranty:       { label: 'Warranty',       badge: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',  stripe: 'bg-orange-500', icon: ShieldCheckIcon },
-  return_policy:  { label: 'Return Policy',  badge: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300',          stripe: 'bg-pink-500',   icon: ArrowUturnLeftIcon },
-  bank_statement: { label: 'Bank Statement', badge: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',          stripe: 'bg-teal-500',   icon: BuildingLibraryIcon },
-};
-
-const currentTypeConfig = computed(() => typeConfig[props.result.type] || typeConfig.document);
-const typeStripeColor = computed(() => currentTypeConfig.value.stripe);
-const typeBadgeClass = computed(() => currentTypeConfig.value.badge);
-const typeLabel = computed(() => currentTypeConfig.value.label);
-const typeIcon = computed(() => currentTypeConfig.value.icon);
-
-const handleImageError = (e) => {
-  e.target.style.display = 'none';
-};
-
-const handleClick = () => {
-  // Show preview instead of navigate
-  emit('preview', props.result);
-};
-
-const handlePreview = () => {
-  emit('preview', props.result);
-};
-
-const escapeHtml = (str) => {
-  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-  return str.replace(/[&<>"']/g, (c) => map[c]);
-};
-
-const highlightText = (text) => {
-  if (!text || !props.searchQuery) return escapeHtml(text || '');
-
-  const query = props.searchQuery.trim();
-  if (!query) return escapeHtml(text);
-
-  // Escape HTML entities first to neutralize any malicious markup
-  const safeText = escapeHtml(text);
-
-  // Escape special regex characters in the query, then escape query for HTML matching
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const safeQuery = escapeHtml(escapedQuery);
-  const regex = new RegExp(`(${safeQuery})`, 'gi');
-
-  return safeText.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-900/50 text-zinc-900 dark:text-white px-0.5 rounded">$1</mark>');
-};
+const typeLabel = computed(() => ({ receipt: 'Receipt', document: 'Document', invoice: 'Invoice', contract: 'Contract', voucher: 'Voucher', warranty: 'Warranty', return_policy: 'Return policy', bank_statement: 'Bank statement' })[props.result.type] || 'Document');
+const amountLabel = computed(() => ({ contract: 'Contract value', voucher: 'Current value', bank_statement: 'Closing balance' })[props.result.type] || 'Total');
+const metadata = computed(() => [props.result.category, props.result.document_type, props.result.invoice_number && `Invoice #${props.result.invoice_number}`, props.result.contract_type, props.result.status, props.result.voucher_type, props.result.manufacturer, props.result.transaction_count && `${props.result.transaction_count} transactions`].filter(Boolean));
+const escapeHtml = text => String(text ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[character]);
+function highlightText(text) {
+    const query = props.searchQuery.trim();
+    if (!query) return escapeHtml(text);
+    const pattern = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return String(text ?? '').split(pattern).map((part, index) => index % 2 ? `<mark class="rounded bg-orange-100 text-orange-950 dark:bg-orange-900 dark:text-orange-100">${escapeHtml(part)}</mark>` : escapeHtml(part)).join('');
+}
 </script>
+
+<template>
+    <article class="flex min-w-0 items-start gap-3 p-4 sm:gap-4" :class="selected ? 'bg-orange-50 dark:bg-orange-950/20' : 'bg-white dark:bg-zinc-900'">
+        <input type="checkbox" :aria-label="`Select ${typeLabel.toLowerCase()} ${result.title} (#${result.id})`" :checked="selected" @change="emit('toggle-select')" class="mt-1 rounded border-zinc-300 text-orange-600 focus:ring-orange-600 dark:border-zinc-600 dark:bg-zinc-800" />
+        <DocumentTextIcon class="hidden h-8 w-8 shrink-0 text-zinc-400 sm:block" aria-hidden="true" />
+        <div class="flex min-w-0 flex-1 flex-col gap-2">
+            <div class="flex flex-col justify-between gap-2 sm:flex-row sm:gap-4">
+                <div class="min-w-0">
+                    <p class="mb-1 text-xs text-zinc-500 dark:text-zinc-400">{{ typeLabel }}<span v-if="result.date"> · {{ formatDate(result.date) }}</span></p>
+                    <h2 class="text-sm font-semibold"><button type="button" :aria-label="`Preview ${typeLabel.toLowerCase()} ${result.title} (#${result.id})`" @click="emit('preview', result)" class="rounded text-left text-zinc-900 hover:text-orange-700 dark:text-zinc-100 dark:hover:text-orange-400"><span class="break-words [overflow-wrap:anywhere]" v-html="highlightText(result.title)" /></button></h2>
+                    <p v-if="result.filename || result.file?.filename" class="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400" :title="result.filename || result.file.filename">{{ result.filename || result.file.filename }}</p>
+                </div>
+                <div v-if="result.total != null" class="min-w-0 shrink-0 sm:text-right">
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ amountLabel }}</p>
+                    <p class="break-words text-sm font-semibold tabular-nums">{{ formatCurrency(result.total, result.currency) }}</p>
+                    <p v-if="result.payment_status" class="text-xs text-zinc-500 dark:text-zinc-400">{{ result.payment_status }}</p>
+                </div>
+            </div>
+            <p v-if="result.description" class="line-clamp-2 break-words text-sm leading-6 text-zinc-600 [overflow-wrap:anywhere] dark:text-zinc-300" v-html="highlightText(result.description)" />
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+                <button type="button" @click="emit('preview', result)" :aria-label="`Quick preview of ${result.title} (#${result.id})`" class="inline-flex items-center gap-1.5 rounded py-1 text-orange-700 dark:text-orange-400"><EyeIcon class="h-4 w-4" aria-hidden="true" />Preview</button>
+                <a v-if="result.url" :href="result.url" :aria-label="`Open ${typeLabel.toLowerCase()} ${result.title} (#${result.id}) in new tab`" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 rounded py-1 text-zinc-500 hover:text-orange-700 dark:text-zinc-400 dark:hover:text-orange-400">Open in new tab<ArrowTopRightOnSquareIcon class="h-3.5 w-3.5" aria-hidden="true" /></a>
+                <details v-if="metadata.length || result.tags?.length || result.items?.length" class="min-w-0 basis-full">
+                    <summary class="cursor-pointer rounded py-1 text-zinc-500 dark:text-zinc-400">Details &amp; tags</summary>
+                    <div class="mt-2 flex flex-wrap gap-2 text-zinc-600 dark:text-zinc-300"><span v-for="item in metadata" :key="item" class="break-words rounded bg-zinc-100 px-2 py-1 dark:bg-zinc-800">{{ item }}</span><span v-for="tag in result.tags" :key="tag" class="break-words rounded bg-zinc-100 px-2 py-1 dark:bg-zinc-800">{{ tag }}</span></div>
+                    <ul v-if="result.items?.length" class="mt-2 flex flex-col gap-1 text-zinc-500 dark:text-zinc-400"><li v-for="(item, index) in result.items" :key="index" class="break-words">{{ item.description }}<span v-if="item.price"> · {{ item.price }}</span></li></ul>
+                </details>
+            </div>
+        </div>
+    </article>
+</template>

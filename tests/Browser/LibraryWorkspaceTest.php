@@ -87,10 +87,10 @@ test('full text saved searches restore filters and remain editable after navigat
         $browser->resize(1440, 1000);
         $this->loginAs($browser, $user);
         $browser->visit('/search?query=travel&type=receipt')->waitFor('input[placeholder^="Search receipts"]')
-            ->assertChecked('input[type="radio"][value="receipt"]')
+            ->assertSelected('#search-type', 'receipt')
             ->click('@save-view')->waitFor('@saved-view-name')->type('@saved-view-name', 'Travel expenses')->click('@confirm-save-view')
             ->waitForText('Save changes')->assertQueryStringHas('query', 'travel')->assertSee('Travel expenses')
-            ->refresh()->waitFor('input[placeholder^="Search receipts"]')->assertChecked('input[type="radio"][value="receipt"]')
+            ->refresh()->waitFor('input[placeholder^="Search receipts"]')->assertSelected('#search-type', 'receipt')
             ->type('input[placeholder^="Search receipts"]', 'train')
             ->waitUsing(10, 100, fn (): bool => str_contains($browser->driver->getCurrentURL(), 'query=train'))
             ->click('@save-view')->waitFor('@saved-view-name')->click('@confirm-save-view')->waitUntilMissing('@saved-view-name');

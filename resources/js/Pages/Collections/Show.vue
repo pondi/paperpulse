@@ -1,257 +1,197 @@
-<template>
-    <Head :title="collection.name" />
-
-    <AuthenticatedLayout>
-        <template #header>
-            <div class="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
-                <div class="flex min-w-0 items-center gap-4">
-                    <div
-                        class="w-7 h-7 rounded flex items-center justify-center flex-shrink-0"
-                        :style="{ backgroundColor: collection.color }"
-                    >
-                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getIconPath(collection.icon)" />
-                        </svg>
-                    </div>
-                    <h2 class="min-w-0 break-words font-semibold text-xl text-zinc-900 dark:text-zinc-200 leading-tight">
-                        {{ collection.name }}
-                        <span v-if="collection.is_archived" class="ml-2 text-sm font-normal text-zinc-500 dark:text-zinc-400">(Archived)</span>
-                    </h2>
-                </div>
-                <div class="flex flex-wrap items-center gap-4">
-                    <Link v-if="isOwner" :href="route('collections.organization.index')" class="text-zinc-600 dark:text-zinc-400">Review recommendations</Link>
-                    <button
-                        v-if="isOwner"
-                        @click="isEditing = !isEditing"
-                        class="inline-flex items-center gap-x-2 px-3 py-2 text-sm font-semibold rounded-md"
-                        :class="isEditing ? 'text-zinc-900 bg-zinc-100 hover:bg-zinc-200 dark:text-zinc-100 dark:bg-zinc-700 dark:hover:bg-zinc-600' : 'text-zinc-100 bg-zinc-700 hover:bg-zinc-600 dark:bg-zinc-600 dark:hover:bg-zinc-500'"
-                    >
-                        <svg v-if="!isEditing" class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        <svg v-else class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        {{ isEditing ? 'Save Changes' : 'Edit Collection' }}
-                    </button>
-                    <Link
-                        v-if="collection.parent_id && breadcrumbs.length > 3"
-                        :href="breadcrumbs[breadcrumbs.length - 2].href"
-                        class="inline-flex items-center gap-2 rounded-md bg-zinc-800 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700"
-                    >
-                        Back to {{ breadcrumbs[breadcrumbs.length - 2].label }}
-                    </Link>
-                    <Link
-                        :href="route('collections.index')"
-                        class="inline-flex items-center gap-x-2 px-4 py-2 bg-zinc-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-zinc-700"
-                    >
-                        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
-                        All Collections
-                    </Link>
-                </div>
-            </div>
-        </template>
-
-        <Breadcrumbs v-if="breadcrumbs.length" :crumbs="breadcrumbs" class="pb-3" />
-
-        <div class="py-0">
-            <div class="min-w-0">
-                <!-- Collection Details Card -->
-                <div class="bg-white dark:bg-zinc-800 border-b border-zinc-200 px-0 py-3 mb-3 dark:border-zinc-700" :style="{ borderLeftColor: collection.color }">
-                    <div class="space-y-3">
-                        <template v-if="isEditing">
-                            <label class="text-sm text-zinc-700 dark:text-zinc-300">Name
-                                <input v-model="editedCollection.name" class="block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100" />
-                            </label>
-                            <FolderLocationPicker v-model="editedCollection.parent_id" :exclude-id="collection.id" />
-                        </template>
-                        <p v-for="(error, field) in $page.props.errors" :key="field" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
-                        <p v-if="treePreview" class="text-sm text-zinc-600 dark:text-zinc-400">This branch contains {{ treePreview.folders }} folders and {{ treePreview.files }} unique files. {{ treePreview.sharing_scope }}</p>
-                        <!-- Description -->
-                        <div v-if="!isEditing && collection.description" class="text-sm text-zinc-600 dark:text-zinc-400">
-                            {{ collection.description }}
-                        </div>
-                        <textarea
-                            v-if="isEditing"
-                            v-model="editedCollection.description"
-                            rows="2"
-                            placeholder="Collection description..."
-                            class="block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100  focus:border-orange-600 focus:ring-orange-600 sm:text-sm"
-                        ></textarea>
-
-                        <!-- Icon and Color Pickers (only in edit mode) -->
-                        <div v-if="isEditing" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <IconPicker
-                                v-model="editedCollection.icon"
-                                label="Collection Icon"
-                            />
-                            <ColorPicker
-                                v-model="editedCollection.color"
-                                label="Collection Color"
-                            />
-                        </div>
-
-                        <dl class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-600 dark:text-zinc-300">
-                            <div class="flex gap-2"><dt>Files directly here</dt><dd class="font-semibold">{{ stats.total_files }}</dd></div>
-                            <div class="flex gap-2"><dt>Documents directly here</dt><dd class="font-semibold">{{ stats.documents_count }}</dd></div>
-                            <div class="flex gap-2"><dt>Receipts directly here</dt><dd class="font-semibold">{{ stats.receipts_count }}</dd></div>
-                            <div class="flex gap-2"><dt>Invoices directly here</dt><dd class="font-semibold">{{ stats.invoices_count }}</dd></div>
-                            <div v-if="treePreview" class="flex gap-2"><dt>Files including subfolders</dt><dd class="font-semibold">{{ treePreview.files }}</dd></div>
-                        </dl>
-                    </div>
-                </div>
-
-                <div class="bg-white dark:bg-zinc-800 border-b border-zinc-200 px-0 py-3 mb-3 dark:border-zinc-700">
-                    <div class="flex items-center justify-between gap-3 mb-4">
-                        <h3 class="font-semibold text-zinc-900 dark:text-zinc-100">Subfolders</h3>
-                        <Link v-if="isOwner" :href="route('collections.index', { parent_id: collection.id })" class="text-zinc-600 dark:text-zinc-400">Manage subfolders</Link>
-                    </div>
-                    <div class="flex flex-wrap gap-3">
-                        <Link v-for="child in children.data" :key="child.id" :href="route('collections.show', child.id)" class="rounded-md bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 px-4 py-2">{{ child.name }}</Link>
-                    </div>
-                    <p v-if="!children.data.length" class="text-sm text-zinc-500 dark:text-zinc-400">No subfolders available.</p>
-                    <Pagination v-if="children.last_page > 1" :links="children.links" :from="children.from" :to="children.to" :total="children.total" class="mt-4" />
-                </div>
-                <!-- Files Grid -->
-                <div class="bg-white dark:bg-zinc-800 min-w-0">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Files in this Collection</h3>
-                    </div>
-
-                    <FileWorkspace :files="workspaceFiles" :tags="workspaceTags" />
-                    <div v-if="isOwner && workspaceFiles.length" class="mt-3 flex flex-wrap items-center gap-2">
-                        <label class="text-xs text-zinc-500" for="remove-collection-file">Remove from collection</label>
-                        <select id="remove-collection-file" v-model="removeFileId" class="workspace-filter"><option value="">Choose file</option><option v-for="file in workspaceFiles" :key="file.id" :value="file.id">{{ file.name }}</option></select>
-                        <button class="workspace-button" :disabled="!removeFileId" @click="removeFile(removeFileId)">Remove</button>
-                    </div>
-
-                    <Pagination v-if="filePagination" :links="filePagination" class="mt-4" />
-                    <!-- Empty State -->
-                    <div v-if="!collection.files?.length" class="text-center py-12">
-                        <svg class="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                        </svg>
-                        <h3 class="mt-4 text-sm font-medium text-zinc-900 dark:text-zinc-100">No files directly in this collection</h3>
-                        <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                            Files in subfolders are listed separately. Upload a file here or browse a subfolder above.
-                        </p>
-                        <div class="mt-4 flex flex-wrap justify-center gap-3">
-                            <Link v-for="child in children.data" :key="child.id" :href="route('collections.show', child.id)" class="text-zinc-600 hover:underline dark:text-zinc-400">Browse {{ child.name }}</Link>
-                            <Link v-if="isOwner" :href="route('documents.upload', { collection_ids: [collection.id] })" class="text-zinc-600 hover:underline dark:text-zinc-400">Upload to this collection</Link>
-                        </div>
-                    </div>
-                </div>
-                <details v-if="isOwner" class="mt-4 border-t border-zinc-200 bg-white py-3 dark:bg-zinc-800">
-                    <summary class="cursor-pointer font-semibold text-zinc-900 dark:text-zinc-100">Public sharing</summary>
-                    <PublicLinkManager
-                        :collection-id="collection.id"
-                        :public-links="publicLinks"
-                        :flash-public-link="$page.props.flash?.publicLink"
-                        class="mt-4"
-                    />
-                </details>
-            </div>
-        </div>
-    </AuthenticatedLayout>
-</template>
-
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { FolderIcon } from '@heroicons/vue/24/outline';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import FolderLocationPicker from '@/Components/Domain/FolderLocationPicker.vue';
+import CollectionCard from '@/Components/Domain/CollectionCard.vue';
 import Pagination from '@/Components/Common/Pagination.vue';
 import Breadcrumbs from '@/Components/Common/Breadcrumbs.vue';
+import Modal from '@/Components/Common/Modal.vue';
 import IconPicker from '@/Components/Forms/IconPicker.vue';
 import ColorPicker from '@/Components/Forms/ColorPicker.vue';
 import FileWorkspace from '@/Components/Domain/FileWorkspace.vue';
 import PublicLinkManager from '@/Components/Domain/PublicLinkManager.vue';
 
-const removeFileId = ref('');
 const props = defineProps({
+    collection: { type: Object, required: true },
+    stats: { type: Object, required: true },
     workspaceFiles: { type: Array, default: () => [] },
     workspaceTags: { type: Array, default: () => [] },
     children: { type: Object, default: () => ({ data: [] }) },
-    filePagination: { type: Array, default: null },
+    filePagination: { type: Array, default: () => [] },
+    fileMeta: { type: Object, default: () => ({}) },
+    filters: { type: Object, default: () => ({}) },
     treePreview: { type: Object, default: null },
-    collection: {
-        type: Object,
-        required: true
-    },
-    stats: {
-        type: Object,
-        required: true
-    },
-    isOwner: {
-        type: Boolean,
-        default: false
-    },
-    breadcrumbs: {
-        type: Array,
-        default: () => []
-    },
-    publicLinks: {
-        type: Array,
-        default: () => []
-    }
+    isOwner: { type: Boolean, default: false },
+    breadcrumbs: { type: Array, default: () => [] },
+    publicLinks: { type: Array, default: () => [] },
 });
-
+const search = ref(props.filters.search || '');
+const sort = ref(props.filters.sort || 'name');
+watch(() => props.filters, filters => { search.value = filters.search || ''; sort.value = filters.sort || 'name'; });
+const loading = ref(false);
+const error = ref('');
+const removing = ref(false);
 const isEditing = ref(false);
-const editedCollection = ref({
-    name: props.collection.name,
-    parent_id: props.collection.parent_id,
-    description: props.collection.description || '',
-    icon: props.collection.icon,
-    color: props.collection.color
-});
-
-// Auto-save when exiting edit mode
-watch(isEditing, (newValue) => {
-    if (!newValue) {
-        // Exiting edit mode - save changes
-        router.patch(route('collections.update', props.collection.id), editedCollection.value, {
-            preserveScroll: true,
-            onError: () => { isEditing.value = true; }
-        });
-    } else {
-        // Entering edit mode - reset form
-        editedCollection.value = {
-            name: props.collection.name,
-            parent_id: props.collection.parent_id,
-            description: props.collection.description || '',
-            icon: props.collection.icon,
-            color: props.collection.color
-        };
-    }
-});
-
-const getIconPath = (iconName) => {
-    const icons = {
-        'folder': 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',
-        'folder-open': 'M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z',
-        'briefcase': 'M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z',
-        'document': 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-        'home': 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
-        'heart': 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z',
-        'star': 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z',
-        'tag': 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z',
-        'archive-box': 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4',
-        'building-office': 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
-        'shopping-bag': 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z',
-        'receipt-refund': 'M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z',
+const saving = ref(false);
+const editErrors = ref({});
+const editedCollection = ref({});
+const searchInput = ref(null);
+const parentCrumb = computed(() => props.collection.parent_id && props.breadcrumbs.length > 3 ? props.breadcrumbs.at(-2) : null);
+function browse(clear = false) {
+    if (clear) search.value = '';
+    error.value = '';
+    router.get(route('collections.show', props.collection.id), { search: search.value || undefined, sort: sort.value }, {
+        preserveState: true, preserveScroll: true,
+        onStart: () => { loading.value = true; },
+        onError: errors => { error.value = Object.values(errors).join(' '); },
+        onFinish: () => { loading.value = false; },
+    });
+}
+function edit() {
+    editedCollection.value = {
+        name: props.collection.name, parent_id: props.collection.parent_id,
+        description: props.collection.description || '', icon: props.collection.icon, color: props.collection.color,
     };
-    return icons[iconName] || icons['folder'];
-};
-
-const removeFile = (fileId) => {
-    if (confirm('Remove this file from the collection?')) {
-        router.delete(route('collections.files.remove', props.collection.id), {
-            data: { file_ids: [fileId] },
-            preserveScroll: true,
-            onSuccess: () => { removeFileId.value = ''; }
-        });
-    }
-};
+    editErrors.value = {};
+    isEditing.value = true;
+}
+function save() {
+    if (saving.value) return;
+    saving.value = true;
+    editErrors.value = {};
+    router.patch(route('collections.update', props.collection.id), editedCollection.value, {
+        preserveScroll: true,
+        onSuccess: () => { isEditing.value = false; },
+        onError: errors => { editErrors.value = errors; },
+        onFinish: () => { saving.value = false; },
+    });
+}
+function removeFile(file) {
+    if (removing.value || !confirm(`Remove “${file.original_name || file.name}” from “${props.collection.name}”? The original file and its extracted records will stay in your library.`)) return;
+    removing.value = true;
+    error.value = '';
+    router.delete(route('collections.files.remove', props.collection.id), {
+        data: { file_ids: [file.id] }, preserveScroll: true,
+        onSuccess: () => nextTick(() => searchInput.value?.focus()),
+        onError: errors => { error.value = Object.values(errors).join(' '); },
+        onFinish: () => { removing.value = false; },
+    });
+}
 </script>
+
+<template>
+    <AuthenticatedLayout>
+        <Head :title="collection.name" />
+        <template #header>
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div class="min-w-0 flex-1">
+                    <Breadcrumbs v-if="breadcrumbs.length" :crumbs="breadcrumbs" class="mb-3" />
+                    <div class="flex items-start gap-3">
+                        <FolderIcon class="mt-1 h-7 w-7 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
+                        <div class="min-w-0">
+                            <h1 class="page-heading [overflow-wrap:anywhere]">{{ collection.name }}</h1>
+                            <p v-if="collection.description" class="page-description [overflow-wrap:anywhere]">{{ collection.description }}</p>
+                            <p v-if="collection.is_archived || !isOwner" class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{{ collection.is_archived ? 'Archived folder' : 'Shared with you' }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex shrink-0 flex-wrap gap-2">
+                    <button v-if="isOwner" type="button" class="workspace-button" @click="edit">Edit Collection</button>
+                    <Link v-if="isOwner" :href="route('documents.upload', { collection_ids: [collection.id] })" class="workspace-primary">Upload files</Link>
+                </div>
+            </div>
+        </template>
+
+        <div class="flex min-w-0 flex-col gap-6">
+            <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+                <Link v-if="parentCrumb" :href="parentCrumb.href" class="inline-flex min-h-11 items-center underline underline-offset-4 [overflow-wrap:anywhere]">Back to {{ parentCrumb.label }}</Link>
+                <Link :href="route(isOwner ? 'collections.index' : 'collections.shared')" class="inline-flex min-h-11 items-center underline underline-offset-4">{{ isOwner ? 'All Collections' : 'Shared collections' }}</Link>
+                <Link v-if="isOwner" :href="route('collections.organization.index')" class="inline-flex min-h-11 items-center text-zinc-500 underline underline-offset-4 dark:text-zinc-400">Review recommendations</Link>
+            </div>
+
+            <form role="search" aria-label="Find folder contents" class="flex flex-col gap-3 sm:flex-row sm:items-end" @submit.prevent="browse()">
+                <div class="min-w-0 flex-1">
+                    <label for="collection-search" class="mb-1 block text-sm font-medium">Search this folder</label>
+                    <input id="collection-search" ref="searchInput" v-model="search" type="search" class="workspace-filter w-full" placeholder="Filename or subfolder name" aria-describedby="collection-scope" />
+                </div>
+                <div>
+                    <label for="collection-sort" class="mb-1 block text-sm font-medium">Sort contents</label>
+                    <select id="collection-sort" v-model="sort" class="workspace-filter w-full" @change="browse()">
+                        <option value="name">Name A–Z</option><option value="-name">Name Z–A</option>
+                        <option value="created">Newest first</option><option value="-created">Oldest first</option>
+                    </select>
+                </div>
+                <button type="submit" class="workspace-button" :disabled="loading">Search</button>
+                <button v-if="filters.search" type="button" class="workspace-button" :disabled="loading" @click="browse(true)">Clear search</button>
+            </form>
+            <p id="collection-scope" class="-mt-4 text-sm text-zinc-500 dark:text-zinc-400">Searches original filenames and subfolder names directly here, across all pages. Open a subfolder to search inside it.</p>
+            <p v-if="loading" role="status" class="text-sm text-zinc-500">Loading folder contents…</p>
+            <p v-if="error" role="alert" class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
+
+            <section aria-label="Subfolders" :aria-busy="loading" class="min-w-0">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <h2 class="section-heading">Subfolders <span class="font-normal text-zinc-500">{{ children.total ?? children.data.length }}</span></h2>
+                    <Link v-if="isOwner" :href="route('collections.index', { parent_id: collection.id })" class="inline-flex min-h-11 items-center text-sm underline underline-offset-4">Manage subfolders</Link>
+                </div>
+                <div v-if="children.data.length" class="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+                    <CollectionCard v-for="child in children.data" :key="child.id" :collection="child" :show-edit="false" :show-archive="false" :show-delete="false" :children-href="route('collections.show', child.id)" />
+                </div>
+                <p v-else class="rounded-lg border border-dashed border-zinc-300 p-5 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">{{ filters.search ? 'No subfolder names match your search.' : 'No subfolders here yet.' }}</p>
+                <Pagination v-if="children.last_page > 1" :links="children.links" :from="children.from" :to="children.to" :total="children.total" class="mt-4" />
+            </section>
+
+            <section aria-label="Files in this folder" class="min-w-0">
+                <h2 class="section-heading mb-3">Files <span class="font-normal text-zinc-500">{{ fileMeta.total ?? stats.total_files }}</span></h2>
+                <FileWorkspace :files="workspaceFiles" :tags="workspaceTags" :loading="loading || removing" :empty-title="fileMeta.total > 0 ? 'No files on this page' : filters.search ? 'No filenames match your search' : 'No files directly in this collection'" :empty-description="fileMeta.total > 0 ? 'Use the page controls below to return to your files.' : filters.search ? 'Try another filename or clear the search.' : 'Upload files here or open a subfolder above.'">
+                    <template v-if="isOwner" #file-context="{ file, dirty }">
+                        <div class="flex flex-wrap items-center gap-2 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+                            <button type="button" class="workspace-button" :disabled="removing || dirty" @click="removeFile(file)">Remove from this folder</button>
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ dirty ? 'Save or cancel your edits first.' : 'The original stays in your library.' }}</p>
+                        </div>
+                    </template>
+                </FileWorkspace>
+                <Pagination v-if="filePagination?.length > 3" :links="filePagination" :from="fileMeta.from" :to="fileMeta.to" :total="fileMeta.total" class="mt-4" />
+            </section>
+
+            <details class="workspace-surface p-4" data-folder-details>
+                <summary class="cursor-pointer text-sm font-medium">Folder details</summary>
+                <dl class="mt-4 grid gap-3 text-sm text-zinc-600 sm:grid-cols-2 dark:text-zinc-400">
+                    <div class="flex gap-2"><dt>Files directly here</dt><dd class="font-semibold">{{ stats.total_files }}</dd></div>
+                    <div v-if="treePreview" class="flex gap-2"><dt>Files including subfolders</dt><dd class="font-semibold">{{ treePreview.files }}</dd></div>
+                    <div class="flex gap-2"><dt>Documents directly here</dt><dd>{{ stats.documents_count }}</dd></div>
+                    <div class="flex gap-2"><dt>Receipts directly here</dt><dd>{{ stats.receipts_count }}</dd></div>
+                    <div class="flex gap-2"><dt>Invoices directly here</dt><dd>{{ stats.invoices_count }}</dd></div>
+                </dl>
+            </details>
+            <details v-if="isOwner" class="workspace-surface p-4" data-public-sharing>
+                <summary class="cursor-pointer text-sm font-medium">Public sharing</summary>
+                <PublicLinkManager :collection-id="collection.id" :public-links="publicLinks" :flash-public-link="$page.props.flash?.publicLink" class="mt-4" />
+            </details>
+        </div>
+
+        <Modal :show="isEditing" :closeable="!saving" max-width="lg" @close="isEditing = false" v-slot="{ titleId }">
+            <form class="flex flex-col gap-5 p-5 sm:p-6" @submit.prevent="save">
+                <h2 :id="titleId" class="section-heading">Edit collection</h2>
+                <div>
+                    <label for="collection-name" class="mb-1 block text-sm font-medium">Name</label>
+                    <input id="collection-name" v-model="editedCollection.name" class="workspace-filter w-full" required maxlength="100" :aria-invalid="!!editErrors.name" />
+                </div>
+                <FolderLocationPicker v-model="editedCollection.parent_id" :exclude-id="collection.id" />
+                <p v-if="treePreview" class="text-sm text-zinc-500 dark:text-zinc-400">Moving this folder also moves its {{ treePreview.folders - 1 }} subfolders. {{ treePreview.sharing_scope }}</p>
+                <div>
+                    <label for="collection-description" class="mb-1 block text-sm font-medium">Description</label>
+                    <textarea id="collection-description" v-model="editedCollection.description" rows="2" maxlength="500" class="workspace-filter w-full" />
+                </div>
+                <IconPicker v-model="editedCollection.icon" label="Collection icon" />
+                <ColorPicker v-model="editedCollection.color" label="Collection color" />
+                <div v-if="Object.keys(editErrors).length" role="alert" class="text-sm text-red-700 dark:text-red-400"><p v-for="(message, field) in editErrors" :key="field">{{ message }}</p></div>
+                <div class="flex flex-wrap justify-end gap-3">
+                    <button type="button" class="workspace-button" :disabled="saving" @click="isEditing = false">Cancel</button>
+                    <button type="submit" class="workspace-primary" :disabled="saving">{{ saving ? 'Saving…' : 'Save changes' }}</button>
+                </div>
+            </form>
+        </Modal>
+    </AuthenticatedLayout>
+</template>

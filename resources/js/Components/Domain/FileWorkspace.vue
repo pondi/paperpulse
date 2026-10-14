@@ -167,6 +167,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', keyboard); window.
                     <button class="workspace-button" :disabled="activeIndex >= files.length - 1" aria-label="Next document" @click="move(1)"><ChevronDownIcon class="h-4 w-4" aria-hidden="true" /></button>
                     <button class="workspace-button" aria-label="Close preview" @click="close"><XMarkIcon class="h-4 w-4" aria-hidden="true" /></button>
                 </div>
+                <slot name="file-context" :file="files[activeIndex]" :dirty="dirty" />
                 <FileInspector :key="activeId + '-' + inspectorKey" :file-id="activeId" @dirty="dirty = $event" />
             </aside>
         </div>

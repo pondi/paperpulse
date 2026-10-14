@@ -29,7 +29,7 @@
         <p v-if="collection.description" class="line-clamp-2 text-sm text-zinc-600 [overflow-wrap:anywhere] dark:text-zinc-400">{{ collection.description }}</p>
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-zinc-600 dark:text-zinc-400">
             <span>{{ collection.files_count || 0 }} direct file{{ collection.files_count === 1 ? '' : 's' }}</span>
-            <Link v-if="collection.children_count" :href="route('collections.index', { parent_id: collection.id })" class="inline-flex min-h-11 items-center gap-1 underline underline-offset-4" :aria-label="`Browse ${collection.children_count} subfolders in ${collection.name}`">
+            <Link v-if="collection.children_count" :href="childrenHref || route('collections.index', { parent_id: collection.id })" class="inline-flex min-h-11 items-center gap-1 underline underline-offset-4" :aria-label="`Browse ${collection.children_count} subfolders in ${collection.name}`">
                 {{ collection.children_count }} subfolder{{ collection.children_count === 1 ? '' : 's' }}<ChevronRightIcon class="h-4 w-4" aria-hidden="true" />
             </Link>
             <span v-else>No subfolders</span>
@@ -49,6 +49,7 @@ const props = defineProps({
     showArchive: { type: Boolean, default: true },
     showDelete: { type: Boolean, default: true },
     busy: { type: Boolean, default: false },
+    childrenHref: { type: String, default: null },
 });
 const canDelete = computed(() => props.showDelete && props.collection.files_count === 0 && props.collection.children_count === 0);
 defineEmits(['edit', 'archive', 'unarchive', 'delete']);

@@ -187,9 +187,9 @@ class Collection extends Model
             });
     }
 
-    public function getFilesCountAttribute(): int
+    public function getFilesCountAttribute(?int $value = null): int
     {
-        return $this->files()->count();
+        return $value ?? $this->files()->count();
     }
 
     public function scopeActive(Builder $query): Builder

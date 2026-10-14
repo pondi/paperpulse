@@ -160,17 +160,23 @@ if (scenario === 'recommendation states') {
 if (scenario === 'folder content priority') {
     for (const populated of [false, true]) {
         const html = await render('Pages/Collections/Show.vue', {
-            collection: { id: 1, name: 'Building', color: '#123456', icon: 'folder', files: populated ? [{ id: 5, fileName: 'contract.pdf', created_at: '2026-10-06' }] : [] },
+            collection: { id: 1, name: 'Building', color: '#123456', icon: 'folder' },
+            workspaceFiles: populated ? [{ id: 5, name: 'contract.pdf' }] : [],
             stats: { total_files: populated ? 1 : 0, documents_count: populated ? 1 : 0, receipts_count: 0 },
             children: { data: [{ id: 2, name: 'Contracts' }] }, isOwner: true
         });
-        assert.ok(html.includes('Contracts'));
+        assert.ok(html.includes('aria-label="Subfolders"'));
         assert.ok(html.indexOf('Subfolders') < html.indexOf('<details'));
-        assert.ok(html.indexOf('Files in this Collection') < html.indexOf('<details'));
+        assert.ok(html.indexOf('Files in this folder') < html.indexOf('<details'));
         assert.ok(html.includes('<summary class="cursor-pointer'));
         assert.ok(!html.includes('<details open'));
         assert.ok(!html.includes('sm:grid-cols-3'));
-        assert.ok(html.includes(populated ? 'contract.pdf' : 'No files directly in this collection'));
+        assert.ok(html.includes('Search this folder'));
+        assert.ok(html.includes('across all pages'));
+        assert.ok(html.includes('Edit Collection'));
+        assert.ok(!html.includes('remove-collection-file'));
+        const workspace = await render('Components/Domain/FileWorkspace.vue', { files: populated ? [{ id: 5, name: 'contract.pdf' }] : [], emptyTitle: 'No files directly in this collection' });
+        assert.ok(workspace.includes(populated ? 'contract.pdf' : 'No files directly in this collection'));
     }
 }
 if (scenario === 'subfolder context') {

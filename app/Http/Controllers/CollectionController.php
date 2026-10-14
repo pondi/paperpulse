@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BrowseCollectionContentsRequest;
 use App\Http\Requests\BrowseFoldersRequest;
 use App\Http\Requests\CollectionFilesRequest;
 use App\Http\Requests\ShareCollectionRequest;
 use App\Http\Requests\StoreCollectionRequest;
 use App\Http\Requests\UpdateCollectionRequest;
+use App\Http\Resources\Inertia\FileInertiaResource;
 use App\Models\Collection;
+use App\Models\Tag;
 use App\Models\User;
 use App\Services\CollectionService;
 use App\Services\CollectionSharingService;
@@ -130,17 +133,31 @@ class CollectionController extends Controller
     /**
      * Display the specified collection.
      */
-    public function show(Collection $collection): Response
+    public function show(BrowseCollectionContentsRequest $request, Collection $collection): Response
     {
         $this->authorize('view', $collection);
 
         $collection->loadCount(['files' => fn ($query) => $query->withoutGlobalScope('user')]);
+        $search = $request->string('search')->trim()->toString();
+        $sort = $request->input('sort') ?? 'name';
+        $direction = in_array($sort, ['-name', 'created'], true) ? 'desc' : 'asc';
+        $byDate = in_array($sort, ['created', '-created'], true);
+        $pattern = '%'.addcslashes($search, '%_\\').'%';
         $filePage = $collection->files()->withoutGlobalScope('user')
             ->with(['primaryEntity.entity' => fn ($query) => AuthorizedEntityRelations::load($query)])
-            ->orderBy('files.id')->paginate(50, ['files.*'], 'files_page');
+            ->when($search !== '', fn ($query) => $query->whereLike('files.fileName', $pattern))
+            ->orderBy($byDate ? 'files.created_at' : 'files.fileName', $direction)->orderBy('files.id')
+            ->paginate(50, ['files.*'], 'files_page')->withQueryString();
         $collection->setRelation('files', $filePage->getCollection());
         $children = Collection::accessibleBy(auth()->user())->where('parent_id', $collection->id)
-            ->orderBy('name')->paginate(50, ['id', 'name', 'parent_id'], 'children_page');
+            ->select(['id', 'name', 'parent_id', 'description', 'icon', 'color', 'is_archived', 'is_pinned'])
+            ->withCount([
+                'files' => fn ($query) => $query->withoutGlobalScope('user'),
+                'children' => fn ($query) => $query->accessibleBy($request->user()),
+            ])
+            ->when($search !== '', fn ($query) => $query->whereLike('name', $pattern))
+            ->orderBy($byDate ? 'created_at' : 'name', $direction)->orderBy('id')
+            ->paginate(50, ['*'], 'children_page')->withQueryString();
         $stats = $this->collectionService->getCollectionStats($collection);
         $shares = $this->sharingService->getShares($collection);
 
@@ -150,10 +167,12 @@ class CollectionController extends Controller
 
         return Inertia::render('Collections/Show', [
             'collection' => $collection,
-            'workspaceTags' => \App\Models\Tag::query()->where('user_id', auth()->id())->orderBy('name')->get(['id', 'name']),
-            'workspaceFiles' => $filePage->getCollection()->map(fn ($file) => \App\Http\Resources\Inertia\FileInertiaResource::forIndex($file)->toArray(request())),
+            'workspaceTags' => Tag::query()->where('user_id', auth()->id())->orderBy('name')->get(['id', 'name']),
+            'workspaceFiles' => $filePage->getCollection()->map(fn ($file) => FileInertiaResource::forIndex($file)->toArray(request())),
             'children' => $children,
             'filePagination' => $filePage->toArray()['links'],
+            'fileMeta' => ['from' => $filePage->firstItem(), 'to' => $filePage->lastItem(), 'total' => $filePage->total()],
+            'filters' => ['search' => $search, 'sort' => $sort],
             'treePreview' => $collection->user_id === auth()->id() ? app(FolderTreeService::class)->preview($collection) : null,
             'stats' => $stats,
             'shares' => $shares,

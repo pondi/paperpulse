@@ -103,3 +103,83 @@ test('folder explorer scopes search and counts while retaining sorting and archi
     $this->get(route('collections.index', ['parent_id' => $parent->id, 'search' => 'missing']))
         ->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->where('collections.total', 0));
 });
+
+test('collection contents search and sort cover direct files and accessible subfolders across both paginators', function (): void {
+    $owner = User::factory()->create();
+    $root = Collection::factory()->for($owner)->create();
+    foreach (range(1, 51) as $number) {
+        Collection::factory()->for($owner)->create(['parent_id' => $root->id, 'name' => sprintf('Report %02d', $number)]);
+        $root->files()->attach(File::factory()->for($owner)->create(['fileName' => sprintf('Report %02d.pdf', $number)])->id);
+    }
+    $child = Collection::factory()->for($owner)->create(['parent_id' => $root->id, 'name' => 'Other folder']);
+    $child->files()->attach(File::factory()->for($owner)->create(['fileName' => 'Report nested.pdf'])->id);
+    File::factory()->for($owner)->create(['fileName' => 'Report outside.pdf']);
+    $root->files()->attach(File::factory()->for($owner)->create(['fileName' => 'Other file.pdf'])->id);
+
+    $this->actingAs($owner)->get(route('collections.show', ['collection' => $root->id, 'search' => 'report', 'sort' => '-name']))
+        ->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('fileMeta.total', 51)->where('children.total', 51)->where('stats.total_files', 52)
+        ->where('workspaceFiles.0.original_name', 'Report 51.pdf')->where('children.data.0.name', 'Report 51')
+        ->where('children.next_page_url', fn ($url) => str_contains($url, 'search=report') && str_contains($url, 'sort=-name'))
+        ->where('filePagination.3.url', fn ($url) => str_contains($url, 'search=report') && str_contains($url, 'files_page=2')));
+    $this->get(route('collections.show', ['collection' => $root->id, 'search' => 'report', 'sort' => '-name', 'files_page' => 2, 'children_page' => 2]))
+        ->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->has('workspaceFiles', 1)->has('children.data', 1)
+        ->where('workspaceFiles.0.original_name', 'Report 01.pdf')->where('children.data.0.name', 'Report 01')
+        ->where('children.prev_page_url', fn ($url) => str_contains($url, 'files_page=2')));
+    $this->get(route('collections.show', ['collection' => $root->id, 'search' => 'missing']))
+        ->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->where('fileMeta.total', 0)->where('children.total', 0));
+    $root->files()->attach(File::factory()->for($owner)->create(['fileName' => '100%_complete.pdf'])->id);
+    $this->get(route('collections.show', ['collection' => $root->id, 'search' => '%_']))
+        ->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->where('fileMeta.total', 1)->where('children.total', 0));
+});
+
+test('shared collection contents expose only authorized descendant counts and read only file actions', function (): void {
+    $owner = User::factory()->create();
+    $viewer = User::factory()->create();
+    $root = Collection::factory()->for($owner)->create();
+    $child = Collection::factory()->for($owner)->create(['parent_id' => $root->id, 'name' => 'Visible child']);
+    $private = Collection::factory()->for($owner)->create(['parent_id' => $root->id, 'name' => 'Private child']);
+    Collection::factory()->for($owner)->create(['parent_id' => $child->id, 'name' => 'Private grandchild']);
+    foreach ([$root, $child] as $folder) {
+        CollectionShare::create(['collection_id' => $folder->id, 'shared_by_user_id' => $owner->id,
+            'shared_with_user_id' => $viewer->id, 'permission' => 'view', 'shared_at' => now()]);
+    }
+    $file = File::factory()->for($owner)->create();
+    $root->files()->attach($file);
+    $child->files()->attach($file);
+    $this->actingAs($viewer)->get(route('collections.show', $root))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('isOwner', false)->where('treePreview', null)->has('publicLinks', 0)
+            ->has('children.data', 1)->where('children.data.0.name', 'Visible child')->where('children.data.0.children_count', 0)
+            ->where('children.data.0.files_count', 1)->where('workspaceFiles.0.can_edit', false));
+    $this->get(route('collections.show', ['collection' => $root->id, 'search' => 'Private']))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('children.total', 0));
+    $this->get(route('collections.show', $private))->assertForbidden();
+    $this->deleteJson(route('collections.files.remove', $root), ['file_ids' => [$file->id]])->assertUnprocessable()->assertJsonValidationErrors('file_ids.0');
+    $owned = File::factory()->for($viewer)->create();
+    $this->deleteJson(route('collections.files.remove', $root), ['file_ids' => [$owned->id]])->assertForbidden();
+    expect($root->files()->withoutGlobalScope('user')->whereKey($file->id)->exists())->toBeTrue();
+});
+
+test('collection content query validation rejects unsupported sorts and invalid page numbers', function (array $query, string $field): void {
+    $owner = User::factory()->create();
+    $folder = Collection::factory()->for($owner)->create();
+    $this->actingAs($owner)->getJson(route('collections.show', ['collection' => $folder->id, ...$query]))
+        ->assertUnprocessable()->assertJsonValidationErrors($field);
+})->with([
+    [['sort' => 'invalid'], 'sort'],
+    [['files_page' => 0], 'files_page'],
+    [['children_page' => -1], 'children_page'],
+    [['search' => str_repeat('a', 256)], 'search'],
+]);
+
+test('removing a file from its folder preserves the original and other collection memberships', function (): void {
+    $owner = User::factory()->create();
+    $folder = Collection::factory()->for($owner)->create();
+    $other = Collection::factory()->for($owner)->create();
+    $file = File::factory()->for($owner)->create(['s3_original_path' => 'original.pdf']);
+    app(FolderTreeService::class)->place($file, $folder);
+    $other->files()->attach($file);
+    $this->actingAs($owner)->delete(route('collections.files.remove', $folder), ['file_ids' => [$file->id]])->assertRedirect()->assertSessionHasNoErrors();
+    expect($file->fresh()->primary_folder_id)->toBeNull()->and($file->fresh()->s3_original_path)->toBe('original.pdf')
+        ->and($file->fresh()->trashed())->toBeFalse()->and($file->fresh()->collections->modelKeys())->toBe([$other->id]);
+});

@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\TransactionCategory;
 use App\Http\Controllers\Concerns\HandlesEntityCrud;
 use App\Http\Requests\BankTransactionIndexRequest;
+use App\Http\Requests\EntityIndexRequest;
 use App\Http\Resources\BankTransactionResource;
 use App\Http\Resources\Inertia\BankStatementInertiaResource;
 use App\Models\BankStatement;
@@ -44,14 +45,32 @@ class BankStatementController extends BaseResourceController
      */
     public function index(Request $request): Response
     {
-        $statements = BankStatement::where('user_id', $request->user()->id)
-            ->with($this->indexWith)
-            ->orderBy($this->defaultSort, $this->defaultSortDirection)
-            ->get()
-            ->map(fn (BankStatement $statement) => BankStatementInertiaResource::forIndex($statement)->toArray(request()));
+        $filters = app(EntityIndexRequest::class)->validated();
+        $query = BankStatement::where('user_id', $request->user()->id)->with($this->indexWith);
+
+        if ($search = $filters['search'] ?? null) {
+            $query->where(function ($query) use ($search): void {
+                $query->where('bank_name', 'ilike', "%{$search}%")
+                    ->orWhere('account_holder_name', 'ilike', "%{$search}%")
+                    ->orWhere('account_number', 'ilike', "%{$search}%");
+            });
+        }
+
+        $sort = $filters['sort'] ?? $this->defaultSort;
+        $direction = $filters['sort_direction'] ?? $this->defaultSortDirection;
+        $statements = $query->orderBy($sort, $direction)->orderBy('id')
+            ->paginate($filters['per_page'] ?? $this->perPage)->withQueryString()
+            ->through(fn (BankStatement $statement) => BankStatementInertiaResource::forIndex($statement)->toArray($request));
 
         return Inertia::render('BankStatements/Index', [
-            'statements' => $statements,
+            'statements' => $statements->items(),
+            'filters' => $filters,
+            'pagination' => [
+                'links' => $statements->linkCollection(),
+                'from' => $statements->firstItem(),
+                'to' => $statements->lastItem(),
+                'total' => $statements->total(),
+            ],
         ]);
     }
 

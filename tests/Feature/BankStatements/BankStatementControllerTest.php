@@ -52,6 +52,38 @@ it('renders bank statements index with structured data', function () {
         );
 });
 
+it('searches, sorts and paginates only the authenticated users statements', function (): void {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+    foreach (range(1, 12) as $number) {
+        $file = File::factory()->for($user)->create(['file_type' => 'bank_statement']);
+        BankStatement::factory()->for($user)->create([
+            'file_id' => $file->id,
+            'bank_name' => 'North Bank',
+            'account_holder_name' => 'Account '.$number,
+            'statement_date' => now()->subDays($number),
+            'closing_balance' => $number * 100,
+        ]);
+    }
+    $foreignFile = File::factory()->for($otherUser)->create(['file_type' => 'bank_statement']);
+    BankStatement::factory()->for($otherUser)->create(['file_id' => $foreignFile->id, 'bank_name' => 'North Bank']);
+
+    $this->actingAs($user)->get(route('bank-statements.index', [
+        'search' => 'north bank', 'sort' => 'closing_balance', 'sort_direction' => 'desc', 'per_page' => 10,
+    ]))->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->has('statements', 10)
+        ->where('statements.0.closing_balance', '1200.00')
+        ->where('pagination.total', 12)
+        ->where('filters.search', 'north bank'));
+
+    $this->get(route('bank-statements.index', [
+        'search' => 'north bank', 'sort' => 'closing_balance', 'sort_direction' => 'desc', 'per_page' => 10, 'page' => 2,
+    ]))->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->has('statements', 2)
+        ->where('statements.0.closing_balance', '200.00')
+        ->where('pagination.total', 12));
+});
+
 it('only shows statements for the authenticated user', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();

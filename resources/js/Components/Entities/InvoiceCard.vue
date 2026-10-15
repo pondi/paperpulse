@@ -1,118 +1,58 @@
 <template>
-  <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-sm p-6 border-l-4 border-indigo-500 dark:border-indigo-400">
-    <div class="flex justify-between items-start mb-4">
-      <div class="flex-1">
-        <h3 class="font-semibold text-lg text-zinc-900 dark:text-zinc-100">Invoice #{{ invoice.invoice_number }}</h3>
-        <p class="text-sm text-zinc-600 dark:text-zinc-400">From: {{ invoice.from_name }}</p>
+  <Link
+    :href="route('invoices.show', invoice.id)"
+    class="group block rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-amber-400 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:border-zinc-700 dark:bg-zinc-800 dark:focus-visible:ring-offset-zinc-900 sm:p-5"
+  >
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="min-w-0">
+        <p class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{{ invoice.invoice_type || 'Invoice' }}</p>
+        <h2 class="mt-1 truncate text-base font-semibold text-zinc-950 group-hover:text-amber-700 dark:text-zinc-100 dark:group-hover:text-amber-300">
+          {{ invoice.invoice_number || 'Invoice without number' }}
+        </h2>
+        <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{{ invoice.from_name || 'Unknown sender' }}</p>
       </div>
-      <span class="px-2 py-1 text-xs rounded font-medium" :class="paymentStatusClass">
+      <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" :class="paymentStatusClass">
         {{ paymentStatusLabel }}
       </span>
     </div>
 
-    <div class="space-y-3">
-      <div class="grid grid-cols-2 gap-3 text-sm">
-        <div v-if="invoice.invoice_date">
-          <span class="text-zinc-600 dark:text-zinc-400 block text-xs font-medium mb-1">Invoice Date</span>
-          <span class="text-zinc-900 dark:text-zinc-100">{{ formatDate(invoice.invoice_date) }}</span>
-        </div>
-        <div v-if="invoice.due_date">
-          <span class="text-zinc-600 dark:text-zinc-400 block text-xs font-medium mb-1">Due Date</span>
-          <span :class="{'text-red-600 dark:text-red-400 font-semibold': isOverdue}">
-            {{ formatDate(invoice.due_date) }}
-          </span>
-        </div>
+    <dl class="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-zinc-100 pt-4 dark:border-zinc-700 sm:grid-cols-4">
+      <div>
+        <dt class="text-xs text-zinc-500 dark:text-zinc-400">Total</dt>
+        <dd class="mt-1 font-semibold tabular-nums text-zinc-950 dark:text-zinc-100">{{ formatCurrency(invoice.total_amount, invoice.currency) }}</dd>
       </div>
-
-      <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded border border-indigo-200 dark:border-indigo-800">
-        <div class="flex justify-between items-center">
-          <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Total Amount</span>
-          <span class="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-            {{ formatCurrency(invoice.total_amount, invoice.currency) }}
-          </span>
-        </div>
-        <div v-if="invoice.amount_due > 0" class="flex justify-between items-center mt-2 pt-2 border-t border-indigo-200 dark:border-indigo-700">
-          <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Amount Due</span>
-          <span class="text-lg font-bold text-red-600 dark:text-red-400">
-            {{ formatCurrency(invoice.amount_due, invoice.currency) }}
-          </span>
-        </div>
+      <div>
+        <dt class="text-xs text-zinc-500 dark:text-zinc-400">Amount due</dt>
+        <dd class="mt-1 font-semibold tabular-nums" :class="amountDue > 0 ? 'text-rose-700 dark:text-rose-300' : 'text-zinc-700 dark:text-zinc-200'">{{ formatCurrency(invoice.amount_due ?? 0, invoice.currency) }}</dd>
       </div>
-
-      <div v-if="lineItemsCount > 0" class="text-xs text-zinc-600 dark:text-zinc-400">
-        <p class="font-medium mb-1">{{ lineItemsCount }} line item(s)</p>
+      <div>
+        <dt class="text-xs text-zinc-500 dark:text-zinc-400">Invoice date</dt>
+        <dd class="mt-1 text-sm text-zinc-800 dark:text-zinc-200">{{ invoice.invoice_date ? formatDate(invoice.invoice_date) : '—' }}</dd>
       </div>
-
-      <div v-if="invoice.payment_terms" class="text-xs text-zinc-600 dark:text-zinc-400 border-t border-zinc-200 dark:border-zinc-700 pt-3">
-        <p class="font-medium mb-1">Payment Terms:</p>
-        <p class="line-clamp-2">{{ invoice.payment_terms }}</p>
+      <div>
+        <dt class="text-xs text-zinc-500 dark:text-zinc-400">Due date</dt>
+        <dd class="mt-1 text-sm" :class="isOverdue ? 'font-semibold text-rose-700 dark:text-rose-300' : 'text-zinc-800 dark:text-zinc-200'">
+          {{ invoice.due_date ? formatDate(invoice.due_date) : '—' }}<span v-if="isOverdue" class="sr-only">, overdue</span>
+        </dd>
       </div>
-    </div>
-
-    <div v-if="showActions" class="mt-4">
-      <button
-        @click="$emit('view', invoice.id)"
-        class="w-full text-sm px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-medium transition-colors"
-      >
-        View Invoice
-      </button>
-    </div>
-  </div>
+    </dl>
+  </Link>
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { useDateFormatter } from '@/Composables/useDateFormatter';
+import { computed } from 'vue'
+import { Link } from '@inertiajs/vue3'
+import { useDateFormatter } from '@/Composables/useDateFormatter'
 
-const { formatDate, formatCurrency } = useDateFormatter();
-
-const props = defineProps({
-  invoice: {
-    type: Object,
-    required: true
-  },
-  showActions: {
-    type: Boolean,
-    default: true
-  }
-});
-
-defineEmits(['view']);
-
-const isOverdue = computed(() => {
-  if (!props.invoice.due_date) return false;
-  return new Date(props.invoice.due_date) < new Date() && props.invoice.payment_status !== 'paid';
-});
-
-const lineItemsCount = computed(() => {
-  if (typeof props.invoice.line_items_count === 'number') {
-    return props.invoice.line_items_count;
-  }
-
-  if (Array.isArray(props.invoice.line_items)) {
-    return props.invoice.line_items.length;
-  }
-
-  return 0;
-});
-
-const paymentStatusLabel = computed(() => {
-  const labels = {
-    'paid': 'Paid',
-    'unpaid': 'Unpaid',
-    'partial': 'Partially Paid',
-    'overdue': 'Overdue'
-  };
-  return labels[props.invoice.payment_status] || props.invoice.payment_status;
-});
-
-const paymentStatusClass = computed(() => {
-  const classes = {
-    'paid': 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
-    'unpaid': 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',
-    'partial': 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300',
-    'overdue': 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-  };
-  return classes[props.invoice.payment_status] || 'bg-zinc-100 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-300';
-});
+const props = defineProps({ invoice: { type: Object, required: true } })
+const { formatDate, formatCurrency } = useDateFormatter()
+const amountDue = computed(() => Number(props.invoice.amount_due ?? 0))
+const isOverdue = computed(() => props.invoice.due_date && amountDue.value > 0 && new Date(`${props.invoice.due_date}T00:00:00`) < new Date(new Date().toDateString()))
+const paymentStatusLabel = computed(() => ({ paid: 'Paid', unpaid: 'Unpaid', partial: 'Partially paid', overdue: 'Overdue' }[props.invoice.payment_status] || 'Unknown status'))
+const paymentStatusClass = computed(() => ({
+  paid: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+  unpaid: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300',
+  partial: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+  overdue: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300',
+}[props.invoice.payment_status] || 'bg-zinc-100 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200'))
 </script>

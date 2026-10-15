@@ -162,6 +162,17 @@ it('renders vouchers index with structured data', function () {
         );
 });
 
+it('allows voucher redemption from the voucher list action', function (): void {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id, 'file_type' => 'voucher']);
+    $voucher = Voucher::factory()->create(['user_id' => $user->id, 'file_id' => $file->id, 'is_redeemed' => false, 'redeemed_at' => null]);
+
+    $this->actingAs($user)->post(route('vouchers.redeem', $voucher))->assertRedirect();
+
+    expect($voucher->fresh()->is_redeemed)->toBeTrue()
+        ->and($voucher->fresh()->redeemed_at)->not->toBeNull();
+});
+
 it('renders invoice show with file data', function () {
     $user = User::factory()->create();
     $file = File::factory()->create([

@@ -1,12 +1,16 @@
 <?php
 
+use App\Models\BankStatement;
 use App\Models\Collection;
+use App\Models\Contract;
 use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\FileShare;
+use App\Models\Invoice;
 use App\Models\Merchant;
 use App\Models\Receipt;
+use App\Models\Voucher;
 use App\Services\Files\StoragePathBuilder;
 use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Facades\Storage;
@@ -111,6 +115,61 @@ it('keeps shared controls readable and exposes keyboard focus in both themes', f
         $browser->assertScript('getComputedStyle(document.documentElement).colorScheme', 'dark')
             ->assertScript("getComputedStyle(document.querySelector('#email')).outlineStyle", 'solid');
         $browser->script("document.documentElement.classList.remove('dark')");
+    });
+});
+
+it('presents financial entity lists as compact responsive links with statement retrieval controls', function (): void {
+    $user = $this->createUser();
+    Invoice::factory()->for($user)->create([
+        'invoice_number' => 'INV-COMPARE-42', 'from_name' => 'Northstar Works', 'payment_status' => 'unpaid',
+        'total_amount' => 1250, 'amount_paid' => 250, 'amount_due' => 1000, 'invoice_date' => '2026-09-01', 'due_date' => '2026-10-30',
+    ]);
+    Contract::factory()->for($user)->create([
+        'contract_title' => 'Workshop agreement', 'contract_number' => 'CT-042', 'status' => 'active',
+        'effective_date' => '2026-01-01', 'expiry_date' => null, 'contract_value' => 5000,
+    ]);
+    Voucher::factory()->for($user)->create([
+        'code' => 'GIFT-42', 'voucher_type' => 'gift_card', 'current_value' => 0, 'expiry_date' => null, 'is_redeemed' => false,
+    ]);
+    BankStatement::factory()->for($user)->create([
+        'bank_name' => 'North Bank', 'account_holder_name' => 'Alex Morgan', 'account_number' => '123456789012',
+        'statement_period_start' => '2026-09-01', 'statement_period_end' => '2026-09-30', 'closing_balance' => 4500,
+    ]);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->resize(1440, 1000)->loginAs($user)->visit('/invoices')->waitForText('INV-COMPARE-42')
+            ->assertPresent('a[href*="/invoices/"]')->assertSee('Amount due')->assertSee('Unpaid');
+        $browser->script("document.querySelector('a[href*=\"/invoices/\"]').focus()");
+        $browser->assertScript('document.activeElement.tagName', 'A')
+            ->visit('/contracts')->waitForText('Workshop agreement')->assertPresent('a[href*="/contracts/"]')
+            ->assertSee('No expiry date')->assertSee('Active')
+            ->visit('/vouchers')->waitForText('GIFT-42')->assertPresent('a[href*="/vouchers/"]')
+            ->assertSee('Remaining value')->assertSee('Mark redeemed')
+            ->visit('/bank-statements')->waitForText('North Bank')->assertPresent('a[href*="/bank-statements/"]')
+            ->assertSee('2026-09-01 – 2026-09-30')->assertSee('Closing balance');
+
+        $browser->type('#statement-search', 'Alex Morgan')
+            ->waitUntil('new URL(location.href).searchParams.get("search") === "Alex Morgan"');
+        foreach ([
+            ['/invoices', 'INV-COMPARE-42'],
+            ['/contracts', 'Workshop agreement'],
+            ['/vouchers', 'GIFT-42'],
+            ['/bank-statements', 'North Bank'],
+        ] as [$path, $content]) {
+            foreach ([320, 390, 768] as $width) {
+                $browser->visit($path)->waitForText($content)->resize($width, 844)
+                    ->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
+                if ($path === '/bank-statements' && $width === 390) {
+                    $browser->screenshot('redesign-financial-entities-390');
+                }
+            }
+        }
+        $browser->click('button[aria-label$="Switch to dark mode"]')
+            ->waitUntil('document.documentElement.classList.contains("dark")')
+            ->waitUntil("getComputedStyle(Array.from(document.querySelectorAll('a')).find(link => /\\/bank-statements\\/\\d+$/.test(link.pathname))).backgroundColor === 'rgb(39, 39, 42)'")
+            ->screenshot('redesign-financial-entities-dark');
+        $browser->click('button[aria-label$="Switch to light mode"]')->waitUntil('!document.documentElement.classList.contains("dark")');
+        $browser->screenshot('redesign-financial-entities-mobile');
     });
 });
 

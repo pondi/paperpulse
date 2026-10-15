@@ -68,7 +68,7 @@ class ReceiptController extends BaseResourceController
     /**
      * Override show method to pass correct prop name for Vue component.
      */
-    public function show($id): Response|\Illuminate\Http\RedirectResponse
+    public function show($id): Response|RedirectResponse
     {
         $receipt = $this->model::accessibleBy(auth()->user())->with($this->showWith)->with(['file' => fn ($query) => $query->withoutGlobalScope('user'),
             'merchant' => fn ($query) => $query->withoutGlobalScope('user'),
@@ -130,10 +130,14 @@ class ReceiptController extends BaseResourceController
         return inertia("{$this->resource}/Index", [
             'receipts' => $receipts->through(fn ($receipt) => $this->transformForIndex($receipt))->items(),
             'categories' => $categories,
+            'merchant' => $request->filled('merchant_id')
+                ? Merchant::query()->where('user_id', $user->id)->findOrFail($request->input('merchant_id'), ['id', 'name'])
+                : null,
             'category' => $request->filled('category_id')
                 ? $user->categories()->findOrFail($request->input('category_id'), ['id', 'name'])
                 : null,
             'pagination' => [
+                'links' => $receipts->linkCollection()->toArray(),
                 'current_page' => $receipts->currentPage(),
                 'last_page' => $receipts->lastPage(),
                 'per_page' => $receipts->perPage(),
@@ -314,7 +318,7 @@ class ReceiptController extends BaseResourceController
     /**
      * Show receipts by merchant.
      */
-    public function byMerchant($merchant)
+    public function byMerchant(Request $request, $merchant): Response
     {
         // Validate merchant ID
         $merchantModel = Merchant::findOrFail($merchant);
@@ -328,19 +332,9 @@ class ReceiptController extends BaseResourceController
             abort(403, 'Unauthorized access to merchant');
         }
 
-        $receipts = Receipt::where('merchant_id', $merchantModel->id)
-            ->where('user_id', auth()->id())
-            ->with(['merchant', 'file', 'lineItems', 'category', 'tags'])
-            ->orderBy('receipt_date', 'desc')
-            ->get()
-            ->map(function ($receipt) {
-                return $this->transformForIndex($receipt);
-            });
+        $request->merge(['merchant_id' => $merchantModel->id]);
 
-        return Inertia::render('Receipt/Index', [
-            'receipts' => $receipts,
-            'merchant' => $merchantModel->only(['id', 'name']),
-        ]);
+        return $this->index($request);
     }
 
     /**

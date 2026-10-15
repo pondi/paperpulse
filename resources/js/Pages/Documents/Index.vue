@@ -1,839 +1,144 @@
-<script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+<script setup>
+import { computed, ref, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import SearchBar from '@/Components/Features/SearchBar.vue';
-import Checkbox from '@/Components/Forms/Checkbox.vue';
 import Modal from '@/Components/Common/Modal.vue';
-import DangerButton from '@/Components/Buttons/DangerButton.vue';
-import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';
+import Pagination from '@/Components/Common/Pagination.vue';
 import DocumentDrawer from '@/Components/Domain/DocumentDrawer.vue';
-import {
-    DocumentIcon,
-    ShareIcon,
-    TrashIcon,
-    ArrowDownTrayIcon,
-    EyeIcon,
-    FunnelIcon,
-    Squares2X2Icon,
-    ListBulletIcon,
-} from '@heroicons/vue/24/outline';
+import { DocumentIcon, Squares2X2Icon, ListBulletIcon } from '@heroicons/vue/24/outline';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 
-interface Document {
-    id: number;
-    file_id: number;
-    title: string;
-    note?: string | null;
-    description?: string | null;
-    file_name: string;
-    file_type: string;
-    size: number;
-    created_at: string;
-    updated_at: string;
-    uploaded_at?: string;
-    entity_type?: string;
-    entity_details?: {
-        // Invoice
-        date?: string;
-        due_date?: string;
-        total?: number;
-        currency?: string;
-        status?: string;
-        from?: string;
-        to?: string;
-        payment_terms?: string;
-        invoice_number?: string;
-        // Contract
-        effective_date?: string;
-        expiration_date?: string;
-        type?: string;
-        parties?: string[];
-        contract_value?: number;
-        summary?: string;
-        // Voucher
-        expiry_date?: string;
-        discount?: number;
-        code?: string;
-        voucher_type?: string;
-        original_value?: number;
-        current_value?: number;
-        is_redeemed?: boolean;
-        // Warranty
-        product?: string;
-        manufacturer?: string;
-        warranty_type?: string;
-        start_date?: string;
-        coverage_type?: string;
-        // BankStatement
-        closing_balance?: number;
-        bank_name?: string;
-        opening_balance?: number;
-        transaction_count?: number;
-        period_start?: string;
-        period_end?: string;
-        // Document
-        document_type?: string;
-        document_date?: string;
-    };
-    category?: {
-        id: number;
-        name: string;
-        color: string;
-    };
-    tags: Array<{
-        id: number;
-        name: string;
-        color?: string;
-    }>;
-    shared_with_count: number;
-    file?: {
-        id: number;
-        url: string;
-        pdfUrl: string | null;
-        previewUrl?: string | null;
-        extension: string;
-        size?: number;
-        has_preview?: boolean;
-        is_pdf?: boolean;
-    } | null;
-}
-
-interface Props {
-    documents: {
-        data: Document[];
-        links: any;
-        meta: any;
-    };
-    categories: Array<{
-        id: number;
-        name: string;
-        color: string;
-    }>;
-    filters: {
-        search?: string;
-        category?: number;
-        tag?: string;
-        date_from?: string;
-        date_to?: string;
-    };
-}
-
-const props = defineProps<Props>();
-const activeCategory = computed(() => props.categories.find(category => category.id === Number(props.filters.category)));
-
-const { formatDate: formatDateLocalized, formatCurrency: formatCurrencyLocalized, formatDate, formatCurrency } = useDateFormatter();
-
-const selectedDocuments = ref<number[]>([]);
+const props = defineProps({ documents: { type: Object, required: true }, categories: { type: Array, default: () => [] }, filters: { type: Object, default: () => ({}) } });
+const { formatDate, formatCurrency } = useDateFormatter();
+const search = ref(props.filters.search || '');
+const categoryId = ref(props.filters.category || '');
+const tag = ref(props.filters.tag || '');
+const viewMode = ref('grid');
+const selectedDocuments = ref([]);
+const selectedDocument = ref(null);
 const showDeleteModal = ref(false);
-const showFilters = ref(false);
-const viewMode = ref<'grid' | 'list'>('grid');
-const isDrawerOpen = ref(false);
-const selectedDocument = ref<Document | null>(null);
-
-onMounted(() => {
-    document.addEventListener('keydown', handleKeyDown);
-});
-
-onUnmounted(() => {
-    document.removeEventListener('keydown', handleKeyDown);
-});
-
-const allSelected = computed(() => {
-    return selectedDocuments.value.length === props.documents.data.length && props.documents.data.length > 0;
-});
-
-const someSelected = computed(() => {
-    return selectedDocuments.value.length > 0 && selectedDocuments.value.length < props.documents.data.length;
-});
-
-const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
-
-
-const toggleAll = () => {
-    if (allSelected.value) {
-        selectedDocuments.value = [];
-    } else {
-        selectedDocuments.value = props.documents.data.map(doc => doc.file_id);
-    }
-};
-
-const toggleDocument = (id: number) => {
-    const index = selectedDocuments.value.indexOf(id);
-    if (index > -1) {
-        selectedDocuments.value.splice(index, 1);
-    } else {
-        selectedDocuments.value.push(id);
-    }
-};
-
-const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024);
-
-const handleResize = () => {
-    windowWidth.value = window.innerWidth;
-};
-
-onMounted(() => {
-    window.addEventListener('resize', handleResize);
-});
-
-onUnmounted(() => {
-    window.removeEventListener('resize', handleResize);
-});
-
-const containerStyle = computed(() => ({
-    paddingLeft: '1.5rem',
-    paddingRight: isDrawerOpen.value ? (windowWidth.value < 640 ? '0' : '532px') : '1.5rem',
-    maxWidth: '100vw',
-    transition: 'padding-right 500ms ease-in-out',
-}));
-
-const viewDocument = (doc: Document) => {
-    selectedDocument.value = doc;
-    isDrawerOpen.value = true;
-};
-
-const closeDrawer = () => {
-    isDrawerOpen.value = false;
-    setTimeout(() => {
-        selectedDocument.value = null;
-    }, 500);
-};
-
-const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape' && isDrawerOpen.value) {
-        closeDrawer();
-    }
-};
-
-const deleteSelected = () => {
+const busy = ref(false);
+const loading = ref(false);
+const error = ref('');
+const thumbnailErrors = ref(new Set());
+const activeCategory = computed(() => props.categories.find(category => category.id === Number(props.filters.category)));
+const filtered = computed(() => !!(props.filters.search || props.filters.category || props.filters.tag));
+const allSelected = computed(() => props.documents.data.length > 0 && selectedDocuments.value.length === props.documents.data.length);
+watch(() => props.documents.data, () => { selectedDocuments.value = []; });
+watch(() => props.filters, filters => { search.value = filters.search || ''; categoryId.value = filters.category || ''; tag.value = filters.tag || ''; });
+function browse() {
+    error.value = '';
+    router.get(route('documents.index'), { ...props.filters, search: search.value || undefined, category: categoryId.value || undefined, tag: tag.value || undefined }, {
+        preserveState: true, preserveScroll: true,
+        onStart: () => { loading.value = true; },
+        onError: errors => { error.value = Object.values(errors).join(' '); },
+        onFinish: () => { loading.value = false; },
+    });
+}
+function toggleAll() { selectedDocuments.value = allSelected.value ? [] : props.documents.data.map(document => document.file_id); }
+function removeOne(document) { selectedDocuments.value = [document.file_id]; error.value = ''; showDeleteModal.value = true; }
+function deleteSelected() {
+    if (busy.value) return;
+    busy.value = true;
+    error.value = '';
     router.delete(route('documents.destroy-bulk'), {
-        data: { ids: selectedDocuments.value },
-        onSuccess: () => {
-            selectedDocuments.value = [];
-            showDeleteModal.value = false;
-        }
+        data: { ids: selectedDocuments.value }, preserveScroll: true,
+        onSuccess: () => { selectedDocuments.value = []; showDeleteModal.value = false; },
+        onError: errors => { error.value = Object.values(errors).join(' '); },
+        onFinish: () => { busy.value = false; },
     });
-};
-
-const downloadSelected = () => {
-    window.location.href = route('documents.download-bulk', { ids: selectedDocuments.value });
-};
-
-const applyFilter = (filters: any) => {
-    router.get(route('documents.index'), filters, {
-        preserveState: true,
-        preserveScroll: true
-    });
-};
-
-const thumbnailErrors = ref<Set<number>>(new Set());
-
-const handleThumbnailError = (documentId: number) => {
-    thumbnailErrors.value.add(documentId);
-};
-
-// Helper to get correct route name based on entity type
-const getShowRoute = (document: Document) => {
-    const entityType = document.entity_type || 'document';
-
-    switch (entityType) {
-        case 'contract':
-            return route('contracts.show', document.id);
-        case 'invoice':
-            return route('invoices.show', document.id);
-        case 'voucher':
-            return route('vouchers.show', document.id);
-        case 'bank_statement':
-        case 'bankstatement':
-            return route('bank-statements.show', document.id);
-        case 'document':
-        default:
-            return route('documents.show', document.id);
+}
+function formatFileSize(bytes) {
+    if (bytes == null) return 'Size unavailable';
+    if (bytes === 0) return '0 Bytes';
+    const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 3);
+    return `${parseFloat((bytes / Math.pow(1024, index)).toFixed(2))} ${['Bytes', 'KB', 'MB', 'GB'][index]}`;
+}
+function entityLabel(type) { return ({ document: 'Document', invoice: 'Invoice', contract: 'Contract', voucher: 'Voucher', warranty: 'Warranty', bankstatement: 'Statement', bank_statement: 'Statement', returnpolicy: 'Return policy', return_policy: 'Return policy' })[type] || 'Document'; }
+function getShowRoute(document) {
+    const routeName = ({ contract: 'contracts.show', invoice: 'invoices.show', voucher: 'vouchers.show', bank_statement: 'bank-statements.show', bankstatement: 'bank-statements.show', document: 'documents.show' })[document.entity_type || 'document'];
+    return routeName ? route(routeName, document.id) : route('files.show', document.file_id);
+}
+function entitySummary(document) {
+    const detail = document.entity_details || {};
+    const dateRange = [detail.effective_date, detail.expiration_date].filter(Boolean).map(value => formatDate(value)).join(' – ');
+    switch (document.entity_type) {
+        case 'invoice': return [detail.from, detail.date && formatDate(detail.date), detail.total != null && formatCurrency(detail.total, detail.currency), detail.status].filter(Boolean);
+        case 'contract': return [detail.type, dateRange, detail.status].filter(Boolean);
+        case 'voucher': return [detail.code, detail.expiry_date && `Expires ${formatDate(detail.expiry_date)}`].filter(Boolean);
+        case 'warranty': return [detail.product, detail.expiry_date && `Expires ${formatDate(detail.expiry_date)}`].filter(Boolean);
+        case 'bank_statement': case 'bankstatement': return [detail.date && formatDate(detail.date), detail.closing_balance != null && `Balance ${formatCurrency(detail.closing_balance, detail.currency)}`].filter(Boolean);
+        default: return [];
     }
-};
-
-const getEntityTypeBadge = (entityType?: string) => {
-    switch (entityType) {
-        case 'invoice':
-            return { label: 'Invoice', bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-700 dark:text-blue-300' };
-        case 'contract':
-            return { label: 'Contract', bg: 'bg-purple-100 dark:bg-purple-900/50', text: 'text-purple-700 dark:text-purple-300' };
-        case 'voucher':
-            return { label: 'Voucher', bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-700 dark:text-green-300' };
-        case 'warranty':
-            return { label: 'Warranty', bg: 'bg-orange-100 dark:bg-orange-900/50', text: 'text-orange-700 dark:text-orange-300' };
-        case 'bank_statement':
-        case 'bankstatement':
-            return { label: 'Statement', bg: 'bg-teal-100 dark:bg-teal-900/50', text: 'text-teal-700 dark:text-teal-300' };
-        case 'document':
-        default:
-            return { label: 'Document', bg: 'bg-zinc-100 dark:bg-zinc-700', text: 'text-zinc-700 dark:text-zinc-300' };
-    }
-};
-
-
+}
 </script>
 
 <template>
-    <Head title="Documents" />
-
     <AuthenticatedLayout>
+        <Head title="Documents" />
         <template #header>
-            <div class="flex items-center justify-between">
-                <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
-                    Documents
-                </h2>
-                <div class="flex items-center space-x-4">
-                    <Link
-                        :href="route('documents.upload')"
-                        class="inline-flex items-center px-4 py-2 bg-zinc-900 dark:bg-orange-600 border border-transparent rounded-md font-bold text-sm text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200"
-                    >
-                        Upload Document
-                    </Link>
-                </div>
-            </div>
+            <div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0 basis-full sm:flex-1 sm:basis-0"><h1 class="page-heading">Documents</h1><p class="page-description">Browse processed documents, agreements and financial records.</p></div><Link :href="route('documents.upload')" class="workspace-primary">Upload Document</Link></div>
         </template>
-
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto transition-all duration-500 ease-in-out" :style="containerStyle">
-                <!-- Flash Message -->
-                <div v-if="$page.props.flash?.success" class="mb-6 rounded-md bg-green-50 p-4">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 10-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.06l2.5 2.5a.75.75 0 001.137-.089l4.06-5.5z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-sm font-medium text-green-800">{{ $page.props.flash.success }}</p>
-                        </div>
-                    </div>
+        <div class="flex min-w-0 flex-col gap-5">
+            <form role="search" aria-label="Find documents" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_minmax(10rem,auto)_minmax(8rem,auto)_auto]" @submit.prevent="browse">
+                <div class="min-w-0"><label for="document-search" class="field-label mb-1">Search filenames</label><input id="document-search" v-model="search" type="search" class="workspace-filter w-full" placeholder="Original filename" /></div>
+                <div class="min-w-0"><label for="document-category" class="field-label mb-1">Category</label><select id="document-category" v-model="categoryId" class="workspace-filter w-full" @change="browse"><option value="">All categories</option><option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option></select></div>
+                <div class="min-w-0"><label for="document-tag" class="field-label mb-1">Tag</label><input id="document-tag" v-model="tag" class="workspace-filter w-full" placeholder="Exact tag name" /></div>
+                <button type="submit" class="workspace-button self-end" :disabled="loading">Search</button>
+            </form>
+            <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
+                <div class="flex flex-wrap items-center gap-3"><p v-if="activeCategory">Category: <strong class="font-medium">{{ activeCategory.name }}</strong></p><Link v-if="filtered" :href="route('documents.index')" class="underline underline-offset-4">All documents</Link><Link :href="route('documents.shared')" class="text-zinc-500 underline underline-offset-4 dark:text-zinc-400">Shared documents</Link></div>
+                <div class="flex gap-1" aria-label="Document display"><button type="button" class="workspace-button" aria-label="Grid view" :aria-pressed="viewMode === 'grid'" @click="viewMode = 'grid'"><Squares2X2Icon class="h-4 w-4" aria-hidden="true" /></button><button type="button" class="workspace-button" aria-label="List view" :aria-pressed="viewMode === 'list'" @click="viewMode = 'list'"><ListBulletIcon class="h-4 w-4" aria-hidden="true" /></button></div>
+            </div>
+            <p v-if="loading" role="status" class="text-sm text-zinc-500">Loading documents…</p>
+            <p v-if="error && !showDeleteModal" role="alert" class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
+            <div v-if="selectedDocuments.length" class="workspace-surface flex flex-wrap items-center gap-2 p-3" role="region" aria-label="Selected document actions">
+                <span class="mr-auto text-sm font-medium" role="status">{{ selectedDocuments.length }} document(s) selected</span>
+                <a :href="route('documents.download-bulk', { ids: selectedDocuments })" class="workspace-button">Download</a>
+                <button type="button" class="workspace-button !text-red-700 dark:!text-red-400" :disabled="busy" @click="error = ''; showDeleteModal = true">Delete</button>
+                <button type="button" class="workspace-button" :disabled="busy" @click="selectedDocuments = []">Clear selection</button>
+            </div>
+            <section aria-label="Documents" :aria-busy="loading || busy" class="min-w-0">
+                <div v-if="!documents.data.length" class="workspace-surface workspace-empty">
+                    <DocumentIcon class="h-8 w-8 text-zinc-400" aria-hidden="true" /><h2 class="section-heading">{{ activeCategory ? `No documents in ${activeCategory.name}` : filtered ? 'No documents match your filters' : 'No documents found' }}</h2>
+                    <p>{{ filtered ? 'Adjust your search or clear the filters to see more documents.' : 'Upload your first document to get started.' }}</p>
+                    <Link v-if="filtered" :href="route('documents.index')" class="workspace-button">All documents</Link><Link v-else :href="route('documents.upload')" class="workspace-primary">Upload Document</Link>
                 </div>
-                <!-- Search and Filters -->
-                <div class="mb-6 flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <SearchBar 
-                            :initial-search="filters.search" 
-                            placeholder="Search documents..."
-                            @search="(search) => applyFilter({ ...filters, search })"
-                        />
-                        <button
-                            @click="showFilters = !showFilters"
-                            class="inline-flex items-center px-4 py-2 border-2 border-zinc-900 dark:border-zinc-600 rounded-md shadow-sm text-sm font-bold text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-800 hover:bg-amber-50 dark:hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all duration-200"
-                        >
-                            <FunnelIcon class="h-5 w-5 mr-2" />
-                            Filters
-                        </button>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <button
-                            @click="viewMode = 'grid'"
-                            :class="[
-                                'p-2 rounded',
-                                viewMode === 'grid' 
-                                    ? 'bg-amber-100 dark:bg-orange-900 text-amber-600 dark:text-amber-400' 
-                                    : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'
-                            ]"
-                        >
-                            <Squares2X2Icon class="h-5 w-5" />
-                        </button>
-                        <button
-                            @click="viewMode = 'list'"
-                            :class="[
-                                'p-2 rounded',
-                                viewMode === 'list' 
-                                    ? 'bg-amber-100 dark:bg-orange-900 text-amber-600 dark:text-amber-400' 
-                                    : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'
-                            ]"
-                        >
-                            <ListBulletIcon class="h-5 w-5" />
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Bulk Actions -->
-                <div v-if="selectedDocuments.length > 0" class="mb-6 bg-amber-50 dark:bg-zinc-800 rounded-lg p-4 shadow-lg border-l-4 border-amber-600 dark:border-amber-500">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                            {{ selectedDocuments.length }} document(s) selected
-                        </span>
-                        <div class="flex items-center gap-2">
-                            <button
-                                @click="downloadSelected"
-                                class="inline-flex items-center px-3 py-1.5 border-2 border-zinc-900 dark:border-zinc-600 rounded-md text-sm font-bold text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-700 hover:bg-amber-50 dark:hover:bg-zinc-600 transition-all duration-200"
-                            >
-                                <ArrowDownTrayIcon class="h-4 w-4 mr-1" />
-                                Download
+                <template v-else>
+                    <label v-if="viewMode === 'grid'" class="mb-3 inline-flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" :checked="allSelected" :indeterminate="selectedDocuments.length > 0 && !allSelected" :disabled="busy" @change="toggleAll" />Select all documents on this page</label>
+                    <div v-if="viewMode === 'grid'" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                        <article v-for="document in documents.data" :key="document.file_id" class="workspace-surface flex flex-col gap-3 p-4" :data-document-id="document.file_id">
+                            <div class="flex items-center justify-between gap-3 text-xs text-zinc-500 dark:text-zinc-400"><span>{{ entityLabel(document.entity_type) }}</span><input v-model="selectedDocuments" type="checkbox" :value="document.file_id" :disabled="busy" :aria-label="`Select ${document.title} (file #${document.file_id})`" /></div>
+                            <button type="button" class="group flex min-w-0 flex-col gap-3 rounded text-left" :dusk="`document-preview-${document.file_id}`" @click="selectedDocument = document">
+                                <span class="flex aspect-[4/3] max-h-40 w-full items-center justify-center overflow-hidden rounded bg-zinc-50 dark:bg-zinc-950"><img v-if="document.file?.has_preview && !thumbnailErrors.has(document.file_id)" :src="document.file.previewUrl || document.file.url" alt="" class="h-full w-full object-contain" @error="thumbnailErrors.add(document.file_id)" /><DocumentIcon v-else class="h-10 w-10 text-zinc-300 dark:text-zinc-600" aria-hidden="true" /></span>
+                                <span class="font-medium text-zinc-900 group-hover:underline [overflow-wrap:anywhere] dark:text-zinc-100">{{ document.title }}</span>
                             </button>
-                            <button
-                                @click="showDeleteModal = true"
-                                class="inline-flex items-center px-3 py-1.5 border-2 border-red-600 dark:border-red-600 rounded-md text-sm font-bold text-red-700 dark:text-red-400 bg-white dark:bg-zinc-700 hover:bg-red-50 dark:hover:bg-red-900 transition-all duration-200"
-                            >
-                                <TrashIcon class="h-4 w-4 mr-1" />
-                                Delete
-                            </button>
-                        </div>
+                            <p class="truncate text-xs text-zinc-500" :title="document.file_name">{{ document.file_name }}</p>
+                            <div v-if="entitySummary(document).length" class="flex flex-col gap-1 text-sm text-zinc-600 [overflow-wrap:anywhere] dark:text-zinc-400"><p v-for="(line, index) in entitySummary(document)" :key="index">{{ line }}</p></div>
+                            <p v-if="document.note" class="line-clamp-2 text-sm text-zinc-500 [overflow-wrap:anywhere]">{{ document.note }}</p>
+                            <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400"><span>{{ formatFileSize(document.size) }}</span><span>{{ formatDate(document.created_at) }}</span><span v-if="document.category">{{ document.category.name }}</span><span v-if="document.shared_with_count">Shared with {{ document.shared_with_count }}</span></div>
+                            <p v-if="document.tags?.length" class="text-xs text-zinc-500 [overflow-wrap:anywhere]">{{ document.tags.map(tag => tag.name).join(', ') }}</p>
+                            <div class="mt-auto flex flex-wrap items-center gap-3 border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800"><Link :href="getShowRoute(document)" class="inline-flex min-h-9 items-center underline underline-offset-4" :aria-label="`Open ${document.title}`">Open</Link><a v-if="document.file?.url" :href="document.file.url" :download="document.file_name" class="inline-flex min-h-9 items-center underline underline-offset-4">Download</a><button type="button" class="ml-auto min-h-9 text-red-700 dark:text-red-400" :disabled="busy" :aria-label="`Delete ${document.title}`" @click="removeOne(document)">Delete</button></div>
+                        </article>
                     </div>
-                </div>
-
-                <!-- Documents Grid/List -->
-                <div class="bg-white dark:bg-zinc-900 overflow-visible shadow-lg sm:rounded-lg border-t-4 border-orange-600 dark:border-orange-500">
-                    <!-- Empty State -->
-                    <div v-if="documents.data.length === 0" class="p-12 text-center">
-                        <DocumentIcon class="mx-auto h-16 w-16 text-zinc-400 dark:text-zinc-600" />
-                        <h3 class="mt-4 text-lg font-black text-zinc-900 dark:text-zinc-100">{{ activeCategory ? `No documents in ${activeCategory.name}` : 'No documents found' }}</h3>
-                        <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                            {{ activeCategory ? 'No documents match this category.' : 'Upload your first document to get started.' }}
-                        </p>
-                        <div class="mt-8">
-                            <Link v-if="activeCategory" :href="route('documents.index')" class="text-sm font-semibold text-amber-700 hover:underline dark:text-amber-400">All documents</Link>
-                            <Link
-                                v-else
-                                :href="route('documents.upload')"
-                                class="inline-flex items-center px-6 py-3 bg-zinc-900 dark:bg-orange-600 border border-transparent rounded-md font-bold text-sm text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-orange-700 transition-all duration-200"
-                            >
-                                Upload Document
-                            </Link>
-                        </div>
-                    </div>
-                    <!-- Grid View -->
-                    <div v-else-if="viewMode === 'grid'" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div
-                            v-for="document in documents.data"
-                            :key="document.file_id"
-                            class="relative group bg-white dark:bg-zinc-900 border border-amber-200 dark:border-zinc-700 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex flex-col"
-                        >
-                            <!-- Checkbox -->
-                            <div class="absolute top-3 right-3 z-10">
-                                <Checkbox
-                                    :aria-label="`Select ${document.title} (file #${document.file_id})`"
-                                    :checked="selectedDocuments.includes(document.file_id)"
-                                    @change="toggleDocument(document.file_id)"
-                                />
-                            </div>
-
-                            <!-- Clickable area -->
-                            <div @click="viewDocument(document)" class="cursor-pointer p-4 flex-1">
-                                <!-- Entity Type Badge -->
-                                <div class="flex items-center gap-2 mb-3">
-                                    <span
-                                        :class="[
-                                            'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold',
-                                            getEntityTypeBadge(document.entity_type).bg,
-                                            getEntityTypeBadge(document.entity_type).text,
-                                        ]"
-                                    >
-                                        {{ getEntityTypeBadge(document.entity_type).label }}
-                                    </span>
-                                    <span v-if="document.category"
-                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-                                        :style="{ backgroundColor: document.category.color + '20', color: document.category.color }"
-                                    >
-                                        {{ document.category.name }}
-                                    </span>
-                                </div>
-
-                                <!-- Thumbnail Preview -->
-                                <div class="aspect-[4/3] bg-amber-50 dark:bg-zinc-800 rounded-lg overflow-hidden relative mb-3">
-                                    <template v-if="document.file?.has_preview && !thumbnailErrors.has(document.id)">
-                                        <img
-                                            :src="document.file.previewUrl || document.file.url"
-                                            :alt="document.title"
-                                            class="w-full h-full object-cover"
-                                            @error="handleThumbnailError(document.id)"
-                                        />
-                                    </template>
-                                    <template v-else>
-                                        <div class="flex items-center justify-center h-full">
-                                            <DocumentIcon class="h-12 w-12 text-zinc-300 dark:text-zinc-600" />
-                                        </div>
-                                    </template>
-                                </div>
-
-                                <!-- Title -->
-                                <h3 class="text-base font-black text-zinc-900 dark:text-zinc-100 mb-1 truncate">
-                                    {{ document.title }}
-                                </h3>
-
-                                <!-- Entity-specific details -->
-                                <div v-if="document.entity_details" class="text-sm text-zinc-600 dark:text-zinc-400 space-y-0.5 mb-2">
-                                    <!-- Invoice details -->
-                                    <template v-if="document.entity_type === 'invoice'">
-                                        <p v-if="document.entity_details.from" class="truncate">
-                                            From: {{ document.entity_details.from }}
-                                        </p>
-                                        <div class="flex items-center justify-between">
-                                            <span v-if="document.entity_details.date">{{ formatDate(document.entity_details.date) }}</span>
-                                            <span v-if="document.entity_details.total" class="font-bold text-zinc-900 dark:text-zinc-100">
-                                                {{ formatCurrency(document.entity_details.total, document.entity_details.currency) }}
-                                            </span>
-                                        </div>
-                                        <span v-if="document.entity_details.status"
-                                            :class="[
-                                                'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-                                                document.entity_details.status === 'paid' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'
-                                            ]"
-                                        >
-                                            {{ document.entity_details.status }}
-                                        </span>
-                                    </template>
-                                    <!-- Contract details -->
-                                    <template v-else-if="document.entity_type === 'contract'">
-                                        <p v-if="document.entity_details.type" class="truncate">{{ document.entity_details.type }}</p>
-                                        <p v-if="document.entity_details.effective_date">
-                                            {{ formatDate(document.entity_details.effective_date) }}
-                                            <span v-if="document.entity_details.expiration_date"> - {{ formatDate(document.entity_details.expiration_date) }}</span>
-                                        </p>
-                                        <span v-if="document.entity_details.status"
-                                            :class="[
-                                                'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-                                                document.entity_details.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300'
-                                            ]"
-                                        >
-                                            {{ document.entity_details.status }}
-                                        </span>
-                                    </template>
-                                    <!-- Voucher details -->
-                                    <template v-else-if="document.entity_type === 'voucher'">
-                                        <p v-if="document.entity_details.code" class="font-mono truncate">{{ document.entity_details.code }}</p>
-                                        <p v-if="document.entity_details.expiry_date">Expires: {{ formatDate(document.entity_details.expiry_date) }}</p>
-                                    </template>
-                                    <!-- Warranty details -->
-                                    <template v-else-if="document.entity_type === 'warranty'">
-                                        <p v-if="document.entity_details.product" class="truncate">{{ document.entity_details.product }}</p>
-                                        <p v-if="document.entity_details.expiry_date">Expires: {{ formatDate(document.entity_details.expiry_date) }}</p>
-                                    </template>
-                                    <!-- BankStatement details -->
-                                    <template v-else-if="document.entity_type === 'bankstatement' || document.entity_type === 'bank_statement'">
-                                        <p v-if="document.entity_details.date">{{ formatDate(document.entity_details.date) }}</p>
-                                        <p v-if="document.entity_details.closing_balance != null" class="font-bold">
-                                            Balance: {{ formatCurrency(document.entity_details.closing_balance) }}
-                                        </p>
-                                    </template>
-                                </div>
-
-                                <!-- File info -->
-                                <p class="text-xs text-zinc-500 dark:text-zinc-500 mb-2">
-                                    {{ formatFileSize(document.size) }} &middot; {{ formatDate(document.created_at) }}
-                                </p>
-
-                                <!-- Note -->
-                                <p v-if="document.note" class="text-sm text-zinc-600 dark:text-zinc-300 mb-2 line-clamp-2">
-                                    {{ document.note }}
-                                </p>
-
-                                <!-- Tags -->
-                                <div v-if="document.tags && document.tags.length > 0" class="flex flex-wrap gap-1">
-                                    <span
-                                        v-for="tag in document.tags.slice(0, 3)"
-                                        :key="tag.id"
-                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200"
-                                    >
-                                        {{ tag.name }}
-                                    </span>
-                                    <span
-                                        v-if="document.tags && document.tags.length > 3"
-                                        class="text-xs text-zinc-500 dark:text-zinc-400"
-                                    >
-                                        +{{ document.tags.length - 3 }} more
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Action buttons -->
-                            <div class="px-4 py-3 border-t border-amber-100 dark:border-zinc-800 flex items-center justify-between">
-                                <div class="flex items-center gap-1">
-                                    <div v-if="document.shared_with_count > 0" class="relative text-green-600 dark:text-green-400 mr-1">
-                                        <ShareIcon class="h-4 w-4" />
-                                        <span class="absolute -top-2 -right-2 inline-flex items-center justify-center rounded-full bg-green-600 text-white text-[10px] h-3.5 min-w-3.5 px-0.5">
-                                            {{ document.shared_with_count }}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <Link
-                                        :href="getShowRoute(document)"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-zinc-800 transition-colors"
-                                    >
-                                        <EyeIcon class="h-4 w-4" />
-                                        View
-                                    </Link>
-                                    <a
-                                        :href="document.file?.url"
-                                        :download="document.file_name"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-bold text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-800 transition-colors"
-                                    >
-                                        <ArrowDownTrayIcon class="h-4 w-4" />
-                                        Download
-                                    </a>
-                                    <button
-                                        @click="router.delete(route('documents.destroy-bulk'), { data: { ids: [document.file_id] } })"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-bold text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-zinc-800 transition-colors"
-                                    >
-                                        <TrashIcon class="h-4 w-4" />
-                                        Delete
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- List View -->
-                    <div v-else class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-amber-200 dark:divide-zinc-700">
-                            <thead>
-                                <tr>
-                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left">
-                                        <Checkbox
-                                            aria-label="Select all documents on this page"
-                                            :checked="allSelected"
-                                            :indeterminate="someSelected"
-                                            @change="toggleAll"
-                                        />
-                                    </th>
-                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider w-24">
-                                        Type
-                                    </th>
-                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                                        Document
-                                    </th>
-                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                                        Category
-                                    </th>
-                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                                        Tags
-                                    </th>
-                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                                        Shared
-                                    </th>
-                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                                        Size
-                                    </th>
-                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                                        Date
-                                    </th>
-                                    <th class="relative px-6 py-3 bg-amber-50 dark:bg-zinc-800">
-                                        <span class="sr-only">Actions</span>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-zinc-900 divide-y divide-amber-200 dark:divide-zinc-700">
-                                <tr v-for="document in documents.data" :key="document.file_id" class="hover:bg-amber-50 dark:hover:bg-zinc-800 transition-colors duration-200">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <Checkbox
-                                            :aria-label="`Select ${document.title} (file #${document.file_id})`"
-                                            :checked="selectedDocuments.includes(document.file_id)"
-                                            @change="toggleDocument(document.file_id)"
-                                        />
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span
-                                            :class="[
-                                                'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold',
-                                                getEntityTypeBadge(document.entity_type).bg,
-                                                getEntityTypeBadge(document.entity_type).text,
-                                            ]"
-                                        >
-                                            {{ getEntityTypeBadge(document.entity_type).label }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <DocumentIcon class="h-8 w-8 text-zinc-400 mr-3" />
-                                            <div>
-                                                <button
-                                                    @click="viewDocument(document)"
-                                                    class="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-amber-600 dark:hover:text-amber-400"
-                                                >
-                                                    {{ document.title }}
-                                                    <span
-                                                        v-if="document.shared_with_count > 0"
-                                                        class="ml-2 inline-flex items-center rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 px-2 py-0.5 text-[10px] font-medium"
-                                                        title="Shared count"
-                                                    >
-                                                        <ShareIcon class="h-3 w-3 mr-1" /> {{ document.shared_with_count }}
-                                                    </span>
-                                                </button>
-                                                <div class="text-sm text-zinc-500 dark:text-zinc-400">
-                                                    {{ document.file_name }}
-                                                </div>
-                                                <div
-                                                    v-if="document.note"
-                                                    class="text-xs text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-1"
-                                                >
-                                                    {{ document.note }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span 
-                                            v-if="document.category"
-                                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                                            :style="{
-                                                backgroundColor: document.category.color + '20',
-                                                color: document.category.color
-                                            }"
-                                        >
-                                            {{ document.category.name }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <div class="flex flex-wrap gap-1">
-                                            <span 
-                                                v-for="tag in (document.tags || []).slice(0, 2)" 
-                                                :key="tag.id"
-                                                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200"
-                                            >
-                                                {{ tag.name }}
-                                            </span>
-                                            <span 
-                                                v-if="document.tags && document.tags.length > 2"
-                                                class="text-xs text-zinc-500 dark:text-zinc-400"
-                                            >
-                                                +{{ document.tags ? document.tags.length - 2 : 0 }}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                        <span
-                                            v-if="document.shared_with_count > 0"
-                                            class="inline-flex items-center rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 px-2 py-0.5 text-xs font-medium"
-                                        >
-                                            {{ document.shared_with_count }}
-                                        </span>
-                                        <span v-else class="text-zinc-400">0</span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-500 dark:text-zinc-400">
-                                        {{ formatFileSize(document.size) }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-500 dark:text-zinc-400">
-                                        {{ formatDate(document.created_at) }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <div class="flex items-center justify-end space-x-3">
-                                            <Link
-                                                :href="getShowRoute(document)"
-                                                class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
-                                                title="View"
-                                            >
-                                                <EyeIcon class="h-5 w-5" />
-                                            </Link>
-                                            <a
-                                                :href="document.file?.url"
-                                                :download="document.file_name"
-                                                class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                                                title="Download"
-                                            >
-                                                <ArrowDownTrayIcon class="h-5 w-5" />
-                                            </a>
-                                            <button
-                                                @click="router.delete(route('documents.destroy-bulk'), { data: { ids: [document.file_id] } })"
-                                                class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                                                title="Delete"
-                                            >
-                                                <TrashIcon class="h-5 w-5" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
+                    <div v-else class="workspace-surface overflow-x-auto" tabindex="0" role="region" aria-label="Document table, scroll to see all columns">
+                        <table class="w-full text-left text-sm">
+                            <caption class="sr-only">Documents with type, category, tags, sharing, file size and date.</caption>
+                            <thead class="border-b border-zinc-200 bg-zinc-50 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950"><tr><th scope="col" class="px-3 py-3"><input type="checkbox" :checked="allSelected" :indeterminate="selectedDocuments.length > 0 && !allSelected" :disabled="busy" aria-label="Select all documents on this page" @change="toggleAll" /></th><th scope="col" class="px-3 py-3 font-medium">Document</th><th scope="col" class="px-3 py-3 font-medium">Category / tags</th><th scope="col" class="px-3 py-3 font-medium">Shared</th><th scope="col" class="px-3 py-3 font-medium">Size</th><th scope="col" class="px-3 py-3 font-medium">Date</th><th scope="col" class="px-3 py-3 font-medium">Actions</th></tr></thead>
+                            <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800"><tr v-for="document in documents.data" :key="document.file_id" class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                                <td class="px-3 py-4"><input v-model="selectedDocuments" type="checkbox" :value="document.file_id" :disabled="busy" :aria-label="`Select ${document.title} (file #${document.file_id})`" /></td>
+                                <td class="min-w-[200px] max-w-sm px-3 py-4"><button type="button" class="max-w-full truncate text-left font-medium hover:underline" :dusk="`document-preview-${document.file_id}`" @click="selectedDocument = document">{{ document.title }}</button><p class="mt-1 truncate text-xs text-zinc-500">{{ document.file_name }}</p><p class="mt-1 text-xs text-zinc-500">{{ entityLabel(document.entity_type) }}</p><p v-if="document.note" class="mt-1 truncate text-xs text-zinc-500">{{ document.note }}</p></td>
+                                <td class="max-w-[200px] px-3 py-4 text-xs text-zinc-500 [overflow-wrap:anywhere]"><p>{{ document.category?.name || '—' }}</p><p v-if="document.tags?.length" class="mt-1">{{ document.tags.map(tag => tag.name).join(', ') }}</p></td>
+                                <td class="px-3 py-4 text-xs text-zinc-500">{{ document.shared_with_count || '—' }}</td><td class="whitespace-nowrap px-3 py-4 text-xs text-zinc-500">{{ formatFileSize(document.size) }}</td><td class="whitespace-nowrap px-3 py-4 text-xs text-zinc-500">{{ formatDate(document.created_at) }}</td>
+                                <td class="px-3 py-4"><div class="flex items-center gap-3"><Link :href="getShowRoute(document)" class="underline" :aria-label="`Open ${document.title}`">Open</Link><a v-if="document.file?.url" :href="document.file.url" :download="document.file_name" class="underline">Download</a><button type="button" class="text-red-700 dark:text-red-400" :disabled="busy" :aria-label="`Delete ${document.title}`" @click="removeOne(document)">Delete</button></div></td>
+                            </tr></tbody>
                         </table>
                     </div>
-
-                    <!-- Pagination -->
-                    <div v-if="documents.links.length > 3" class="px-6 py-4 border-t border-amber-200 dark:border-zinc-700">
-                        <nav class="flex items-center justify-between">
-                            <div class="flex-1 flex justify-between sm:hidden">
-                                <component
-                                    v-for="link in documents.links"
-                                    :key="link.label"
-                                    :is="link.url ? Link : 'span'"
-                                    :href="link.url || undefined"
-                                    :class="[
-                                        'relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md',
-                                        link.active 
-                                            ? 'bg-orange-600 text-white' 
-                                            : 'text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-800 hover:bg-amber-50 dark:hover:bg-zinc-700',
-                                        !link.url && 'opacity-50 cursor-not-allowed'
-                                    ]"
-                                    :aria-disabled="!link.url || undefined"
-                                    v-html="link.label"
-                                />
-                            </div>
-                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                                <div v-if="documents?.meta">
-                                    <p class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                        Showing
-                                        <span class="font-black">{{ documents.meta.from || 0 }}</span>
-                                        to
-                                        <span class="font-black">{{ documents.meta.to || 0 }}</span>
-                                        of
-                                        <span class="font-black">{{ documents.meta.total || 0 }}</span>
-                                        results
-                                    </p>
-                                </div>
-                                <div>
-                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                                        <component
-                                            v-for="link in documents.links"
-                                            :key="link.label"
-                                            :is="link.url ? Link : 'span'"
-                                            :href="link.url || undefined"
-                                            :class="[
-                                                'relative inline-flex items-center px-4 py-2 text-sm font-medium',
-                                                link.active 
-                                                    ? 'z-10 bg-amber-50 dark:bg-orange-900 border-amber-500 text-amber-600 dark:text-amber-400' 
-                                                    : 'bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:bg-amber-50 dark:hover:bg-zinc-700',
-                                                !link.url && 'opacity-50 cursor-not-allowed',
-                                                documents.links.indexOf(link) === 0 && 'rounded-l-md',
-                                                documents.links.indexOf(link) === documents.links.length - 1 && 'rounded-r-md'
-                                            ]"
-                                            :aria-disabled="!link.url || undefined"
-                                            v-html="link.label"
-                                        />
-                                    </nav>
-                                </div>
-                            </div>
-                        </nav>
-                    </div>
-                </div>
-
-                <!-- Delete Confirmation Modal (bulk) -->
-                <Modal :show="showDeleteModal" @close="showDeleteModal = false" v-slot="{ titleId }">
-                    <div class="p-6">
-                        <h2 :id="titleId" class="text-lg font-black text-zinc-900 dark:text-zinc-100">
-                            Delete Documents
-                        </h2>
-                        <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                            Are you sure you want to delete {{ selectedDocuments.length }} document(s)? This action cannot be undone.
-                        </p>
-                        <div class="mt-6 flex justify-end gap-3">
-                            <SecondaryButton @click="showDeleteModal = false">
-                                Cancel
-                            </SecondaryButton>
-                            <DangerButton @click="deleteSelected">
-                                Delete
-                            </DangerButton>
-                        </div>
-                    </div>
-                </Modal>
-            </div>
+                </template>
+                <Pagination v-if="documents.links?.length > 3" :links="documents.links" :from="documents.from" :to="documents.to" :total="documents.total" class="mt-4" />
+            </section>
         </div>
-
-        <!-- Document Drawer -->
-        <DocumentDrawer
-            :document="selectedDocument"
-            :show="isDrawerOpen"
-            @close="closeDrawer"
-        />
+        <Modal :show="showDeleteModal" :closeable="!busy" max-width="md" @close="showDeleteModal = false" v-slot="{ titleId }"><div class="flex flex-col gap-4 p-6"><h2 :id="titleId" class="section-heading">Delete Documents</h2><p class="text-sm text-zinc-500">Delete {{ selectedDocuments.length }} document(s), their original files and extracted records? This action cannot be undone.</p><p v-if="error" role="alert" class="text-sm text-red-700 dark:text-red-400">{{ error }}</p><div class="flex justify-end gap-3"><button type="button" class="workspace-button" :disabled="busy" @click="showDeleteModal = false">Cancel</button><button type="button" class="workspace-danger" :disabled="busy" @click="deleteSelected">{{ busy ? 'Deleting…' : 'Delete' }}</button></div></div></Modal>
+        <DocumentDrawer :document="selectedDocument" :show="!!selectedDocument" @close="selectedDocument = null" />
     </AuthenticatedLayout>
 </template>

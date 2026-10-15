@@ -1,573 +1,102 @@
-<template>
-  <Head :title="merchant || category ? `${__('receipts')} · ${(merchant || category).name}` : __('receipts')" />
-
-  <AuthenticatedLayout>
-    <template #header>
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-100 leading-tight">{{ __('receipts') }}<span v-if="merchant || category"> · {{ (merchant || category).name }}</span></h2>
-        <Link v-if="merchant || category" :href="route('receipts.index')" class="text-sm font-semibold text-amber-700 hover:underline dark:text-amber-400">{{ __('all_receipts') }}</Link>
-      </div>
-    </template>
-
-    <div class="py-12">
-      <div class="max-w-7xl mx-auto transition-all duration-500 ease-in-out" :style="containerStyle">
-        <div class="transition-all duration-500 ease-in-out">
-          <!-- Flash Message -->
-          <div v-if="$page.props.flash.success" class="mb-8 rounded-md bg-green-50 p-4">
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <CheckCircleIcon class="h-5 w-5 text-green-400" aria-hidden="true" />
-              </div>
-              <div class="ml-3">
-                <p class="text-sm font-medium text-green-800">{{ $page.props.flash.success }}</p>
-              </div>
-            </div>
-          </div>
-
-          <p class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">Receipt overview · Table view. Page size and default sort come from Settings. Choose list or grid separately in <Link :href="route('library.index', { type: 'receipt' })" class="text-amber-700 underline dark:text-amber-400">Library</Link>.</p>
-          <template v-if="receipts.length > 0">
-            <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-amber-600 dark:border-amber-500">
-              <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-amber-200 dark:divide-zinc-700">
-                  <thead>
-                    <tr>
-                      <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left">
-                        <input
-                          type="checkbox"
-                          aria-label="Select all receipts"
-                          class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
-                          :checked="allSelected"
-                          @change="toggleAllSelection"
-                        />
-                      </th>
-                      <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                        {{ __('status') }}
-                      </th>
-                      <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                        {{ __('merchant') }}
-                      </th>
-                      <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                        {{ __('amount') }}
-                      </th>
-                      <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                        {{ __('date') }}
-                      </th>
-                      <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                        {{ __('category') }}
-                      </th>
-                      <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                        {{ __('tags') }}
-                      </th>
-                      <th class="relative px-6 py-3 bg-amber-50 dark:bg-zinc-800">
-                        <span class="sr-only">{{ __('actions') }}</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white dark:bg-zinc-900 divide-y divide-amber-200 dark:divide-zinc-700">
-                    <tr v-for="receipt in receipts" :key="receipt.id" class="hover:bg-amber-50 dark:hover:bg-zinc-800 transition-colors duration-200 cursor-pointer">
-                      <td class="px-6 py-4 whitespace-nowrap" @click.stop>
-                        <input
-                          type="checkbox"
-                          :aria-label="`Select receipt #${receipt.id} from ${receipt.merchant?.name || 'unknown merchant'}`"
-                          class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
-                          :value="receipt.id"
-                          :checked="selectedReceipts.includes(receipt.id)"
-                          @change="toggleSelection(receipt.id)"
-                        />
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <div :class="[getStatusClass(receipt), 'flex-none rounded-full p-1 inline-block']">
-                          <div class="size-2 rounded-full bg-current" aria-hidden="true" />
-                        </div>
-                        <span class="sr-only">{{ getStatusLabel(receipt) }}</span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap" @click="openReceipt(receipt)">
-                        <div class="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                          {{ receipt.merchant?.name || __('unknown_merchant') }}
-                        </div>
-                        <div v-if="receipt.note || receipt.receipt_description" class="text-sm text-zinc-600 dark:text-zinc-400 truncate max-w-xs">
-                          {{ receipt.note || receipt.receipt_description }}
-                        </div>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-black text-zinc-900 dark:text-zinc-100" @click="openReceipt(receipt)">
-                        {{ formatCurrency(receipt.total_amount, receipt.currency) }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900 dark:text-zinc-100" @click="openReceipt(receipt)">
-                        {{ formatDate(receipt.receipt_date) }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap" @click="openReceipt(receipt)">
-                        <span :class="[getCategoryClass(receipt.receipt_category), 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ring-1 ring-inset']">
-                          {{ receipt.receipt_category || __('uncategorized') }}
-                        </span>
-                      </td>
-                      <td class="px-6 py-4" @click="openReceipt(receipt)">
-                        <div v-if="receipt.tags && receipt.tags.length > 0" class="flex flex-wrap gap-1">
-                          <span
-                            v-for="tag in receipt.tags.slice(0, 2)"
-                            :key="tag.id"
-                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                            :style="{ backgroundColor: tag.color + '20', color: tag.color }"
-                          >
-                            {{ tag.name }}
-                          </span>
-                          <span v-if="receipt.tags.length > 2" class="text-xs text-zinc-500 dark:text-zinc-400">
-                            +{{ receipt.tags.length - 2 }}
-                          </span>
-                        </div>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-right">
-                        <ChevronRightIcon class="size-5 text-zinc-400" aria-hidden="true" />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </template>
-          <template v-else>
-            <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-amber-600 dark:border-amber-500">
-              <div class="px-6 py-24 sm:py-32 lg:px-8">
-                <div class="mx-auto max-w-2xl text-center">
-                  <p class="text-base/7 font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider">{{ __('no_receipts_found') }}</p>
-                  <h2 class="mt-2 text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-5xl">{{ category ? __('no_receipts_in_category').replace(':category', category.name) : __('upload_first_receipts') }}</h2>
-                  <p class="mt-6 text-lg leading-8 text-zinc-600 dark:text-zinc-400">{{ category ? __('no_receipts_in_category_description') : __('no_receipts_description') }}</p>
-                  <div class="mt-10">
-                    <Link :href="route('documents.upload')" class="inline-flex items-center px-6 py-3 bg-zinc-900 dark:bg-amber-600 border border-transparent rounded-md font-bold text-sm text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-amber-700 transition-all duration-200">
-                      {{ __('upload_receipts') }}
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
-    </div>
-
-    <!-- Bulk Operations Bar -->
-    <BulkOperations
-      :selected-count="selectedReceipts.length"
-      :selected-ids="selectedReceipts"
-      :categories="categories"
-      @clear-selection="clearSelection"
-    />
-
-    <!-- Receipt Drawer -->
-    <TransitionRoot as="template" :show="isDrawerOpen">
-      <div class="fixed right-0 flex max-w-full z-10" style="top: 65px; bottom: 0;">
-        <TransitionChild
-          as="template"
-          enter="transform transition ease-in-out duration-500"
-          enter-from="translate-x-full"
-          enter-to="translate-x-0"
-          leave="transform transition ease-in-out duration-500"
-          leave-from="translate-x-0"
-          leave-to="translate-x-full"
-        >
-          <div ref="drawerRef" class="w-screen sm:w-[500px] bg-white dark:bg-zinc-800 shadow-xl border-l border-amber-200 dark:border-zinc-700 h-full">
-            <div class="flex h-full flex-col overflow-y-scroll">
-              <div class="sticky top-0 z-10 bg-white dark:bg-zinc-800 px-4 py-6 sm:px-6 border-b border-amber-200 dark:border-zinc-700">
-                <div class="flex items-start justify-between">
-                  <h2 class="text-lg font-black text-zinc-900 dark:text-zinc-100">
-                    {{ selectedReceipt?.merchant?.name || __('unknown_merchant') }}
-                  </h2>
-                  <div class="ml-3 flex h-7 items-center">
-                    <button type="button" class="relative rounded-md bg-white dark:bg-zinc-800 text-zinc-400 hover:text-zinc-500 focus:ring-2 focus:ring-amber-500" @click="closeDrawer">
-                      <span class="absolute -inset-2.5" />
-                      <span class="sr-only">{{ __('close') }}</span>
-                      <XMarkIcon class="size-6" aria-hidden="true" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="relative flex-1 px-4 sm:px-6">
-                <!-- Main -->
-                <div>
-                  <div class="pb-1 sm:pb-6">
-                    <div>
-                      <div class="relative h-[600px] overflow-y-auto">
-                        <div class="flex justify-center bg-white">
-                          <div class="w-[400px]">
-                            <template v-if="selectedReceipt?.file?.url">
-                              <!-- Always show image (backend handles preview generation for PDFs) -->
-                              <img
-                                :src="selectedReceipt.file.url"
-                                class="w-full h-auto"
-                                :alt="__('receipt_image')"
-                                @error="handleImageError"
-                                :class="{ 'hidden': imageError }"
-                              />
-                              <div v-if="imageError" class="flex flex-col items-center justify-center h-[600px] bg-white border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg">
-                                <ExclamationCircleIcon class="size-16 text-red-400 mb-4" />
-                                <span class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('receipt_image_load_error') }}</span>
-                              </div>
-                            </template>
-                            <div v-else class="flex flex-col items-center justify-center h-[600px] bg-white border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg">
-                              <ReceiptPercentIcon class="size-16 text-zinc-400 mb-4" />
-                              <span class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('no_receipt_image') }}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="mt-6 px-4 sm:mt-8 sm:flex sm:items-end sm:px-6">
-                        <div class="sm:flex-1">
-                          <div>
-                            <div class="flex items-center">
-                              <h3 class="text-xl font-black text-zinc-900 dark:text-zinc-100 sm:text-2xl">
-                                {{ formatCurrency(selectedReceipt?.total_amount, selectedReceipt?.currency) }}
-                              </h3>
-                              <span :class="[getStatusClass(selectedReceipt), 'ml-2.5 inline-block size-2 shrink-0 rounded-full']" aria-hidden="true" />
-                              <span class="sr-only">{{ getStatusLabel(selectedReceipt) }}</span>
-                            </div>
-                            <p class="text-sm text-zinc-500">{{ formatDate(selectedReceipt?.receipt_date) }}</p>
-                          </div>
-                          <div class="mt-5 flex flex-wrap space-y-3 sm:space-x-3 sm:space-y-0">
-                            <button
-                              v-if="selectedReceipt?.file?.pdfUrl"
-                              @click="openPdf(selectedReceipt.file.pdfUrl)"
-                              type="button"
-                              class="inline-flex w-full flex-1 items-center justify-center gap-x-2 px-5 py-2 bg-zinc-900 dark:bg-amber-600 border border-transparent rounded-md font-bold text-sm text-white uppercase tracking-widest hover:bg-zinc-800 dark:hover:bg-amber-700 shadow-sm hover:shadow transition-all duration-200"
-                            >
-                              <span>{{ __('view_pdf') }}</span>
-                              <ArrowTopRightOnSquareIcon class="size-4" aria-hidden="true" />
-                            </button>
-                            <button
-                              type="button"
-                              class="inline-flex w-full flex-1 items-center justify-center px-5 py-2 bg-white dark:bg-zinc-800 border-2 border-zinc-900 dark:border-zinc-600 rounded-md font-bold text-sm text-zinc-900 dark:text-zinc-100 uppercase tracking-widest shadow-sm hover:bg-amber-50 dark:hover:bg-zinc-700 transition-all duration-200"
-                            >
-                              {{ __('share') }}
-                            </button>
-                            <Menu as="div" class="relative inline-block text-left">
-                              <MenuButton class="relative inline-flex items-center rounded-md bg-white dark:bg-zinc-800 p-2 text-zinc-400 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-amber-50 dark:hover:bg-zinc-700 transition-colors duration-200">
-                                <span class="absolute -inset-1" />
-                                <span class="sr-only">{{ __('open_options') }}</span>
-                                <EllipsisVerticalIcon class="size-5" aria-hidden="true" />
-                              </MenuButton>
-                              <transition
-                                enter-active-class="transition ease-out duration-100"
-                                enter-from-class="transform opacity-0 scale-95"
-                                enter-to-class="transform opacity-100 scale-100"
-                                leave-active-class="transition ease-in duration-75"
-                                leave-from-class="transform opacity-100 scale-100"
-                                leave-to-class="transform opacity-0 scale-95"
-                              >
-                                <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white dark:bg-zinc-800 shadow-lg ring-1 ring-black/5 focus:outline-none">
-                                  <div class="py-1">
-                                    <MenuItem v-slot="{ active }">
-                                      <button
-                                        @click="router.visit(route('receipts.show', selectedReceipt?.id))"
-                                        :class="[active ? 'bg-amber-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100' : 'text-zinc-700 dark:text-zinc-300', 'block w-full text-left px-4 py-2 text-sm font-medium transition-colors duration-200']"
-                                      >
-                                        {{ __('edit') }}
-                                      </button>
-                                    </MenuItem>
-                                    <MenuItem v-slot="{ active }">
-                                      <button
-                                        @click="showDeleteConfirm = true"
-                                        :class="[active ? 'bg-amber-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100' : 'text-zinc-700 dark:text-zinc-300', 'block w-full text-left px-4 py-2 text-sm font-medium transition-colors duration-200']"
-                                      >
-                                        {{ __('delete') }}
-                                      </button>
-                                    </MenuItem>
-                                  </div>
-                                </MenuItems>
-                              </transition>
-                            </Menu>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="px-4 pb-5 pt-5 sm:px-0 sm:pt-0">
-                      <dl class="space-y-8 px-4 sm:space-y-6 sm:px-6">
-                        <div>
-                          <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400 sm:w-40 sm:shrink-0">{{ __('category') }}</dt>
-                          <dd class="mt-1 text-sm text-zinc-900 dark:text-zinc-100 sm:col-span-2">
-                            {{ selectedReceipt?.receipt_category || __('uncategorized') }}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400 sm:w-40 sm:shrink-0">{{ __('tax_amount') }}</dt>
-                          <dd class="mt-1 text-sm text-zinc-900 dark:text-zinc-100 sm:col-span-2">
-                            {{ formatCurrency(selectedReceipt?.tax_amount, selectedReceipt?.currency) }}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400 sm:w-40 sm:shrink-0">{{ __('description') }}</dt>
-                          <dd class="mt-1 text-sm text-zinc-900 dark:text-zinc-100 sm:col-span-2">
-                            {{ selectedReceipt?.receipt_description || __('no_description') }}
-                          </dd>
-                        </div>
-                      </dl>
-
-                      <!-- Line Items -->
-                      <div v-if="selectedReceipt?.lineItems?.length > 0" class="mt-8 px-4 sm:px-6">
-                        <h3 class="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">{{ __('line_items') }}</h3>
-                        <div class="mt-4">
-                          <table class="min-w-full divide-y divide-amber-200 dark:divide-zinc-700">
-                            <thead>
-                              <tr>
-                                <th class="px-3 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">{{ __('description') }}</th>
-                                <th class="px-3 py-3 bg-amber-50 dark:bg-zinc-800 text-right text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">{{ __('quantity') }}</th>
-                                <th class="px-3 py-3 bg-amber-50 dark:bg-zinc-800 text-right text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">{{ __('unit_price') }}</th>
-                              </tr>
-                            </thead>
-                            <tbody class="divide-y divide-amber-200 dark:divide-zinc-700">
-                              <tr v-for="item in selectedReceipt.lineItems" :key="item.id" class="hover:bg-amber-50 dark:hover:bg-zinc-800 transition-colors duration-200">
-                                <td class="whitespace-nowrap py-4 pl-3 pr-4 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                  {{ item.description }}
-                                  <span v-if="item.sku" class="text-zinc-400">({{ item.sku }})</span>
-                                </td>
-                                <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-zinc-900 dark:text-zinc-100 text-right">{{ item.quantity }}</td>
-                                <td class="whitespace-nowrap px-3 py-4 text-sm font-bold text-zinc-900 dark:text-zinc-100 text-right">
-                                  {{ formatCurrency(item.unit_price, selectedReceipt.currency) }}
-                                </td>
-                              </tr>
-                            </tbody>
-                            <tfoot>
-                              <tr>
-                                <th colspan="2" class="px-3 py-3 bg-amber-50 dark:bg-zinc-800 text-right text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">{{ __('total') }}</th>
-                                <th class="px-3 py-3 bg-amber-50 dark:bg-zinc-800 text-right text-sm font-black text-zinc-900 dark:text-zinc-100">
-                                  {{ formatCurrency(selectedReceipt?.total_amount, selectedReceipt?.currency) }}
-                                </th>
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </TransitionChild>
-      </div>
-    </TransitionRoot>
-
-    <!-- Delete Confirmation Dialog -->
-    <TransitionRoot as="template" :show="showDeleteConfirm">
-      <Dialog as="div" class="relative z-50" @close="showDeleteConfirm = false">
-        <div class="fixed inset-0 bg-zinc-500 bg-opacity-75 transition-opacity" />
-
-        <div class="fixed inset-0 z-10 overflow-y-auto">
-          <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <DialogPanel class="relative transform overflow-hidden rounded-lg bg-white dark:bg-zinc-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-              <div class="sm:flex sm:items-start">
-                <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                  <ExclamationTriangleIcon class="h-6 w-6 text-red-600" aria-hidden="true" />
-                </div>
-                <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
-                  <DialogTitle as="h3" class="text-lg font-black leading-6 text-zinc-900 dark:text-zinc-100">
-                    {{ __('delete_receipt') }}
-                  </DialogTitle>
-                  <div class="mt-2">
-                    <p class="text-sm text-zinc-500">
-                      {{ __('delete_receipt_confirm') }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
-                  @click="deleteReceipt"
-                >
-                  {{ __('delete') }}
-                </button>
-                <button
-                  type="button"
-                  class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-zinc-800 px-3 py-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-amber-50 dark:hover:bg-zinc-700 sm:mt-0 sm:w-auto"
-                  @click="showDeleteConfirm = false"
-                >
-                  {{ __('cancel') }}
-                </button>
-              </div>
-            </DialogPanel>
-          </div>
-        </div>
-      </Dialog>
-    </TransitionRoot>
-  </AuthenticatedLayout>
-</template>
-
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import BulkOperations from '@/Components/Domain/BulkOperations.vue';
-import { ChevronRightIcon, EllipsisVerticalIcon } from '@heroicons/vue/20/solid';
-import { 
-  XMarkIcon, 
-  ArrowTopRightOnSquareIcon, 
-  ExclamationTriangleIcon,
-  ExclamationCircleIcon,
-  ReceiptPercentIcon,
-  CheckCircleIcon
-} from '@heroicons/vue/24/outline';
-import {
-  Dialog,
-  DialogPanel,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
-  TransitionChild,
-  TransitionRoot,
-  DialogTitle,
-} from '@headlessui/vue';
+import FilePreviewModal from '@/Components/Common/FilePreviewModal.vue';
+import Pagination from '@/Components/Common/Pagination.vue';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
-
-const page = usePage();
-const __ = (key) => {
-  const messages = page.props.language?.messages || {};
-  const parts = key.split('.');
-  let value = messages;
-  
-  for (const part of parts) {
-    value = value?.[part];
-    if (value === undefined) break;
-  }
-  
-  return value || key.split('.').pop();
-};
-const { formatDate, formatCurrency } = useDateFormatter();
+import { fileStatusLabel } from '@/utils/fileStatus';
 
 const props = defineProps({
-  receipts: {
-    type: Array,
-    required: true
-  },
-  merchant: {
-    type: Object,
-    default: null
-  },
-  category: {
-    type: Object,
-    default: null
-  },
-  categories: {
-    type: Array,
-    default: () => []
-  }
+    receipts: { type: Array, required: true },
+    merchant: { type: Object, default: null }, category: { type: Object, default: null },
+    categories: { type: Array, default: () => [] }, filters: { type: Object, default: () => ({}) },
+    pagination: { type: Object, default: () => ({}) },
 });
-
-const isDrawerOpen = ref(false);
-const selectedReceipt = ref(null);
-const showDeleteConfirm = ref(false);
-const imageError = ref(false);
+const page = usePage();
+const __ = key => page.props.language?.messages?.[key] || key;
+const { formatDate, formatCurrency } = useDateFormatter();
 const selectedReceipts = ref([]);
-
-const drawerRef = ref(null);
-const DRAWER_GAP = 8;
-
-const containerStyle = computed(() => ({
-  paddingLeft: '1.5rem',
-  paddingRight: isDrawerOpen.value ? (window.innerWidth < 640 ? '0' : '608px') : '1.5rem',
-  maxWidth: '100vw',
-  transition: 'padding-right 500ms ease-in-out'
-}));
-
-const allSelected = computed(() => {
-  return props.receipts.length > 0 && selectedReceipts.value.length === props.receipts.length;
-});
-
-const updateContainerStyle = () => {
-  if (isDrawerOpen.value) {
-    containerStyle.value;  // Trigger recompute
-  }
-};
-
-const openReceipt = async (receipt) => {
-  selectedReceipt.value = receipt;
-  imageError.value = false;
-  isDrawerOpen.value = true;
-};
-
-const closeDrawer = () => {
-  isDrawerOpen.value = false;
-  setTimeout(() => {
-    selectedReceipt.value = null;
-    showDeleteConfirm.value = false;
-  }, 500);
-};
-
-const deleteReceipt = () => {
-  if (!selectedReceipt.value) return;
-  
-  router.delete(route('receipts.destroy', selectedReceipt.value.id), {
-    onSuccess: () => {
-      closeDrawer();
-    },
-  });
-};
-
-const toggleSelection = (receiptId) => {
-  const index = selectedReceipts.value.indexOf(receiptId);
-  if (index === -1) {
-    selectedReceipts.value.push(receiptId);
-  } else {
-    selectedReceipts.value.splice(index, 1);
-  }
-};
-
-const toggleAllSelection = () => {
-  if (allSelected.value) {
-    selectedReceipts.value = [];
-  } else {
-    selectedReceipts.value = props.receipts.map(r => r.id);
-  }
-};
-
-const clearSelection = () => {
-  selectedReceipts.value = [];
-};
-
-const getStatusClass = (receipt) => {
-  if (!receipt?.merchant_id) return 'text-zinc-500 bg-amber-100/10'
-  if (receipt?.total_amount === null) return 'text-rose-400 bg-rose-400/10'
-  return 'text-green-400 bg-green-400/10'
+const selectedReceipt = ref(null);
+const search = ref(props.filters.search || '');
+const categoryId = ref(props.filters.category_id || '');
+const loading = ref(false);
+const error = ref('');
+const allSelected = computed(() => props.receipts.length > 0 && selectedReceipts.value.length === props.receipts.length);
+const filtered = computed(() => !!(props.merchant || props.category || props.filters.search));
+const preview = computed(() => selectedReceipt.value ? { ...selectedReceipt.value, title: selectedReceipt.value.merchant?.name || __('unknown_merchant'), file_id: selectedReceipt.value.file?.id } : null);
+watch(() => props.receipts, () => { selectedReceipts.value = []; });
+watch(() => props.filters, filters => { search.value = filters.search || ''; categoryId.value = filters.category_id || ''; });
+function browse() {
+    error.value = '';
+    router.get(route('receipts.index'), { ...props.filters, search: search.value || undefined, category_id: categoryId.value || undefined, merchant_id: props.merchant?.id || props.filters.merchant_id }, {
+        preserveState: true, preserveScroll: true,
+        onStart: () => { loading.value = true; },
+        onError: errors => { error.value = Object.values(errors).join(' '); },
+        onFinish: () => { loading.value = false; },
+    });
 }
-
-const getStatusLabel = (receipt) => {
-  if (!receipt?.merchant_id) return 'Pending'
-  if (receipt?.total_amount === null) return 'Incomplete'
-  return 'Complete'
-}
-
-const getCategoryClass = (category) => {
-  const classes = {
-    'mat': 'text-green-400 bg-green-400/10 ring-green-400/30',
-    'transport': 'text-amber-400 bg-amber-400/10 ring-amber-400/30',
-    'default': 'text-zinc-400 bg-zinc-400/10 ring-zinc-400/20'
-  }
-  return classes[category] || classes.default
-}
-
-// formatDate and formatCurrency are now imported from useDateFormatter
-
-const openPdf = (url) => {
-  window.open(url, '_blank', 'noopener,noreferrer')
-}
-
-const handleImageError = () => {
-  imageError.value = true;
-};
-
-const handleKeyDown = (event) => {
-  if (event.key === 'Escape' && isDrawerOpen.value) {
-    closeDrawer();
-  }
-};
-
-onMounted(() => {
-  document.addEventListener('keydown', handleKeyDown);
-  window.addEventListener('resize', updateContainerStyle);
-});
-
-onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeyDown);
-  window.removeEventListener('resize', updateContainerStyle);
-});
+function toggleAll() { selectedReceipts.value = allSelected.value ? [] : props.receipts.map(receipt => receipt.id); }
 </script>
+
+<template>
+    <AuthenticatedLayout>
+        <Head :title="merchant || category ? `${__('receipts')} · ${(merchant || category).name}` : __('receipts')" />
+        <template #header>
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="min-w-0 basis-full sm:flex-1 sm:basis-0">
+                    <h1 class="page-heading [overflow-wrap:anywhere]">{{ __('receipts') }}<span v-if="merchant || category"> · {{ (merchant || category).name }}</span></h1>
+                    <p class="page-description">Compare merchants, amounts and dates, then open a receipt to review the original.</p>
+                </div>
+                <Link :href="route('documents.upload')" class="workspace-primary">{{ __('upload_receipts') }}</Link>
+            </div>
+        </template>
+        <div class="flex min-w-0 flex-col gap-5">
+            <p class="text-sm text-zinc-500 dark:text-zinc-400">Receipt overview · Table view. Page size and default sort come from Settings. Choose list or grid separately in <Link :href="route('library.index', { type: 'receipt' })" class="underline underline-offset-4">Library</Link>.</p>
+            <form role="search" aria-label="Find receipts" class="flex flex-col gap-3 sm:flex-row sm:items-end" @submit.prevent="browse">
+                <div class="min-w-0 flex-1"><label for="receipt-search" class="field-label mb-1">Search receipts</label><input id="receipt-search" v-model="search" type="search" maxlength="255" class="workspace-filter w-full" placeholder="Description or note" /></div>
+                <div><label for="receipt-category" class="field-label mb-1">Category</label><select id="receipt-category" v-model="categoryId" class="workspace-filter w-full" @change="browse"><option value="">All categories</option><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></div>
+                <button class="workspace-button" :disabled="loading">Search</button>
+                <Link v-if="filtered" :href="route('receipts.index')" class="workspace-button">{{ __('all_receipts') }}</Link>
+            </form>
+            <p v-if="error" role="alert" class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
+            <p v-if="loading" role="status" class="text-sm text-zinc-500">Loading receipts…</p>
+            <BulkOperations :selected-count="selectedReceipts.length" :selected-ids="selectedReceipts" :categories="categories" @clear-selection="selectedReceipts = []" />
+            <section class="workspace-surface overflow-hidden" aria-label="Receipt comparison" :aria-busy="loading">
+                <div v-if="receipts.length" class="overflow-x-auto" tabindex="0" role="region" aria-label="Receipts, scroll to compare all columns">
+                    <table class="w-full text-left text-sm">
+                        <caption class="sr-only">Compare receipt amount, date, category and processing status. Selection applies to this page.</caption>
+                        <thead class="border-b border-zinc-200 bg-zinc-50 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400"><tr>
+                            <th scope="col" class="w-10 px-3 py-3"><input type="checkbox" :checked="allSelected" :indeterminate="selectedReceipts.length > 0 && !allSelected" aria-label="Select all receipts on this page" @change="toggleAll" /></th>
+                            <th scope="col" class="px-3 py-3 font-medium">{{ __('merchant') }}</th><th scope="col" class="px-3 py-3 text-right font-medium">{{ __('amount') }}</th><th scope="col" class="px-3 py-3 font-medium">{{ __('date') }}</th><th scope="col" class="px-3 py-3 font-medium">{{ __('category') }}</th><th scope="col" class="px-3 py-3 font-medium">Status</th><th scope="col" class="px-3 py-3 font-medium">{{ __('tags') }}</th>
+                        </tr></thead>
+                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            <tr v-for="receipt in receipts" :key="receipt.id" class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                                <td class="px-3 py-4"><input v-model="selectedReceipts" :value="receipt.id" type="checkbox" :aria-label="`Select receipt #${receipt.id} from ${receipt.merchant?.name || 'unknown merchant'}`" /></td>
+                                <td class="min-w-[160px] max-w-xs px-3 py-4"><button type="button" :dusk="`receipt-preview-${receipt.id}`" class="max-w-full truncate text-left font-medium text-zinc-900 hover:underline dark:text-zinc-100" @click="selectedReceipt = receipt">{{ receipt.merchant?.name || __('unknown_merchant') }}</button><p v-if="receipt.note || receipt.receipt_description" class="mt-1 max-w-xs truncate text-xs text-zinc-500">{{ receipt.note || receipt.receipt_description }}</p></td>
+                                <td class="whitespace-nowrap px-3 py-4 text-right font-medium tabular-nums">{{ receipt.total_amount == null ? '—' : formatCurrency(receipt.total_amount, receipt.currency) }}</td>
+                                <td class="whitespace-nowrap px-3 py-4 text-zinc-600 dark:text-zinc-400">{{ formatDate(receipt.receipt_date) }}</td>
+                                <td class="max-w-[180px] px-3 py-4 text-zinc-600 [overflow-wrap:anywhere] dark:text-zinc-400">{{ receipt.category?.name || receipt.receipt_category || __('uncategorized') }}</td>
+                                <td class="whitespace-nowrap px-3 py-4 text-xs text-zinc-500 dark:text-zinc-400">{{ receipt.file?.status ? fileStatusLabel(receipt.file) : 'No source file' }}</td>
+                                <td class="max-w-[200px] px-3 py-4 text-xs text-zinc-500 [overflow-wrap:anywhere] dark:text-zinc-400">{{ receipt.tags?.map(tag => tag.name).join(', ') || '—' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div v-else class="workspace-empty">
+                    <h2 class="section-heading">{{ category ? __('no_receipts_in_category').replace(':category', category.name) : merchant ? `No receipts from ${merchant.name}` : filters.search ? 'No receipts match your search' : __('upload_first_receipts') }}</h2>
+                    <p>{{ filtered ? 'Adjust your search or choose All Receipts to clear the filters.' : __('no_receipts_description') }}</p>
+                    <Link v-if="filtered" :href="route('receipts.index')" class="workspace-button">{{ __('all_receipts') }}</Link>
+                    <Link v-else :href="route('documents.upload')" class="workspace-primary">{{ __('upload_receipts') }}</Link>
+                </div>
+                <Pagination v-if="pagination.links?.length > 3" :links="pagination.links" :from="pagination.from" :to="pagination.to" :total="pagination.total" />
+            </section>
+            <p v-if="pagination.total" class="text-sm text-zinc-500" role="status">{{ pagination.total }} receipts · Page {{ pagination.current_page }} of {{ pagination.last_page }}</p>
+        </div>
+        <FilePreviewModal :show="!!selectedReceipt?.file?.id" :item="preview" @close="selectedReceipt = null" />
+        <div v-if="selectedReceipt && !selectedReceipt.file?.id" class="workspace-surface mt-4 p-4">
+            <p class="text-sm">No original file is attached to this receipt.</p><Link :href="route('receipts.show', selectedReceipt.id)" class="workspace-button mt-3">Open receipt details</Link>
+        </div>
+    </AuthenticatedLayout>
+</template>

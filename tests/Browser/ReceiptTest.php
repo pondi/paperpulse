@@ -1,9 +1,12 @@
 <?php
 
+use App\Models\Category;
+use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\LineItem;
 use App\Models\Merchant;
 use App\Models\Receipt;
+use Facebook\WebDriver\WebDriverKeys;
 use Laravel\Dusk\Browser;
 
 test('receipt index loads', function () {
@@ -13,7 +16,7 @@ test('receipt index loads', function () {
         $this->loginAs($browser, $user);
 
         $browser->visit('/receipts')
-            ->waitFor('h2')
+            ->waitFor('h1')
             ->assertPathIs('/receipts');
     });
 });
@@ -55,34 +58,58 @@ test('receipt index shows receipts when they exist', function () {
     });
 });
 
-test('clicking receipt row opens drawer', function () {
+test('receipt row opens an accessible preview with line items and sharing', function (): void {
     $user = $this->createUser();
-    $merchant = Merchant::create([
-        'user_id' => $user->id,
-        'name' => 'Drawer Test Store',
-    ]);
+    $merchant = Merchant::create(['user_id' => $user->id, 'name' => 'Preview Test Store']);
+    $file = File::factory()->for($user)->create(['file_type' => 'receipt', 'status' => 'completed']);
+    $receipt = Receipt::factory()->for($user)->create(['file_id' => $file->id, 'merchant_id' => $merchant->id, 'total_amount' => 42, 'currency' => 'USD', 'receipt_description' => 'Keep this complete purchase description']);
+    ExtractableEntity::factory()->create(['user_id' => $user->id, 'file_id' => $file->id, 'entity_type' => 'receipt', 'entity_id' => $receipt->id, 'is_primary' => true]);
+    LineItem::create(['receipt_id' => $receipt->id, 'text' => 'Preview purchase', 'sku' => 'SKU-013', 'qty' => 1, 'price' => 42, 'total' => 42]);
+    $this->browse(function (Browser $browser) use ($user, $receipt): void {
+        $browser->resize(1440, 1000)->loginAs($user)->visit('/receipts')->waitFor('@receipt-preview-'.$receipt->id)
+            ->keys('@receipt-preview-'.$receipt->id, WebDriverKeys::ENTER)->waitFor('[role="dialog"]')
+            ->waitForText('Document information')->assertSee('Sharing')->assertSee('Keep this complete purchase description');
+        $browser->script("Array.from(document.querySelectorAll('[role=dialog] summary')).find(el => el.textContent.includes('Line items')).click()");
+        $browser->waitForText('SKU-013')->assertSee('Preview purchase')->press('Edit details')
+            ->keys('button[aria-label="Close preview"]', WebDriverKeys::ESCAPE)->waitUntilMissing('[role="dialog"]')
+            ->waitUntil('document.activeElement.getAttribute("dusk") === "receipt-preview-'.$receipt->id.'"');
+        foreach ([320, 390, 768] as $width) {
+            $browser->resize($width, 844)->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+                ->screenshot('redesign-receipts-'.$width)->click('@receipt-preview-'.$receipt->id)
+                ->waitForText('Document information')->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+                ->screenshot('redesign-receipt-preview-'.$width)->click('button[aria-label="Close preview"]')->waitUntilMissing('[role="dialog"]');
+        }
+        $browser->resize(1440, 1000);
+        $browser->script("document.documentElement.classList.add('dark')");
+        $browser->screenshot('redesign-receipts-dark');
+    });
+});
 
-    Receipt::factory()->for(File::factory()->for($user))->create([
-        'user_id' => $user->id,
-        'merchant_id' => $merchant->id,
-        'total_amount' => 42.00,
-        'currency' => 'USD',
-        'receipt_date' => '2024-05-20',
-    ]);
-
-    $this->browse(function (Browser $browser) use ($user) {
-        $this->loginAs($browser, $user);
-
-        $browser->visit('/receipts')
-            ->waitForText('Drawer Test Store')
-            ->pause(500)
-            // Click the merchant name cell (which triggers openReceipt)
-            ->click('td.px-6.py-4.whitespace-nowrap:nth-child(3)')
-            ->pause(700)
-            // The drawer should show the merchant name
-            ->waitFor('.w-screen.sm\\:w-\\[500px\\]')
-            ->assertSee('Drawer Test Store')
-            ->assertSee('Share');
+it('keeps receipt scope through pagination and supports confirmed bulk actions and exports', function (): void {
+    $user = $this->createUser();
+    $merchant = Merchant::create(['user_id' => $user->id, 'name' => 'Scoped Store']);
+    $category = Category::create(['user_id' => $user->id, 'name' => 'Travel', 'slug' => 'travel']);
+    $receipts = Receipt::factory()->count(21)->for($user)->state(fn () => ['file_id' => File::factory()->for($user)->create(['file_type' => 'receipt', 'status' => 'completed'])->id])->create(['merchant_id' => $merchant->id, 'receipt_description' => 'Scoped purchase']);
+    $this->browse(function (Browser $browser) use ($user, $merchant, $category, $receipts): void {
+        $browser->resize(1440, 1000)->loginAs($user)->visit('/receipts/merchant/'.$merchant->id)->waitFor('#receipt-search')
+            ->type('#receipt-search', 'Scoped')->press('Search')->waitUntil("location.search.includes('search=Scoped')")
+            ->check('thead input')->assertSee('20 receipts selected')
+            ->click('nav[aria-label="Pagination"] a[href*="page=2"]')->waitForText('Page 2 of 2')
+            ->assertMissing('[aria-label="Selected receipt actions"]')->check('thead input')->assertSee('1 receipt selected');
+        $browser->script('window.exportContents = []; const create = URL.createObjectURL.bind(URL); URL.createObjectURL = blob => { blob.text().then(text => window.exportContents.push(text)); return create(blob); }');
+        $browser->press('Export')->press('Export as CSV')->waitForText('CSV download started.')
+            ->waitUntil('window.exportContents.length === 1')->assertScript("window.exportContents[0].includes('Scoped Store')", true)
+            ->press('Export')->press('Export as PDF')->waitForText('PDF download started.', 20)
+            ->waitUntil('window.exportContents.length === 2')->assertScript("window.exportContents[1].startsWith('%PDF-')", true)
+            ->press('Categorize')->waitFor('#bulk-receipt-category')->select('#bulk-receipt-category', $category->id)
+            ->press('Apply Category')->waitUntilMissing('[role="dialog"]')->waitUntilMissing('[aria-label="Selected receipt actions"]')->assertSee('Travel');
+        expect(Receipt::whereIn('id', $receipts->modelKeys())->where('category_id', $category->id)->count())->toBe(1);
+        $browser->check('thead input')->press('Delete')->waitFor('[role="dialog"]')->press('Cancel')->waitUntilMissing('[role="dialog"]');
+        expect(Receipt::whereIn('id', $receipts->modelKeys())->count())->toBe(21);
+        $browser->press('Delete')->waitFor('[role="dialog"]')->click('[role="dialog"] button[type="submit"]')
+            ->waitUntilMissing('[role="dialog"]');
+        expect(Receipt::whereIn('id', $receipts->modelKeys())->count())->toBe(20);
+        $browser->clickLink('All Receipts')->waitForLocation('/receipts')->assertInputValue('#receipt-search', '');
     });
 });
 

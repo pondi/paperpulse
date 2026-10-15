@@ -177,7 +177,7 @@ it('rejects foreign files before bulk deletion', function (): void {
     expect($owned->fresh()->trashed())->toBeFalse()->and($foreign->fresh()->trashed())->toBeFalse();
 });
 
-it('keeps mixed selections and drawer deletion tied to file identity', function (): void {
+it('keeps mixed selections preview and deletion tied to file identity', function (): void {
     $process = new Process(['node', '--input-type=module', '--eval', <<<'JS'
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -203,18 +203,20 @@ function setup(file, props) {
 }
 const rows = [{ id: 7, file_id: 101 }, { id: 7, file_id: 102 }];
 const { state, template } = setup('Pages/Documents/Index.vue', { documents: { data: rows }, categories: [], filters: {} });
-assert.ok(template.includes('toggleDocument(document.file_id)'));
-assert.ok(template.includes('selectedDocuments.includes(document.file_id)'));
-state.toggleDocument(rows[0].file_id);
+assert.ok(template.includes(':value="document.file_id"'));
+state.removeOne(rows[0]);
 assert.deepEqual(state.selectedDocuments.value, [101]);
 state.deleteSelected();
 assert.deepEqual(calls.at(-1)[1].data.ids, [101]);
+calls.at(-1)[1].onFinish();
 state.toggleAll();
 assert.deepEqual(state.selectedDocuments.value, [101, 102]);
-const drawer = setup('Components/Domain/DocumentDrawer.vue', { document: rows[1] });
-drawer.state.deleteDocument();
+state.removeOne(rows[1]);
+state.deleteSelected();
 assert.equal(calls.at(-1)[0], 'documents.destroy-bulk');
 assert.deepEqual(calls.at(-1)[1].data.ids, [102]);
+const drawer = setup('Components/Domain/DocumentDrawer.vue', { document: rows[1] });
+assert.equal(drawer.state.item.value.file_id, 102);
 JS], base_path());
     $process->run();
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());

@@ -1,15 +1,19 @@
 <?php
 
 use App\Models\BankStatement;
+use App\Models\Category;
 use App\Models\Contract;
 use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
+use App\Models\FileShare;
 use App\Models\Invoice;
 use App\Models\ReturnPolicy;
+use App\Models\Tag;
 use App\Models\Voucher;
 use App\Models\Warranty;
 use App\Services\Files\FileUploadConfigService;
+use Facebook\WebDriver\WebDriverKeys;
 use Laravel\Dusk\Browser;
 
 it('uses source file downloads in mixed document cards rows and drawers', function (): void {
@@ -23,13 +27,11 @@ it('uses source file downloads in mixed document cards rows and drawers', functi
         $browser->loginAs($user)->visit('/documents')->waitFor('a[download="Invoice.pdf"]')
             ->assertScript("Array.from(document.querySelectorAll('a[download]')).every(a => a.href.includes('/documents/serve?guid='))", true)
             ->click('a[download="Invoice.pdf"]')->assertPathIs('/documents')
-            ->click('div.flex.items-center.space-x-2 > button:last-child')->waitFor('table')
+            ->click('button[aria-label="List view"]')->waitFor('table')
             ->assertPresent('tbody a[download="Invoice.pdf"]')
-            ->click('tbody tr td:nth-child(3) button')->waitFor('div.fixed.right-0')
-            ->waitFor('div.fixed.right-0 button[aria-haspopup="menu"]')
-            ->waitUntil("document.querySelector('div.fixed.right-0 button[aria-haspopup=menu]').getBoundingClientRect().width > 0 && document.querySelector('div.fixed.right-0 button[aria-haspopup=menu]').getBoundingClientRect().right <= innerWidth")
-            ->click('div.fixed.right-0 button[aria-haspopup="menu"]')->waitFor('div.fixed.right-0 a[download]')
-            ->assertScript("document.querySelector('div.fixed.right-0 a[download]').href.includes('/documents/serve?guid=')", true);
+            ->click('tbody tr td:nth-child(2) button')->waitFor('[role="dialog"]')
+            ->waitFor('[role="dialog"] section[aria-label="Document preview"] a')
+            ->assertScript("document.querySelector('[role=dialog] section[aria-label=\"Document preview\"] a').href.includes('/documents/serve?guid=')", true);
     });
 });
 
@@ -45,10 +47,10 @@ it('renders disabled document pagination without null URL errors', function (): 
 
     $this->browse(function (Browser $browser) use ($user, $documents): void {
         $browser->loginAs($user)->visit('/documents')->waitFor('input[type="checkbox"]')
-            ->click('div.flex.items-center.space-x-2 > button:last-child')->waitFor('nav.relative span[aria-disabled="true"]')
+            ->click('button[aria-label="List view"]')->waitFor('nav[aria-label="Pagination"] span')
             ->assertMissing('nav a[aria-disabled="true"]')
-            ->click('nav.relative a[href*="page=2"]')->waitUntil("location.search === '?page=2'")
-            ->click('div.flex.items-center.space-x-2 > button:last-child')->waitFor('nav.relative span[aria-disabled="true"]');
+            ->click('nav[aria-label="Pagination"] a[href*="page=2"]')->waitUntil("location.search === '?page=2'")
+            ->click('button[aria-label="List view"]')->waitFor('nav[aria-label="Pagination"] span');
         $browser->visit('/documents/'.$documents[0]->id)->waitForText('Document 1');
 
         $errors = array_filter($browser->driver->manage()->getLog('browser'), fn (array $entry): bool => str_contains($entry['message'], 'toString') || str_contains($entry['message'], '[Vue error]'));
@@ -281,9 +283,70 @@ test('view mode toggle exists on documents index', function () {
 
         $browser->visit('/documents')
             ->waitForText('Documents')
-            ->assertSee('Filters');
+            ->assertSee('Search filenames')->assertSee('Category')->assertSee('Tag');
 
-        // Both grid and list toggle buttons should be present (SVG icon buttons)
-        $browser->assertPresent('button svg');
+        $browser->assertPresent('button[aria-label="Grid view"][aria-pressed="true"]')
+            ->assertPresent('button[aria-label="List view"][aria-pressed="false"]');
+    });
+});
+
+it('filters document filenames categories and tags and confirms source file deletion', function (): void {
+    $user = $this->createUser();
+    $category = Category::create(['user_id' => $user->id, 'name' => 'Agreements', 'slug' => 'agreements']);
+    $tag = Tag::create(['user_id' => $user->id, 'name' => 'Renewal', 'color' => '#123456']);
+    $files = [];
+    foreach (range(1, 21) as $number) {
+        $file = File::factory()->for($user)->create(['file_type' => 'document', 'status' => 'completed', 'fileName' => 'Scoped agreement '.$number.'.pdf']);
+        $document = Document::factory()->for($user)->create(['file_id' => $file->id, 'title' => 'Agreement '.$number, 'category_id' => $category->id, 'summary' => 'Review the renewal terms.']);
+        ExtractableEntity::factory()->create(['file_id' => $file->id, 'user_id' => $user->id, 'entity_type' => 'document', 'entity_id' => $document->id, 'is_primary' => true]);
+        $file->tags()->attach($tag);
+        $files[] = $file;
+    }
+    $this->browse(function (Browser $browser) use ($user, $category): void {
+        $browser->resize(1440, 1000)->loginAs($user)->visit('/documents')->waitFor('#document-search')
+            ->type('#document-search', 'Scoped')->type('#document-tag', 'Renewal')->select('#document-category', $category->id)
+            ->waitUntil("location.search.includes('tag=Renewal')")->click('button[aria-label="List view"]')->waitFor('table')
+            ->check('thead input')->assertSee('20 document(s) selected')
+            ->assertPresent('[aria-label="Selected document actions"] a[href*="ids"]')
+            ->click('nav[aria-label="Pagination"] a[href*="page=2"]')->waitUntil("location.search.includes('page=2')")
+            ->waitUntilMissing('[aria-label="Selected document actions"]')->assertInputValue('#document-search', 'Scoped')
+            ->assertInputValue('#document-tag', 'Renewal')->assertSelected('#document-category', $category->id)
+            ->click('button[aria-label="List view"]')->waitFor('tbody button[dusk]');
+        $selected = (int) $browser->attribute('tbody input[type="checkbox"]', 'value');
+        $browser->click('tbody button[dusk]')->waitForText('Review the renewal terms.')->press('Edit details')->type('title', 'Unsaved list edit')
+            ->click('button[aria-label="Close preview"]')->waitForDialog()->dismissDialog()->assertInputValue('title', 'Unsaved list edit')
+            ->press('Cancel editing')->keys('button[aria-label="Close preview"]', WebDriverKeys::ESCAPE)->waitUntilMissing('[role="dialog"]')
+            ->waitUntil('document.activeElement.getAttribute("dusk") === "document-preview-'.$selected.'"')
+            ->check('thead input')->press('Delete')->waitFor('[role="dialog"]')->press('Cancel')->waitUntilMissing('[role="dialog"]');
+        expect(File::find($selected))->not->toBeNull();
+        $browser->press('Delete')->waitFor('[role="dialog"]')->click('[role="dialog"] .workspace-danger')->waitUntilMissing('[role="dialog"]');
+        expect(File::find($selected))->toBeNull();
+        $browser->clickLink('All documents')->waitUntil("location.search === ''")->waitFor('article[data-document-id]')->screenshot('redesign-documents-desktop');
+        foreach ([320, 390, 768] as $width) {
+            $browser->resize($width, 844)->assertScript('document.documentElement.scrollWidth <= innerWidth', true)->screenshot('redesign-documents-grid-'.$width)
+                ->click('button[aria-label="List view"]')->waitFor('table')->assertScript('document.documentElement.scrollWidth <= innerWidth', true)->screenshot('redesign-documents-list-'.$width)
+                ->click('button[aria-label="Grid view"]')->waitFor('article[data-document-id]');
+        }
+        $browser->script("document.documentElement.classList.add('dark')");
+        $browser->screenshot('redesign-documents-dark')->type('#document-search', 'NoMatch')->press('Search')->waitForText('No documents match your filters')->assertSee('All documents');
+    });
+});
+
+it('keeps shared document browsing read only while allowing search and preview', function (): void {
+    $owner = $this->createUser(['name' => 'Document owner']);
+    $viewer = $this->createUser();
+    $file = File::factory()->for($owner)->create(['file_type' => 'document', 'status' => 'completed', 'fileName' => 'shared-policy.pdf']);
+    $document = Document::factory()->for($owner)->create(['file_id' => $file->id, 'title' => 'Shared policy', 'summary' => 'Read the shared policy.']);
+    ExtractableEntity::factory()->create(['file_id' => $file->id, 'user_id' => $owner->id, 'entity_type' => 'document', 'entity_id' => $document->id, 'is_primary' => true]);
+    FileShare::create(['file_id' => $file->id, 'file_type' => 'document', 'shared_by_user_id' => $owner->id, 'shared_with_user_id' => $viewer->id, 'permission' => 'view', 'shared_at' => now()]);
+    $this->browse(function (Browser $browser) use ($viewer, $document): void {
+        $browser->resize(1440, 1000)->loginAs($viewer)->visit('/documents/shared')->waitForText('Shared policy')->assertSee('Document owner')
+            ->assertSee('View only')->assertMissing('input[type="checkbox"]')->type('#shared-document-search', 'Shared')->press('Search')
+            ->waitUntil("location.search.includes('search=Shared')")->click('@shared-document-preview-'.$document->id)->waitForText('Read the shared policy.')
+            ->assertSee('Shared file · read only')->assertDontSee('Edit details')->click('button[aria-label="Close preview"]')->waitUntilMissing('[role="dialog"]');
+        foreach ([320, 390, 768] as $width) {
+            $browser->resize($width, 844)->assertScript('document.documentElement.scrollWidth <= innerWidth', true)->screenshot('redesign-shared-documents-'.$width);
+        }
+        $browser->type('#shared-document-search', 'Absent')->press('Search')->waitForText('No shared documents match your search')->clickLink('Clear search')->waitForText('Shared policy');
     });
 });

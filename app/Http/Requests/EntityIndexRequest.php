@@ -36,7 +36,7 @@ class EntityIndexRequest extends FormRequest
                 'status' => ['nullable', Rule::in(['active', 'expired', 'redeemed'])],
                 'type' => ['nullable', Rule::in(['gift_card', 'payment_plan', 'store_credit', 'coupon'])],
             ],
-            'receipts.index' => [
+            'receipts.index', 'receipts.byMerchant' => [
                 'category_id' => ['nullable', 'integer', new ExistsForUser('categories')],
                 'merchant_id' => ['nullable', 'integer', new ExistsForUser('merchants')],
             ],

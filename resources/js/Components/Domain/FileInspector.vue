@@ -116,13 +116,16 @@ function recordUrl(extraction) {
     const routes = { invoice: 'invoices.show', contract: 'contracts.show', bank_statement: 'bank-statements.show', voucher: 'vouchers.show' };
     return routes[extraction.entity_type] ? route(routes[extraction.entity_type], extraction.entity_id) : null;
 }
+function lineSku(extraction, id) {
+    return extraction.entity.lineItems?.find(item => item.id === id)?.sku;
+}
 function fields(extraction) {
     const entity = extraction.entity;
     if (extraction.entity_type === 'document') return [['Title', entity.title], ['Summary', entity.summary], ['Document date', entity.document_date ? formatDate(entity.document_date) : null]];
     if (extraction.entity_type === 'receipt') return [
         ['Merchant', entity.merchant?.name], ['Receipt date', entity.receipt_date ? formatDate(entity.receipt_date) : null],
         ['Total', entity.total_amount == null ? null : formatCurrency(entity.total_amount, entity.currency)],
-        ['Tax', entity.tax_amount == null ? null : formatCurrency(entity.tax_amount, entity.currency)], ['Category', entity.category?.name],
+        ['Tax', entity.tax_amount == null ? null : formatCurrency(entity.tax_amount, entity.currency)], ['Category', entity.category?.name || entity.receipt_category], ['Description', entity.receipt_description],
     ];
     return Object.entries(entity).filter(([key, value]) => value != null && typeof value !== 'object' && !['id', 'file_id', 'user_id', 'created_at', 'updated_at'].includes(key))
         .map(([key, value]) => [key.replaceAll('_', ' '), typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value]);
@@ -175,7 +178,7 @@ defineExpose({ dirty });
                         </fieldset>
                         <template v-else>
                             <dl class="flex flex-col gap-4 text-sm"><div v-for="[label, value] in fields(payload.extractedEntities[index])" :key="label"><dt class="mb-1 text-xs capitalize text-zinc-500 dark:text-zinc-400">{{ label }}</dt><dd class="whitespace-pre-line break-words leading-6">{{ value ?? 'Not available' }}</dd></div></dl>
-                            <details v-if="draft.line_items.length"><summary class="cursor-pointer py-2 text-sm font-medium">Line items · {{ draft.line_items.length }}</summary><ul class="divide-y divide-zinc-100 dark:divide-zinc-800"><li v-for="item in draft.line_items" :key="item.id" class="flex items-start justify-between gap-3 py-3 text-sm"><span class="min-w-0 break-words">{{ item.text }}<span class="mt-1 block text-xs text-zinc-500">{{ item.qty }} × {{ formatCurrency(item.price, draft.currency) }}</span></span><span class="shrink-0 tabular-nums">{{ formatCurrency(item.total, draft.currency) }}</span></li></ul></details>
+                            <details v-if="draft.line_items.length"><summary class="cursor-pointer py-2 text-sm font-medium">Line items · {{ draft.line_items.length }}</summary><ul class="divide-y divide-zinc-100 dark:divide-zinc-800"><li v-for="item in draft.line_items" :key="item.id" class="flex items-start justify-between gap-3 py-3 text-sm"><span class="min-w-0 break-words">{{ item.text }}<span v-if="lineSku(payload.extractedEntities[index], item.id)" class="mt-1 block text-xs text-zinc-500">SKU: {{ lineSku(payload.extractedEntities[index], item.id) }}</span><span class="mt-1 block text-xs text-zinc-500">{{ item.qty }} × {{ formatCurrency(item.price, draft.currency) }}</span></span><span class="shrink-0 tabular-nums">{{ formatCurrency(item.total, draft.currency) }}</span></li></ul></details>
                         </template>
                         <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ payload.extractedEntities[index].confidence_score == null ? 'Extraction confidence unavailable' : Math.round(Number(payload.extractedEntities[index].confidence_score) * 100) + '% extraction confidence' }}</p>
                     </form>

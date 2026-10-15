@@ -77,9 +77,9 @@ if (scenario === 'original downloads') {
         assert.ok(html.includes(`download="${row.file_name}"`));
         assert.ok(html.includes(row.file.url.replaceAll('&', '&amp;')));
     }
-    const drawer = await render('Components/Domain/DocumentDrawer.vue', { document: rows[1], show: true });
-    assert.ok(drawer.includes('download="invoice.pdf"'));
-    assert.ok(!drawer.includes('/documents/7/download'));
+    const preview = await render('Components/Common/FilePreviewModal.vue', { item: rows[1], show: true });
+    assert.ok(preview.includes('/files/2'));
+    assert.ok(!preview.includes('/documents/7/download'));
 }
 if (scenario === 'category browsing') {
     const category = { id: 12, name: 'Garden & Plants', documents_count: 0, receipts_count: 1, color: '#123456', can_edit: false };
@@ -135,7 +135,7 @@ if (scenario === 'row names') {
     for (const id of [1, 2]) {
         assert.ok(receipts.includes(`aria-label="Select receipt #${id} from Same store"`));
     }
-    assert.ok(receipts.includes('aria-label="Select all receipts"'));
+    assert.ok(receipts.includes('aria-label="Select all receipts on this page"'));
 }
 if (scenario === 'recommendation states') {
     for (const status of ['queued', 'running', 'failed', 'completed', 'awaiting_decisions']) {

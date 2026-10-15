@@ -1,274 +1,53 @@
-<script setup lang="ts">
+<script setup>
+import { ref, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import SearchBar from '@/Components/Features/SearchBar.vue';
+import Pagination from '@/Components/Common/Pagination.vue';
+import DocumentDrawer from '@/Components/Domain/DocumentDrawer.vue';
 import { useDateFormatter } from '@/Composables/useDateFormatter';
-import { 
-    DocumentIcon, 
-    UserIcon,
-    EyeIcon,
-    ArrowDownTrayIcon
-} from '@heroicons/vue/24/outline';
 
-interface SharedDocument {
-    id: number;
-    title: string;
-    file_name: string;
-    file_type: string;
-    size: number;
-    created_at: string;
-    category?: {
-        id: number;
-        name: string;
-        color: string;
-    };
-    tags: Array<{
-        id: number;
-        name: string;
-    }>;
-    owner: {
-        id: number;
-        name: string;
-        email: string;
-    };
-    shared_permission: 'view' | 'edit';
-    shared_at: string;
-}
-
-interface Props {
-    documents: {
-        data: SharedDocument[];
-        links: Array<{ url: string | null; label: string; active: boolean }>;
-        from: number | null;
-        to: number | null;
-        total: number;
-    };
-    filters: {
-        search?: string;
-    };
-}
-
-defineProps<Props>();
+const props = defineProps({ documents: { type: Object, required: true }, filters: { type: Object, default: () => ({}) } });
 const { formatDate } = useDateFormatter();
-
-const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
-
-
-const applyFilter = (filters: any) => {
-    router.get(route('documents.shared'), filters, {
-        preserveState: true,
-        preserveScroll: true
+const search = ref(props.filters.search || '');
+const selectedDocument = ref(null);
+const loading = ref(false);
+const error = ref('');
+watch(() => props.filters.search, value => { search.value = value || ''; });
+function browse() {
+    error.value = '';
+    router.get(route('documents.shared'), { search: search.value || undefined }, {
+        preserveState: true, preserveScroll: true,
+        onStart: () => { loading.value = true; },
+        onError: errors => { error.value = Object.values(errors).join(' '); },
+        onFinish: () => { loading.value = false; },
     });
-};
+}
+function formatFileSize(bytes) {
+    if (bytes == null) return 'Size unavailable';
+    if (bytes === 0) return '0 Bytes';
+    const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 3);
+    return `${parseFloat((bytes / Math.pow(1024, index)).toFixed(2))} ${['Bytes', 'KB', 'MB', 'GB'][index]}`;
+}
 </script>
 
 <template>
     <AuthenticatedLayout>
         <Head title="Shared Documents" />
-        <template #header>
-            <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
-                Shared Documents
-            </h2>
-        </template>
-
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <!-- Flash Message -->
-                <div v-if="$page.props.flash?.success" class="mb-6 rounded-md bg-green-50 dark:bg-green-900/20 p-4 border border-green-200 dark:border-green-800">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 10-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.06l2.5 2.5a.75.75 0 001.137-.089l4.06-5.5z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-sm font-medium text-green-800 dark:text-green-300">{{ $page.props.flash.success }}</p>
-                        </div>
-                    </div>
+        <template #header><div class="flex flex-wrap items-start justify-between gap-3"><div><h1 class="page-heading">Shared Documents</h1><p class="page-description">Documents others have shared with you. Your access is shown beside each document.</p></div><Link :href="route('documents.index')" class="workspace-button">My documents</Link></div></template>
+        <div class="flex min-w-0 flex-col gap-5">
+            <form role="search" aria-label="Find shared documents" class="flex flex-wrap items-end gap-3" @submit.prevent="browse"><div class="min-w-0 flex-1 basis-48"><label for="shared-document-search" class="field-label mb-1">Search shared documents</label><input id="shared-document-search" v-model="search" type="search" class="workspace-filter w-full" placeholder="Title or document text" /></div><button type="submit" class="workspace-button" :disabled="loading">Search</button><Link v-if="filters.search" :href="route('documents.shared')" class="workspace-button">Clear search</Link></form>
+            <p v-if="loading" role="status" class="text-sm text-zinc-500">Loading shared documents…</p><p v-if="error" role="alert" class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
+            <section class="workspace-surface overflow-hidden" aria-label="Shared documents" :aria-busy="loading">
+                <div v-if="!documents.data.length" class="workspace-empty"><h2 class="section-heading">{{ filters.search ? 'No shared documents match your search' : 'No shared documents yet' }}</h2><p>{{ filters.search ? 'Try another title or clear the search.' : 'Documents shared with your account will appear here.' }}</p><Link v-if="filters.search" :href="route('documents.shared')" class="workspace-button">Clear search</Link></div>
+                <div v-else class="overflow-x-auto" tabindex="0" role="region" aria-label="Shared document table, scroll to see all columns">
+                    <table class="w-full text-left text-sm"><caption class="sr-only">Shared documents with owner, category, permission and sharing date.</caption><thead class="border-b border-zinc-200 bg-zinc-50 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950"><tr><th scope="col" class="px-4 py-3 font-medium">Document</th><th scope="col" class="px-4 py-3 font-medium">Shared by</th><th scope="col" class="px-4 py-3 font-medium">Category</th><th scope="col" class="px-4 py-3 font-medium">Access</th><th scope="col" class="px-4 py-3 font-medium">Shared on</th><th scope="col" class="px-4 py-3 font-medium">Actions</th></tr></thead>
+                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800"><tr v-for="document in documents.data" :key="document.id" class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50"><td class="min-w-[180px] max-w-sm px-4 py-4"><button type="button" class="max-w-full truncate text-left font-medium hover:underline" :dusk="`shared-document-preview-${document.id}`" @click="selectedDocument = document">{{ document.title }}</button><p class="mt-1 truncate text-xs text-zinc-500">{{ document.file_name }}</p><p class="mt-1 text-xs text-zinc-500">{{ formatFileSize(document.size) }}</p></td><td class="min-w-[160px] max-w-xs px-4 py-4"><p class="truncate">{{ document.owner?.name }}</p><p class="mt-1 truncate text-xs text-zinc-500">{{ document.owner?.email }}</p></td><td class="max-w-[180px] px-4 py-4 text-xs text-zinc-500 [overflow-wrap:anywhere]">{{ document.category?.name || '—' }}</td><td class="whitespace-nowrap px-4 py-4 text-xs text-zinc-500">{{ document.shared_permission === 'edit' ? 'Can edit' : 'View only' }}</td><td class="whitespace-nowrap px-4 py-4 text-xs text-zinc-500">{{ formatDate(document.shared_at) }}</td><td class="px-4 py-4"><div class="flex items-center gap-3"><Link :href="route('documents.show', document.id)" class="underline" :aria-label="`Open ${document.title}`">Open</Link><a :href="route('documents.download', document.id)" class="underline" :aria-label="`Download ${document.title}`">Download</a></div></td></tr></tbody>
+                    </table>
                 </div>
-                <!-- Search -->
-                <div class="mb-6">
-                    <SearchBar 
-                        :initial-search="filters.search" 
-                        placeholder="Search shared documents..."
-                        @search="(search) => applyFilter({ search })"
-                    />
-                </div>
-
-                <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-orange-600 dark:border-orange-500">
-                    <div v-if="documents.data.length === 0" class="p-6 text-center py-12">
-                        <DocumentIcon class="mx-auto h-16 w-16 text-zinc-400 dark:text-zinc-600" />
-                        <h3 class="mt-4 text-lg font-black text-zinc-900 dark:text-zinc-100">No shared documents yet</h3>
-                        <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                            When someone shares a document with you, it will appear here.
-                        </p>
-                    </div>
-
-                    <div v-else class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-amber-200 dark:divide-zinc-700">
-                            <thead>
-                                <tr>
-                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                                        Document
-                                    </th>
-                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                                        Owner
-                                    </th>
-                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                                        Category
-                                    </th>
-                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                                        Permission
-                                    </th>
-                                    <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                                        Shared On
-                                    </th>
-                                    <th class="relative px-6 py-3 bg-amber-50 dark:bg-zinc-800">
-                                        <span class="sr-only">Actions</span>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-zinc-900 divide-y divide-amber-200 dark:divide-zinc-700">
-                                <tr v-for="document in documents.data" :key="document.id" class="hover:bg-amber-50 dark:hover:bg-zinc-800 transition-colors duration-200">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <DocumentIcon class="h-8 w-8 text-zinc-400 dark:text-zinc-600 mr-3" />
-                                            <div>
-                                                <Link
-                                                    :href="route('documents.show', document.id)"
-                                                    class="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-amber-600 dark:hover:text-amber-400"
-                                                >
-                                                    {{ document.title }}
-                                                </Link>
-                                                <div class="text-sm text-zinc-600 dark:text-zinc-400">
-                                                    {{ formatFileSize(document.size) }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <UserIcon class="h-5 w-5 text-zinc-400 dark:text-zinc-600 mr-2" />
-                                            <div>
-                                                <div class="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                                                    {{ document.owner.name }}
-                                                </div>
-                                                <div class="text-sm text-zinc-600 dark:text-zinc-400">
-                                                    {{ document.owner.email }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span 
-                                            v-if="document.category"
-                                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                                            :style="{
-                                                backgroundColor: document.category.color + '20',
-                                                color: document.category.color
-                                            }"
-                                        >
-                                            {{ document.category.name }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span
-                                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                                            :class="{
-                                                'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300': document.shared_permission === 'edit',
-                                                'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300': document.shared_permission === 'view'
-                                            }"
-                                        >
-                                            {{ document.shared_permission === 'edit' ? 'Can edit' : 'View only' }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-600 dark:text-zinc-400">
-                                        {{ formatDate(document.shared_at) }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <div class="flex items-center justify-end space-x-2">
-                                            <Link
-                                                :href="route('documents.show', document.id)"
-                                                class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
-                                            >
-                                                <EyeIcon class="h-5 w-5" />
-                                            </Link>
-                                            <a
-                                                :href="route('documents.download', document.id)"
-                                                class="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-300"
-                                            >
-                                                <ArrowDownTrayIcon class="h-5 w-5" />
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Pagination -->
-                    <div v-if="documents.links.length > 3" class="px-6 py-4 bg-amber-50 dark:bg-zinc-800 border-t border-amber-200 dark:border-zinc-700">
-                        <nav class="flex items-center justify-between">
-                            <div class="flex-1 flex justify-between sm:hidden">
-                                <Link
-                                    v-for="link in documents.links"
-                                    :key="link.label"
-                                    :href="link.url"
-                                    :class="[
-                                        'relative inline-flex items-center px-4 py-2 text-sm font-bold rounded-md',
-                                        link.active
-                                            ? 'bg-orange-600 text-white'
-                                            : 'text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-900 hover:bg-amber-50 dark:hover:bg-zinc-700',
-                                        !link.url && 'opacity-50 cursor-not-allowed'
-                                    ]"
-                                    :disabled="!link.url"
-                                    v-html="link.label"
-                                />
-                            </div>
-                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                                <div>
-                                    <p class="text-sm text-zinc-700 dark:text-zinc-300">
-                                        Showing
-                                        <span class="font-bold">{{ documents.from || 0 }}</span>
-                                        to
-                                        <span class="font-bold">{{ documents.to || 0 }}</span>
-                                        of
-                                        <span class="font-bold">{{ documents.total || 0 }}</span>
-                                        results
-                                    </p>
-                                </div>
-                                <div>
-                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                                        <Link
-                                            v-for="link in documents.links"
-                                            :key="link.label"
-                                            :href="link.url"
-                                            :class="[
-                                                'relative inline-flex items-center px-4 py-2 text-sm font-bold border',
-                                                link.active
-                                                    ? 'z-10 bg-orange-600 border-orange-600 text-white'
-                                                    : 'bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-amber-50 dark:hover:bg-zinc-800',
-                                                !link.url && 'opacity-50 cursor-not-allowed',
-                                                documents.links.indexOf(link) === 0 && 'rounded-l-md',
-                                                documents.links.indexOf(link) === documents.links.length - 1 && 'rounded-r-md'
-                                            ]"
-                                            :disabled="!link.url"
-                                            v-html="link.label"
-                                        />
-                                    </nav>
-                                </div>
-                            </div>
-                        </nav>
-                    </div>
-                </div>
-            </div>
+                <Pagination v-if="documents.links?.length > 3" :links="documents.links" :from="documents.from" :to="documents.to" :total="documents.total" />
+            </section>
+            <p v-if="documents.total" class="text-sm text-zinc-500" role="status">Showing {{ documents.from || 0 }} to {{ documents.to || 0 }} of {{ documents.total }} shared documents</p>
         </div>
+        <DocumentDrawer :document="selectedDocument" :show="!!selectedDocument" @close="selectedDocument = null" />
     </AuthenticatedLayout>
 </template>

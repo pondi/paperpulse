@@ -17,6 +17,7 @@ use App\Services\Tags\TagAttachmentService;
 use App\Traits\ShareableController;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -91,7 +92,7 @@ class DocumentController extends BaseResourceController
         $sortDirection = $request->input('sort_direction', 'desc');
         $query->orderBy($sortField, $sortDirection);
 
-        $files = $query->paginate($request->input('per_page', $this->perPage));
+        $files = $query->paginate($request->input('per_page', $this->perPage))->withQueryString();
 
         return Inertia::render('Documents/Index', [
             'documents' => $files->through(function ($file) {
@@ -241,7 +242,7 @@ class DocumentController extends BaseResourceController
      *
      * @param  Document  $document  Route-bound Document model
      */
-    public function show($document): Response|\Illuminate\Http\RedirectResponse
+    public function show($document): Response|RedirectResponse
     {
         $this->authorize('view', $document);
 
@@ -488,7 +489,7 @@ class DocumentController extends BaseResourceController
             });
         }
 
-        $documents = $query->orderBy('file_shares.shared_at', 'desc')->paginate(20);
+        $documents = $query->orderBy('file_shares.shared_at', 'desc')->paginate(20)->withQueryString();
 
         return Inertia::render('Documents/Shared', [
             'documents' => $documents->through(fn (Document $document) => $this->transformForSharedIndex($document)),

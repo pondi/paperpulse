@@ -11,6 +11,7 @@ use App\Models\File;
 use App\Models\FileShare;
 use App\Models\Invoice;
 use App\Models\Receipt;
+use App\Models\Tag;
 use App\Models\ReturnPolicy;
 use App\Models\User;
 use App\Models\Voucher;
@@ -40,8 +41,9 @@ it('opens every extracted type using the actual file relationship despite overla
         ->where('extractedEntities.0.entity_id', $entity->id)->where('extractedEntities.0.entity.id', $entity->id));
     expect(FileInertiaResource::forIndex($this->file)->withDetailsUrl()->toArray(request())['detailsUrl'])
         ->toBe(route('files.show', $this->file));
-    $this->get(route('documents.show', $unrelated))->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('document.id', $unrelated->id));
+    $this->get(route('documents.show', $unrelated))->assertRedirect(route('files.show', $unrelatedFile));
+    $this->get(route('files.show', $unrelatedFile))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('extractedEntities.0.entity.id', $unrelated->id));
 })->with([
     [Receipt::class, 'receipt'], [Document::class, 'document'], [Invoice::class, 'invoice'],
     [Contract::class, 'contract'], [Voucher::class, 'voucher'], [Warranty::class, 'warranty'],
@@ -67,11 +69,25 @@ it('shows active supplemental entities while excluding deleted and foreign relat
             ->where('extractedEntities.0.entity_type', 'warranty')->where('extractedEntities.0.is_primary', false));
 });
 
+it('includes receipt reconciliation and readable file tags in the canonical workspace', function (): void {
+    $receipt = Receipt::factory()->create(['user_id' => $this->owner->id, 'file_id' => $this->file->id]);
+    $receipt->lineItems()->create(['text' => 'Notebook', 'sku' => 'NB-1', 'qty' => 1, 'price' => 12, 'total' => 12]);
+    $receipt->update(['total_amount' => 12, 'currency' => 'NOK']);
+    $tag = Tag::factory()->create(['user_id' => $this->owner->id, 'name' => 'Office', 'color' => '#123456']);
+    $this->file->tags()->attach($tag);
+
+    $this->actingAs($this->owner)->get(route('files.show', $this->file))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('file.tags.0.name', 'Office')
+            ->where('file.tags.0.color', '#123456')
+            ->where('extractedEntities.0.entity.reconciliation.calculated_total', '12.00'));
+});
+
 it('resolves legacy entities by file id without guessing their numeric ids', function (): void {
     $document = Document::factory()->create(['user_id' => $this->owner->id, 'file_id' => $this->file->id, 'id' => 50]);
     $this->actingAs($this->owner)->get(route('files.show', $this->file))->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('hasLegacyData', true)
-            ->where('file.primary_document.id', $document->id)->has('extractedEntities', 0));
+        ->has('extractedEntities', 1)->where('extractedEntities.0.entity.id', $document->id));
     $invoice = Invoice::factory()->create(['user_id' => $this->owner->id, 'file_id' => $this->file->id, 'id' => 99]);
     ExtractableEntity::factory()->create(['user_id' => $this->owner->id, 'file_id' => $this->file->id,
         'entity_type' => 'invoice', 'entity_id' => $invoice->id, 'is_primary' => true]);

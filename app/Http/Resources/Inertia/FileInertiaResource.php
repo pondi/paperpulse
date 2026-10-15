@@ -117,6 +117,7 @@ class FileInertiaResource extends JsonResource
                 'pdfUrl' => $pdfUrl,
                 'size' => $this->fileSize,
                 'is_pdf' => $hasPdfVariant,
+                'tags' => $this->relationLoaded('tags') ? $this->tags->map(fn ($tag): array => $tag->only(['id', 'name', 'color']))->values() : [],
                 'file_created_at' => $this->file_created_at,
                 'file_modified_at' => $this->file_modified_at,
             ]);

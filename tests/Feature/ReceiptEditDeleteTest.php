@@ -51,13 +51,14 @@ it('provides managed receipt categories and retains inactive current assignments
     $file = File::factory()->create(['user_id' => $owner->id]);
     $receipt = Receipt::factory()->create(['user_id' => $owner->id, 'file_id' => $file->id, 'category_id' => $current->id]);
 
-    $this->actingAs($owner)->get(route('receipts.show', $receipt))
+    $this->actingAs($owner)->get(route('receipts.show', $receipt))->assertRedirect(route('files.show', $file));
+    $this->get(route('files.show', $file))
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('categories', fn ($categories): bool => $categories->pluck('id')->sort()->values()->all() === [$garden->id, $current->id])
-            ->where('receipt.receipt_category', 'Old category'));
+            ->where('file.categories', fn ($categories): bool => collect($categories)->pluck('id')->sort()->values()->all() === [$garden->id, $current->id])
+            ->where('extractedEntities.0.entity.receipt_category', 'Old category'));
     $receipt->update(['category_id' => null]);
-    $this->get(route('receipts.show', $receipt))
-        ->assertInertia(fn (AssertableInertia $page) => $page->has('categories', 1)->where('receipt.receipt_category', null));
+    $this->get(route('files.show', $file))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('extractedEntities.0.entity.receipt_category', null));
 });
 
 it('saves canonical category choices and rejects another owners categories', function (): void {
@@ -140,20 +141,21 @@ it('shows persisted source discounts and current receipt totals', function (bool
         ['text' => 'Wine', 'qty' => 1, 'price' => '14.80', 'total' => '14.80'],
         ['text' => 'Wine', 'qty' => 1, 'price' => '7.90', 'total' => '7.90'],
     ]);
-    $this->actingAs($receipt->user)->get(route('receipts.show', $receipt))->assertOk()
+    $this->actingAs($receipt->user)->get(route('receipts.show', $receipt))->assertRedirect(route('files.show', $receipt->file_id));
+    $this->get(route('files.show', $receipt->file_id))->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('receipt.reconciliation.calculated_total', '22.70')
-            ->where('receipt.reconciliation.discount_amount', '1.14')
-            ->where('receipt.reconciliation.total_amount', '21.56')
-            ->where('receipt.reconciliation.needs_review', false));
+            ->where('extractedEntities.0.entity.reconciliation.calculated_total', '22.70')
+            ->where('extractedEntities.0.entity.reconciliation.discount_amount', '1.14')
+            ->where('extractedEntities.0.entity.reconciliation.total_amount', '21.56')
+            ->where('extractedEntities.0.entity.reconciliation.needs_review', false));
 })->with([false, true]);
 
 it('exposes the same processing and review state on receipt and file views', function (string $status): void {
     $this->withoutVite();
     $file = File::factory()->create(['status' => $status, 'meta' => ['review' => ['reason' => 'receipt_totals']]]);
     $receipt = Receipt::factory()->create(['user_id' => $file->user_id, 'file_id' => $file->id]);
-    $this->actingAs($file->user)->get(route('receipts.show', $receipt))->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('receipt.file.status', $status)
-            ->where('receipt.file.review', $status === 'needs_review' ? ['reason' => 'receipt_totals'] : null));
-    $this->get(route('files.show', $file))->assertInertia(fn (AssertableInertia $page) => $page->where('file.status', $status));
+    $this->actingAs($file->user)->get(route('receipts.show', $receipt))->assertRedirect(route('files.show', $file));
+    $this->get(route('files.show', $file))->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('extractedEntities.0.entity.file.status', $status)
+        ->where('extractedEntities.0.entity.file.review', $status === 'needs_review' ? ['reason' => 'receipt_totals'] : null));
 })->with(['completed', 'needs_review']);

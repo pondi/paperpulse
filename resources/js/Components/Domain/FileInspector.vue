@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import axios from 'axios';
 import SharingControls from '@/Components/Domain/SharingControls.vue';
+import TagManager from '@/Components/Domain/TagManager.vue';
 import DocumentPreview from '@/Components/Domain/DocumentPreview.vue';
 import ProcessingLimit from '@/Components/Domain/ProcessingLimit.vue';
 import ProcessingFailure from '@/Components/Domain/ProcessingFailure.vue';
@@ -188,11 +189,25 @@ defineExpose({ dirty });
                             <SharingControls :file-id="extraction.entity_id" :file-type="extraction.entity_type" :current-shares="extraction.shares || []" :enable-share-links="false" :readonly="dirty" @shares-updated="extraction.shares = $event" />
                         </div>
                     </details>
+                    <details class="border-b border-zinc-200 p-3 dark:border-zinc-800">
+                        <summary class="cursor-pointer text-sm font-medium">Tags <span class="ml-1 font-normal text-zinc-500">{{ payload.file.tags?.length || 0 }}</span></summary>
+                        <TagManager :model-value="payload.file.tags || []" readonly class="mt-3" />
+                        <p v-if="!payload.file.tags?.length" class="mt-2 text-xs text-zinc-500">No tags added.</p>
+                    </details>
                     <p v-if="!drafts.length" class="p-4 text-sm text-zinc-500">{{ ['pending', 'processing'].includes(payload.file.status) ? 'Extraction is in progress. Refresh to check for results.' : 'No extracted metadata is available. You can still inspect the original.' }} <button @click="load" class="underline">Refresh</button></p>
                     <details class="border-b border-zinc-200 p-4 dark:border-zinc-800">
                         <summary class="cursor-pointer text-sm font-medium">Collections <span class="ml-1 font-normal text-zinc-500">{{ payload.file.collections?.length || 0 }}</span></summary>
                         <div class="my-3 flex flex-wrap gap-2"><Link v-for="collection in payload.file.collections" :key="collection.id" :href="route('collections.show', collection.id)" class="text-sm text-zinc-500 underline">{{ collection.name }}</Link><span v-if="!payload.file.collections?.length" class="text-sm text-zinc-500">Not assigned to a collection</span></div>
                         <form v-if="payload.file.can_edit" @submit.prevent="addToCollection" class="flex items-end gap-2"><label class="flex-1">Add to collection<select v-model="collectionId" :disabled="saving || dirty"><option value="">Choose collection</option><option v-for="collection in payload.file.available_collections" :key="collection.id" :value="collection.id">{{ collection.path || collection.name }}</option></select></label><button class="workspace-button" :disabled="!collectionId || saving || dirty">Add</button></form>
+                    </details>
+                    <details class="border-b border-zinc-200 p-3 dark:border-zinc-800">
+                        <summary class="cursor-pointer text-sm font-medium">File information</summary>
+                        <dl class="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                            <div><dt class="text-xs text-zinc-500">File size</dt><dd>{{ payload.file.size ? (payload.file.size / 1024 / 1024).toFixed(2) + ' MB' : 'Unavailable' }}</dd></div>
+                            <div><dt class="text-xs text-zinc-500">Uploaded to PaperPulse</dt><dd>{{ formatDate(payload.file.uploaded_at) }}</dd></div>
+                            <div v-if="payload.file.file_created_at"><dt class="text-xs text-zinc-500">Original file created</dt><dd>{{ formatDate(payload.file.file_created_at) }}</dd></div>
+                            <div v-if="payload.file.file_modified_at"><dt class="text-xs text-zinc-500">Original file modified</dt><dd>{{ formatDate(payload.file.file_modified_at) }}</dd></div>
+                        </dl>
                     </details>
                     <div class="flex flex-wrap items-center gap-2 p-3">
                         <button v-if="canApprove" type="button" class="workspace-primary" :disabled="saving || dirty" @click="review('approve')">Approve</button>

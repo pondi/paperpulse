@@ -41,6 +41,7 @@ class ReceiptInertiaResource extends JsonResource
                 'currency' => $this->currency,
                 'receipt_category' => $this->receipt_category,
                 'receipt_description' => $this->receipt_description,
+                'reconciliation' => $this->resource->totalsReconciliation(),
                 'note' => $this->note,
                 'file' => $fileInfo,
                 'lineItems' => $this->mapLineItemsForIndex(),

@@ -93,6 +93,22 @@ it('keeps scanner error exits visible and provides file upload recovery', functi
     ['NotFoundError', 'No camera was found'],
 ]);
 
+it('keeps scanner capture controls accessible while camera permission is pending', function (): void {
+    $user = $this->createUser();
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/dashboard');
+        $browser->script("window.cv = { getBuildInformation: () => 'ready' }; navigator.mediaDevices.getUserMedia = () => new Promise(() => {});");
+        $browser->click('@add-document')->clickLink('Scan a document')->waitFor('[role="status"]')
+            ->assertSee('Starting camera…')->assertDisabled('button[aria-label="Capture scan"]')
+            ->assertPresent('[role="group"][aria-label="Scan type"] button[aria-pressed="true"]')
+            ->assertPresent('button[aria-label="Add scan details"]');
+        foreach ([390, 320] as $width) {
+            $browser->resize($width, 844)->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
+                ->assertScript("document.querySelector('button[aria-label=\"Capture scan\"]').getBoundingClientRect().bottom < window.innerHeight", true);
+        }
+    });
+});
+
 it('names row selection and search result links with distinct record identities', function (): void {
     $user = $this->createUser();
     $merchant = Merchant::create(['user_id' => $user->id, 'name' => 'Same store']);
@@ -1175,9 +1191,9 @@ it('keeps scanner folder navigation usable for empty lists and failed requests',
     $user = $this->createUser();
     $this->browse(function (Browser $browser) use ($user, $fails): void {
         $this->loginAs($browser, $user);
-        $browser->visit('/pulsedav')->waitForText('FOLDER VIEW');
+        $browser->visit('/pulsedav')->waitForText('BROWSE FOLDERS');
         $browser->script('window.fetch = async () => new Response('.json_encode($fails ? '{"error":"Unavailable"}' : '{"hierarchy":[]}').', {status: '.($fails ? 503 : 200).', headers: {"Content-Type":"application/json"}})');
-        $browser->press('FOLDER VIEW')->waitForText($fails ? 'Scanner folders could not be loaded' : 'No files or folders found')->assertSee('Scanner Imports');
+        $browser->press('BROWSE FOLDERS')->waitForText($fails ? 'Scanner folders could not be loaded' : 'No files or folders found')->assertSee('Scanner inbox');
         if ($fails) {
             $browser->script('window.fetch = async () => new Response(JSON.stringify({hierarchy:[]}), {status:200, headers:{"Content-Type":"application/json"}})');
             $browser->press('Try again')->waitForText('No files or folders found')->assertMissing('[role="alert"]');
@@ -1185,14 +1201,92 @@ it('keeps scanner folder navigation usable for empty lists and failed requests',
     });
 })->with([false, true]);
 
+it('keeps scanner inbox sync feedback and folder selection context clear', function (): void {
+    $user = $this->createUser();
+    $this->browse(function (Browser $browser) use ($user): void {
+        $this->loginAs($browser, $user);
+        $browser->visit('/pulsedav')->waitForText('CHECK SCANNER INBOX');
+        $browser->script(<<<'JS'
+            const originalFetch = window.fetch;
+            window.fetch = (url, options) => {
+                const urlText = String(url);
+                if (urlText.includes('/folder-contents')) {
+                    window.lastFolderPath = new URL(urlText, location.href).searchParams.get('folder_path');
+                    window.folderAttempts = (window.folderAttempts || 0) + 1;
+                    const unavailable = window.folderAttempts === 1;
+                    const data = unavailable
+                        ? { error: 'Unavailable' }
+                        : { contents: [{ path: 'incoming/1/Taxes/2026.pdf', name: '2026.pdf', filename: '2026.pdf', s3_path: 'incoming/1/Taxes/2026.pdf', folder_path: 'Taxes', is_folder: false, status: 'pending' }] };
+                    return Promise.resolve(new Response(JSON.stringify(data), { status: unavailable ? 503 : 200, headers: { 'Content-Type': 'application/json' } }));
+                }
+                if (urlText.endsWith('/import')) {
+                    window.lastImportPayload = JSON.parse(options.body);
+                    return Promise.resolve(new Response(JSON.stringify({ error: 'Test import failure' }), { status: 422, headers: { 'Content-Type': 'application/json' } }));
+                }
+                if (urlText.endsWith('/sync-folders')) {
+                    return Promise.resolve(new Response(JSON.stringify({ message: 'Scanner inbox checked. No new files found.', synced: 0 }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+                }
+                if (urlText.endsWith('/folders')) {
+                    return Promise.resolve(new Response(JSON.stringify({ hierarchy: [{ path: 'Taxes', name: 'Taxes', is_folder: true, metadata: { s3_path: 'incoming/1/Taxes/' } }, { path: 'root.pdf', name: 'root.pdf', filename: 'root.pdf', s3_path: 'root.pdf', is_folder: false, status: 'pending' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+                }
+                return originalFetch(url, options);
+            };
+            JS);
+        $browser->press('CHECK SCANNER INBOX')->waitFor('[role="status"]')->assertSee('No new files found.');
+        $browser->press('BROWSE FOLDERS')->waitFor('input[aria-label="Select Taxes"]')
+            ->check('input[aria-label="Select Taxes"]')->waitForText('0 files and 1 folder selected.')
+            ->click('button[aria-label="Open folder Taxes"]')->waitFor('[role="alert"]')->assertSee('This folder could not be loaded')
+            ->press('Try again')->waitFor('input[aria-label="Select 2026.pdf"]')
+            ->assertSee('Current folder: Taxes.')
+            ->assertScript('window.folderAttempts', 2)
+            ->assertScript('window.lastFolderPath', 'Taxes');
+        $browser->check('input[aria-label="Select 2026.pdf"]')
+            ->waitForText('1 file and 1 folder selected.')
+            ->click('summary')->assertPresent('select#scanner-file-type')
+            ->select('select#scanner-file-type', 'document')
+            ->press('IMPORT 1 FILE AND 1 FOLDER')->waitForText('Test import failure')
+            ->assertScript('window.lastImportPayload.selections[0].s3_path', 'incoming/1/Taxes/')
+            ->assertScript('window.lastImportPayload.selections[1].s3_path', 'incoming/1/Taxes/2026.pdf')
+            ->assertScript('window.lastImportPayload.file_type', 'document');
+        foreach ([390, 320] as $width) {
+            $browser->resize($width, 844)->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
+        }
+    });
+});
+
+it('keeps list processing on the existing scanner processing contract', function (): void {
+    $user = $this->createUser();
+    $file = PulseDavFile::create([
+        'user_id' => $user->id,
+        's3_path' => 'incoming/'.$user->id.'/process-me.pdf',
+        'filename' => 'process-me.pdf',
+        'folder_path' => null,
+        'status' => 'pending',
+        'is_folder' => false,
+        'size' => 10,
+        'uploaded_at' => now(),
+    ]);
+
+    $this->browse(function (Browser $browser) use ($user, $file): void {
+        $this->loginAs($browser, $user);
+        $browser->visit('/pulsedav')->waitForText('process-me.pdf');
+        $browser->script('const originalFetch = window.fetch; window.fetch = (url, options) => String(url).endsWith("/process") ? (window.lastProcessPayload = JSON.parse(options.body), Promise.resolve(new Response(JSON.stringify({message:"Queued 1 files for processing", queued:1}), {status:200, headers:{"Content-Type":"application/json"}}))) : originalFetch(url, options)');
+        $browser->check('tbody input[value="'.$file->id.'"]')
+            ->select('select[aria-label="Process selected files as"]', 'document')
+            ->press('PROCESS 1 FILE')->waitFor('[role="status"]')->assertSee('Queued 1 files for processing')
+            ->assertScript('window.lastProcessPayload.file_ids[0]', $file->id)
+            ->assertScript('window.lastProcessPayload.file_type', 'document');
+    });
+});
+
 it('opens named scanner folder tags and discards canceled edits while saving confirmed tags', function (): void {
     $user = $this->createUser();
     $tag = Tag::create(['user_id' => $user->id, 'name' => 'scanner-tax', 'color' => '#123456']);
     $this->browse(function (Browser $browser) use ($user, $tag): void {
         $this->loginAs($browser, $user);
-        $browser->visit('/pulsedav')->waitForText('FOLDER VIEW');
+        $browser->visit('/pulsedav')->waitForText('BROWSE FOLDERS');
         $browser->script('const originalFetch = window.fetch; window.fetch = (url, options) => String(url).endsWith("/pulsedav/folders") ? Promise.resolve(new Response(JSON.stringify({hierarchy:[{path:"Taxes", name:"Taxes", is_folder:true, folder_tag_ids:[]}]}), {status:200, headers:{"Content-Type":"application/json"}})) : originalFetch(url, options)');
-        $browser->press('FOLDER VIEW')->waitFor('button[title="Manage folder tags"]')->click('button[title="Manage folder tags"]')
+        $browser->press('BROWSE FOLDERS')->waitFor('button[title="Manage folder tags"]')->click('button[title="Manage folder tags"]')
             ->waitFor('[role="dialog"] h2')->assertSeeIn('[role="dialog"]', 'Manage Folder Tags: Taxes');
         $browser->assertScript('document.querySelector("[role=dialog]").getAttribute("aria-labelledby") === document.querySelector("[role=dialog] h2").id', true);
         $browser->type('[role="dialog"] input', 'scanner-tax')->pause(200)->keys('[role="dialog"] input', WebDriverKeys::ENTER)

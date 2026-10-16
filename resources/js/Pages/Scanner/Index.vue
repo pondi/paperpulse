@@ -8,15 +8,17 @@
       </Link>
       
       <!-- Mode Switcher (Camera Step Only) -->
-      <div v-if="step === 'camera'" class="bg-black/40 backdrop-blur-md rounded-full p-1 flex border border-white/20 pointer-events-auto">
+      <div v-if="step === 'camera'" role="group" aria-label="Scan type" class="bg-black/40 backdrop-blur-md rounded-full p-1 flex border border-white/20 pointer-events-auto">
         <button 
           @click="setMode('receipt')"
+          :aria-pressed="mode === 'receipt'"
           :class="['px-4 py-1.5 rounded-full text-sm font-medium transition-all', mode === 'receipt' ? 'bg-amber-500 text-white shadow-sm' : 'text-white/70 hover:text-white']"
         >
           Receipt
         </button>
         <button 
           @click="setMode('document')"
+          :aria-pressed="mode === 'document'"
           :class="['px-4 py-1.5 rounded-full text-sm font-medium transition-all', mode === 'document' ? 'bg-amber-500 text-white shadow-sm' : 'text-white/70 hover:text-white']"
         >
           Document
@@ -49,6 +51,14 @@
     <!-- Step 1: Camera -->
     <div v-show="step === 'camera'" class="relative flex-1 bg-black flex flex-col h-full">
       <video ref="video" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
+
+      <div v-if="!cameraReady && !error" role="status" aria-live="polite" class="absolute inset-0 z-30 flex items-center justify-center bg-black/70 p-6 text-center">
+        <div>
+          <span class="mx-auto block h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-amber-500" aria-hidden="true"></span>
+          <p class="mt-3 font-medium">{{ cameraStarting ? 'Starting camera…' : 'Waiting for camera permission…' }}</p>
+          <p class="mt-1 text-sm text-white/70">Allow camera access in your browser to capture a scan. Check for a permission prompt if needed.</p>
+        </div>
+      </div>
       
       <!-- Note Input Overlay -->
       <div v-if="showNoteInput" class="absolute inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -89,12 +99,12 @@
 
       <!-- Camera Controls Footer -->
       <div class="absolute bottom-0 left-0 right-0 p-8 pb-12 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex justify-between items-center z-20">
-        <button @click="showNoteInput = true" class="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition relative group">
-          <PencilSquareIcon class="w-6 h-6 text-white" />
+        <button @click="showNoteInput = true" aria-label="Add scan details" class="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition relative group">
+          <PencilSquareIcon class="w-6 h-6 text-white" aria-hidden="true" />
           <span v-if="note" class="absolute top-0 right-0 w-3 h-3 bg-amber-500 rounded-full border-2 border-black"></span>
         </button>
         
-        <button @click="capture" class="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center group active:scale-95 transition">
+        <button @click="capture" aria-label="Capture scan" :disabled="!cameraReady" class="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center group active:scale-95 transition disabled:opacity-50 disabled:cursor-wait">
           <div class="w-16 h-16 bg-white rounded-full group-active:bg-amber-500 transition"></div>
         </button>
 
@@ -116,7 +126,7 @@
         
         <!-- Loading Overlay -->
         <div v-if="processing || detecting" class="absolute inset-0 z-50 bg-black/50 flex items-center justify-center">
-            <div class="bg-zinc-900 px-6 py-4 rounded-xl flex items-center gap-3 border border-zinc-700 shadow-xl">
+            <div role="status" aria-live="polite" class="bg-zinc-900 px-6 py-4 rounded-xl flex items-center gap-3 border border-zinc-700 shadow-xl">
                 <span class="animate-spin rounded-full h-5 w-5 border-2 border-amber-500 border-t-transparent"></span>
                 <span class="text-white font-medium">{{ detecting ? 'Detecting...' : 'Processing...' }}</span>
             </div>
@@ -176,6 +186,7 @@ const processing = ref(false);
 const detecting = ref(false);
 const cvLoaded = ref(false);
 const cameraReady = ref(false);
+const cameraStarting = ref(false);
 
 // Refs
 const video = ref(null);
@@ -448,6 +459,7 @@ const stopCamera = () => {
 
 const startCamera = async () => {
   stopCamera();
+  cameraStarting.value = true;
   const request = cameraRequest;
   error.value = null;
   errorAction.value = 'camera';
@@ -499,6 +511,8 @@ const startCamera = async () => {
           ? 'No camera was found. Connect a camera or upload a file.'
           : err.message;
     }
+  } finally {
+    if (!disposed && request === cameraRequest) cameraStarting.value = false;
   }
 };
 

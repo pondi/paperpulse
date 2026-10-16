@@ -3,7 +3,7 @@
         <Head title="Scanner imports" />
         <template #header>
             <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
-                Scanner Imports (PulseDav)
+                Scanner inbox
             </h2>
         </template>
 
@@ -12,14 +12,14 @@
                 <!-- Sync Section -->
                 <div class="bg-white dark:bg-zinc-800 overflow-hidden shadow-lg sm:rounded-lg mb-6">
                     <div class="p-6">
-                        <div class="flex justify-between items-center">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                                <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Sync Scanner Files</h3>
+                                <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Check for new scans</h3>
                                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                                    Sync Files checks your private scanner inbox for uploads sent through PulseDav. It does not scan a document or read files from this device.
+                                    Check your private scanner inbox for new uploads. This does not use your device camera or local files.
                                 </p>
                             </div>
-                            <div class="flex space-x-2">
+                            <div class="flex flex-wrap gap-2">
                                 <button
                                     @click="toggleView"
                                     class="inline-flex items-center px-4 py-2 bg-zinc-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-zinc-700 focus:bg-zinc-700 active:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -30,7 +30,7 @@
                                     <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                                     </svg>
-                                    {{ viewMode === 'list' ? 'Folder View' : 'List View' }}
+                                    {{ viewMode === 'list' ? 'Browse folders' : 'Browse as list' }}
                                 </button>
                                 <button
                                     @click="syncFiles"
@@ -41,43 +41,47 @@
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
-                                    {{ syncing ? 'Syncing...' : 'Sync Files' }}
+                                    {{ syncing ? 'Checking inbox…' : 'Check scanner inbox' }}
                                 </button>
                             </div>
                         </div>
-                        <div v-if="syncMessage" class="mt-4 p-4 rounded-md" :class="syncSuccess ? 'bg-green-50 dark:bg-green-900/50 text-green-800 dark:text-green-200' : 'bg-red-50 dark:bg-red-900/50 text-red-800 dark:text-red-200'">
+                        <div v-if="syncMessage" class="mt-4 p-4 rounded-md" :role="syncSuccess ? 'status' : 'alert'" aria-live="polite" :class="syncSuccess ? 'bg-green-50 dark:bg-green-900/50 text-green-800 dark:text-green-200' : 'bg-red-50 dark:bg-red-900/50 text-red-800 dark:text-red-200'">
                             {{ syncMessage }}
                         </div>
                     </div>
                 </div>
 
                 <!-- Import Controls -->
-                <div v-if="hasSelections" class="bg-white dark:bg-zinc-800 overflow-hidden shadow-lg sm:rounded-lg mb-6">
+                <div v-if="hasFolderSelections" class="bg-white dark:bg-zinc-800 overflow-hidden shadow-lg sm:rounded-lg mb-6">
                     <div class="p-6">
-                        <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Import Selected Items</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Tags</label>
-                                <TagSelector
-                                    v-model="importOptions.tagIds"
-                                />
+                        <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Import selection</h3>
+                        <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400" aria-live="polite">
+                            {{ selectedFileCount }} file{{ selectedFileCount === 1 ? '' : 's' }} and {{ selectedFolderCount }} folder{{ selectedFolderCount === 1 ? '' : 's' }} selected.
+                            <span v-if="viewMode === 'folder'">Current folder: {{ currentPath || 'Scanner inbox root' }}.</span>
+                        </p>
+                        <details class="mt-4">
+                            <summary class="cursor-pointer font-medium text-amber-700 dark:text-amber-400">Optional import settings</summary>
+                            <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                    <label for="scanner-file-type" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Import as</label>
+                                    <select id="scanner-file-type" v-model="selectedFileType" class="w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50">
+                                        <option value="receipt">Receipt</option>
+                                        <option value="document">Document</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Tags</label>
+                                    <TagSelector v-model="importOptions.tagIds" />
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label for="scanner-import-notes" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Notes (optional)</label>
+                                    <textarea id="scanner-import-notes" v-model="importOptions.notes" rows="2" class="w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50" placeholder="Add any notes about this import..." />
+                                </div>
                             </div>
-                        </div>
+                        </details>
+                        <div v-if="importMessage" class="mt-4 rounded-md p-3 text-sm" :role="importSuccess ? 'status' : 'alert'" aria-live="polite" :class="importSuccess ? 'bg-green-50 dark:bg-green-900/50 text-green-800 dark:text-green-200' : 'bg-red-50 dark:bg-red-900/50 text-red-800 dark:text-red-200'">{{ importMessage }}</div>
                         
-                        <div class="mt-4">
-                            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Notes (optional)</label>
-                            <textarea
-                                v-model="importOptions.notes"
-                                rows="2"
-                                class="w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50"
-                                placeholder="Add any notes about this import..."
-                            />
-                        </div>
-                        
-                        <div class="mt-4 flex justify-between items-center">
-                            <span class="text-sm text-zinc-600 dark:text-zinc-400">
-                                {{ selectedCount }} item{{ selectedCount > 1 ? 's' : '' }} selected
-                            </span>
+                        <div class="mt-4 flex justify-end items-center">
                             <div class="flex space-x-2">
                                 <button
                                     @click="clearSelections"
@@ -94,7 +98,7 @@
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
-                                    {{ importing ? 'Importing...' : 'Import' }}
+                                    {{ importing ? 'Importing…' : `Import ${selectedFileCount} file${selectedFileCount === 1 ? '' : 's'}${selectedFolderCount ? ` and ${selectedFolderCount} folder${selectedFolderCount === 1 ? '' : 's'}` : ''}` }}
                                 </button>
                             </div>
                         </div>
@@ -134,7 +138,7 @@
                         
                         <div v-else-if="folderError" role="alert" class="text-sm text-red-700 dark:text-red-300">
                             {{ folderError }}
-                            <button type="button" @click="loadFolderStructure" class="ml-2 underline">Try again</button>
+                            <button type="button" @click="retryFolderLoad" class="ml-2 underline">Try again</button>
                         </div>
                         <div v-else>
                             <div v-if="currentFolderFiles.length > 0" class="mb-4">
@@ -155,6 +159,7 @@
                                     v-for="item in currentFolderContents"
                                     :key="item.s3_path || item.path"
                                     :item="item"
+                                    :current-path="currentPath"
                                     :selected="isSelected(item)"
                                     @toggle-selection="toggleSelection(item)"
                                     @navigate="navigateToFolder"
@@ -175,26 +180,28 @@
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Scanner Files</h3>
                             <div class="flex items-center space-x-4">
-                                <div v-if="selectedFiles.length > 0" class="flex items-center space-x-2">
-                                    <label class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Process as:</label>
-                                    <select
-                                        v-model="selectedFileType"
-                                        class="rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50 text-sm"
-                                    >
+                                <div v-if="selectedListFileCount > 0" class="text-sm text-zinc-600 dark:text-zinc-400">
+                                    {{ selectedListFileCount }} file{{ selectedListFileCount === 1 ? '' : 's' }} selected
+                                </div>
+                                <div v-if="selectedListFileCount > 0" class="flex items-center gap-2">
+                                    <label for="scanner-process-file-type" class="sr-only">Process as</label>
+                                    <select id="scanner-process-file-type" v-model="selectedFileType" aria-label="Process selected files as" class="rounded-md border-zinc-300 text-sm shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200">
                                         <option value="receipt">Receipt</option>
                                         <option value="document">Document</option>
                                     </select>
                                 </div>
                                 <button
-                                    v-if="selectedFiles.length > 0"
+                                    v-if="selectedListFileCount > 0"
                                     @click="processSelectedFiles"
                                     :disabled="processing"
-                                    class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50"
+                                    class="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50"
                                 >
-                                    Process {{ selectedFiles.length }} File{{ selectedFiles.length > 1 ? 's' : '' }}
+                                    {{ processing ? 'Processing…' : `Process ${selectedListFileCount} file${selectedListFileCount === 1 ? '' : 's'}` }}
                                 </button>
                             </div>
                         </div>
+
+                        <div v-if="processMessage" class="mt-4 rounded-md p-3 text-sm" :role="processSuccess ? 'status' : 'alert'" aria-live="polite" :class="processSuccess ? 'bg-green-50 dark:bg-green-900/50 text-green-800 dark:text-green-200' : 'bg-red-50 dark:bg-red-900/50 text-red-800 dark:text-red-200'">{{ processMessage }}</div>
 
                         <div v-if="files.data.length === 0" class="text-center py-8 text-zinc-500 dark:text-zinc-400">
                             <h3 class="font-semibold text-zinc-900 dark:text-zinc-100">No scanner imports yet</h3>
@@ -219,7 +226,8 @@
                                             <input
                                                 type="checkbox"
                                                 @change="toggleAll"
-                                                :checked="selectedFiles.length === selectableFiles.length && selectableFiles.length > 0"
+                                                :checked="selectedListFileCount === selectableFiles.length && selectableFiles.length > 0"
+                                                aria-label="Select all scanner files on this page"
                                                 class="rounded border-zinc-300 text-amber-600 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50"
                                             />
                                         </th>
@@ -254,6 +262,7 @@
                                                 v-if="isSelectable(file)"
                                                 type="checkbox"
                                                 :value="file.id"
+                                                :aria-label="`Select ${file.filename}`"
                                                 v-model="selectedFiles"
                                                 class="rounded border-zinc-300 text-amber-600 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50"
                                             />
@@ -369,6 +378,10 @@ const folderError = ref('');
 const syncing = ref(false);
 const syncMessage = ref('');
 const syncSuccess = ref(false);
+const importMessage = ref('');
+const importSuccess = ref(false);
+const processMessage = ref('');
+const processSuccess = ref(false);
 
 // Selection state
 const selectedFiles = ref([]);
@@ -376,6 +389,7 @@ const selectedFolders = ref([]);
 const selectedFileType = ref('receipt');
 const processing = ref(false);
 const importing = ref(false);
+let folderRequest = 0;
 
 // Import options
 const importOptions = ref({
@@ -392,13 +406,15 @@ const pathSegments = computed(() => {
     return currentPath.value ? currentPath.value.split('/').filter(s => s) : [];
 });
 
-const hasSelections = computed(() => {
-    return selectedFiles.value.length > 0 || selectedFolders.value.length > 0;
-});
+const selectionPath = (item) => item.s3_path || item.metadata?.s3_path || item.path;
 
-const selectedCount = computed(() => {
-    return selectedFiles.value.length + selectedFolders.value.length;
-});
+const selectedFolderFiles = computed(() => selectedFiles.value.filter(selection => typeof selection === 'object' && selection !== null));
+const selectedListFileIds = computed(() => selectedFiles.value.filter(selection => typeof selection === 'string' || typeof selection === 'number'));
+const hasFolderSelections = computed(() => selectedFolderFiles.value.length > 0 || selectedFolders.value.length > 0);
+
+const selectedFileCount = computed(() => selectedFolderFiles.value.length);
+const selectedFolderCount = computed(() => selectedFolders.value.length);
+const selectedListFileCount = computed(() => selectedListFileIds.value.length);
 
 const isFolderFileSelectable = (item) => {
     if (item.is_folder) {
@@ -437,9 +453,12 @@ const toggleView = () => {
 
 const toggleAll = (event) => {
     if (event.target.checked) {
-        selectedFiles.value = selectableFiles.value.map(file => file.id);
+        selectedFiles.value = [
+            ...selectedFolderFiles.value,
+            ...selectableFiles.value.map(file => file.id),
+        ];
     } else {
-        selectedFiles.value = [];
+        selectedFiles.value = selectedFolderFiles.value;
     }
 };
 
@@ -500,7 +519,7 @@ const syncFiles = async () => {
 
         const data = await response.json();
         syncSuccess.value = response.ok;
-        syncMessage.value = data.message;
+        syncMessage.value = data.message || (response.ok ? 'Scanner inbox checked.' : 'Scanner inbox could not be checked. Please try again.');
 
         if (response.ok && data.synced > 0) {
             router.reload();
@@ -536,11 +555,14 @@ const loadFolderStructure = async () => {
 };
 
 const navigateToFolder = async (folderPath) => {
+    const request = ++folderRequest;
     currentPath.value = folderPath;
+    folderError.value = '';
     
     if (folderPath === '') {
         // Show root level items
         currentFolderContents.value = folderHierarchy.value;
+        loadingFolders.value = false;
     } else {
         // Load folder contents
         loadingFolders.value = true;
@@ -552,19 +574,26 @@ const navigateToFolder = async (folderPath) => {
                 },
             });
 
+            if (!response.ok) throw new Error('Folder request failed');
             const data = await response.json();
-            currentFolderContents.value = data.contents;
+            if (request === folderRequest) currentFolderContents.value = data.contents || [];
         } catch (error) {
-            console.error('Failed to load folder contents:', error);
+            if (request === folderRequest) {
+                currentFolderContents.value = [];
+                folderError.value = 'This folder could not be loaded. Check your connection and try again.';
+            }
         } finally {
-            loadingFolders.value = false;
+            if (request === folderRequest) loadingFolders.value = false;
         }
     }
 };
 
+const retryFolderLoad = () => currentPath.value ? navigateToFolder(currentPath.value) : loadFolderStructure();
+
 const isSelected = (item) => {
     if (item.is_folder) {
-        return selectedFolders.value.some(f => f.s3_path === item.s3_path);
+        const path = selectionPath(item);
+        return selectedFolders.value.some(folder => selectionPath(folder) === path);
     } else {
         // In folder view, files might not have ID, use s3_path
         if (item.id) {
@@ -583,11 +612,12 @@ const isSelected = (item) => {
 
 const toggleSelection = (item) => {
     if (item.is_folder) {
-        const index = selectedFolders.value.findIndex(f => f.s3_path === item.s3_path);
+        const path = selectionPath(item);
+        const index = selectedFolders.value.findIndex(folder => selectionPath(folder) === path);
         if (index > -1) {
             selectedFolders.value.splice(index, 1);
         } else {
-            selectedFolders.value.push(item);
+            selectedFolders.value.push({ ...item, s3_path: path });
         }
     } else {
         // Handle files - in folder view they might not have ID
@@ -625,60 +655,36 @@ const toggleSelection = (item) => {
 const clearSelections = () => {
     selectedFiles.value = [];
     selectedFolders.value = [];
+    importMessage.value = '';
 };
 
 const importSelections = async () => {
-    if (import.meta.env.DEV) console.log('=== PulseDav Import Started ===');
-    if (import.meta.env.DEV) console.log('Has selections:', hasSelections.value);
-    if (import.meta.env.DEV) console.log('Selected files:', selectedFiles.value);
-    if (import.meta.env.DEV) console.log('Selected folders:', selectedFolders.value);
-    
-    if (!hasSelections.value) {
-        alert('Please select at least one file or folder to import.');
+    if (!hasFolderSelections.value) {
+        importSuccess.value = false;
+        importMessage.value = 'Select at least one file or folder to import.';
         return;
     }
 
     importing.value = true;
 
     try {
-        // Build selections array
-        const fileSelections = selectedFiles.value.map(f => {
-            if (typeof f === 'object' && f.s3_path) {
-                // File object from folder view
-                if (import.meta.env.DEV) console.log('File from folder view:', f);
-                return { s3_path: f.s3_path };
-            } else if (typeof f === 'string' || typeof f === 'number') {
-                // File ID from list view
-                const file = props.files.data.find(file => file.id === f);
-                if (import.meta.env.DEV) console.log('File from list view:', f, 'found:', file);
-                return file ? { s3_path: file.s3_path } : null;
-            }
-            return null;
-        }).filter(Boolean);
-
         const selections = [
-            ...selectedFolders.value.map(f => ({ s3_path: f.s3_path })),
-            ...fileSelections
+            ...selectedFolders.value.map(folder => ({ s3_path: selectionPath(folder) })),
+            ...selectedFolderFiles.value.map(file => ({ s3_path: selectionPath(file) })),
         ];
-
-        if (import.meta.env.DEV) console.log('Built selections:', selections);
-        
-        // Double-check we have selections
         if (selections.length === 0) {
-            alert('No files or folders selected. Please select items to import.');
-            importing.value = false;
+            importSuccess.value = false;
+            importMessage.value = 'No selected files could be found. Refresh the scanner inbox and try again.';
             return;
         }
 
         const requestBody = {
             selections: selections,
-            file_type: 'document',
+            file_type: selectedFileType.value,
             tag_ids: importOptions.value.tagIds,
             notes: importOptions.value.notes,
         };
         
-        if (import.meta.env.DEV) console.log('Request body:', requestBody);
-
         const response = await fetch(route('pulsedav.import'), {
             method: 'POST',
             headers: {
@@ -690,14 +696,15 @@ const importSelections = async () => {
         });
 
         const data = await response.json();
-        if (import.meta.env.DEV) console.log('Response status:', response.status);
-        if (import.meta.env.DEV) console.log('Response data:', data);
         
         if (response.ok) {
-            if (import.meta.env.DEV) console.log('Import successful, redirecting to file processing page');
-            clearSelections();
+            selectedFiles.value = selectedFiles.value.filter(selection => typeof selection !== 'object' || selection === null);
+            selectedFolders.value = [];
             importOptions.value.tagIds = [];
             importOptions.value.notes = '';
+            importMessage.value = '';
+            importSuccess.value = true;
+            importMessage.value = 'Import queued for processing. Opening activity…';
             router.visit(route('files.index'));
         } else {
             console.error('Import failed:', data);
@@ -730,20 +737,23 @@ const importSelections = async () => {
                 console.groupEnd();
             }
             
-            alert(errorMessage);
+            importSuccess.value = false;
+            importMessage.value = errorMessage;
         }
     } catch (error) {
         console.error('Failed to import files:', error);
-        alert('Failed to import files. Please try again.');
+        importSuccess.value = false;
+        importMessage.value = 'Import failed. Check your connection and try again.';
     } finally {
         importing.value = false;
     }
 };
 
 const processSelectedFiles = async () => {
-    if (selectedFiles.value.length === 0) return;
+    if (selectedListFileIds.value.length === 0 || processing.value) return;
 
     processing.value = true;
+    processMessage.value = '';
 
     try {
         const response = await fetch(route('pulsedav.process'), {
@@ -754,19 +764,22 @@ const processSelectedFiles = async () => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                file_ids: selectedFiles.value,
+                file_ids: selectedListFileIds.value,
                 file_type: selectedFileType.value,
             }),
         });
-
         const data = await response.json();
-        
+        processSuccess.value = response.ok;
+        processMessage.value = data.message || (response.ok ? 'Selected files queued for processing.' : 'Selected files could not be queued. Please try again.');
+
         if (response.ok) {
-            selectedFiles.value = [];
+            const processedIds = new Set(selectedListFileIds.value);
+            selectedFiles.value = selectedFiles.value.filter(selection => !processedIds.has(selection));
             router.reload();
         }
     } catch (error) {
-        console.error('Failed to process files:', error);
+        processSuccess.value = false;
+        processMessage.value = 'Selected files could not be queued. Check your connection and try again.';
     } finally {
         processing.value = false;
     }

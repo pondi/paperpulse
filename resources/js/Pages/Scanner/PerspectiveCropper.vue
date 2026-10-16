@@ -31,10 +31,14 @@
       <div 
         v-for="(point, index) in points" 
         :key="index"
-        class="absolute w-8 h-8 -ml-4 -mt-4 rounded-full border-2 border-amber-500 bg-amber-500/20 active:bg-amber-500/50 backdrop-blur-sm cursor-move touch-action-none flex items-center justify-center"
+        role="button"
+        tabindex="0"
+        :aria-label="`Adjust ${cornerNames[index]} crop corner`"
+        class="absolute w-8 h-8 -ml-4 -mt-4 rounded-full border-2 border-amber-500 bg-amber-500/20 active:bg-amber-500/50 backdrop-blur-sm cursor-move touch-action-none flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
         :style="{ left: point.x + 'px', top: point.y + 'px' }"
         @mousedown.stop.prevent="startDrag(index, $event)"
         @touchstart.stop.prevent="startDrag(index, $event)"
+        @keydown.stop.prevent="moveWithKeyboard(index, $event)"
       >
         <div class="w-2 h-2 bg-amber-500 rounded-full"></div>
       </div>
@@ -57,6 +61,7 @@ const imageRef = ref(null);
 const points = ref([]); // [{x,y}, {x,y}, {x,y}, {x,y}] (TL, TR, BR, BL)
 const dims = ref({ width: 0, height: 0, left: 0, top: 0, imgWidth: 0, imgHeight: 0 });
 let draggingIndex = -1;
+const cornerNames = ['top-left', 'top-right', 'bottom-right', 'bottom-left'];
 
 // --- Initialization ---
 
@@ -151,6 +156,25 @@ const startDrag = (index, event) => {
     document.addEventListener('touchmove', onDrag, { passive: false });
     document.addEventListener('touchend', stopDrag);
     document.addEventListener('touchcancel', stopDrag);
+};
+
+const moveWithKeyboard = (index, event) => {
+    const step = event.shiftKey ? 10 : 1;
+    const offsets = {
+        ArrowUp: { x: 0, y: -step },
+        ArrowRight: { x: step, y: 0 },
+        ArrowDown: { x: 0, y: step },
+        ArrowLeft: { x: -step, y: 0 },
+    };
+    const offset = offsets[event.key];
+    if (!offset || !points.value[index]) return;
+
+    const point = points.value[index];
+    points.value[index] = {
+        x: Math.max(dims.value.imgLeft, Math.min(point.x + offset.x, dims.value.imgLeft + dims.value.imgWidth)),
+        y: Math.max(dims.value.imgTop, Math.min(point.y + offset.y, dims.value.imgTop + dims.value.imgHeight)),
+    };
+    emit('update:points', getRelativePoints());
 };
 
 const onDrag = (event) => {

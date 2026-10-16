@@ -142,6 +142,8 @@ return [
     'delete_category_confirm' => 'Are you sure you want to delete this category?',
     'no_categories' => 'No categories',
     'no_categories_description' => 'Get started by creating your first category or use the default categories.',
+    'categories_description' => 'Group receipts and documents, then open the records that use each category.',
+    'category_management' => 'Your categories',
     'create_default_categories' => 'Create Default Categories',
     'name' => 'Name',
     'color' => 'Color',

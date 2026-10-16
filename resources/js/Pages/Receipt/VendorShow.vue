@@ -15,7 +15,7 @@ const { formatDate, formatCurrency } = useDateFormatter();
             <h2 class="text-2xl font-black text-zinc-900 dark:text-zinc-100">{{ vendor.name }}</h2>
         </template>
         <div class="mx-auto flex max-w-7xl flex-col gap-6 p-6 text-zinc-900 dark:text-zinc-100">
-            <Link :href="route('vendors.index')" class="text-amber-700 hover:underline dark:text-amber-400">All vendors</Link>
+            <Link :href="route('vendors.index')" class="inline-flex min-h-11 items-center text-amber-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:text-amber-400">Back to vendors</Link>
             <section class="flex flex-col gap-3 rounded-lg bg-white p-6 shadow dark:bg-zinc-900">
                 <h3 class="text-lg font-bold">Vendor details</h3>
                 <p v-if="vendor.description">{{ vendor.description }}</p>
@@ -24,8 +24,11 @@ const { formatDate, formatCurrency } = useDateFormatter();
                 <p v-if="vendor.contact_phone">Phone: {{ vendor.contact_phone }}</p>
             </section>
             <section class="flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-900">
-                <h3 class="text-lg font-bold">Purchased items ({{ items.total }})</h3>
-                <ul class="flex flex-col gap-4">
+                <div>
+                    <h3 class="text-lg font-bold">Purchased items ({{ items.total }})</h3>
+                    <p class="text-sm text-zinc-600 dark:text-zinc-400">Receipt line items from {{ vendor.name }}</p>
+                </div>
+                <ul v-if="items.data.length" class="flex flex-col gap-4">
                     <li v-for="item in items.data" :key="item.id" class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 pb-4 dark:border-zinc-700">
                         <div class="min-w-0">
                             <p class="break-words font-semibold">{{ item.text || 'Unnamed item' }}</p>
@@ -34,6 +37,7 @@ const { formatDate, formatCurrency } = useDateFormatter();
                         <Link :href="route('receipts.show', item.receipt_id)" class="text-sm text-amber-700 hover:underline dark:text-amber-400">{{ item.merchant || `Receipt #${item.receipt_id}` }} · {{ formatDate(item.receipt_date) }}</Link>
                     </li>
                 </ul>
+                <p v-else class="rounded-lg bg-zinc-50 p-4 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">No purchased items are available for this vendor yet.</p>
                 <Pagination :links="items.links" :from="items.from" :to="items.to" :total="items.total" />
             </section>
         </div>

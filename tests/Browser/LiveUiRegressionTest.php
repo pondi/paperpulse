@@ -60,9 +60,15 @@ it('distinguishes recommendation generation failures pending work and successful
             'signature' => str_repeat('b', 64), 'confidence' => 0.95, 'reason' => 'Rename Building to Home']);
     }
     $this->browse(function (Browser $browser) use ($user, $status, $message): void {
-        $browser->loginAs($user)->visit('/collections/recommendations')->waitForText($message)->assertSee('Archive folder review');
+        $browser->loginAs($user)->visit('/collections/recommendations')->waitForText($message)->assertSee('Archive folder review')->assertSee('Review status');
+        if ($status === 'awaiting_decisions') {
+            $browser->assertSee('1 decision remaining');
+        }
+        foreach ([320, 390] as $width) {
+            $browser->resize($width, 844)->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
+        }
         if ($status === 'failed') {
-            $browser->assertDontSee('No folder changes to review')->assertSee('Failed')->assertSee('RETRY')->assertSee('DISMISS FAILED RUN');
+            $browser->assertDontSee('No folder changes to review')->assertSee('Failed')->assertSee('Retry')->assertSee('Dismiss failed run');
         } else {
             $browser->assertDontSee('Folder recommendation generation failed');
         }
@@ -129,18 +135,58 @@ it('names row selection and search result links with distinct record identities'
     });
 });
 
-it('opens useful vendor details through the menu and direct links with working back navigation', function (): void {
+it('opens useful vendor details through the item link with working back navigation', function (): void {
     $user = $this->createUser();
     $vendor = Vendor::create(['user_id' => $user->id, 'name' => 'DigitalOcean', 'description' => 'Cloud hosting', 'contact_email' => 'support@example.test']);
     $receipt = Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id, 'currency' => 'NOK']);
     LineItem::create(['receipt_id' => $receipt->id, 'vendor_id' => $vendor->id, 'text' => 'Cloud subscription', 'qty' => 1, 'price' => 100]);
     $this->browse(function (Browser $browser) use ($user, $vendor): void {
         $browser->loginAs($user)->visit('/vendors')->waitForText('DigitalOcean')
-            ->click('li button[aria-haspopup="menu"]')->click('a[href$="/vendors/'.$vendor->id.'"]')
+            ->assertSee('View 1 purchased item')
+            ->clickLink('View 1 purchased item')
             ->waitForText('Vendor details')->assertSee('Cloud hosting')->assertSee('support@example.test')
-            ->assertSee('Cloud subscription')->clickLink('All vendors')->waitForLocation('/vendors')
+            ->assertSee('Cloud subscription')->clickLink('Back to vendors')->waitForLocation('/vendors')
             ->back()->waitForLocation('/vendors/'.$vendor->id)->assertSee('Cloud subscription')
             ->visit('/vendors/'.$vendor->id)->waitForText('Purchased items (1)');
+    });
+});
+
+it('connects tags and merchants to their matching records while keeping vendor drilldowns distinct', function (): void {
+    $user = $this->createUser();
+    $file = File::factory()->for($user)->create(['fileName' => 'Tagged planning document.pdf']);
+    $tag = Tag::factory()->for($user)->create(['name' => 'Planning']);
+    $file->addTag($tag);
+    $merchant = Merchant::create(['user_id' => $user->id, 'name' => 'Northstar Market']);
+    $receipt = Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id, 'merchant_id' => $merchant->id]);
+    $vendor = Vendor::create(['user_id' => $user->id, 'name' => 'Northstar Foods']);
+    LineItem::create(['receipt_id' => $receipt->id, 'vendor_id' => $vendor->id, 'text' => 'Coffee', 'qty' => 1, 'price' => 40]);
+
+    $this->browse(function (Browser $browser) use ($user, $tag, $merchant, $vendor): void {
+        $browser->loginAs($user)->visit('/tags')->waitForText('Planning');
+        foreach ([320, 390, 768] as $width) {
+            $browser->resize($width, 844)->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
+            $browser->assertPresent('a[href*="tag_id='.$tag->id.'"]');
+        }
+        $browser->resize(1440, 1000)
+            ->assertSee('Browse 1 file')->clickLink('Browse 1 file')
+            ->waitUntil("location.pathname === '/library' && new URLSearchParams(location.search).get('tag_id') === '{$tag->id}'")
+            ->assertSee('Tagged planning document.pdf')
+            ->visit('/merchants')->waitForText('Northstar Market')->assertSee('View 1 receipt');
+        foreach ([320, 390, 768] as $width) {
+            $browser->resize($width, 844)->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
+            $browser->assertScript("(() => { const link = document.querySelector('a[href$=\"/receipts/merchant/{$merchant->id}\"]'); const rect = link.getBoundingClientRect(); return rect.width >= 44 && rect.height >= 44 && rect.right <= innerWidth; })()", true);
+        }
+        $browser->resize(1440, 1000)
+            ->clickLink('View 1 receipt')->waitForLocation('/receipts/merchant/'.$merchant->id)
+            ->assertSee('Northstar Market')
+            ->visit('/vendors')->waitForText('Northstar Foods')->assertSee('View 1 purchased item');
+        foreach ([320, 390, 768] as $width) {
+            $browser->resize($width, 844)->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
+            $browser->assertScript("(() => { const link = document.querySelector('a[href$=\"/vendors/{$vendor->id}\"]'); const rect = link.getBoundingClientRect(); return rect.width >= 44 && rect.height >= 44 && rect.right <= innerWidth; })()", true);
+        }
+        $browser->resize(1440, 1000)
+            ->clickLink('View 1 purchased item')->waitForLocation('/vendors/'.$vendor->id)
+            ->assertSee('Purchased items (1)')->assertSee('Coffee');
     });
 });
 

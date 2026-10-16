@@ -128,6 +128,7 @@ const openDeleteModal = (category: Category) => {
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <p class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">Browse the documents and receipts assigned to each category. {{ categories.length }} {{ categories.length === 1 ? 'category' : 'categories' }}.</p>
                 <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-orange-600 dark:border-orange-500">
                     <div class="p-6">
                         <div v-if="categories.length === 0" class="text-center py-12">

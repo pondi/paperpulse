@@ -63,6 +63,7 @@ class MerchantController extends Controller
         $merchants->through(fn ($merchant) => [
             'id' => $merchant->id,
             'name' => $merchant->name,
+            'receiptCount' => (int) $merchant->getAttribute('receipt_count'),
             'imageUrl' => $this->logoService->getImageUrl($merchant, $merchant->logo_data, $merchant->mime_type),
             'lastInvoice' => [
                 'date' => $merchant->last_receipt_date

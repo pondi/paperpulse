@@ -44,9 +44,10 @@ const decide = (decision, ids) => post(route('collections.organization.decide'),
         </template>
         <div class="mx-auto flex max-w-7xl flex-col gap-6 p-6 text-zinc-900 dark:text-zinc-100">
             <Link :href="route('collections.index')" class="text-orange-600 dark:text-orange-400">Back to collections</Link>
-            <section class="flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800">
+            <section aria-labelledby="review-status-heading" class="flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800">
+                <h3 id="review-status-heading" class="text-lg font-bold">Review status</h3>
                 <p v-if="run?.status === 'failed'" class="font-semibold text-red-600 dark:text-red-400">Folder recommendation generation failed</p>
-                <p v-else>{{ pending_count }} decisions remaining · {{ run?.status?.replaceAll('_', ' ') ?? 'No recommendations yet' }}</p>
+                <p v-else role="status">{{ pending_count }} {{ pending_count === 1 ? 'decision' : 'decisions' }} remaining · {{ run?.status?.replaceAll('_', ' ') ?? 'No recommendations yet' }}</p>
                 <p v-if="run" class="text-sm text-zinc-600 dark:text-zinc-400">Archive folder review · Requested {{ formatDateTime(run.created_at) }}<span v-if="run.started_at"> · Started {{ formatDateTime(run.started_at) }}</span><span v-if="run.status === 'failed'"> · Failed {{ formatDateTime(run.updated_at) }}</span></p>
                 <p v-if="!enabled">Automatic organization is turned off in preferences.</p>
                 <p v-else-if="pending_count">Apply or decline every suggestion before starting another review.</p>
@@ -62,7 +63,8 @@ const decide = (decision, ids) => post(route('collections.organization.decide'),
                     <SecondaryButton v-if="run?.status === 'failed'" :disabled="busy" @click="post(route('collections.organization.dismiss', run.id))">Dismiss failed run</SecondaryButton>
                 </div>
             </section>
-            <section v-if="pending.length" class="flex flex-col gap-4 rounded-lg bg-white p-6 dark:bg-zinc-800">
+            <section v-if="pending.length" aria-labelledby="decision-tools-heading" class="flex flex-col gap-4 rounded-lg bg-white p-6 dark:bg-zinc-800">
+                <h3 id="decision-tools-heading" class="text-lg font-bold">Review pending suggestions</h3>
                 <label class="flex items-center gap-2"><input type="checkbox" :checked="selected.length === pending.length" @change="selected = $event.target.checked ? pending.map(item => item.id) : []" />Select this page</label>
                 <label class="flex flex-col gap-2">Reason for declining (optional)<input v-model="reason" maxlength="240" class="rounded border-zinc-300 dark:border-zinc-600 dark:bg-zinc-900" /></label>
                 <label class="flex items-center gap-2"><input v-model="removeEmpty" type="checkbox" />Remove empty source folders when applying merges</label>
@@ -74,9 +76,9 @@ const decide = (decision, ids) => post(route('collections.organization.decide'),
             <article v-for="item in recommendations?.data ?? []" :key="item.id" class="flex flex-col gap-3 rounded-lg bg-white p-6 shadow dark:bg-zinc-800">
                 <label class="flex items-center gap-3">
                     <input v-if="['pending', 'conflict'].includes(item.status)" v-model="selected" type="checkbox" :value="item.id" :disabled="!ready || busy" />
-                    <span>{{ item.current_paths.join(', ') }} → {{ item.proposed_path }}</span>
+                    <span class="font-semibold">{{ item.current_paths.join(', ') }} → {{ item.proposed_path }}</span>
                 </label>
-                <p>{{ item.affected_count }} documents · {{ Math.round(item.confidence * 100) }}% confidence · {{ item.status }}</p>
+                <p>{{ item.affected_count }} {{ item.affected_count === 1 ? 'document' : 'documents' }} · {{ Math.round(item.confidence * 100) }}% confidence · {{ item.status }}</p>
                 <p>{{ item.reason }}</p>
                 <p v-if="item.decision_reason" class="text-amber-700 dark:text-amber-300">{{ item.decision_reason }}</p>
                 <div class="flex flex-wrap gap-3">
@@ -86,7 +88,10 @@ const decide = (decision, ids) => post(route('collections.organization.decide'),
                     <SecondaryButton v-for="file in item.preview_items" :key="file.id" @click="preview = file">Preview {{ file.title }}</SecondaryButton>
                 </div>
             </article>
-            <p v-if="!recommendations?.data.length && run?.status !== 'failed'" class="rounded-lg bg-white p-6 dark:bg-zinc-800">{{ ['queued', 'running'].includes(run?.status) ? 'Your recommendations are being prepared.' : run?.status === 'completed' ? 'No folder changes to review.' : 'Generate recommendations to review folder changes.' }}</p>
+            <section v-if="!recommendations?.data.length && run?.status !== 'failed'" aria-labelledby="recommendation-empty-heading" class="flex flex-col gap-2 rounded-lg bg-white p-6 dark:bg-zinc-800">
+                <h3 id="recommendation-empty-heading" class="font-bold">Suggestions</h3>
+                <p>{{ ['queued', 'running'].includes(run?.status) ? 'Your recommendations are being prepared.' : run?.status === 'completed' ? 'No folder changes to review. Your current folder structure is up to date.' : 'Generate recommendations to review folder changes.' }}</p>
+            </section>
             <Pagination v-if="recommendations?.last_page > 1" :links="recommendations.links" :from="recommendations.from" :to="recommendations.to" :total="recommendations.total" />
             <FilePreviewModal :show="!!preview" :item="preview" @close="preview = null" />
         </div>

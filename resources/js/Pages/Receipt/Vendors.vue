@@ -3,7 +3,10 @@
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">{{ __('product_vendors') }}</h2>
+            <div>
+                <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">{{ __('product_vendors') }}</h2>
+                <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Suppliers of receipt line items · {{ vendors.total }} {{ vendors.total === 1 ? 'vendor' : 'vendors' }}</p>
+            </div>
         </template>
 
         <div class="py-12">
@@ -13,7 +16,7 @@
                         <li v-for="vendor in vendors.data" :key="vendor.id" class="bg-white dark:bg-zinc-900 overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-200 rounded-xl border-t-4 border-orange-600 dark:border-orange-500">
                             <div class="flex items-center gap-x-4 border-b border-amber-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6">
                                 <img :src="vendor.imageUrl" :alt="vendor.name" class="h-12 w-12 flex-none rounded-lg bg-white dark:bg-zinc-700 object-cover ring-1 ring-zinc-900/10 dark:ring-zinc-700" />
-                                <div class="text-sm font-bold leading-6 text-zinc-900 dark:text-zinc-100">{{ vendor.name }}</div>
+                                <h3 class="min-w-0 break-words text-sm font-bold leading-6 text-zinc-900 dark:text-zinc-100">{{ vendor.name }}</h3>
                                 <Menu as="div" class="relative ml-auto">
                                     <MenuButton class="-m-2.5 block p-2.5 text-zinc-400 hover:text-zinc-500 dark:hover:text-zinc-300">
                                         <span class="sr-only">{{ __('open_options') }}</span>
@@ -57,6 +60,12 @@
                                     </dd>
                                 </div>
                             </dl>
+                            <div class="border-t border-amber-200 px-6 py-4 dark:border-zinc-700">
+                                <Link :href="route('vendors.show', vendor.id)" class="inline-flex min-h-11 items-center rounded font-semibold text-amber-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:text-amber-400">
+                                    View {{ vendor.stats.totalItems }} purchased {{ vendor.stats.totalItems === 1 ? 'item' : 'items' }}
+                                    <span class="sr-only"> from {{ vendor.name }}</span>
+                                </Link>
+                            </div>
                         </li>
                     </ul>
                     <Pagination :links="vendors.links" :from="vendors.from" :to="vendors.to" :total="vendors.total" />

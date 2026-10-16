@@ -4,7 +4,10 @@
   <AuthenticatedLayout>
     <template #header>
       <div class="flex items-center justify-between">
-        <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">{{ __('categories') }}</h2>
+        <div>
+          <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">{{ __('categories') }}</h2>
+          <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{{ __('categories_description') }}</p>
+        </div>
         <button
           @click="showCreateModal = true"
           type="button"
@@ -41,6 +44,11 @@
                   <p class="text-sm font-medium text-red-800 dark:text-red-300">{{ $page.props.flash.error }}</p>
                 </div>
               </div>
+            </div>
+
+            <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-100">{{ __('category_management') }}</h3>
+              <p class="text-sm text-zinc-600 dark:text-zinc-400">{{ categories.length }} {{ __('categories') }}</p>
             </div>
 
             <!-- Categories List -->
@@ -98,6 +106,10 @@
                   <div class="flex items-center justify-between">
                     <span class="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">{{ __('receipts') }}</span>
                     <span class="text-sm font-black text-zinc-900 dark:text-zinc-100">{{ category.receipt_count }}</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">{{ __('documents') }}</span>
+                    <span class="text-sm font-black text-zinc-900 dark:text-zinc-100">{{ category.document_count }}</span>
                   </div>
                   <div class="flex items-center justify-between">
                     <span class="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">{{ __('total') }}</span>

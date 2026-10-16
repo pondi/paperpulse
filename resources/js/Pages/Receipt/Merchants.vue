@@ -3,7 +3,10 @@
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">Merchants</h2>
+            <div>
+                <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">Merchants</h2>
+                <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Receipt issuers · {{ merchants.total }} {{ merchants.total === 1 ? 'merchant' : 'merchants' }}</p>
+            </div>
         </template>
 
         <div class="py-12">
@@ -23,15 +26,9 @@
                                                 : 'h-12 w-full flex-1'
                                         ]" 
                                     />
-                                    <div
-                                        v-if="merchant.imageUrl.includes('/merchants/') || merchant.imageUrl.includes('/logo/generate/')"
-                                        class="text-sm font-bold leading-6 text-zinc-900 dark:text-zinc-100 truncate"
-                                    >
+                                    <h3 class="text-sm font-bold leading-6 text-zinc-900 dark:text-zinc-100 truncate">
                                         {{ merchant.name }}
-                                    </div>
-                                    <div v-else class="sr-only">
-                                        {{ merchant.name }}
-                                    </div>
+                                    </h3>
                                 </div>
                                 <Menu as="div" class="relative flex-none">
                                     <MenuButton class="-m-2.5 block p-2.5 text-zinc-400 hover:text-zinc-500 dark:hover:text-zinc-300">
@@ -69,6 +66,10 @@
                             </div>
                             <dl class="-my-3 divide-y divide-amber-200 dark:divide-zinc-700 px-6 py-4 text-sm leading-6 bg-white dark:bg-zinc-900">
                                 <div class="flex justify-between gap-x-4 py-3">
+                                    <dt class="font-bold text-xs uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Receipts</dt>
+                                    <dd class="font-black text-zinc-900 dark:text-zinc-100">{{ merchant.receiptCount }}</dd>
+                                </div>
+                                <div class="flex justify-between gap-x-4 py-3">
                                     <dt class="font-bold text-xs uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Last Receipt</dt>
                                     <dd class="font-medium text-zinc-900 dark:text-zinc-100">
                                         <time :datetime="merchant.lastInvoice.dateTime">{{ formatDate(merchant.lastInvoice.dateTime) }}</time>
@@ -79,6 +80,12 @@
                                     <dd class="font-black text-zinc-900 dark:text-zinc-100">{{ formatCurrency(merchant.lastInvoice.amount, merchant.lastInvoice.currency) }}</dd>
                                 </div>
                             </dl>
+                            <div class="border-t border-amber-200 px-6 py-4 dark:border-zinc-700">
+                                <Link :href="route('receipts.byMerchant', merchant.id)" class="inline-flex min-h-11 items-center rounded font-semibold text-amber-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:text-amber-400">
+                                    View {{ merchant.receiptCount }} {{ merchant.receiptCount === 1 ? 'receipt' : 'receipts' }}
+                                    <span class="sr-only"> for {{ merchant.name }}</span>
+                                </Link>
+                            </div>
                         </li>
                     </ul>
                     <Pagination :links="merchants.links" :from="merchants.from" :to="merchants.to" :total="merchants.total" />

@@ -4,9 +4,10 @@
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center justify-between">
-                <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
-                    Tags
-                </h2>
+                <div>
+                    <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">Tags</h2>
+                    <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Organize files with labels and open the matching files from each tag.</p>
+                </div>
                 <PrimaryButton @click="openCreateModal">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -47,6 +48,11 @@
                     </div>
                 </div>
 
+                <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-100">Your tags</h3>
+                    <p class="text-sm text-zinc-600 dark:text-zinc-400">{{ tags.total }} {{ tags.total === 1 ? 'tag' : 'tags' }}</p>
+                </div>
+
                 <!-- Tags Grid -->
                 <div class="bg-white dark:bg-zinc-900 overflow-visible shadow-lg sm:rounded-lg border-t-4 border-orange-600 dark:border-orange-500">
                     <div class="p-6">
@@ -55,7 +61,8 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                             </svg>
                             <h3 class="mt-4 text-lg font-black text-zinc-900 dark:text-zinc-100">No tags</h3>
-                            <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Get started by creating a new tag.</p>
+                            <p v-if="!filters.search" class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Get started by creating a new tag.</p>
+                            <p v-if="filters.search" class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">No tags match “{{ filters.search }}”. Try another search or clear the search field.</p>
                             <div class="mt-8">
                                 <PrimaryButton @click="openCreateModal">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,12 +98,20 @@
                                                 Not used yet
                                             </span>
                                         </div>
+                                        <Link
+                                            v-if="tag.files_count > 0"
+                                            :href="route('library.index', { tag_id: tag.id })"
+                                            class="mt-2 inline-flex rounded text-sm font-semibold text-amber-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:text-amber-400"
+                                        >
+                                            Browse {{ tag.files_count }} {{ tag.files_count === 1 ? 'file' : 'files' }}
+                                        </Link>
+                                        <span v-else class="mt-2 block text-xs text-zinc-500 dark:text-zinc-400">Unused · safe to merge or remove</span>
                                     </div>
                                     
                                     <!-- Actions Dropdown -->
                                     <Dropdown align="right" width="48">
                                         <template #trigger>
-                                            <button class="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-amber-200 dark:hover:bg-amber-600">
+                                            <button :aria-label="`Actions for tag: ${tag.name}`" class="rounded p-2 text-zinc-600 opacity-100 transition-opacity hover:bg-amber-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600 group-hover:opacity-100 dark:text-zinc-300 dark:hover:bg-amber-600 sm:opacity-0">
                                                 <svg class="w-5 h-5 text-zinc-600 dark:text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                                                 </svg>
@@ -259,7 +274,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
 import SecondaryButton from '@/Components/Buttons/SecondaryButton.vue';

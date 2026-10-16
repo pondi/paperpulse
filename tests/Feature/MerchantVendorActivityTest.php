@@ -54,7 +54,7 @@ it('excludes deleted and foreign activity from converted merchant and vendor tot
     ExchangeRateObservation::query()->create(['provider' => 'norges-bank', 'currency' => 'EUR', 'observation_date' => '2026-09-25', 'rate' => 12, 'units' => 1]);
     $this->actingAs($user);
     $this->get(route('merchants.index'))->assertOk()->assertInertia(fn (Assert $page) => $page
-        ->has('merchants.data', 1)->where('merchants.data.0.lastInvoice.amount', 120)
+        ->has('merchants.data', 1)->where('merchants.data.0.receiptCount', 1)->where('merchants.data.0.lastInvoice.amount', 120)
         ->where('merchants.data.0.lastInvoice.dateTime', '2026-09-27')->where('merchants.data.0.lastInvoice.currency', 'NOK'));
     $this->get(route('vendors.index'))->assertOk()->assertInertia(fn (Assert $page) => $page
         ->has('vendors.data', 1)->where('vendors.data.0.stats.totalValue', 72)->where('vendors.data.0.stats.totalItems', 1));

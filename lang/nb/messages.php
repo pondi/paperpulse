@@ -142,6 +142,8 @@ return [
     'delete_category_confirm' => 'Er du sikker på at du vil slette denne kategorien?',
     'no_categories' => 'Ingen kategorier',
     'no_categories_description' => 'Kom i gang ved å opprette din første kategori eller bruk standardkategoriene.',
+    'categories_description' => 'Grupper kvitteringer og dokumenter, og åpne postene som bruker hver kategori.',
+    'category_management' => 'Dine kategorier',
     'create_default_categories' => 'Opprett standardkategorier',
     'name' => 'Navn',
     'color' => 'Farge',

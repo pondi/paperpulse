@@ -91,10 +91,10 @@ function getDisplayTitle(file) {
 <template>
     <Head :title="`${collection.name} - Shared Collection`" />
 
-    <div class="flex flex-col h-screen bg-white dark:bg-zinc-900">
+    <div class="flex min-h-screen flex-col bg-white dark:bg-zinc-900 md:h-screen md:min-h-0">
         <!-- Header -->
         <header class="flex-shrink-0 border-b border-amber-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-5 py-3.5">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-3">
                     <div
                         class="flex h-10 w-10 items-center justify-center rounded-lg"
@@ -104,7 +104,7 @@ function getDisplayTitle(file) {
                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
                         </svg>
                     </div>
-                    <div>
+                    <div class="min-w-0">
                         <h1 class="text-lg font-bold text-zinc-900 dark:text-zinc-100">{{ collection.name }}</h1>
                         <div class="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
                             <span>{{ files.length }} {{ files.length === 1 ? 'file' : 'files' }}</span>
@@ -117,7 +117,7 @@ function getDisplayTitle(file) {
                 <a
                     v-if="files.length > 0"
                     :href="route('shared.collections.download', link.token)"
-                    class="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 dark:bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 dark:hover:bg-amber-500 transition"
+                    class="inline-flex min-h-11 items-center gap-1.5 self-start rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500"
                 >
                     <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -127,17 +127,20 @@ function getDisplayTitle(file) {
             </div>
         </header>
 
-        <!-- Main three-column layout -->
-        <div class="flex-1 flex overflow-hidden">
+        <!-- Shared files, details and preview -->
+        <main class="flex flex-1 flex-col md:min-h-0 md:flex-row md:overflow-hidden">
             <!-- Left column: File list -->
-            <div class="w-96 flex-shrink-0 border-r border-zinc-200 dark:border-zinc-700 overflow-y-auto bg-zinc-50 dark:bg-zinc-800/50">
-                <div class="p-2">
-                    <div
+            <nav aria-label="Files in shared collection" class="max-h-52 w-full flex-shrink-0 overflow-y-auto border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800/50 md:max-h-none md:w-80 md:border-b-0 md:border-r lg:w-96">
+                <div v-if="files.length" class="p-2">
+                    <button
                         v-for="(file, index) in files"
                         :key="file.guid"
+                        type="button"
+                        :aria-label="`Preview ${getDisplayTitle(file)}`"
+                        :aria-pressed="selectedIndex === index"
                         @click="selectFile(index)"
                         :class="[
-                            'flex items-start gap-3 rounded-lg px-3 py-3 cursor-pointer transition',
+                            'flex min-h-11 w-full items-start gap-3 rounded-lg px-3 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600',
                             selectedIndex === index
                                 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100'
                                 : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/50',
@@ -163,16 +166,14 @@ function getDisplayTitle(file) {
                                 {{ getEntityTypeBadge(file.entity_type).label }}
                             </span>
                         </div>
-                    </div>
+                    </button>
                 </div>
 
-                <div v-if="files.length === 0" class="p-6 text-center text-sm text-zinc-400 dark:text-zinc-500">
-                    No files in this collection.
-                </div>
-            </div>
+                <p v-else class="p-6 text-center text-sm text-zinc-600 dark:text-zinc-400">The owner has not shared any files in this collection yet.</p>
+            </nav>
 
             <!-- Middle column: Metadata -->
-            <div class="w-80 flex-shrink-0 border-r border-zinc-200 dark:border-zinc-700 overflow-y-auto bg-white dark:bg-zinc-800">
+            <aside aria-label="Selected file details" class="max-h-60 w-full flex-shrink-0 overflow-y-auto border-b border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800 md:max-h-none md:w-80 md:border-b-0 md:border-r">
                 <template v-if="selectedFile">
                     <div class="p-5 space-y-5">
                         <!-- Entity type badge + download button -->
@@ -349,16 +350,16 @@ function getDisplayTitle(file) {
                     </div>
                 </template>
 
-                <div v-else class="p-5 text-center text-sm text-zinc-400 dark:text-zinc-500 mt-8">
-                    Select a file to view details
+                <div v-else class="p-5 text-center text-sm text-zinc-500 dark:text-zinc-400 md:mt-8">
+                    {{ files.length ? 'Choose a file to view its details.' : 'File details will appear here when the owner shares a file.' }}
                 </div>
-            </div>
+            </aside>
 
             <!-- Right column: File viewer -->
-            <div class="flex-1 overflow-hidden">
+            <div class="min-h-[50vh] min-w-0 flex-1 overflow-hidden md:min-h-0">
                 <PublicFileViewer :file="selectedFile" />
             </div>
-        </div>
+        </main>
 
         <!-- Footer -->
         <footer class="flex-shrink-0 border-t border-amber-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-2 text-center">

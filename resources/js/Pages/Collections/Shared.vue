@@ -4,9 +4,10 @@
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center justify-between">
-                <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
-                    Shared Collections
-                </h2>
+                <div>
+                    <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">Shared with me</h2>
+                    <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Collections another person has shared with your account.</p>
+                </div>
                 <Link
                     :href="route('collections.index')"
                     class="inline-flex items-center px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md text-sm font-medium text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700"
@@ -31,7 +32,7 @@
                         </div>
                         <div class="ml-3">
                             <p class="text-sm text-blue-700 dark:text-blue-300">
-                                These collections have been shared with you by other users. You can view the files but may have limited editing permissions depending on the share settings.
+                                Open a collection to see the files and folders included in your access. The badge on each collection shows whether you can view or edit it.
                             </p>
                         </div>
                     </div>
@@ -41,13 +42,14 @@
                 <div class="bg-white dark:bg-zinc-800 overflow-hidden shadow-lg sm:rounded-lg border-t-4 border-blue-600">
                     <div class="p-6">
                         <div v-if="collections.length > 0">
+                            <p class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">{{ collections.length }} {{ collections.length === 1 ? 'shared collection' : 'shared collections' }}</p>
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                <div
+                                <Link
                                     v-for="collection in collections"
                                     :key="collection.id"
-                                    class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-200 border-l-4 p-6 cursor-pointer"
+                                    :href="route('collections.show', collection.id)"
+                                    class="block rounded-lg border-l-4 bg-white p-6 shadow-lg transition-shadow duration-200 hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:bg-zinc-800"
                                     :style="{ borderLeftColor: collection.color }"
-                                    @click="viewCollection(collection)"
                                 >
                                     <div class="flex items-start justify-between mb-4">
                                         <div class="flex items-center space-x-3">
@@ -73,7 +75,7 @@
                                                 class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                                                 :class="getPermissionClass(collection.permission)"
                                             >
-                                                {{ collection.permission === 'edit' ? 'Can Edit' : 'View Only' }}
+                                                {{ collection.permission === 'edit' ? 'Can edit' : 'View only' }}
                                             </span>
                                         </div>
                                     </div>
@@ -82,7 +84,7 @@
                                     </p>
                                     <div class="border-t border-blue-200 dark:border-zinc-700 pt-4 space-y-2">
                                         <div class="flex items-center justify-between">
-                                            <span class="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Files</span>
+                                            <span class="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Files in this folder</span>
                                             <span class="text-sm font-black text-zinc-900 dark:text-zinc-100">{{ collection.files_count || 0 }}</span>
                                         </div>
                                         <div class="flex items-center justify-between">
@@ -90,7 +92,7 @@
                                             <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ formatDate(collection.shared_at) }}</span>
                                         </div>
                                     </div>
-                                </div>
+                                </Link>
                             </div>
                         </div>
 
@@ -99,7 +101,7 @@
                             <svg class="mx-auto h-16 w-16 text-zinc-400 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                             </svg>
-                            <h3 class="mt-4 text-lg font-black text-zinc-900 dark:text-zinc-100">No shared collections</h3>
+                            <h3 class="mt-4 text-lg font-black text-zinc-900 dark:text-zinc-100">Nothing has been shared with you yet</h3>
                             <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                                 No one has shared any collections with you yet. When someone shares a collection, it will appear here.
                             </p>
@@ -114,7 +116,7 @@
 <script setup>
 import { useDateFormatter } from '@/Composables/useDateFormatter';
 const { formatDate } = useDateFormatter();
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
 const props = defineProps({
@@ -147,11 +149,5 @@ const getPermissionClass = (permission) => {
         return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400';
     }
     return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
-};
-
-
-
-const viewCollection = (collection) => {
-    router.visit(route('collections.show', collection.id));
 };
 </script>

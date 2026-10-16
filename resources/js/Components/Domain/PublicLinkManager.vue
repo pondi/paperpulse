@@ -10,6 +10,10 @@ const props = defineProps({
         type: Number,
         required: true,
     },
+    collectionName: {
+        type: String,
+        default: 'this collection',
+    },
     publicLinks: {
         type: Array,
         default: () => [],
@@ -128,10 +132,14 @@ function getLinkStatus(link) {
     <div>
         <div>
             <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-100">Public Sharing</h3>
+                <div>
+                    <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-100">Public links</h3>
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ publicLinks.length }} {{ publicLinks.length === 1 ? 'link' : 'links' }} for {{ collectionName }}</p>
+                </div>
                 <button
+                    type="button"
                     @click="openCreateModal"
-                    class="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-500 transition"
+                    class="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-amber-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600"
                 >
                     <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
@@ -141,7 +149,7 @@ function getLinkStatus(link) {
             </div>
 
             <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
-                Share files directly in this collection via a link. Subfolder contents stay private. No account required.
+                A public link lets anyone with the URL view files directly in {{ collectionName }} without an account. Files in subfolders stay private unless those folders are shared separately.
             </p>
 
             <p v-if="error && !showCreateModal" role="alert" class="mb-3 text-sm text-red-700 dark:text-red-400">{{ error }}</p>
@@ -167,7 +175,7 @@ function getLinkStatus(link) {
                         </div>
                         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                             <span>Created {{ formatDate(link.created_at) }}</span>
-                            <span>Expires {{ formatDate(link.expires_at) }}</span>
+                            <span>{{ link.expires_at ? `Expires ${formatDate(link.expires_at)}` : 'No expiration' }}</span>
                             <span>{{ link.view_count }} {{ link.view_count === 1 ? 'view' : 'views' }}{{ link.max_views ? ` / ${link.max_views}` : '' }}</span>
                         </div>
                     </div>
@@ -175,9 +183,9 @@ function getLinkStatus(link) {
                     <div class="flex items-center gap-2 ml-3">
                         <button
                             @click="viewLogs(link.id)"
-                            class="rounded p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition"
+                            class="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                             title="View access logs"
-                            aria-label="View access logs"
+                            :aria-label="`View access log for ${link.label || 'public link'}`"
                         >
                             <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
@@ -186,9 +194,9 @@ function getLinkStatus(link) {
                         <button
                             v-if="link.is_active"
                             @click="revokeLink(link.id)"
-                            class="rounded p-1 text-red-400 hover:text-red-600 dark:hover:text-red-300 transition"
+                            class="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-red-500 transition hover:bg-red-50 hover:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-300"
                             title="Revoke link"
-                            aria-label="Revoke link"
+                            :aria-label="`Revoke ${link.label || 'public link'}`"
                         >
                             <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />

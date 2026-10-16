@@ -37,12 +37,17 @@ function summary(view) {
     if (type && type.value !== 'all') parts.push(type.label);
     const smart = smartViews.find(item => item.value === filters.view);
     if (smart) parts.push(smart.label);
+    if (filters.collection_id) parts.push('Folder filter');
+    if (filters.tag_id) parts.push('Tag filter');
     const dates = { last_30_days: 'Last 30 days', this_month: 'This month', this_year: 'This year' };
     if (dates[filters.date_range]) parts.push(dates[filters.date_range]);
-    if (filters.status) parts.push(filters.status.replaceAll('_', ' '));
+    if (filters.status) parts.push(filters.status.replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase()));
+    if (filters.review_status) parts.push(filters.review_status.replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase()) + ' review');
+    if (filters.confidence) parts.push(filters.confidence[0].toUpperCase() + filters.confidence.slice(1) + ' confidence');
+    if (filters.amount_min != null || filters.amount_max != null) parts.push(`Amount ${filters.amount_min ?? 'any'}–${filters.amount_max ?? 'any'}`);
     if (filters.date_from || filters.date_to) parts.push([filters.date_from || 'Any date', filters.date_to || 'Today onward'].join(' to '));
     if (filters.tags?.length) parts.push(filters.tags.join(', '));
-    return parts.join(' · ') || 'All matching documents';
+    return parts.join(' · ') || (view.scope === 'search' ? 'All matching results' : 'All matching documents');
 }
 </script>
 
@@ -60,15 +65,15 @@ function summary(view) {
                 </div>
             </section>
             <section aria-label="Your saved views">
-                <div class="mb-4 flex items-center justify-between"><h2 class="text-sm font-semibold text-zinc-900 dark:text-white">Your views <span class="ml-1 text-zinc-400">{{ views.length }}</span></h2><Link :href="route('library.index')" class="text-sm font-medium text-amber-700 dark:text-amber-400">Create from Library</Link></div>
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 class="text-sm font-semibold text-zinc-900 dark:text-white">Your views <span class="ml-1 text-zinc-400">{{ views.length }}</span></h2><Link :href="route('library.index')" class="inline-flex min-h-11 items-center rounded px-2 text-sm font-medium text-amber-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:text-amber-400">Create from Library</Link></div>
                 <p v-if="error && !editing && !removing" role="alert" class="mb-3 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
                 <div v-if="views.length" class="divide-y divide-zinc-100 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
-                    <div v-for="view in views" :key="view.id" class="flex flex-wrap items-center gap-3 p-4 sm:px-5">
-                        <button type="button" :aria-label="(view.is_pinned ? 'Unpin ' : 'Pin ') + view.name" :aria-pressed="view.is_pinned" :disabled="busy" @click="request('patch', view, { is_pinned: !view.is_pinned })" :class="[view.is_pinned ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-300 dark:text-zinc-600', 'rounded p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800']"><BookmarkIcon class="h-5 w-5" :class="view.is_pinned ? 'fill-current' : ''" /></button>
-                        <Link :href="route('saved-searches.show', view.id)" class="min-w-0 flex-1"><h3 class="truncate text-sm font-semibold text-zinc-800 hover:text-amber-700 dark:text-white dark:hover:text-amber-400">{{ view.name }}</h3><p class="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{{ summary(view) }}</p></Link>
-                        <span class="hidden rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-500 sm:inline dark:bg-zinc-800 dark:text-zinc-400">{{ view.scope === 'search' ? 'Content search' : 'Library' }}</span>
-                        <button type="button" :aria-label="'Rename ' + view.name" :disabled="busy" @click="rename(view)" class="rounded p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"><PencilIcon class="h-4 w-4" /></button>
-                        <button type="button" :aria-label="'Delete ' + view.name" :disabled="busy" @click="removing = view; error = ''" class="rounded p-2 text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><TrashIcon class="h-4 w-4" /></button>
+                    <div v-for="view in views" :key="view.id" class="flex flex-wrap items-center gap-2 p-3 sm:gap-3 sm:px-5">
+                        <button type="button" :aria-label="(view.is_pinned ? 'Unpin ' : 'Pin ') + view.name" :aria-pressed="view.is_pinned" :disabled="busy" @click="request('patch', view, { is_pinned: !view.is_pinned })" :class="[view.is_pinned ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-400 dark:text-zinc-500', 'inline-flex min-h-11 min-w-11 items-center justify-center rounded hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600 dark:hover:bg-zinc-800']"><BookmarkIcon class="h-5 w-5" :class="view.is_pinned ? 'fill-current' : ''" /></button>
+                        <Link :href="route('saved-searches.show', view.id)" class="min-w-[9rem] flex-1 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600"><h3 class="break-words text-sm font-semibold text-zinc-800 hover:text-amber-700 dark:text-white dark:hover:text-amber-400">{{ view.name }}</h3><p class="mt-1 break-words text-xs text-zinc-500 dark:text-zinc-400">{{ summary(view) }}</p></Link>
+                        <span class="rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{{ view.scope === 'search' ? 'Content search' : 'Library view' }}</span>
+                        <button type="button" :aria-label="'Rename ' + view.name" :disabled="busy" @click="rename(view)" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600 dark:hover:bg-zinc-800 dark:hover:text-white"><PencilIcon class="h-4 w-4" /></button>
+                        <button type="button" :aria-label="'Delete ' + view.name" :disabled="busy" @click="removing = view; error = ''" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded p-2 text-zinc-500 hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600 dark:hover:bg-red-500/10"><TrashIcon class="h-4 w-4" /></button>
                     </div>
                 </div>
                 <div v-else class="flex flex-col items-center gap-3 rounded-xl border border-dashed border-zinc-300 bg-white p-12 text-center dark:border-zinc-700 dark:bg-zinc-900">

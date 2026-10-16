@@ -19,6 +19,7 @@ import { Head } from '@inertiajs/vue3'
             <p class="text-zinc-600 dark:text-zinc-400 mb-6">
                 This shared link is no longer available. It may have expired, reached its view limit, or been revoked by the owner.
             </p>
+            <p class="mb-6 text-sm text-zinc-500 dark:text-zinc-400">Ask the collection owner for a new link if you still need access.</p>
 
             <div class="pt-4 border-t border-amber-200 dark:border-zinc-700">
                 <p class="text-xs text-zinc-400 dark:text-zinc-500">

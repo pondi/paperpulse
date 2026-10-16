@@ -582,7 +582,7 @@ it('guides export creation and distinguishes empty pending and expired exports',
     Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
 
     $this->browse(function (Browser $browser) use ($user): void {
-        $browser->loginAs($user)->visit('/exports')->waitForText('No exports available.')
+        $browser->loginAs($user)->visit('/exports')->waitForText('Export history')->assertSee('0 exports')->assertSee('No exports available.')
             ->assertSee('select the receipts using their checkboxes')
             ->clickLink('Select receipts to export')->waitForLocation('/receipts')
             ->check('thead input[type="checkbox"]')->waitForText('Export')->press('Export')
@@ -590,10 +590,16 @@ it('guides export creation and distinguishes empty pending and expired exports',
 
         ArchiveExport::factory()->create(['user_id' => $user->id, 'status' => 'pending']);
         ArchiveExport::factory()->create(['user_id' => $user->id, 'status' => 'completed', 'expires_at' => now()->subMinute()]);
+        $readyExport = ArchiveExport::factory()->create(['user_id' => $user->id, 'status' => 'completed', 'processed' => 100, 'expires_at' => now()->addHour()]);
         $browser->visit('/exports')->waitForText('PDF export · pending')
-            ->assertSee('0 / 100 processed')->assertSee('PDF export · expired')
-            ->assertSee('This download has expired')->assertDontSee('No exports available.')
-            ->assertMissing('a[href*="/download"]');
+            ->assertSee('3 exports')->assertSee('0 / 100 processed')->assertPresent('[role="status"]')
+            ->assertAttribute('progress', 'aria-label', 'PDF export progress')->assertSee('PDF export · expired')
+            ->assertSee('This download expired on')->assertSee('Ready to download until')
+            ->assertSeeLink('Download PDF export')->assertPresent('a[href*="/exports/'.$readyExport->id.'/download"]')
+            ->assertDontSee('No exports available.')->screenshot('exports-history-desktop');
+        foreach ([320, 390, 768] as $width) {
+            $browser->resize($width, 844)->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
+        }
     });
 });
 

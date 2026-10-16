@@ -6,8 +6,11 @@ use App\Models\CollectionShare;
 use App\Models\Document;
 use App\Models\ExtractableEntity;
 use App\Models\File;
+use App\Models\PublicCollectionLink;
 use App\Models\Tag;
+use App\Services\Files\StoragePathBuilder;
 use Facebook\WebDriver\WebDriverKeys;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Dusk\Browser;
 
 /*
@@ -547,6 +550,29 @@ test('shared collection contents hide private descendants and management actions
     });
 });
 
+test('shared with me uses a keyboard-accessible collection link and states access level', function (): void {
+    $owner = $this->createUser();
+    $viewer = $this->createUser();
+    $folder = Collection::factory()->for($owner)->create(['name' => 'Shared budget']);
+    CollectionShare::create(['collection_id' => $folder->id, 'shared_by_user_id' => $owner->id, 'shared_with_user_id' => $viewer->id, 'permission' => 'view', 'shared_at' => now()]);
+    $file = File::factory()->for($owner)->create(['fileName' => 'Budget.pdf']);
+    $folder->files()->attach($file);
+
+    $this->browse(function (Browser $browser) use ($viewer, $folder): void {
+        $browser->resize(320, 844)->loginAs($viewer)->visit('/collections/shared')->waitForText('Shared with me')
+            ->assertSee('View only')->assertSee('Shared budget')
+            ->assertPresent('a[href$="/collections/'.$folder->id.'"]');
+        foreach ([320, 390, 768] as $width) {
+            $browser->resize($width, 844)->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+                ->assertScript("(() => { const link = document.querySelector('a[href$=\"/collections/{$folder->id}\"]'); const rect = link.getBoundingClientRect(); return rect.width >= 44 && rect.height >= 44 && rect.right <= innerWidth; })()", true);
+        }
+        $browser->resize(320, 844);
+        $browser->script("document.querySelector('a[href$=\"/collections/{$folder->id}\"]').focus()");
+        $browser->keys('a[href$="/collections/'.$folder->id.'"]', WebDriverKeys::ENTER)->waitForLocation('/collections/'.$folder->id)
+            ->assertSee('Shared budget')->assertSee('Budget.pdf');
+    });
+});
+
 test('collection public links stay secondary and support explicit create cancel and revoke', function (): void {
     $user = $this->createUser();
     $folder = Collection::factory()->for($user)->create(['name' => 'Tax records']);
@@ -562,7 +588,65 @@ test('collection public links stay secondary and support explicit create cancel 
             ->screenshot('redesign-contents-sharing-mobile')->press('Create Link')->waitForText('Link Created')
             ->press('Done')->waitUntilMissing('[role="dialog"]')->assertSee('Accountant')
             ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
-            ->click('button[aria-label="Revoke link"]')->waitForDialog()->acceptDialog()->waitForText('Revoked');
+            ->assertSee('Expires')->assertSee('for Tax records')
+            ->click('button[aria-label="Revoke Accountant"]')->waitForDialog()->acceptDialog()->waitForText('Revoked');
     });
     expect($folder->publicLinks()->sole()->is_active)->toBeFalse();
+});
+
+test('public collection password and expired states explain recovery accessibly', function (): void {
+    $owner = $this->createUser();
+    $folder = Collection::factory()->for($owner)->create(['name' => 'Private plans']);
+    $passwordLink = PublicCollectionLink::factory()->passwordProtected('secret123')->create([
+        'collection_id' => $folder->id,
+        'created_by_user_id' => $owner->id,
+        'label' => 'Guest access',
+    ]);
+    $expiredLink = PublicCollectionLink::factory()->expired()->create([
+        'collection_id' => $folder->id,
+        'created_by_user_id' => $owner->id,
+    ]);
+
+    $this->browse(function (Browser $browser) use ($passwordLink, $expiredLink): void {
+        $browser->resize(320, 844)->visit('/shared/collections/'.$passwordLink->token)->waitForText('Unlock Private plans')
+            ->assertPresent('#password')->type('#password', 'incorrect')->click('form button[type="submit"]')
+            ->waitFor('[role="alert"]')->assertAttribute('#password', 'aria-invalid', 'true')
+            ->assertAttribute('#password', 'aria-describedby', 'password-error')
+            ->visit('/shared/collections/'.$expiredLink->token)->waitForText('This shared link is no longer available.')
+            ->assertSee('Ask the collection owner for a new link if you still need access.')
+            ->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
+    });
+});
+
+test('public collection file browsing stays keyboard usable on mobile', function (): void {
+    $owner = $this->createUser();
+    $folder = Collection::factory()->for($owner)->create(['name' => 'Shared plans']);
+    $firstFile = File::factory()->for($owner)->create(['fileName' => 'Plan A.pdf', 'fileExtension' => 'pdf', 'file_type' => 'document', 'status' => 'completed']);
+    $secondFile = File::factory()->for($owner)->create(['fileName' => 'Plan B.pdf', 'fileExtension' => 'pdf']);
+    $folder->files()->attach([$firstFile->id, $secondFile->id]);
+    $link = PublicCollectionLink::factory()->for($folder)->create(['created_by_user_id' => $owner->id]);
+    $path = StoragePathBuilder::storagePath($owner->id, $firstFile->guid, 'document', 'original', 'pdf');
+    Storage::disk('paperpulse')->put($path, conversionPdfFixture());
+    $firstFile->update(['s3_original_path' => $path]);
+
+    try {
+        $this->browse(function (Browser $browser) use ($link, $firstFile): void {
+            $browser->resize(320, 844)->visit('/shared/collections/'.$link->token)->waitForText('Shared plans')
+                ->assertSee('Shared by')->assertPresent('nav[aria-label="Files in shared collection"]')
+                ->assertAttribute('button[aria-label="Preview Plan A.pdf"]', 'aria-pressed', 'true')
+                ->assertAttribute('button[aria-label="Preview Plan A.pdf"]', 'type', 'button')
+                ->assertAttribute('a[href*="download=1"]', 'href', route('shared.collections.file', ['token' => $link->token, 'guid' => $firstFile->guid]).'?download=1')
+                ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+                ->waitFor('iframe')->screenshot('public-shared-collection-mobile');
+            $browser->script('document.querySelector("button[aria-label=\'Preview Plan B.pdf\']").focus()');
+            $browser->keys('button[aria-label="Preview Plan B.pdf"]', WebDriverKeys::ENTER)
+                ->assertAttribute('button[aria-label="Preview Plan B.pdf"]', 'aria-pressed', 'true')
+                ->assertAttribute('button[aria-label="Preview Plan A.pdf"]', 'aria-pressed', 'false');
+            foreach ([390, 768, 1440] as $width) {
+                $browser->resize($width, 844)->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
+            }
+        });
+    } finally {
+        Storage::disk('paperpulse')->delete($path);
+    }
 });

@@ -33,10 +33,15 @@ test('library filters and saved views work through their complete browser lifecy
             ->click('a[aria-label="Open document in full view"]')->waitFor('@workspace-back')->click('@workspace-back')
             ->waitFor('@library-query')->assertInputValue('@library-query', 'Business')->assertQueryStringHas('saved_search', (string) $saved->id)
             ->click('aside a[href$="/saved-views"]')->waitForText('Your views')->screenshot('saved-views-desktop')
+            ->assertSee('Library view')->assertSee('“Business”')
             ->click('button[aria-label="Rename Business documents"]')->waitFor('#rename-view')->type('#rename-view', 'Business archive')
             ->press('Save name')->waitForText('Business archive')->click('button[aria-label="Unpin Business archive"]')
             ->waitFor('button[aria-label="Pin Business archive"]')->click('button[aria-label="Pin Business archive"]')
             ->waitFor('button[aria-label="Unpin Business archive"]')
+            ->resize(390, 844)->visit('/saved-views')->waitForText('Library view')
+            ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)->screenshot('saved-views-mobile')
+            ->assertScript("Array.from(document.querySelectorAll('button[aria-label^=Pin], button[aria-label^=Rename], button[aria-label^=Delete]')).every(button => { const rect = button.getBoundingClientRect(); return rect.width >= 44 && rect.height >= 44; })", true)
+            ->resize(1440, 1000)->visit('/saved-views')->waitForText('Business archive')
             ->click('button[aria-label="Delete Business archive"]')->waitForText('Remove “Business archive”?')->press('Remove view')
             ->waitForText('Make your library work for you');
         expect(SavedSearch::where('user_id', $user->id)->count())->toBe(0);
@@ -95,6 +100,7 @@ test('full text saved searches restore filters and remain editable after navigat
             ->waitUsing(10, 100, fn (): bool => str_contains($browser->driver->getCurrentURL(), 'query=train'))
             ->click('@save-view')->waitFor('@saved-view-name')->click('@confirm-save-view')->waitUntilMissing('@saved-view-name');
         expect(SavedSearch::where('user_id', $user->id)->firstOrFail()->filters['query'])->toBe('train');
+        $browser->visit('/saved-views')->waitForText('Content search')->assertSee('“train” · Receipts');
     });
 });
 

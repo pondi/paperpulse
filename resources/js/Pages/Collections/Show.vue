@@ -167,7 +167,7 @@ function removeFile(file) {
             </details>
             <details v-if="isOwner" class="workspace-surface p-4" data-public-sharing>
                 <summary class="cursor-pointer text-sm font-medium">Public sharing</summary>
-                <PublicLinkManager :collection-id="collection.id" :public-links="publicLinks" :flash-public-link="$page.props.flash?.publicLink" class="mt-4" />
+                <PublicLinkManager :collection-id="collection.id" :collection-name="collection.name" :public-links="publicLinks" :flash-public-link="$page.props.flash?.publicLink" class="mt-4" />
             </details>
         </div>
 

@@ -357,11 +357,26 @@ it('renders processing analytics with PostgreSQL warning arrays', function (): v
             'validation_warnings' => $warnings,
         ]);
     }
+    FileProcessingAnalytic::create([
+        'file_id' => File::factory()->create(['user_id' => $admin->id])->id,
+        'user_id' => $admin->id,
+        'processing_type' => 'invoice',
+        'document_type' => 'invoice',
+        'processing_status' => 'failed',
+        'classification_confidence' => 0.72,
+        'failure_category' => 'extraction_validation_failed',
+        'error_message' => 'Invoice total could not be validated.',
+        'validation_warnings' => ['Invalid invoice total'],
+    ]);
 
     $this->get(route('analytics.processing'))->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Analytics/Processing')
             ->where('qualityMetrics.invoice.total_extractions', 3)
-            ->where('qualityMetrics.invoice.extractions_with_warnings', 1));
+            ->where('qualityMetrics.invoice.extractions_with_warnings', 1)
+            ->where('validationFailures.0.type', 'invoice')
+            ->where('validationFailures.0.failure_count', 1)
+            ->where('timeline.0.total', 4)
+            ->where('timeline.0.failed', 1));
 });
 
 it('loads processing analytic file identities and retains records for missing files', function (): void {

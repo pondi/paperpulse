@@ -12,6 +12,7 @@ use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\Invoice;
 use App\Models\InvoiceLineItem;
+use App\Models\JobHistory;
 use App\Models\LineItem;
 use App\Models\Merchant;
 use App\Models\OrganizationRun;
@@ -678,8 +679,51 @@ it('shows each receipt membership once and gives optional metadata clear empty s
 it('identifies the admin processing analytics browser page', function (): void {
     $user = $this->createUser(['is_admin' => true]);
     $this->browse(function (Browser $browser) use ($user): void {
-        $browser->loginAs($user)->visit('/analytics/processing')->waitForText('AI Processing Analytics')
-            ->assertTitleContains('AI Processing Analytics');
+        $browser->loginAs($user)->visit('/analytics/processing')->waitForText('Processing analytics')
+            ->assertTitleContains('Processing analytics')->assertSee('Counts and averages across recorded processing attempts.')
+            ->assertSee('Extraction quality by type')->assertSee('Validation failures by extractor')
+            ->assertSee('Daily processing activity');
+        foreach ([320, 390, 768] as $width) {
+            $browser->resize($width, 900)->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
+                ->assertVisible('#processing-period');
+        }
+    });
+});
+
+it('keeps admin job recovery actions contextual and responsive', function (): void {
+    $user = $this->createUser(['is_admin' => true]);
+    $parentId = (string) Str::uuid();
+    JobHistory::create([
+        'uuid' => $parentId,
+        'name' => 'Process Document',
+        'queue' => 'documents',
+        'status' => 'failed',
+        'file_name' => 'failed-invoice.pdf',
+        'exception' => 'Sensitive diagnostic detail',
+    ]);
+    JobHistory::create([
+        'uuid' => (string) Str::uuid(),
+        'parent_uuid' => $parentId,
+        'name' => 'Extract invoice',
+        'queue' => 'documents',
+        'status' => 'failed',
+        'order_in_chain' => 1,
+        'exception' => 'Sensitive diagnostic detail',
+    ]);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->visit('/jobs')->waitForText('Job operations')
+            ->assertSee('Find a job')->assertSee('Failed')->assertSee('failed-invoice.pdf')
+            ->assertSee('Restart failed chain')->assertDontSee('Sensitive diagnostic detail');
+
+        foreach ([320, 390, 768] as $width) {
+            $browser->resize($width, 900)->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
+                ->assertVisible('select[aria-label="Job status"]')
+                ->assertVisible('input[data-job-selection]');
+        }
+
+        $browser->check('input[data-job-selection]')->waitForText('1 failed chain selected (maximum 10)')
+            ->assertSee('Restart 1 selected')->assertSee('Clear selection');
     });
 });
 

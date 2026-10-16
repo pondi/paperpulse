@@ -1,49 +1,55 @@
 <template>
     <AuthenticatedLayout>
-        <Head title="AI Processing Analytics" />
+        <Head title="Processing analytics" />
         <template #header>
-            <div class="flex justify-between items-center">
-                <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">
-                    AI Processing Analytics
-                    <span class="ml-2 text-xs font-normal text-zinc-500 dark:text-zinc-400">(Admin Only)</span>
-                </h2>
-                <div class="flex items-center gap-x-2">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <h2 class="text-2xl font-semibold leading-tight text-zinc-950 dark:text-zinc-100">Processing analytics</h2>
+                    <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Admin diagnostics for extraction quality and recurring failures.</p>
+                </div>
+                <label for="processing-period" class="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 sm:min-w-48">
+                    Activity period
                     <select
+                        id="processing-period"
                         v-model="selectedDays"
                         @change="changePeriod"
-                        class="rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
+                        class="min-h-11 rounded-lg border-zinc-300 bg-white text-zinc-900 shadow-sm focus:border-amber-600 focus:ring-amber-600 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200"
                     >
                         <option :value="7">Last 7 Days</option>
                         <option :value="14">Last 14 Days</option>
                         <option :value="30">Last 30 Days</option>
                         <option :value="90">Last 90 Days</option>
                     </select>
-                </div>
+                </label>
             </div>
         </template>
 
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
-                <!-- Overall Stats -->
-                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                    <StatCard
-                        title="Total Processed"
-                        :value="stats.total_processed"
-                    />
-                    <StatCard
-                        title="Success Rate"
-                        :value="stats.success_rate + '%'"
-                        :subtitle="`${stats.total_success} succeeded, ${stats.total_failed} failed`"
-                    />
-                    <StatCard
-                        title="Avg Confidence"
-                        :value="(stats.avg_confidence * 100).toFixed(2) + '%'"
-                    />
-                    <StatCard
-                        title="Avg Processing Time"
-                        :value="stats.avg_duration_ms + 'ms'"
-                    />
-                </div>
+        <div class="mx-auto max-w-screen-2xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+                <section aria-labelledby="processing-summary-heading" class="space-y-3">
+                    <div>
+                        <h3 id="processing-summary-heading" class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Processing snapshot</h3>
+                        <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Counts and averages across recorded processing attempts.</p>
+                    </div>
+                    <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <div class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-5">
+                            <dt class="text-sm font-medium text-zinc-600 dark:text-zinc-400">Total processed</dt>
+                            <dd class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-zinc-100">{{ stats.total_processed }}</dd>
+                        </div>
+                        <div class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-5">
+                            <dt class="text-sm font-medium text-zinc-600 dark:text-zinc-400">Success rate</dt>
+                            <dd class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-zinc-100">{{ stats.success_rate }}%</dd>
+                            <dd class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ stats.total_success }} succeeded, {{ stats.total_failed }} failed</dd>
+                        </div>
+                        <div class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-5">
+                            <dt class="text-sm font-medium text-zinc-600 dark:text-zinc-400">Average confidence</dt>
+                            <dd class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-zinc-100">{{ (stats.avg_confidence * 100).toFixed(2) }}%</dd>
+                        </div>
+                        <div class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-5">
+                            <dt class="text-sm font-medium text-zinc-600 dark:text-zinc-400">Average processing time</dt>
+                            <dd class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-zinc-100">{{ stats.avg_duration_ms }}ms</dd>
+                        </div>
+                    </dl>
+                </section>
 
                 <!-- Document Type Distribution -->
                 <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
@@ -86,6 +92,37 @@
                         </div>
                     </div>
                 </div>
+
+                <section v-if="Object.values(qualityMetrics).length" aria-labelledby="quality-metrics-heading" class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+                    <header class="border-b border-zinc-200 px-5 py-4 dark:border-zinc-700 sm:px-6">
+                        <h3 id="quality-metrics-heading" class="font-semibold text-zinc-950 dark:text-zinc-100">Extraction quality by type</h3>
+                        <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Confidence, duration and validation warnings for successful extractions.</p>
+                    </header>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+                            <thead class="bg-zinc-50 dark:bg-zinc-900/50">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Type</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Extractions</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Mean confidence</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Range</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Avg. time</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">With warnings</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-100 dark:divide-zinc-700">
+                                <tr v-for="metric in Object.values(qualityMetrics)" :key="metric.document_type">
+                                    <th scope="row" class="px-4 py-3 text-left text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ metric.document_type }}</th>
+                                    <td class="px-4 py-3 text-right text-sm text-zinc-700 dark:text-zinc-300">{{ metric.total_extractions }}</td>
+                                    <td class="px-4 py-3 text-right text-sm text-zinc-700 dark:text-zinc-300">{{ (metric.avg_confidence * 100).toFixed(1) }}%</td>
+                                    <td class="px-4 py-3 text-right text-sm text-zinc-700 dark:text-zinc-300">{{ (metric.min_confidence * 100).toFixed(1) }}–{{ (metric.max_confidence * 100).toFixed(1) }}%</td>
+                                    <td class="px-4 py-3 text-right text-sm text-zinc-700 dark:text-zinc-300">{{ metric.avg_duration_ms }}ms</td>
+                                    <td class="px-4 py-3 text-right text-sm text-zinc-700 dark:text-zinc-300">{{ metric.extractions_with_warnings }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
 
                 <!-- Unknown Document Types (Need Extractors) -->
                 <div v-if="unknownTypes.length > 0" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 shadow rounded-lg">
@@ -154,6 +191,68 @@
                     </div>
                 </div>
 
+                <section aria-labelledby="validation-failures-heading" class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+                    <header class="border-b border-zinc-200 px-5 py-4 dark:border-zinc-700 sm:px-6">
+                        <h3 id="validation-failures-heading" class="font-semibold text-zinc-950 dark:text-zinc-100">Validation failures by extractor</h3>
+                        <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Types with repeated validation errors may need schema or prompt changes.</p>
+                    </header>
+                    <div v-if="validationFailures.length" class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+                            <thead class="bg-zinc-50 dark:bg-zinc-900/50">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Document type</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Failures</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Avg. classification confidence</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">First seen</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Last seen</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-100 dark:divide-zinc-700">
+                                <tr v-for="item in validationFailures" :key="item.type">
+                                    <th scope="row" class="px-4 py-3 text-left text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ item.type }}</th>
+                                    <td class="px-4 py-3 text-right text-sm font-semibold text-red-700 dark:text-red-300">{{ item.failure_count }}</td>
+                                    <td class="px-4 py-3 text-right text-sm text-zinc-700 dark:text-zinc-300">{{ (item.avg_confidence * 100).toFixed(1) }}%</td>
+                                    <td class="px-4 py-3 text-right text-sm text-zinc-600 dark:text-zinc-400">{{ formatDate(item.first_failure) }}</td>
+                                    <td class="px-4 py-3 text-right text-sm text-zinc-600 dark:text-zinc-400">{{ formatDate(item.last_failure) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p v-else class="px-5 py-8 text-center text-sm text-zinc-600 dark:text-zinc-400">No validation failures recorded.</p>
+                </section>
+
+                <section aria-labelledby="processing-timeline-heading" class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+                    <header class="border-b border-zinc-200 px-5 py-4 dark:border-zinc-700 sm:px-6">
+                        <h3 id="processing-timeline-heading" class="font-semibold text-zinc-950 dark:text-zinc-100">Daily processing activity</h3>
+                        <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Volume, outcomes and average duration for the selected activity period.</p>
+                    </header>
+                    <div v-if="timeline.length" class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+                            <thead class="bg-zinc-50 dark:bg-zinc-900/50">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Date</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Total</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Succeeded</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Failed</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Success rate</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Avg. time</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-100 dark:divide-zinc-700">
+                                <tr v-for="item in timeline" :key="item.date">
+                                    <th scope="row" class="px-4 py-3 text-left text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ formatDate(item.date) }}</th>
+                                    <td class="px-4 py-3 text-right text-sm text-zinc-700 dark:text-zinc-300">{{ item.total }}</td>
+                                    <td class="px-4 py-3 text-right text-sm text-green-700 dark:text-green-300">{{ item.success }}</td>
+                                    <td class="px-4 py-3 text-right text-sm text-red-700 dark:text-red-300">{{ item.failed }}</td>
+                                    <td class="px-4 py-3 text-right text-sm text-zinc-700 dark:text-zinc-300">{{ item.success_rate }}%</td>
+                                    <td class="px-4 py-3 text-right text-sm text-zinc-700 dark:text-zinc-300">{{ item.avg_duration_ms }}ms</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p v-else class="px-5 py-8 text-center text-sm text-zinc-600 dark:text-zinc-400">No processing activity recorded during this period.</p>
+                </section>
+
                 <!-- Failure Distribution -->
                 <div v-if="failureDistribution.length > 0" class="bg-white dark:bg-zinc-800 shadow rounded-lg">
                     <div class="px-6 py-5 border-b border-zinc-200 dark:border-zinc-700">
@@ -192,7 +291,6 @@
                     </div>
                 </div>
             </div>
-        </div>
     </AuthenticatedLayout>
 </template>
 
@@ -225,26 +323,4 @@ const changePeriod = () => {
 };
 
 
-</script>
-
-<script>
-// Stat Card Component
-import { defineComponent } from 'vue';
-
-export const StatCard = defineComponent({
-    props: {
-        title: String,
-        value: [String, Number],
-        subtitle: String,
-    },
-    template: `
-        <div class="bg-white dark:bg-zinc-800 overflow-hidden shadow rounded-lg">
-            <div class="px-4 py-5 sm:p-6">
-                <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400 truncate">{{ title }}</dt>
-                <dd class="mt-1 text-3xl font-semibold text-zinc-900 dark:text-zinc-100">{{ value }}</dd>
-                <dd v-if="subtitle" class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ subtitle }}</dd>
-            </div>
-        </div>
-    `,
-});
 </script>

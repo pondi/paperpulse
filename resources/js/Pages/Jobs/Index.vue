@@ -3,42 +3,83 @@
 
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">Jobs</h2>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-2xl font-semibold leading-tight text-zinc-950 dark:text-zinc-100">Job operations</h2>
+          <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Monitor queues, inspect failures and restart interrupted chains.</p>
+        </div>
+        <Link :href="route('files.index', { status: 'needs_review' })" class="inline-flex min-h-11 items-center rounded-lg border border-amber-300 bg-amber-50 px-4 text-sm font-semibold text-amber-900 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-950/60">
+          Review uncertain files
+        </Link>
+      </div>
     </template>
 
-    <div class="py-12 bg-amber-50 dark:bg-zinc-900">
-      <div class="max-w-7xl 2xl:max-w-screen-2xl mx-auto sm:px-6 lg:px-8">
-        <div class="lg:grid lg:grid-cols-12 lg:gap-8">
-          <!-- Left Column: Statistics -->
-          <div class="lg:col-span-4 xl:col-span-3 space-y-6 mb-6 lg:mb-0">
-            <JobStats :stats="stats" @filter-status="handleFilterStatus" />
-            <PulseDavStats :stats="pulseDavStats" :recent-files="recentPulseDavFiles" />
-          </div>
-          
-          <!-- Right Column: Filters and Jobs -->
-          <div class="lg:col-span-8 xl:col-span-9">
-            <Link :href="route('files.index', { status: 'needs_review' })" class="mb-4 inline-block text-amber-700 underline dark:text-amber-300">Review uncertain files</Link>
-            <JobFilters :form="form" :queues="queues" @update:form="updateForm" class="mb-6" />
-            
-            <!-- Jobs List -->
-            <div v-if="jobs?.length" class="space-y-4">
-              <JobCard v-for="job in jobs" :key="job.id" :job="job" />
+    <div class="mx-auto flex max-w-screen-2xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      <JobStats :stats="stats" :selected-status="form.status" @filter-status="handleFilterStatus" />
+
+      <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_19rem]">
+        <main class="min-w-0 space-y-5">
+          <JobFilters :form="form" :queues="queues" @update:form="updateForm" />
+
+          <section aria-labelledby="job-history-heading" class="space-y-4">
+            <div class="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 id="job-history-heading" class="text-lg font-semibold text-zinc-950 dark:text-zinc-100">Job history</h2>
+                <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{{ pagination.total }} matching job chains</p>
+              </div>
+              <button
+                v-if="jobs.some(job => job.status === 'failed')"
+                type="button"
+                class="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-red-800 underline-offset-4 hover:bg-red-50 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 dark:text-red-300 dark:hover:bg-red-950/30"
+                @click="selectVisibleFailures"
+              >
+                {{ allVisibleFailuresSelected ? 'Clear failed selections' : 'Select visible failures' }}
+              </button>
             </div>
 
-            <!-- Empty State -->
-            <div v-else class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg p-6 text-center text-zinc-600 dark:text-zinc-400 border border-amber-200 dark:border-zinc-700">
-              No jobs found
+            <div v-if="actionNotice" role="status" aria-live="polite" class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-900 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200">
+              {{ actionNotice }}
+            </div>
+            <div v-if="actionError" role="alert" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+              {{ actionError }}
             </div>
 
-            <Pagination 
-              v-if="pagination?.last_page > 1" 
-              :page="form.page"
-              @update:page="page => form.page = page" 
-              :pagination="pagination" 
-              class="mt-6"
-            />
-          </div>
-        </div>
+            <div v-if="selectedJobIds.length" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/20">
+              <p class="text-sm font-medium text-red-950 dark:text-red-100">{{ selectedJobIds.length }} failed chain{{ selectedJobIds.length === 1 ? '' : 's' }} selected (maximum 10)</p>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-red-900 hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 dark:text-red-200 dark:hover:bg-red-950/60" @click="selectedJobIds = []">Clear selection</button>
+                <button type="button" :disabled="isRestartingBatch" class="inline-flex min-h-11 items-center rounded-lg bg-red-700 px-4 text-sm font-semibold text-white shadow-sm hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:opacity-60 dark:bg-red-600 dark:hover:bg-red-500" @click="restartSelectedJobs">
+                  {{ isRestartingBatch ? 'Restarting…' : `Restart ${selectedJobIds.length} selected` }}
+                </button>
+              </div>
+            </div>
+
+            <div v-if="jobs.length" class="space-y-3">
+              <JobCard
+                v-for="job in jobs"
+                :key="job.id"
+                :job="job"
+                :selected="selectedJobIds.includes(job.id)"
+                :selection-disabled="selectedJobIds.length >= 10"
+                :restarting="restartingJobIds.includes(job.id)"
+                @restart="restartJob"
+                @toggle-selection="toggleJobSelection"
+              />
+            </div>
+
+            <div v-else class="rounded-xl border border-dashed border-zinc-300 bg-white px-6 py-12 text-center dark:border-zinc-700 dark:bg-zinc-800">
+              <h3 class="font-semibold text-zinc-950 dark:text-zinc-100">No jobs match these filters</h3>
+              <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Clear a filter or choose another status or queue.</p>
+            </div>
+
+            <Pagination v-if="pagination.last_page > 1" :page="form.page" :pagination="pagination" class="mt-4" @update:page="page => form.page = page" />
+          </section>
+        </main>
+
+        <aside class="min-w-0">
+          <PulseDavStats :stats="pulseDavStats" :recent-files="recentPulseDavFiles" />
+          <p class="mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-400">Queue totals cover all recorded jobs. Scanner file totals are scoped to your account.</p>
+        </aside>
       </div>
     </div>
   </AuthenticatedLayout>
@@ -46,7 +87,7 @@
 
 <script setup lang="ts">
 import { Link, Head, router } from '@inertiajs/vue3';
-import { reactive, watch, ref, onMounted, onUnmounted } from 'vue';
+import { computed, reactive, watch, ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import JobStats from '@/Pages/Jobs/Components/JobStats.vue';
@@ -179,6 +220,13 @@ const stats = ref(props.stats);
 const pulseDavStats = ref(props.pulseDavStats);
 const recentPulseDavFiles = ref(props.recentPulseDavFiles);
 const pagination = ref(props.pagination);
+const selectedJobIds = ref<string[]>([]);
+const restartingJobIds = ref<string[]>([]);
+const isRestartingBatch = ref(false);
+const actionNotice = ref('');
+const actionError = ref('');
+const visibleFailedJobIds = computed(() => jobs.value.filter(job => job.status === 'failed').map(job => job.id));
+const allVisibleFailuresSelected = computed(() => visibleFailedJobIds.value.length > 0 && visibleFailedJobIds.value.every(id => selectedJobIds.value.includes(id)));
 let pollInterval = null;
 let fastPollInterval = null;
 
@@ -202,6 +250,7 @@ const loadJobsData = async () => {
       jobs.value = response.data.data;
       stats.value = response.data.stats;
       pagination.value = response.data.pagination;
+      selectedJobIds.value = selectedJobIds.value.filter(id => jobs.value.some(job => job.id === id && job.status === 'failed'));
       
       // Implement adaptive polling - faster when there are processing jobs
       const hasProcessingJobs = response.data.data.some(job => 
@@ -235,6 +284,67 @@ const loadJobsData = async () => {
 const handleFilterStatus = (status: string) => {
   form.status = status;
   form.page = 1;
+};
+
+const toggleJobSelection = (jobId: string) => {
+  actionError.value = '';
+  selectedJobIds.value = selectedJobIds.value.includes(jobId)
+    ? selectedJobIds.value.filter(id => id !== jobId)
+    : selectedJobIds.value.length < 10 ? [...selectedJobIds.value, jobId] : selectedJobIds.value;
+};
+
+const selectVisibleFailures = () => {
+  if (allVisibleFailuresSelected.value) {
+    selectedJobIds.value = selectedJobIds.value.filter(id => !visibleFailedJobIds.value.includes(id));
+
+    return;
+  }
+
+  const remainingSlots = 10 - selectedJobIds.value.length;
+  const unselectedVisible = visibleFailedJobIds.value.filter(id => !selectedJobIds.value.includes(id));
+  selectedJobIds.value = [...selectedJobIds.value, ...unselectedVisible.slice(0, remainingSlots)];
+  actionNotice.value = unselectedVisible.length > remainingSlots
+    ? 'The batch restart limit is 10. Select additional failed chains after this batch.'
+    : '';
+};
+
+const restartJob = async (jobId: string) => {
+  actionNotice.value = '';
+  actionError.value = '';
+  restartingJobIds.value = [...restartingJobIds.value, jobId];
+
+  try {
+    const response = await axios.post(route('jobs.restart', { jobId }), {});
+    actionNotice.value = response.data.message || 'Job chain restart initiated.';
+    selectedJobIds.value = selectedJobIds.value.filter(id => id !== jobId);
+    await loadJobsData();
+  } catch (error: any) {
+    actionError.value = error.response?.data?.message || 'Could not restart this job chain. Review its diagnostics and try again.';
+  } finally {
+    restartingJobIds.value = restartingJobIds.value.filter(id => id !== jobId);
+  }
+};
+
+const restartSelectedJobs = async () => {
+  if (!selectedJobIds.value.length || isRestartingBatch.value) {
+    return;
+  }
+
+  actionNotice.value = '';
+  actionError.value = '';
+  isRestartingBatch.value = true;
+
+  try {
+    const response = await axios.post(route('jobs.restart-multiple'), { job_ids: selectedJobIds.value });
+    actionNotice.value = response.data.message || 'Selected job chains were processed.';
+    actionError.value = response.data.summary?.failure_count ? 'Some selected chains could not be restarted. Review their diagnostics before retrying.' : '';
+    selectedJobIds.value = [];
+    await loadJobsData();
+  } catch (error: any) {
+    actionError.value = error.response?.data?.message || 'Could not restart the selected job chains. Try again.';
+  } finally {
+    isRestartingBatch.value = false;
+  }
 };
 
 watch(form, (newForm) => {

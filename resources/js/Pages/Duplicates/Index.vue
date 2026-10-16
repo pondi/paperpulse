@@ -4,14 +4,14 @@
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-6">
                 <div>
                     <h1 class="text-3xl font-black text-zinc-900 dark:text-zinc-100">{{ __('possible_duplicates') }}</h1>
-                    <p class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('possible_duplicates_description') }}</p>
+                    <p class="text-sm text-zinc-600 dark:text-zinc-400">Compare both file previews and extracted details before choosing which file to keep.</p>
                 </div>
                 <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
                     {{ duplicates.length }} {{ __('duplicates') }}
                 </span>
             </div>
 
-            <div v-if="errorMessage" class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">
+            <div v-if="errorMessage" role="alert" class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">
                 {{ errorMessage }}
             </div>
 
@@ -23,6 +23,7 @@
                 <div
                     v-for="flag in duplicates"
                     :key="flag.id"
+                    :aria-busy="isBusy(flag.id)"
                     class="bg-white dark:bg-zinc-900 shadow-lg rounded-lg border-l-4 border-amber-500 dark:border-amber-400"
                 >
                     <div class="p-6">
@@ -38,26 +39,29 @@
                                 :disabled="isBusy(flag.id)"
                                 @click="ignoreDuplicate(flag)"
                             >
-                                {{ __('ignore_duplicate') }}
+                                {{ isBusy(flag.id) ? 'Working…' : __('ignore_duplicate') }}
                             </button>
                         </div>
 
-                        <div class="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <div class="rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
+                        <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                            <section aria-label="First file candidate" class="min-w-0 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+                                <h3 class="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-200">First file</h3>
                                 <FileCard
                                     :file="flag.file"
                                     :busy="isBusy(flag.id)"
                                     @delete-file="resolveDuplicate(flag, $event)"
                                 />
-                            </div>
-                            <div class="rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
+                            </section>
+                            <section aria-label="Possible duplicate file" class="min-w-0 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+                                <h3 class="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-200">Possible duplicate</h3>
                                 <FileCard
                                     :file="flag.duplicate_file"
                                     :busy="isBusy(flag.id)"
                                     @delete-file="resolveDuplicate(flag, $event)"
                                 />
-                            </div>
+                            </section>
                         </div>
+                        <p v-if="isBusy(flag.id)" role="status" class="px-6 pb-4 text-sm text-zinc-600 dark:text-zinc-300">Updating duplicate resolution…</p>
                     </div>
                 </div>
             </div>

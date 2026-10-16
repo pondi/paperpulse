@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Inertia;
 
 use App\Models\File;
+use App\Models\Receipt;
 use App\Services\Files\StoragePathBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -75,7 +76,7 @@ class FileInertiaResource extends JsonResource
         $data['review_status'] = data_get($this->meta, 'workspace_review.status');
         $data['confidence'] = $ownedEntity ? $primary->confidence_score : null;
         $data['identity'] = $ownedEntity ? [
-            'title' => $entity instanceof \App\Models\Receipt ? $entity->merchant?->name : ($entity->from_name ?? $entity->title ?? $entity->contract_title),
+            'title' => $entity instanceof Receipt ? $entity->merchant?->name : ($entity->from_name ?? $entity->title ?? $entity->contract_title),
             'amount' => $entity->total_amount,
             'tax' => $entity->tax_amount,
             'currency' => $entity->currency,
@@ -88,6 +89,13 @@ class FileInertiaResource extends JsonResource
         if ($this->status === 'needs_review') {
             $review = $this->meta['review'] ?? [];
             $data['review'] = array_intersect_key($review, array_flip(['reason', 'confidence', 'reasoning', 'page_limit', 'text_limit_bytes']));
+        }
+
+        if ($this->status === 'failed') {
+            $failure = $this->meta['gemini_error'] ?? $this->meta['last_processing_error'] ?? [];
+            $data['failure'] = is_array($failure)
+                ? array_intersect_key($failure, array_flip(['category', 'retryable', 'timestamp', 'failed_at']))
+                : [];
         }
 
         if ($this->includeDetailsUrl) {

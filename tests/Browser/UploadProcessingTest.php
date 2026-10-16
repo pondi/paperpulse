@@ -209,7 +209,7 @@ test('duplicate browser uploads keep one file and report the existing filename',
     expect(Receipt::query()->where('user_id', $this->uploadUser->id)->count())->toBe(1);
 });
 
-test('provider refusal is shown as failed and can be retried from the browser', function (): void {
+test('provider safety refusal is shown as failed without an unsafe retry action', function (): void {
     fakeBrowserProcessingProvider(refuseExtraction: true);
     $this->browse(function (Browser $browser): void {
         $this->loginAs($browser, $this->uploadUser);
@@ -224,21 +224,14 @@ test('provider refusal is shown as failed and can be retried from the browser', 
         } finally {
             $this->travelBack();
         }
-        $browser->visit('/files-processing')->waitForText('Show details')->press('Show details')->waitForText('RETRY PROCESSING')->assertSee('Failed');
+        $browser->visit('/files-processing')->waitForText('Failed')->assertSee('This failure is not marked as retryable. Review the guidance before taking another action.')
+            ->assertSee('View failure guidance')->assertScript('document.querySelector("main button.workspace-primary") === null', true);
     });
 
     expect(File::query()->where('user_id', $this->uploadUser->id)->sole()->status)->toBe('failed');
     expect(Receipt::query()->where('user_id', $this->uploadUser->id)->count())->toBe(0);
     Http::assertSent(fn (Request $request): bool => $request->method() === 'DELETE' && str_contains($request->url(), 'files/browser-fixture'));
 
-    fakeBrowserProcessingProvider();
-    $this->browse(function (Browser $browser): void {
-        $browser->click('main button.bg-zinc-900')->waitUntilMissingText('RETRY PROCESSING');
-        runBrowserProcessingQueue();
-        $browser->visit('/files-processing')->waitForText('Ready');
-    });
-    expect(File::query()->where('user_id', $this->uploadUser->id)->sole()->status)->toBe('completed');
-    expect(Receipt::query()->where('user_id', $this->uploadUser->id)->count())->toBe(1);
 });
 
 test('office uploads convert to PDF and display their extracted document', function (): void {

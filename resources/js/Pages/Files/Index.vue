@@ -17,6 +17,7 @@ type FileItem = {
     name: string;
     file_type: string;
     processing?: Record<string, any>;
+    failure?: { category?: string; retryable?: boolean | null };
     review?: { reason: string; confidence?: number; reasoning?: string; page_limit?: number; text_limit_bytes?: number };
     status: 'pending' | 'processing' | 'failed' | 'completed' | string;
     uploaded_at: string | null;
@@ -58,6 +59,7 @@ interface Props {
         per_page: number;
     };
     pagination?: PaginationInfo;
+    reviewTypes?: string[];
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -79,6 +81,7 @@ const props = withDefaults(defineProps<Props>(), {
         per_page: 50,
         total: 0,
     }),
+    reviewTypes: () => [],
 });
 
 const { start, stop } = usePoll(5000, { only: ['files', 'stats'] }, { autoStart: false });
@@ -94,11 +97,36 @@ const form = reactive({
 
 const selectedFileId = ref<number | null>(props.filters.file_id ?? null);
 const retryingFileId = ref<number | null>(null);
+const correctingFileId = ref<number | null>(null);
+const correctedTypeByFile = reactive<Record<number, string>>({});
+const correctionErrors = reactive<Record<number, string>>({});
+const actionFeedback = reactive<Record<number, string>>({});
 const retryFile = (file: FileItem) => router.post(route('files.reprocess', file.id), {}, {
     preserveScroll: true,
     onStart: () => { retryingFileId.value = file.id; },
+    onSuccess: () => { actionFeedback[file.id] = 'Retry queued.'; },
+    onError: errors => { correctionErrors[file.id] = errors.file || errors.message || 'Retry could not be queued. Check the processing record and try again.'; },
     onFinish: () => { retryingFileId.value = null; },
 });
+const correctedType = (file: FileItem) => correctedTypeByFile[file.id] ?? file.file_type;
+const canRetry = (file: FileItem) => file.failure?.retryable !== false;
+const canCorrectType = (file: FileItem) => file.status === 'needs_review'
+    ? file.review?.reason === 'uncertain_classification'
+    : file.status === 'failed' && canRetry(file) && ['receipt', 'document'].includes(file.file_type);
+const availableTypes = (file: FileItem) => file.status === 'failed' ? ['receipt', 'document'] : props.reviewTypes;
+const setCorrectedType = (file: FileItem, event: Event) => {
+    correctedTypeByFile[file.id] = (event.target as HTMLSelectElement).value;
+};
+const correctType = (file: FileItem) => router.patch(route('files.change-type', file.id), {
+    file_type: correctedType(file),
+}, {
+    preserveScroll: true,
+    onStart: () => { correctingFileId.value = file.id; correctionErrors[file.id] = ''; },
+    onSuccess: () => { actionFeedback[file.id] = 'Corrected type queued for extraction.'; },
+    onError: errors => { correctionErrors[file.id] = errors.file_type || 'The document type could not be changed. Choose a supported type and try again.'; },
+    onFinish: () => { correctingFileId.value = null; },
+});
+const typeLabel = (type: string) => type.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 let filterTimer: ReturnType<typeof setTimeout>;
 watch(
     () => [form.query, form.sort, form.status, form.per_page, form.page],
@@ -122,20 +150,20 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
 
 <template>
     <AuthenticatedLayout>
-        <Head title="Files" />
+        <Head title="Processing activity" />
 
         <div class="py-8">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <!-- Header -->
                 <div class="mb-8">
-                    <h1 class="text-3xl font-bold text-zinc-900 dark:text-zinc-100">File Management</h1>
+                    <h1 class="text-3xl font-bold text-zinc-900 dark:text-zinc-100">Processing activity</h1>
                     <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        View your uploads and their processing progress
+                        Track queued, active and failed processing. Review uncertain results, correct their type, or retry eligible files.
                     </p>
                 </div>
 
                 <!-- Stats -->
-                <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-6">
                     <div class="rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
                         <div class="flex items-center">
                             <div class="flex-shrink-0 rounded-md bg-amber-100 p-3 dark:bg-orange-900/40">
@@ -172,8 +200,20 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
                                 </svg>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400">In Progress</p>
-                                <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.processing + props.stats.pending }}</p>
+                                <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Queued</p>
+                                <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.pending }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 rounded-md bg-amber-100 p-3 dark:bg-orange-900/40">
+                                <svg class="h-6 w-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2" /></svg>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Processing</p>
+                                <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.processing }}</p>
                             </div>
                         </div>
                     </div>
@@ -210,7 +250,7 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
                             @change="form.page = 1"
                             class="bg-white text-zinc-900 dark:bg-zinc-700 dark:text-white rounded-md border border-zinc-300 dark:border-zinc-600 shadow-sm focus:border-amber-500 focus:ring focus:ring-amber-500 focus:ring-opacity-50"
                         >
-                            <option value="">All Statuses</option>
+                            <option value="">All statuses</option>
                             <option value="pending">Queued</option>
                             <option value="processing">Processing</option>
                             <option value="completed">Ready</option>
@@ -355,16 +395,39 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
 
                             <ProcessingLimit v-if="file.review?.reason === 'processing_limit'" :review="file.review" class="mt-3" />
                             <ProcessingProgress v-if="file.processing" :processing="file.processing" class="mt-3" />
-                            <div v-if="selectedFileId === file.id && file.status === 'needs_review'" class="mt-4 rounded-lg bg-amber-50 p-4 dark:bg-zinc-900">
-                                <p class="text-sm text-zinc-800 dark:text-zinc-200">{{ file.review?.reasoning || 'This file needs review before processing can finish.' }}</p>
-                                <p v-if="file.review?.confidence != null" class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Classification confidence: {{ Math.round(file.review.confidence * 100) }}%</p>
+                            <div v-if="file.status === 'needs_review' && file.review?.reason !== 'processing_limit'" class="mt-4 rounded-lg bg-amber-50 p-4 text-sm dark:bg-zinc-900">
+                                <p class="font-semibold text-amber-900 dark:text-amber-200">Review required</p>
+                                <p class="mt-1 text-zinc-800 dark:text-zinc-200">{{ file.review?.reasoning || 'This file needs review before processing can finish.' }}</p>
+                                <p v-if="file.review?.confidence != null" class="mt-1 text-zinc-600 dark:text-zinc-400">Classification confidence: {{ Math.round(file.review.confidence * 100) }}%</p>
+                                <p v-if="file.review?.reason === 'uncertain_classification'" class="mt-1 text-zinc-700 dark:text-zinc-300">Choose the correct document type below to start a new extraction.</p>
+                            </div>
+
+                            <div class="mt-4 flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                                <PrimaryButton v-if="file.status === 'failed' && canRetry(file)" :disabled="retryingFileId !== null || correctingFileId !== null" @click="retryFile(file)">{{ retryingFileId === file.id ? 'Queuing retry…' : 'Retry Processing' }}</PrimaryButton>
+                                <Link v-else-if="file.status === 'needs_review' && file.review?.reason === 'receipt_totals'" :href="route('files.extraction-report', file.id)" class="inline-flex min-h-10 items-center justify-center rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-500">Review and confirm totals</Link>
+                                <details v-if="file.status === 'failed' && canCorrectType(file)" class="min-w-0">
+                                    <summary class="cursor-pointer rounded-md px-3 py-2 text-sm font-semibold text-amber-800 underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-amber-300">Change type and retry</summary>
+                                    <form class="mt-3 flex min-w-0 flex-col items-stretch gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700 sm:flex-row sm:items-end" @submit.prevent="correctType(file)">
+                                        <label class="min-w-0 flex-1 text-sm font-medium text-zinc-700 dark:text-zinc-200">Document type<select :value="correctedType(file)" :aria-label="`Correct document type for ${file.name}`" class="mt-1 block w-full rounded-md border-zinc-300 text-sm dark:border-zinc-600 dark:bg-zinc-700 dark:text-white" @change="setCorrectedType(file, $event)"><option v-for="type in availableTypes(file)" :key="type" :value="type">{{ typeLabel(type) }}</option></select></label>
+                                        <PrimaryButton type="submit" :disabled="correctingFileId !== null || retryingFileId !== null">{{ correctingFileId === file.id ? 'Queuing correction…' : 'Correct type and retry' }}</PrimaryButton>
+                                    </form>
+                                </details>
+                                <form v-if="file.status === 'needs_review' && canCorrectType(file)" class="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-end" @submit.prevent="correctType(file)">
+                                    <label class="min-w-0 flex-1 text-sm font-medium text-zinc-700 dark:text-zinc-200">Correct document type<select :value="correctedType(file)" :aria-label="`Correct document type for ${file.name}`" class="mt-1 block w-full rounded-md border-zinc-300 text-sm dark:border-zinc-600 dark:bg-zinc-700 dark:text-white" @change="setCorrectedType(file, $event)"><option v-for="type in reviewTypes" :key="type" :value="type">{{ typeLabel(type) }}</option></select></label>
+                                    <PrimaryButton dusk="uncertain-type-submit" type="submit" :disabled="correctingFileId !== null">{{ correctingFileId === file.id ? 'Queuing correction…' : 'Correct type and retry' }}</PrimaryButton>
+                                </form>
+                                <template v-if="file.status === 'failed' && !canRetry(file)">
+                                    <p role="status" class="text-sm text-amber-900 dark:text-amber-200">This failure is not marked as retryable. Review the guidance before taking another action.</p>
+                                    <Link :href="route('files.extraction-report', file.id)" class="inline-flex min-h-10 items-center justify-center rounded-md px-3 py-2 text-sm font-medium text-amber-800 underline hover:text-amber-900 dark:text-amber-300">View failure guidance</Link>
+                                </template>
+                                <Link v-if="file.status !== 'failed' && !(file.status === 'needs_review' && file.review?.reason === 'processing_limit')" :href="route('files.extraction-report', file.id)" class="inline-flex min-h-10 items-center justify-center rounded-md px-3 py-2 text-sm font-medium text-amber-800 underline hover:text-amber-900 dark:text-amber-300">Extraction report</Link>
+                                <p v-if="actionFeedback[file.id]" role="status" class="text-sm text-green-700 dark:text-green-300">{{ actionFeedback[file.id] }}</p>
+                                <p v-if="correctionErrors[file.id]" role="alert" class="text-sm text-red-700 dark:text-red-300">{{ correctionErrors[file.id] }}</p>
                             </div>
 
                             <!-- Details -->
                             <div v-if="selectedFileId === file.id" :id="'activity-details-' + file.id" class="mt-3 flex flex-wrap items-center gap-3">
-                                <Link :href="route('files.extraction-report', file.id)" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                                    Extraction report
-                                </Link>
+                                <Link v-if="file.status === 'failed'" :href="route('files.extraction-report', file.id)" class="text-sm text-blue-600 hover:underline dark:text-blue-400">Extraction report</Link>
                                 <Link :href="route('files.show', file.id)" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">Open file workspace</Link>
                                 <a
                                     :href="file.viewUrl"
@@ -378,14 +441,7 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
                                     Open original
                                 </a>
 
-                                <template v-if="file.status === 'failed'">
-                                    <PrimaryButton :disabled="retryingFileId !== null" @click="retryFile(file)">Retry Processing</PrimaryButton>
-                                    <Link v-if="file.extension?.toLowerCase() === 'csv'"
-                                        :href="route('bank-statements.csv-mapping.edit', file.id)"
-                                        class="text-blue-600 dark:text-blue-400 hover:underline">
-                                        Correct CSV mapping
-                                    </Link>
-                                </template>
+                                <Link v-if="file.status === 'failed' && file.extension?.toLowerCase() === 'csv'" :href="route('bank-statements.csv-mapping.edit', file.id)" class="text-blue-600 dark:text-blue-400 hover:underline">Correct CSV mapping</Link>
                             </div>
                         </div>
                     </div>

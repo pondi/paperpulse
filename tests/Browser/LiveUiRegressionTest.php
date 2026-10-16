@@ -43,6 +43,7 @@ it('explains processing usage limits on failed file reports', function (): void 
         $browser->loginAs($user)->visit('/files/'.$file->id.'/extraction-report')
             ->waitForText('The processing usage limit was reached.')
             ->assertSee('This file exceeded its processing allowance. Contact support before retrying.')
+            ->assertSee('Failure diagnostics')->click('@failure-diagnostics')->assertSee('Failed stage')->assertSee((string) $file->id)
             ->assertDontSee('The failure cause was not recorded.');
     });
 });
@@ -169,9 +170,10 @@ it('keeps failed file retry actions visible on narrow activity pages', function 
     File::factory()->create(['user_id' => $user->id, 'status' => 'failed', 'fileName' => str_repeat('Long filename ', 15).'.pdf']);
 
     $this->browse(function (Browser $browser) use ($user): void {
-        $browser->loginAs($user)->visit('/files-processing?status=failed')->waitForText('Show details')->press('Show details')->waitForText('RETRY PROCESSING');
+        $browser->loginAs($user)->visit('/files-processing?status=failed')->waitFor('button.workspace-primary')->waitForText('Show details')
+            ->press('Show details')->waitForText('Extraction report');
         foreach ([320, 390] as $width) {
-            $browser->resize($width, 844)->assertSee('RETRY PROCESSING');
+            $browser->resize($width, 844)->assertPresent('button.workspace-primary');
             $browser->assertScript("Array.from(document.querySelectorAll('button')).filter(el => /Retry Processing/.test(el.textContent)).every(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })", true);
         }
     });
@@ -628,8 +630,8 @@ it('reconciles the activity summary including review and pending files', functio
                 for (const label of document.querySelectorAll('p.text-sm.font-bold')) {
                     counts[label.textContent] = Number(label.nextElementSibling.textContent);
                 }
-                return counts['Total Files'] === 5 && counts.Ready === 1 && counts['In Progress'] === 2
-                    && counts.Failed === 1 && counts['Needs review'] === 1;
+                return counts['Total Files'] === 5 && counts.Ready === 1 && counts.Queued === 1
+                    && counts.Processing === 1 && counts.Failed === 1 && counts['Needs review'] === 1;
             })()
             JS, true);
     });
@@ -1133,9 +1135,40 @@ it('renders both duplicate candidates including files with missing extracted met
     $this->browse(function (Browser $browser) use ($user, $first, $second): void {
         $this->loginAs($browser, $user);
         $browser->visit('/duplicates')->waitForText('First scan.pdf')->assertSee('Second scan.pdf')->assertSee('Source agreement')
+            ->assertSee('First file')->assertSee('Possible duplicate')->assertSee('Open original')
             ->assertPresent('a[href$="/files/'.$first->id.'"]')->assertPresent('a[href$="/files/'.$second->id.'"]');
         $browser->resize(390, 844)->assertSee('First scan.pdf')->assertSee('Second scan.pdf');
+        $browser->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
     });
+});
+
+it('distinguishes queued active limited and review states and corrects uncertain file types', function (): void {
+    $user = $this->createUser();
+    File::factory()->create(['user_id' => $user->id, 'status' => 'pending', 'fileName' => 'Queued source.pdf']);
+    File::factory()->create(['user_id' => $user->id, 'status' => 'processing', 'fileName' => 'Active source.pdf']);
+    $limited = File::factory()->create(['user_id' => $user->id, 'status' => 'needs_review', 'fileName' => 'Limited source.pdf', 'meta' => ['review' => ['reason' => 'processing_limit', 'page_limit' => 3]]]);
+    $uncertain = File::factory()->create(['user_id' => $user->id, 'status' => 'needs_review', 'file_type' => 'document', 'fileName' => 'Uncertain source.pdf', 'meta' => ['review' => ['reason' => 'uncertain_classification', 'confidence' => 0.4, 'reasoning' => 'Choose a document type.']]]);
+    File::factory()->create(['user_id' => $user->id, 'status' => 'failed', 'fileName' => 'Failed source.pdf']);
+    $nonRetryable = File::factory()->create(['user_id' => $user->id, 'status' => 'failed', 'fileName' => 'Support required.pdf', 'meta' => ['gemini_error' => ['category' => 'usage_budget_exceeded', 'retryable' => false]]]);
+
+    $this->browse(function (Browser $browser) use ($user, $nonRetryable): void {
+        $browser->loginAs($user)->visit('/files-processing')->waitForText('Processing activity')
+            ->assertSee('Queued')->assertSee('Processing')->assertSee('Blocked: processing limit')
+            ->assertPresent('button.workspace-primary')
+            ->assertSee('This failure is not marked as retryable. Review the guidance before taking another action.')
+            ->assertPresent('a[href$="/files/'.$nonRetryable->id.'/extraction-report"]')
+            ->assertScript("document.querySelector('[dusk=activity-file-".$nonRetryable->id."] button.workspace-primary') === null", true)
+            ->assertPresent('select[aria-label="Correct document type for Uncertain source.pdf"]');
+        foreach ([390, 320] as $width) {
+            $browser->resize($width, 844)->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
+        }
+        $browser->select('select[aria-label="Correct document type for Uncertain source.pdf"]', 'invoice')
+            ->click('@uncertain-type-submit')->waitForText('Corrected type queued for extraction.');
+    });
+
+    expect($uncertain->fresh()->file_type)->toBe('invoice')
+        ->and($uncertain->fresh()->status)->toBe('pending')
+        ->and($limited->fresh()->status)->toBe('needs_review');
 });
 
 it('keeps scanner folder navigation usable for empty lists and failed requests', function (bool $fails): void {
@@ -1244,7 +1277,7 @@ it('finds activity by filename and reviews compact failed rows with per-file act
             ->select('select[aria-label="Sort activity"]', 'name')->waitForText('A batch scan.pdf')->waitUntilMissing('a[title="Completed scan.pdf"]');
         $browser->assertScript("document.querySelector('[dusk=activity-file-".$first->id."]').getBoundingClientRect().height < 140", true);
         $browser->resize(390, 844)->type('@activity-query', 'target')->waitUntilMissing('@activity-file-'.$first->id)
-            ->assertPresent('@activity-file-'.$second->id)->press('Show details')->waitForText('RETRY PROCESSING')->assertSee('Extraction report');
+            ->assertPresent('@activity-file-'.$second->id)->press('Show details')->assertPresent('button.workspace-primary')->assertSee('Extraction report');
         $browser->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
         $browser->press('Hide details')->waitUntilMissing('#activity-details-'.$second->id)->type('@activity-query', 'missing')->waitForText('No files yet');
     });

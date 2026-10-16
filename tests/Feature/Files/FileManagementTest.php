@@ -75,6 +75,27 @@ it('can restart a failed file', function () {
     expect(JobHistory::where('file_id', $file->id)->count())->toBe(1);
 });
 
+it('exposes only safe retryability details for failed activity records', function (): void {
+    $user = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $user->id, 'status' => 'failed', 'meta' => [
+        'gemini_error' => [
+            'category' => 'usage_budget_exceeded',
+            'retryable' => false,
+            'timestamp' => '2026-10-16T08:00:00+00:00',
+            'context' => ['api_key' => 'private-key', 'raw_response' => 'private source'],
+        ],
+    ]]);
+
+    $this->actingAs($user)->get(route('files.index'))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('files.data.0.id', $file->id)
+            ->where('files.data.0.failure.category', 'usage_budget_exceeded')
+            ->where('files.data.0.failure.retryable', false)
+            ->where('files.data.0.failure.timestamp', '2026-10-16T08:00:00+00:00')
+            ->missing('files.data.0.failure.context'))
+        ->assertDontSee('private-key')->assertDontSee('private source');
+});
+
 it('can change type, move storage, and restart a failed file', function () {
     $user = User::factory()->create();
     $guid = (string) Str::uuid();

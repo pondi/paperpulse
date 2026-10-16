@@ -115,7 +115,7 @@ it('keeps shared controls readable and exposes keyboard focus in both themes', f
         $browser->script("document.documentElement.classList.add('dark')");
         $browser->assertScript('getComputedStyle(document.documentElement).colorScheme', 'dark')
             ->assertScript("getComputedStyle(document.querySelector('#email')).outlineStyle", 'solid');
-        $browser->script("document.documentElement.classList.remove('dark')");
+        $browser->script("document.documentElement.classList.remove('dark'); localStorage.removeItem('theme');");
     });
 });
 
@@ -233,23 +233,68 @@ it('renders populated workspaces with recognizable document and folder identitie
     $file = File::factory()->for($user)->create(['fileName' => 'Property insurance 2026.pdf', 'file_type' => 'document', 'status' => 'completed']);
     $document = Document::factory()->for($user)->create(['file_id' => $file->id, 'title' => 'Property insurance', 'summary' => 'Policy and coverage for the coming year.']);
     ExtractableEntity::create(['user_id' => $user->id, 'file_id' => $file->id, 'entity_type' => 'document', 'entity_id' => $document->id, 'is_primary' => true, 'extracted_at' => now()]);
-    $folder->files()->attach([$file->id, $receiptFile->id]);
+    $longFileName = str_repeat('x', 180).'.pdf';
+    $longFile = File::factory()->for($user)->create(['fileName' => $longFileName, 'file_type' => 'document', 'status' => 'completed']);
+    $longDocument = Document::factory()->for($user)->create(['file_id' => $longFile->id, 'title' => str_repeat('Long title ', 14), 'summary' => 'Long content boundary fixture.']);
+    ExtractableEntity::create(['user_id' => $user->id, 'file_id' => $longFile->id, 'entity_type' => 'document', 'entity_id' => $longDocument->id, 'is_primary' => true, 'extracted_at' => now()]);
+    $folder->files()->attach([$file->id, $longFile->id, $receiptFile->id]);
     File::factory()->for($user)->create(['fileName' => 'October statement.pdf', 'status' => 'failed']);
 
-    $this->browse(function (Browser $browser) use ($user, $folder): void {
+    $this->browse(function (Browser $browser) use ($user, $folder, $longFileName): void {
         $browser->resize(1440, 1000)->loginAs($user);
-        foreach ([
+        $routes = [
             ['dashboard', 'Recent uploads', 'home'],
             ['library', 'Property insurance', 'library'],
             ['collections', 'Home & property', 'collections'],
             ['collections/'.$folder->id, 'Property insurance', 'folder'],
             ['analytics', 'Receipt Spending', 'reports'],
             ['preferences', 'Application preferences', 'settings'],
-        ] as [$path, $text, $name]) {
-            $browser->visit('/'.$path)->waitForText($text)->assertPresent('main')
-                ->screenshot('redesign-'.$name.'-desktop');
-            $browser->resize(390, 844)->screenshot('redesign-'.$name.'-mobile');
+        ];
+        foreach ($routes as [$path, $text, $name]) {
+            $browser->visit('/'.$path)->waitForText($text)->assertPresent('main#main-content')
+                ->assertScript('document.querySelectorAll("main").length', 1);
+            if ($path === 'dashboard') {
+                $browser->assertScript(<<<'JS'
+                    Array.from(document.styleSheets).some(sheet => {
+                        try {
+                            return Array.from(sheet.cssRules).some(rule => rule.conditionText?.includes('prefers-reduced-motion: reduce'));
+                        } catch {
+                            return false;
+                        }
+                    })
+                    JS, true);
+            }
+            if (in_array($path, ['library', 'collections/'.$folder->id], true)) {
+                $browser->assertSee($longFileName);
+            }
+            $browser->script("document.querySelector('a[href=\"#main-content\"]').focus()");
+            $browser->assertScript('document.activeElement.getAttribute("href")', '#main-content')
+                ->keys('a[href="#main-content"]', WebDriverKeys::ENTER)
+                ->assertScript('document.activeElement.id', 'main-content');
+            foreach ([320, 390, 768, 1440] as $width) {
+                $browser->resize($width, 844);
+                $documentWidth = $browser->script('return document.documentElement.scrollWidth')[0];
+                expect($documentWidth)->toBeLessThanOrEqual($width, "Unexpected horizontal overflow on /{$path} at {$width}px");
+                if (in_array($width, [390, 1440], true)) {
+                    $browser->screenshot("redesign-{$name}-{$width}");
+                }
+            }
             $browser->resize(1440, 1000);
         }
+
+        $browser->script('localStorage.setItem("theme", "dark"); document.documentElement.classList.add("dark")');
+        foreach ($routes as [$path, $text, $name]) {
+            $browser->visit('/'.$path)->waitForText($text);
+            foreach ([320, 390, 768, 1440] as $width) {
+                $browser->resize($width, 844);
+                $documentWidth = $browser->script('return document.documentElement.scrollWidth')[0];
+                expect($documentWidth)->toBeLessThanOrEqual($width, "Unexpected dark-mode horizontal overflow on /{$path} at {$width}px");
+                if ($path === 'analytics' && $width === 390) {
+                    $browser->screenshot('redesign-reports-dark-390');
+                }
+            }
+            $browser->resize(1440, 1000);
+        }
+        $browser->script('localStorage.removeItem("theme"); document.documentElement.classList.remove("dark")');
     });
 });

@@ -6,10 +6,10 @@
         </template>
 
         <div class="py-12">
-            <div class="report-content max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div class="report-content mx-auto w-full min-w-0 max-w-7xl px-4 sm:px-6 lg:px-8">
                 <!-- Tab Navigation + Period Selector -->
-                <div class="report-controls flex flex-col items-stretch gap-4 mb-6 sm:flex-row sm:items-center">
-                    <div role="group" aria-label="Report type" class="flex gap-1 bg-amber-50 dark:bg-zinc-800 border border-amber-200 dark:border-zinc-700 rounded-lg p-1 overflow-x-auto flex-1">
+                <div class="report-controls mb-6 flex min-w-0 flex-col items-stretch gap-4 sm:flex-row sm:items-center">
+                    <div role="group" aria-label="Report type" class="flex w-full min-w-0 max-w-full gap-1 overflow-x-auto rounded-lg border border-amber-200 bg-amber-50 p-1 dark:border-zinc-700 dark:bg-zinc-800 sm:flex-1">
                         <button
                             v-for="tab in tabs"
                             :key="tab.key"
@@ -117,7 +117,7 @@
                         <div class="px-4 py-5 sm:p-6">
                             <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Receipt and invoice totals by Observed Month</h3>
                             <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
-                            <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
+                            <div v-if="tab_data.monthly_trend?.length > 0" class="relative h-64 min-w-0 max-w-full">
                                 <canvas ref="overviewChart" role="img" aria-label="Monthly receipt and invoice totals in the selected reporting currency"></canvas>
                             </div>
                             <div v-else class="text-zinc-500 dark:text-zinc-400 text-center py-8">No data available</div>
@@ -178,7 +178,7 @@
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Spending by Observed Month</h3>
                                 <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
-                            <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
+                            <div v-if="tab_data.monthly_trend?.length > 0" class="relative h-64 min-w-0 max-w-full">
                                 <canvas ref="receiptChart" role="img" aria-label="Monthly receipt spending in the selected reporting currency"></canvas>
                                 </div>
                                 <EmptyState v-else />
@@ -280,7 +280,7 @@
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Invoices by Observed Month</h3>
                                 <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
-                            <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
+                            <div v-if="tab_data.monthly_trend?.length > 0" class="relative h-64 min-w-0 max-w-full">
                                     <canvas ref="invoiceChart" role="img" aria-label="Monthly invoice totals in the selected reporting currency"></canvas>
                                 </div>
                                 <EmptyState v-else />
@@ -355,7 +355,7 @@
                         <div class="bg-white dark:bg-zinc-800 shadow rounded-lg lg:col-span-2">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Account Balance Trend</h3>
-                                <div v-if="tab_data.balance_trend?.length > 0" class="h-64">
+                                <div v-if="tab_data.balance_trend?.length > 0" class="relative h-64 min-w-0 max-w-full">
                                     <canvas ref="bankingChart" role="img" aria-label="Opening and closing balances for each bank account in the selected reporting currency"></canvas>
                                 </div>
                                 <EmptyState v-else />
@@ -497,7 +497,7 @@
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Uploads by Observed Month</h3>
                                 <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
-                            <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
+                            <div v-if="tab_data.monthly_trend?.length > 0" class="relative h-64 min-w-0 max-w-full">
                                     <canvas ref="documentChart" role="img" aria-label="Document uploads by observed month"></canvas>
                                 </div>
                                 <EmptyState v-else />
@@ -821,6 +821,10 @@ watch(() => props.current_tab, () => {
 </script>
 
 <style scoped>
+.report-content canvas {
+    max-width: 100%;
+}
+
 @media print {
     :global(.app-toolbar),
     :global(.workspace-navigation),

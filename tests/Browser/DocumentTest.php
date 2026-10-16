@@ -67,8 +67,10 @@ test('upload page loads', function () {
         $browser->visit('/documents/upload')
             ->waitForText('Upload files')
             ->assertSee('Upload files')
-            ->assertSee('or drag and drop')
-            ->assertPresent('input[type="file"]');
+            ->assertSee('1. Choose files')
+            ->assertSee('Select files or drag and drop them here')
+            ->assertSee('Choose files')
+            ->assertPresent('input[type="file"][aria-label="Choose documents to upload"]');
     });
 });
 
@@ -82,8 +84,24 @@ test('unified upload accepts supported formats and detects their type automatica
         $browser->visit('/documents/upload')
             ->waitForText('Upload files')
             ->assertSee($hint)
-            ->assertSee('We detect the file type')
+            ->assertSee('We detect the file type automatically')
             ->assertMissing('[aria-label="Upload mode"]');
+    });
+});
+
+test('upload selection stays keyboard reachable and readable on mobile', function (): void {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $this->loginAs($browser, $user);
+        $browser->resize(390, 844)->visit('/documents/upload')->waitFor('@upload-file-input')
+            ->assertSee('2. Add notes and organization')
+            ->assertScript('document.querySelector("button.workspace-primary").tabIndex === 0', true)
+            ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
+            ->attach('@upload-file-input', realpath(__DIR__.'/fixtures/test-receipt.pdf'))
+            ->waitForText('test-receipt.pdf')->assertPresent('button[aria-label="Remove test-receipt.pdf"]')
+            ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
+            ->click('summary')->waitForText('These details apply to all selected files.');
     });
 });
 

@@ -3,10 +3,10 @@
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">Upload files</h2>
+            <h1 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight">Upload files</h1>
         </template>
 
-        <div class="py-12">
+        <div class="py-8">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div v-if="uploadOutcomes.length" class="mb-6 flex flex-col gap-3">
                     <section v-for="outcome in uploadOutcomes" :key="outcome.status"
@@ -18,11 +18,18 @@
                         <div class="flex min-w-0 flex-1 flex-col gap-2">
                             <h3 class="text-sm font-semibold">{{ outcome.title }}</h3>
                             <p v-if="outcome.status === 'accepted'" class="text-sm">
-                                Processing will continue in the background.
+                                Processing continues in the background. Open a file’s processing record below to review its status or any requested decisions.
                             </p>
-                            <ul v-else class="flex flex-col gap-2 text-sm">
+                            <p v-else-if="outcome.status === 'failed'" class="text-sm">Failed files remain selected below so you can correct the issue and try again.</p>
+                            <ul v-if="outcome.status !== 'accepted'" class="flex flex-col gap-2 text-sm">
                                 <li v-for="result in outcome.results" :key="result.index" class="break-words">
                                     <span class="font-medium">{{ result.filename }}</span>: {{ result.message }}
+                                </li>
+                            </ul>
+                            <ul v-if="outcome.status === 'accepted'" class="flex flex-col gap-2 text-sm">
+                                <li v-for="result in outcome.results" :key="result.index" class="flex flex-wrap items-center justify-between gap-2 break-words">
+                                    <span class="font-medium">{{ result.filename }}</span>
+                                    <Link :href="route('files.index', { file_id: result.file_id })" class="font-semibold underline focus:outline-none focus-visible:ring-2 focus-visible:ring-current">Open processing record</Link>
                                 </li>
                             </ul>
                         </div>
@@ -35,7 +42,7 @@
                 </div>
 
                 <!-- Error Alert -->
-                <div class="rounded-md bg-red-50 p-4 mb-4" v-if="uploadError">
+                <div class="mb-4 rounded-md bg-red-50 p-4 dark:bg-red-950/40" v-if="uploadError" role="alert" aria-live="assertive">
                     <div class="flex">
                         <XMarkIcon class="h-5 w-5 text-red-400" aria-hidden="true" />
                         <div class="ml-3">
@@ -50,179 +57,122 @@
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-zinc-800 px-6 py-24 sm:py-32 rounded-lg shadow-sm">
-                    <div class="mx-auto max-w-2xl text-center">
-                        <h2 class="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-5xl">Upload files</h2>
-                        <p class="mt-6 text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-                            Upload your receipts and documents. They will be automatically processed and organized for you.
-                        </p>
+                <div class="rounded-lg bg-white p-5 shadow-sm dark:bg-zinc-800 sm:p-8">
+                    <div class="mx-auto max-w-3xl">
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Choose receipts, invoices, contracts, statements or other documents. We detect the file type automatically and extract its details.</p>
 
-                        <p class="mt-4 text-sm text-zinc-600 dark:text-zinc-400">We detect the file type and extract the relevant details automatically.</p>
-
-                        <form class="mt-6" ref="fileUpload" @submit.prevent="submit">
-                            <div 
-                                class="mt-2 flex justify-center rounded-lg border border-dashed border-zinc-900/25 dark:border-zinc-700 px-6 py-10 relative"
-                                :class="[
-                                    { 'cursor-pointer': selectedFiles.length === 0 },
-                                    { 'border-amber-500 bg-amber-50 dark:bg-zinc-900/20': isDragging }
-                                ]"
-                                @click="selectedFiles.length === 0 && $refs.fileInput?.click()"
-                                v-bind="$attrs"
-                                @drop.prevent="handleDrop"
-                                @dragover.prevent
-                                @dragenter.prevent="isDragging = true"
-                                @dragleave.prevent="isDragging = false"
-                            >
-                                <input 
-                                    ref="fileInput"
-                                    type="file" 
-                                    multiple 
-                                    class="sr-only" 
-                                    @change="handleFileSelect"
-                                    :accept="Object.keys(uploadConfig.capabilities[fileType]).map(extension => '.' + extension).join(',')"
-                                />
-
-                                <!-- Empty State -->
-                                <div v-if="selectedFiles.length === 0" class="text-center">
-                                    <PhotoIcon class="mx-auto h-12 w-12" :class="isDragging ? 'text-amber-500' : 'text-zinc-300'" aria-hidden="true" />
-                                    <div class="mt-4 flex text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                                        <span class="relative rounded-md bg-white dark:bg-zinc-800 font-semibold text-amber-600 dark:text-amber-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-amber-600 focus-within:ring-offset-2 hover:text-amber-500">
-                                            Upload files
-                                        </span>
-                                        <p class="pl-1">or drag and drop</p>
-                                    </div>
-                                    <p class="text-xs leading-5 text-zinc-600 dark:text-zinc-400">
-                                        {{ Object.keys(uploadConfig.capabilities[fileType]).join(', ').toUpperCase() }} up to {{ uploadConfig.maxFileSizeMb[fileType] }}MB
-                                    </p>
-                                    <p v-if="uploadConfig.processingLimits" class="mt-2 text-xs text-zinc-600 dark:text-zinc-300">
-                                        Extraction supports up to {{ uploadConfig.processingLimits.pdfPages }} pages per PDF and {{ Math.floor(uploadConfig.processingLimits.textBytes / 1000) }} KB of native text. Split longer files into supported parts before uploading. Files above these processing limits are blocked before extraction.
-                                    </p>
+                        <form class="mt-6 flex flex-col gap-6" @submit.prevent="submit">
+                            <section aria-labelledby="upload-selection-heading" class="flex flex-col gap-4">
+                                <div class="flex flex-col gap-1">
+                                    <h2 id="upload-selection-heading" class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">1. Choose files</h2>
+                                    <p class="text-sm text-zinc-600 dark:text-zinc-400">Select files or drag and drop them here. You can add more before uploading.</p>
                                 </div>
 
-                                <!-- File Preview -->
-                                <div v-else class="w-full">
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div v-for="(file, index) in selectedFiles" :key="file.name + index"
-                                            class="relative flex items-center p-4 bg-amber-50 dark:bg-zinc-700 rounded-lg">
-                                            <div class="flex-shrink-0 h-16 w-16 relative">
-                                                <img v-if="file.preview" 
-                                                    :src="file.preview" 
-                                                    class="h-16 w-16 object-cover rounded-lg"
-                                                    alt="File preview"
-                                                />
-                                                <DocumentIcon v-else
-                                                    class="h-16 w-16 text-zinc-400"
-                                                    aria-hidden="true"
-                                                />
-                                            </div>
-                                            <div class="ml-4 flex-1 min-w-0">
-                                                <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
-                                                    {{ file.name }}
-                                                </p>
-                                                <p class="text-sm text-zinc-500 dark:text-zinc-400">
-                                                    {{ file.size }}
-                                                </p>
-                                            </div>
-                                            <button 
-                                                @click.prevent="removeFile(index)" 
-                                                class="ml-4 flex-shrink-0 p-1 rounded-full text-zinc-400 hover:text-zinc-500 dark:hover:text-zinc-300"
-                                                type="button"
-                                            >
-                                                <span class="sr-only">Remove file</span>
-                                                <XMarkIcon class="h-5 w-5" aria-hidden="true" />
-                                            </button>
+                                <div id="upload-selection"
+                                    class="relative flex min-h-52 items-center justify-center rounded-lg border border-dashed border-zinc-400 px-4 py-8 dark:border-zinc-600"
+                                    :class="[
+                                        { 'border-amber-500 bg-amber-50 dark:bg-zinc-900/20': isDragging }
+                                    ]"
+                                    @drop.prevent="handleDrop"
+                                    @dragover.prevent
+                                    @dragenter.prevent="isDragging = true"
+                                    @dragleave.prevent="isDragging = false"
+                                >
+                                    <input
+                                        ref="fileInput"
+                                        type="file"
+                                        multiple
+                                        class="sr-only"
+                                        aria-label="Choose documents to upload"
+                                        dusk="upload-file-input"
+                                        @change="handleFileSelect"
+                                        :accept="Object.keys(uploadConfig.capabilities[fileType]).map(extension => '.' + extension).join(',')"
+                                    />
+
+                                    <!-- Empty State -->
+                                    <div v-if="selectedFiles.length === 0" class="flex max-w-xl flex-col items-center gap-3 text-center">
+                                        <PhotoIcon class="mx-auto h-12 w-12" :class="isDragging ? 'text-amber-500' : 'text-zinc-300'" aria-hidden="true" />
+                                        <p class="text-sm text-zinc-700 dark:text-zinc-300">Choose documents or drag and drop them here</p>
+                                        <button type="button" class="workspace-primary" @click="openFilePicker">Choose files</button>
+                                        <p class="text-xs leading-5 text-zinc-600 dark:text-zinc-400">
+                                            {{ Object.keys(uploadConfig.capabilities[fileType]).join(', ').toUpperCase() }} up to {{ uploadConfig.maxFileSizeMb[fileType] }}MB each
+                                        </p>
+                                        <p v-if="uploadConfig.processingLimits" class="text-xs text-zinc-600 dark:text-zinc-300">
+                                            Extraction supports up to {{ uploadConfig.processingLimits.pdfPages }} pages per PDF and {{ Math.floor(uploadConfig.processingLimits.textBytes / 1000) }} KB of native text. Split longer files into supported parts before uploading. Files above these processing limits are blocked before extraction.
+                                        </p>
+                                    </div>
+
+                                    <!-- File Preview -->
+                                    <div v-else class="w-full">
+                                        <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                            <li v-for="(file, index) in selectedFiles" :key="file.name + index"
+                                                class="relative flex min-w-0 items-center rounded-lg bg-amber-50 p-3 dark:bg-zinc-700 sm:p-4">
+                                                <div class="relative h-16 w-16 flex-shrink-0">
+                                                    <img v-if="file.preview" :src="file.preview" class="h-16 w-16 rounded-lg object-cover" alt="File preview" />
+                                                    <DocumentIcon v-else class="h-16 w-16 text-zinc-400" aria-hidden="true" />
+                                                </div>
+                                                <div class="ml-4 min-w-0 flex-1">
+                                                    <p class="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ file.name }}</p>
+                                                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ file.size }}</p>
+                                                </div>
+                                                <button @click.prevent="removeFile(index)" :aria-label="`Remove ${file.name}`" class="ml-3 flex-shrink-0 rounded-full p-2 text-zinc-600 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 dark:text-zinc-300 dark:hover:text-white" type="button">
+                                                    <XMarkIcon class="h-5 w-5" aria-hidden="true" />
+                                                </button>
+                                            </li>
+                                        </ul>
+
+                                        <!-- Add more files button -->
+                                        <div class="mt-4 flex justify-center">
+                                            <input ref="additionalFileInput" type="file" multiple class="sr-only" aria-label="Add more documents" @change="handleAdditionalFiles" :accept="Object.keys(uploadConfig.capabilities[fileType]).map(extension => '.' + extension).join(',')" />
+                                            <button type="button" class="workspace-button" @click="openAdditionalFilePicker">Add more files</button>
                                         </div>
                                     </div>
 
-                                    <!-- Add more files button -->
-                                    <div class="flex justify-center mt-4">
-                                        <label class="relative cursor-pointer rounded-md bg-white dark:bg-zinc-800 font-semibold text-amber-600 dark:text-amber-400 hover:text-amber-500">
-                                            <span>Add more files</span>
-                                            <input 
-                                                type="file" 
-                                                multiple 
-                                                class="sr-only" 
-                                                @change="handleAdditionalFiles"
-                                                :accept="Object.keys(uploadConfig.capabilities[fileType]).map(extension => '.' + extension).join(',')"
-                                            />
-                                        </label>
+                                    <!-- Upload progress is shown directly below the file selection area. -->
+                                </div>
+
+                                <div v-if="isUploading" class="flex flex-col gap-2" role="status" aria-live="polite">
+                                    <div class="flex justify-between text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                                        <span>Uploading your files</span>
+                                        <span>{{ uploadProgress }}%</span>
+                                    </div>
+                                    <div role="progressbar" aria-label="Upload progress" :aria-valuenow="uploadProgress" aria-valuemin="0" aria-valuemax="100" class="h-2 overflow-hidden rounded bg-amber-100 dark:bg-zinc-700">
+                                        <div :style="{ width: uploadProgress + '%' }" class="h-full bg-amber-600 transition-all duration-300 dark:bg-amber-500"></div>
                                     </div>
                                 </div>
-                                
-                                <!-- Upload Progress -->
-                                <div v-if="isUploading" class="absolute inset-x-0 bottom-0 p-4 bg-white dark:bg-zinc-800 border-t dark:border-zinc-700">
-                                    <div class="relative pt-1">
-                                        <div class="flex mb-2 items-center justify-between">
-                                            <div>
-                                                <span class="text-xs font-semibold inline-block text-amber-600 dark:text-amber-400">
-                                                    Uploading
-                                                </span>
-                                            </div>
-                                            <div class="text-right">
-                                                <span class="text-xs font-semibold inline-block text-amber-600 dark:text-amber-400">
-                                                    {{ uploadProgress }}%
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-amber-200 dark:bg-zinc-900">
-                                            <div
-                                                :style="{ width: uploadProgress + '%' }"
-                                                class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-zinc-900 dark:bg-amber-600 transition-all duration-300"
-                                            ></div>
-                                        </div>
+                            </section>
+
+                            <details class="rounded-lg border border-zinc-200 dark:border-zinc-700">
+                                <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-600 dark:text-zinc-100">2. Add notes and organization <span class="font-normal text-zinc-500 dark:text-zinc-400">(optional)</span></summary>
+                                <div class="flex flex-col gap-4 border-t border-zinc-200 p-4 dark:border-zinc-700">
+                                    <p class="text-sm text-zinc-600 dark:text-zinc-400">These details apply to all selected files. You can organize files later too.</p>
+                                    <div class="text-left">
+                                        <label for="document-note" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Note <span class="font-normal text-zinc-500">(optional)</span></label>
+                                        <textarea id="document-note" v-model="note" rows="2" class="mt-1 block w-full rounded-md border border-zinc-300 bg-white text-zinc-900 shadow-sm focus:border-amber-500 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 sm:text-sm" placeholder="Add a note about these files" />
+                                    </div>
+                                    <div class="text-left">
+                                        <label class="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Collections <span class="font-normal text-zinc-500">(optional)</span></label>
+                                        <CollectionSelector v-model="collectionIds" placeholder="Search or create collections..." :allow-create="true" />
+                                    </div>
+                                    <div class="text-left">
+                                        <label class="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Tags <span class="font-normal text-zinc-500">(optional)</span></label>
+                                        <TagSelector v-model="tagIds" placeholder="Search or create tags..." :allow-create="true" />
                                     </div>
                                 </div>
-                            </div>
-
-                            <!-- Document Note -->
-                            <div class="mt-4 text-left">
-                                <label for="document-note" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                    Document Note
-                                </label>
-                                <textarea
-                                    id="document-note"
-                                    v-model="note"
-                                    rows="3"
-                                    class="mt-1 block w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
-                                    placeholder="Optional note about these files..."
-                                />
-                            </div>
-
-                            <!-- Collections -->
-                            <div class="mt-4 text-left">
-                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                                    Collections (optional)
-                                </label>
-                                <CollectionSelector
-                                    v-model="collectionIds"
-                                    placeholder="Search or create collections..."
-                                    :allow-create="true"
-                                />
-                            </div>
-
-                            <!-- Tags -->
-                            <div class="mt-4 text-left">
-                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                                    Tags (optional)
-                                </label>
-                                <TagSelector
-                                    v-model="tagIds"
-                                    placeholder="Search or create tags..."
-                                    :allow-create="true"
-                                />
-                            </div>
+                            </details>
 
                             <!-- Submit Button -->
-                            <div class="mt-6 flex justify-center">
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <p class="text-sm text-zinc-600 dark:text-zinc-400">Files are uploaded securely, then processed in the background.</p>
                                 <button type="submit"
                                     :disabled="selectedFiles.length === 0 || isUploading"
                                     :class="[
-                                        'rounded-md px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 transition-colors duration-200',
+                                        'min-h-11 rounded-md px-5 py-3 text-sm font-semibold text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 transition-colors duration-200 sm:min-w-48',
                                         (selectedFiles.length === 0 || isUploading)
                                             ? 'bg-zinc-400 cursor-not-allowed' 
                                             : 'bg-zinc-900 dark:bg-amber-600 hover:bg-zinc-800 dark:hover:bg-amber-700'
                                     ]">
-                                    <span v-if="isUploading">Uploading...</span>
+                                    <span v-if="isUploading">Uploading…</span>
                                     <span v-else>Upload {{ selectedFiles.length }} {{ selectedFiles.length === 1 ? 'file' : 'files' }}</span>
                                 </button>
                             </div>
@@ -238,8 +188,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CollectionSelector from '@/Components/Domain/CollectionSelector.vue';
 import TagSelector from '@/Components/Domain/TagSelector.vue';
-import { Head } from '@inertiajs/vue3';
-import { useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { XMarkIcon, PhotoIcon, DocumentIcon, CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon } from '@heroicons/vue/20/solid'
 import { computed, ref } from 'vue';
 
@@ -264,6 +213,7 @@ interface UploadOutcome {
     filename: string;
     status: 'accepted' | 'duplicate' | 'failed';
     message: string;
+    file_id?: number;
 }
 
 const uploadResults = ref<UploadOutcome[]>([]);
@@ -300,7 +250,8 @@ function dismissUploadOutcome(status: UploadOutcome['status']): void {
     uploadResults.value = uploadResults.value.filter(result => result.status !== status);
 }
 const uploadError = ref<string | null>(null);
-const fileUpload = ref<HTMLFormElement | null>(null);
+const fileInput = ref<HTMLInputElement | null>(null);
+const additionalFileInput = ref<HTMLInputElement | null>(null);
 const fileType = 'document' as const;
 const isUploading = ref(false);
 const uploadProgress = ref(0);
@@ -367,12 +318,22 @@ function handleFileSelect(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
     handleFiles(Array.from(input.files));
+    input.value = '';
 }
 
 function handleAdditionalFiles(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
     handleFiles(Array.from(input.files), true);
+    input.value = '';
+}
+
+function openFilePicker(): void {
+    fileInput.value?.click();
+}
+
+function openAdditionalFilePicker(): void {
+    additionalFileInput.value?.click();
 }
 
 function handleDrop(event: DragEvent) {

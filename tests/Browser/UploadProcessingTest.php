@@ -89,6 +89,7 @@ function uploadBrowserFixture(Browser $browser, string $filename = 'test-image.j
         ->waitForText('Upload 0 files', 15)
         ->assertSeeIn('[data-upload-outcome="accepted"]', '1 file queued for processing')
         ->assertPresent('[data-upload-outcome="accepted"].bg-green-50')
+        ->assertPresent('[data-upload-outcome="accepted"] a[href*="/files-processing?file_id="]')
         ->assertDontSee('Accepted for processing.');
 }
 

@@ -38,6 +38,8 @@ it('reports each repeated filename and preserves accepted uploads after later fa
     expect(array_column($outcomes, 'index'))->toBe([0, 1, 2, 3, 4])
         ->and(array_column($outcomes, 'status'))->toBe(['accepted', 'duplicate', 'failed', 'failed', 'accepted'])
         ->and(array_column($outcomes, 'filename'))->toBe(['same.png', 'same.png', 'same.png', 'same.png', 'last.png'])
+        ->and($outcomes[0]['file_id'])->toBe(1)
+        ->and($outcomes[4]['file_id'])->toBe(2)
         ->and($outcomes[1]['message'])->toContain('Existing receipt')
         ->and($outcomes[2]['message'])->not->toContain('Private storage details');
 
@@ -98,9 +100,12 @@ const bindings = {
     _defineComponent: component => component,
     ref: vue.ref, watch: vue.watch, computed: vue.computed,
     useForm: data => ({ post: (url, options) => { payload = data; callbacks = options; } }),
-    route: () => '/documents/store',
+    route: (name, params) => name === 'files.index'
+        ? '/files-processing' + (params?.file_id ? '?file_id=' + params.file_id : '')
+        : '/documents/store',
     URL: { revokeObjectURL: url => revoked.push(url) },
     AuthenticatedLayout: stub, CollectionSelector: stub, TagSelector: stub, Head: () => null,
+    Link: (props, { slots }) => vue.h('a', { href: props.href }, slots.default?.()),
     XMarkIcon: {}, PhotoIcon: {}, DocumentIcon: {}, ReceiptRefundIcon: {},
     CheckCircleIcon: {}, ExclamationTriangleIcon: {}, XCircleIcon: {},
 };
@@ -120,6 +125,7 @@ const renderCode = template.code.replace(/import\s+\{([^}]+)\}\s+from\s+"vue"/g,
 const render = new Function(...Object.keys(templateBindings), renderCode + '; return render;')(...Object.values(templateBindings));
 async function renderPage() {
     const app = vue.createSSRApp({ ...component, setup: () => page, render }, props);
+    app.config.globalProperties.route = bindings.route;
     app.config.warnHandler = () => {};
     return renderToString(app);
 }
@@ -130,12 +136,16 @@ page.note.value = 'Keep this note';
 page.collectionIds.value = [7];
 page.tagIds.value = [8];
 page.submit();
+callbacks.onProgress({ loaded: 40, total: 100 });
+const progressHtml = await renderPage();
+assert.ok(progressHtml.includes('role="progressbar"'));
+assert.ok(progressHtml.includes('aria-valuenow="40"'));
 assert.equal(callbacks.preserveScroll, false);
 assert.equal(payload.file_type, 'document');
 assert.ok(!(await renderPage()).includes('Upload mode'));
 assert.deepEqual(payload.files, entries.map(entry => entry.file));
 callbacks.onSuccess({ props: { flash: { upload_results: [
-    { index: 0, filename: 'same.png', status: 'accepted', message: 'Accepted' },
+    { index: 0, filename: 'same.png', status: 'accepted', message: 'Accepted', file_id: 12 },
     { index: 1, filename: 'same.png', status: 'duplicate', message: 'Duplicate' },
     { index: 2, filename: 'same.png', status: 'failed', message: 'Failed' },
 ] } } });
@@ -145,6 +155,8 @@ const mixedHtml = await renderPage();
 assert.ok(mixedHtml.includes('1 file queued for processing'));
 assert.ok(mixedHtml.includes('1 file already uploaded'));
 assert.ok(mixedHtml.includes('1 file could not be uploaded'));
+assert.ok(mixedHtml.includes('href="/files-processing?file_id=12"'));
+assert.ok(mixedHtml.includes('Failed files remain selected below so you can correct the issue and try again.'));
 for (const color of ['green', 'amber', 'red']) {
     assert.ok(mixedHtml.includes(`bg-${color}-50`));
     assert.ok(mixedHtml.includes(`dark:bg-${color}-900/20`));
@@ -162,12 +174,12 @@ assert.equal(page.isUploading.value, false);
 page.submit();
 assert.deepEqual(payload.files.map(file => file.index), [2]);
 callbacks.onSuccess({ props: { flash: { upload_results: [
-    { index: 0, filename: 'same.png', status: 'accepted', message: 'Accepted' },
+    { index: 0, filename: 'same.png', status: 'accepted', message: 'Accepted', file_id: 13 },
 ] } } });
 callbacks.onFinish();
 assert.equal(page.uploadOutcomes.value[0].title, '1 file queued for processing');
 assert.ok(!(await renderPage()).includes('Accepted for processing.'));
-page.uploadResults.value.push({ index: 1, filename: 'another.png', status: 'accepted', message: 'Accepted for processing.' });
+page.uploadResults.value.push({ index: 1, filename: 'another.png', status: 'accepted', message: 'Accepted for processing.', file_id: 14 });
 assert.equal(page.uploadOutcomes.value[0].title, '2 files queued for processing');
 page.dismissUploadOutcome('accepted');
 assert.ok(!(await renderPage()).includes('data-upload-outcome'));

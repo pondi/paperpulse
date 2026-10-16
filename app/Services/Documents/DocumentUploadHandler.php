@@ -15,7 +15,7 @@ class DocumentUploadHandler
 {
     /**
      * @param  iterable<int, UploadedFile>  $uploadedFiles
-     * @return list<array{index: int, filename: string, status: string, message: string}>
+     * @return list<array{index: int, filename: string, status: string, message: string, file_id?: int}>
      */
     public static function processUploads(iterable $uploadedFiles, string $fileType, int $userId, FileProcessingService $fileProcessingService, array $metadata = []): array
     {
@@ -30,8 +30,8 @@ class DocumentUploadHandler
                     continue;
                 }
 
-                $fileProcessingService->processUpload($uploadedFile, $fileType, $userId, $metadata);
-                $outcomes[] = $outcome + ['status' => 'accepted', 'message' => 'Accepted for processing.'];
+                $result = $fileProcessingService->processUpload($uploadedFile, $fileType, $userId, $metadata);
+                $outcomes[] = $outcome + ['status' => 'accepted', 'message' => 'Accepted for processing.', 'file_id' => $result['fileId']];
             } catch (DuplicateFileException $exception) {
                 $outcomes[] = $outcome + [
                     'status' => 'duplicate',

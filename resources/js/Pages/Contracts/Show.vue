@@ -293,12 +293,12 @@ const getContractTypeClass = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex justify-between items-center">
-                <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2">
+            <div class="flex flex-col items-start gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <h2 class="min-w-0 break-words font-black text-xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2 sm:text-2xl">
                     <DocumentIcon class="size-6" />
                     {{ contract.contract_title || 'Contract' }}
                 </h2>
-                <div class="flex items-center gap-x-4">
+                <div class="flex flex-wrap items-center gap-2">
                     <button
                         @click="downloadContract"
                         class="inline-flex items-center gap-x-2 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md text-sm font-medium text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-800 hover:bg-amber-50 dark:hover:bg-zinc-700"
@@ -325,10 +325,18 @@ const getContractTypeClass = () => {
 
         <Breadcrumbs v-if="breadcrumbs?.length" :crumbs="breadcrumbs" class="px-6 pt-4" />
 
-        <div class="flex h-[calc(100vh-9rem)] overflow-hidden">
+        <div class="flex min-h-[calc(100vh-9rem)] flex-col overflow-visible xl:h-[calc(100vh-9rem)] xl:flex-row xl:overflow-hidden">
             <!-- Left Panel - Contract Details -->
-            <div class="w-1/2 p-6 overflow-y-auto border-r border-amber-200 dark:border-zinc-700">
+            <div class="w-full min-w-0 p-3 sm:p-6 xl:w-1/2 xl:overflow-y-auto xl:border-r border-amber-200 dark:border-zinc-700">
                 <div class="space-y-8">
+                    <section aria-label="Contract summary" class="rounded-lg border border-amber-300 bg-amber-50 p-5 dark:border-amber-800 dark:bg-zinc-800">
+                        <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-300">Contract summary</h3>
+                        <dl class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            <div><dt class="text-xs text-zinc-500 dark:text-zinc-400">Status</dt><dd class="mt-1 font-semibold capitalize text-zinc-900 dark:text-zinc-100">{{ contract.status }}</dd></div>
+                            <div><dt class="text-xs text-zinc-500 dark:text-zinc-400">Contract value</dt><dd class="mt-1 font-semibold text-zinc-900 dark:text-zinc-100">{{ contract.contract_value == null ? 'Not recorded' : formatCurrency(contract.contract_value) }}</dd></div>
+                            <div><dt class="text-xs text-zinc-500 dark:text-zinc-400">Expiry date</dt><dd class="mt-1 text-sm text-zinc-900 dark:text-zinc-100">{{ contract.expiry_date ? formatDate(contract.expiry_date) : 'No expiry date' }}</dd></div>
+                        </dl>
+                    </section>
                     <!-- Contract Status Badge -->
                     <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
                         <div class="flex items-center justify-between">
@@ -623,7 +631,7 @@ const getContractTypeClass = () => {
             </div>
 
             <!-- Right Panel - Contract Preview -->
-            <div class="w-1/2 bg-amber-50 dark:bg-zinc-900 overflow-auto">
+            <div class="min-h-64 w-full min-w-0 bg-amber-50 dark:bg-zinc-900 overflow-auto xl:w-1/2 xl:min-h-0">
                 <DocumentImage
                     :file="contract.file"
                     :alt-text="contract.contract_title || 'Contract'"

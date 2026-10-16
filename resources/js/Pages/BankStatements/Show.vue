@@ -236,9 +236,9 @@ const handleTagRemoved = (tag: Tag) => {
     <AuthenticatedLayout>
         <Head :title="`Bank Statement - ${statementTitle}`" />
         <template #header>
-            <div class="flex justify-between items-center">
-                <div>
-                    <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2">
+            <div class="flex flex-col items-start gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <div class="min-w-0">
+                    <h2 class="min-w-0 break-words font-black text-xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2 sm:text-2xl">
                         <BanknotesIcon class="size-6" />
                         {{ statementTitle }}
                     </h2>
@@ -246,7 +246,7 @@ const handleTagRemoved = (tag: Tag) => {
                         {{ statementSubtitle }}
                     </p>
                 </div>
-                <div class="flex items-center gap-x-4">
+                <div class="flex flex-wrap items-center gap-2">
                     <button
                         v-if="statement.file"
                         @click="downloadStatement"
@@ -268,10 +268,21 @@ const handleTagRemoved = (tag: Tag) => {
 
         <Breadcrumbs v-if="breadcrumbs?.length" :crumbs="breadcrumbs" class="px-6 pt-4" />
 
-        <div class="flex h-[calc(100vh-9rem)] overflow-hidden">
+        <div class="flex min-h-[calc(100vh-9rem)] flex-col overflow-visible xl:h-[calc(100vh-9rem)] xl:flex-row xl:overflow-hidden">
             <!-- Left Panel - Statement Details + Transactions -->
-            <div class="w-1/2 p-6 overflow-y-auto border-r border-amber-200 dark:border-zinc-700">
+            <div class="w-full min-w-0 p-3 sm:p-6 xl:w-1/2 xl:overflow-y-auto xl:border-r border-amber-200 dark:border-zinc-700">
                 <div class="space-y-6">
+                    <!-- Balance Summary -->
+                    <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
+                        <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200 mb-4">Balance Summary</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between text-zinc-700 dark:text-zinc-300"><span>Opening Balance</span><span class="font-medium">{{ formatCurrency(statement.opening_balance, statement.currency) }}</span></div>
+                            <div class="flex justify-between text-green-600 dark:text-green-400"><span>Total Credits</span><span class="font-medium">+{{ formatCurrency(statement.total_credits, statement.currency) }}</span></div>
+                            <div class="flex justify-between text-red-600 dark:text-red-400"><span>Total Debits</span><span class="font-medium">-{{ formatCurrency(statement.total_debits, statement.currency) }}</span></div>
+                            <div class="flex justify-between border-t border-amber-200 pt-2 dark:border-zinc-600"><span class="font-bold text-zinc-900 dark:text-zinc-100">Net Flow</span><span class="font-bold" :class="netFlow >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">{{ formatCurrency(netFlow, statement.currency) }}</span></div>
+                            <div class="flex justify-between border-t border-amber-200 pt-2 text-lg font-bold text-zinc-900 dark:border-zinc-600 dark:text-zinc-100"><span>Closing Balance</span><span>{{ formatCurrency(statement.closing_balance, statement.currency) }}</span></div>
+                        </div>
+                    </div>
                     <!-- Statement Details Card -->
                     <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
                         <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200 mb-4">Statement Details</h3>
@@ -293,7 +304,7 @@ const handleTagRemoved = (tag: Tag) => {
                                 </div>
                                 <div v-if="statement.iban">
                                     <dt class="text-xs font-medium text-zinc-500 dark:text-zinc-400">IBAN</dt>
-                                    <dd class="text-sm text-zinc-900 dark:text-white font-mono">{{ statement.iban }}</dd>
+                                    <dd class="break-all text-sm text-zinc-900 dark:text-white font-mono">{{ statement.iban }}</dd>
                                 </div>
                             </div>
                             <div>
@@ -303,35 +314,6 @@ const handleTagRemoved = (tag: Tag) => {
                                 </dd>
                             </div>
                         </dl>
-                    </div>
-
-                    <!-- Balance Summary -->
-                    <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
-                        <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200 mb-4">Balance Summary</h3>
-                        <div class="space-y-3">
-                            <div class="flex justify-between text-zinc-700 dark:text-zinc-300">
-                                <span>Opening Balance</span>
-                                <span class="font-medium">{{ formatCurrency(statement.opening_balance, statement.currency) }}</span>
-                            </div>
-                            <div class="flex justify-between text-green-600 dark:text-green-400">
-                                <span>Total Credits</span>
-                                <span class="font-medium">+{{ formatCurrency(statement.total_credits, statement.currency) }}</span>
-                            </div>
-                            <div class="flex justify-between text-red-600 dark:text-red-400">
-                                <span>Total Debits</span>
-                                <span class="font-medium">-{{ formatCurrency(statement.total_debits, statement.currency) }}</span>
-                            </div>
-                            <div class="flex justify-between pt-2 border-t border-amber-200 dark:border-zinc-600">
-                                <span class="font-bold text-zinc-900 dark:text-zinc-100">Net Flow</span>
-                                <span class="font-bold" :class="netFlow >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-                                    {{ formatCurrency(netFlow, statement.currency) }}
-                                </span>
-                            </div>
-                            <div class="flex justify-between text-lg font-bold text-zinc-900 dark:text-zinc-100 pt-2 border-t border-amber-200 dark:border-zinc-600">
-                                <span>Closing Balance</span>
-                                <span>{{ formatCurrency(statement.closing_balance, statement.currency) }}</span>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Transaction Table -->
@@ -399,8 +381,8 @@ const handleTagRemoved = (tag: Tag) => {
                         </div>
 
                         <!-- Table -->
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-amber-200 dark:divide-zinc-700">
+                        <div class="overflow-x-auto" tabindex="0" aria-label="Transactions, scroll horizontally to see all columns">
+                            <table class="min-w-[52rem] divide-y divide-amber-200 dark:divide-zinc-700">
                                 <thead class="bg-amber-50 dark:bg-zinc-700">
                                     <tr>
                                         <th @click="sortBy('transaction_date')" class="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-300 uppercase tracking-wider cursor-pointer hover:text-zinc-800 dark:hover:text-zinc-100">
@@ -510,7 +492,7 @@ const handleTagRemoved = (tag: Tag) => {
             </div>
 
             <!-- Right Panel - Preview / Quick Stats -->
-            <div class="w-1/2 bg-amber-50 dark:bg-zinc-900 overflow-auto">
+            <div class="min-h-64 w-full min-w-0 bg-amber-50 dark:bg-zinc-900 overflow-auto xl:w-1/2 xl:min-h-0">
                 <div v-if="statement.file && (statement.file.is_pdf || statement.file.has_preview)">
                     <DocumentImage
                         :file="statement.file"

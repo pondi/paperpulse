@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\BankStatement;
+use App\Models\BankTransaction;
 use App\Models\Collection;
 use App\Models\Contract;
 use App\Models\Document;
@@ -170,6 +171,53 @@ it('presents financial entity lists as compact responsive links with statement r
             ->screenshot('redesign-financial-entities-dark');
         $browser->click('button[aria-label$="Switch to light mode"]')->waitUntil('!document.documentElement.classList.contains("dark")');
         $browser->screenshot('redesign-financial-entities-mobile');
+    });
+});
+
+it('puts financial summaries first and keeps recorded zero values visible in detail pages', function (): void {
+    $user = $this->createUser();
+    $invoiceFile = File::factory()->for($user)->create(['file_type' => 'invoice']);
+    $invoice = Invoice::factory()->create(['user_id' => $user->id, 'file_id' => $invoiceFile->id,
+        'invoice_number' => 'ZERO-INV', 'total_amount' => 0, 'amount_paid' => 0, 'amount_due' => 0,
+        'subtotal' => 0, 'tax_amount' => 0, 'discount_amount' => 0, 'shipping_amount' => 0,
+        'currency' => 'USD', 'due_date' => null,
+    ]);
+    $contractFile = File::factory()->for($user)->create(['file_type' => 'contract']);
+    $contract = Contract::factory()->create(['user_id' => $user->id, 'file_id' => $contractFile->id,
+        'contract_title' => 'Zero value agreement', 'contract_value' => 0, 'currency' => 'USD', 'expiry_date' => null,
+    ]);
+    $voucherFile = File::factory()->for($user)->create(['file_type' => 'voucher']);
+    $voucher = Voucher::factory()->create(['user_id' => $user->id, 'file_id' => $voucherFile->id,
+        'code' => 'ZERO-GIFT', 'original_value' => 0, 'current_value' => 0, 'currency' => 'USD',
+        'expiry_date' => null, 'is_redeemed' => false,
+    ]);
+    $statementFile = File::factory()->for($user)->create(['file_type' => 'bank_statement']);
+    $statement = BankStatement::factory()->create(['user_id' => $user->id, 'file_id' => $statementFile->id,
+        'bank_name' => 'Summary Bank', 'opening_balance' => 0, 'total_credits' => 0, 'total_debits' => 0,
+        'closing_balance' => 0, 'currency' => 'USD']);
+    BankTransaction::factory()->create(['user_id' => $user->id, 'bank_statement_id' => $statement->id,
+        'transaction_date' => '2026-10-01', 'amount' => 0, 'currency' => 'USD', 'description' => 'Zero amount']);
+
+    $this->browse(function (Browser $browser) use ($user, $invoice, $contract, $voucher, $statement): void {
+        $browser->resize(390, 844)->loginAs($user)
+            ->visit('/invoices/'.$invoice->id)->waitFor('section[aria-label="Invoice summary"]')
+            ->assertSee('Amount due')->assertSee('No due date')
+            ->assertScript("document.querySelector('section[aria-label=\"Invoice summary\"]').textContent.includes('0.00')", true)
+            ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+            ->screenshot('task016-invoice-summary-mobile')
+            ->visit('/contracts/'.$contract->id)->waitFor('section[aria-label="Contract summary"]')
+            ->assertSee('No expiry date')
+            ->assertScript("document.querySelector('section[aria-label=\"Contract summary\"]').textContent.includes('0.00')", true)
+            ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+            ->screenshot('task016-contract-summary-mobile')
+            ->visit('/vouchers/'.$voucher->id)->waitForText('Current Value')
+            ->assertScript("document.querySelector('body').innerText.includes('Current Value')", true)
+            ->assertScript("document.body.innerText.includes('0.00')", true)
+            ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+            ->visit('/bank-statements/'.$statement->id)->waitForText('Balance Summary')
+            ->assertSee('Transactions')->assertSee('Zero amount')
+            ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+            ->screenshot('task016-bank-summary-mobile');
     });
 });
 

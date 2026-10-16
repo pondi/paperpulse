@@ -20,8 +20,8 @@ const submit = () => form.patch(route('bank-statements.csv-mapping.update', prop
             <h1 class="text-xl font-semibold">Map CSV columns: {{ file.name }}</h1>
             <p>Choose a signed amount column, or separate money out and money in columns. Money out can be positive or negative; money in must be positive.</p>
             <p v-if="mapping_error" class="text-red-600 dark:text-red-400">{{ mapping_error }}</p>
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+            <div class="overflow-x-auto" tabindex="0" aria-label="CSV sample rows, scroll horizontally to see all columns">
+                <table class="min-w-[40rem] text-sm">
                     <thead><tr><th v-for="(header, index) in headers" :key="index" class="p-2 text-left">{{ header }}</th></tr></thead>
                     <tbody><tr v-for="(row, index) in rows" :key="index"><td v-for="(value, column) in row" :key="column" class="p-2 whitespace-pre-wrap">{{ value }}</td></tr></tbody>
                 </table>

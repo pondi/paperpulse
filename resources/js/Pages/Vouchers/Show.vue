@@ -33,13 +33,13 @@
           <div>
             <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Financial Details</h3>
             <dl class="space-y-2">
-              <div v-if="voucher.original_value">
+              <div v-if="voucher.original_value != null">
                 <dt class="text-sm text-gray-600 dark:text-gray-400">Original Value</dt>
                 <dd class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {{ formatCurrency(voucher.original_value) }}
                 </dd>
               </div>
-              <div v-if="voucher.current_value">
+              <div v-if="voucher.current_value != null">
                 <dt class="text-sm text-gray-600 dark:text-gray-400">Current Value</dt>
                 <dd class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {{ formatCurrency(voucher.current_value) }}
@@ -72,11 +72,11 @@
         <div v-if="isPaymentPlan" class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
           <h3 class="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Payment Plan Details</h3>
           <dl class="grid grid-cols-2 gap-4">
-            <div v-if="voucher.installment_count">
+            <div v-if="voucher.installment_count != null">
               <dt class="text-sm text-blue-700 dark:text-blue-300">Installments</dt>
               <dd class="font-semibold text-blue-900 dark:text-blue-100">{{ voucher.installment_count }} payments</dd>
             </div>
-            <div v-if="voucher.monthly_payment">
+            <div v-if="voucher.monthly_payment != null">
               <dt class="text-sm text-blue-700 dark:text-blue-300">Monthly Payment</dt>
               <dd class="font-semibold text-blue-900 dark:text-blue-100">{{ formatCurrency(voucher.monthly_payment) }}</dd>
             </div>

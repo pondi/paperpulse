@@ -302,6 +302,14 @@ const getInvoiceTypeClass = () => {
             <!-- Invoice details -->
             <div class="w-full min-w-0 break-words p-3 sm:p-6" :class="showPreview ? 'xl:w-2/3' : 'xl:w-full'">
                 <div class="space-y-8">
+                    <section aria-label="Invoice summary" class="rounded-lg border border-amber-300 bg-amber-50 p-5 dark:border-amber-800 dark:bg-zinc-800">
+                        <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-300">Invoice summary</h3>
+                        <dl class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            <div><dt class="text-xs text-zinc-500 dark:text-zinc-400">Total</dt><dd class="mt-1 text-xl font-bold text-zinc-900 dark:text-zinc-100">{{ invoice.total_amount == null ? 'Not recorded' : formatCurrency(invoice.total_amount) }}</dd></div>
+                            <div><dt class="text-xs text-zinc-500 dark:text-zinc-400">Amount due</dt><dd class="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ invoice.amount_due == null ? 'Not recorded' : formatCurrency(invoice.amount_due) }}</dd></div>
+                            <div><dt class="text-xs text-zinc-500 dark:text-zinc-400">Due date</dt><dd class="mt-1 text-sm text-zinc-900 dark:text-zinc-100">{{ invoice.due_date ? formatDate(invoice.due_date) : 'No due date' }}</dd></div>
+                        </dl>
+                    </section>
                     <p v-if="invoice.file?.status" class="text-sm text-zinc-700 dark:text-zinc-300">Processing: {{ fileStatusLabel(invoice.file) }}</p>
                     <!-- Invoice payment status -->
                     <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
@@ -454,19 +462,19 @@ const getInvoiceTypeClass = () => {
                     <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 border border-amber-200 dark:border-zinc-700">
                         <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200 mb-4">Financial Summary</h3>
                         <div class="space-y-2">
-                            <div v-if="invoice.subtotal" class="flex justify-between text-zinc-700 dark:text-zinc-300">
+                            <div v-if="invoice.subtotal != null" class="flex justify-between text-zinc-700 dark:text-zinc-300">
                                 <span>Subtotal:</span>
                                 <span>{{ formatCurrency(invoice.subtotal) }}</span>
                             </div>
-                            <div v-if="invoice.tax_amount" class="flex justify-between text-zinc-700 dark:text-zinc-300">
+                            <div v-if="invoice.tax_amount != null" class="flex justify-between text-zinc-700 dark:text-zinc-300">
                                 <span>Tax:</span>
                                 <span>{{ formatCurrency(invoice.tax_amount) }}</span>
                             </div>
-                            <div v-if="invoice.discount_amount" class="flex justify-between text-zinc-700 dark:text-zinc-300">
+                            <div v-if="invoice.discount_amount != null" class="flex justify-between text-zinc-700 dark:text-zinc-300">
                                 <span>Discount:</span>
                                 <span class="text-red-600 dark:text-red-400">-{{ formatCurrency(invoice.discount_amount) }}</span>
                             </div>
-                            <div v-if="invoice.shipping_amount" class="flex justify-between text-zinc-700 dark:text-zinc-300">
+                            <div v-if="invoice.shipping_amount != null" class="flex justify-between text-zinc-700 dark:text-zinc-300">
                                 <span>Shipping:</span>
                                 <span>{{ formatCurrency(invoice.shipping_amount) }}</span>
                             </div>
@@ -474,11 +482,11 @@ const getInvoiceTypeClass = () => {
                                 <span>Total:</span>
                                 <span>{{ formatCurrency(invoice.total_amount) }}</span>
                             </div>
-                            <div v-if="invoice.amount_paid && invoice.amount_paid > 0" class="flex justify-between text-green-600 dark:text-green-400">
+                            <div v-if="invoice.amount_paid != null" class="flex justify-between text-green-600 dark:text-green-400">
                                 <span>Paid:</span>
                                 <span>{{ formatCurrency(invoice.amount_paid) }}</span>
                             </div>
-                            <div v-if="invoice.amount_due && invoice.amount_due > 0" class="flex justify-between text-red-600 dark:text-red-400 font-semibold">
+                            <div v-if="invoice.amount_due != null" class="flex justify-between text-red-600 dark:text-red-400 font-semibold">
                                 <span>Amount Due:</span>
                                 <span>{{ formatCurrency(invoice.amount_due) }}</span>
                             </div>

@@ -26,18 +26,18 @@ const submit = () => {
 </script>
 
 <template>
-    <GuestLayout>
+    <GuestLayout title="Create your account" description="Set up your PaperPulse account using your personal invitation link.">
         <Head title="Register" />
 
         <form @submit.prevent="submit">
             <div v-if="invitation" class="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                <p class="text-sm text-green-800">
+                <p role="status" class="text-sm text-green-800">
                     You've been invited to register with the email: <strong>{{ invitation.email }}</strong>
                 </p>
             </div>
             
             <div v-if="!invitation" class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-                <p class="text-sm text-amber-800">
+                <p role="status" class="text-sm text-amber-900 dark:text-amber-200">
                     Registration requires an invitation. Please contact an administrator for an invitation link.
                 </p>
             </div>
@@ -53,9 +53,11 @@ const submit = () => {
                     required
                     autofocus
                     autocomplete="name"
+                    :aria-invalid="!!form.errors.name"
+                    :aria-describedby="form.errors.name ? 'name-error' : undefined"
                 />
 
-                <InputError class="mt-2" :message="form.errors.name" />
+                <InputError id="name-error" class="mt-2" :message="form.errors.name" />
             </div>
 
             <div class="mt-4">
@@ -69,9 +71,11 @@ const submit = () => {
                     :disabled="!!invitation"
                     required
                     autocomplete="username"
+                    :aria-invalid="!!form.errors.email"
+                    :aria-describedby="form.errors.email ? 'email-error' : undefined"
                 />
 
-                <InputError class="mt-2" :message="form.errors.email" />
+                <InputError id="email-error" class="mt-2" :message="form.errors.email" />
             </div>
 
             <div class="mt-4">
@@ -84,9 +88,11 @@ const submit = () => {
                     v-model="form.password"
                     required
                     autocomplete="new-password"
+                    :aria-invalid="!!form.errors.password"
+                    :aria-describedby="form.errors.password ? 'password-error' : undefined"
                 />
 
-                <InputError class="mt-2" :message="form.errors.password" />
+                <InputError id="password-error" class="mt-2" :message="form.errors.password" />
             </div>
 
             <div class="mt-4">
@@ -99,22 +105,24 @@ const submit = () => {
                     v-model="form.password_confirmation"
                     required
                     autocomplete="new-password"
+                    :aria-invalid="!!form.errors.password_confirmation"
+                    :aria-describedby="form.errors.password_confirmation ? 'password-confirmation-error' : undefined"
                 />
 
-                <InputError class="mt-2" :message="form.errors.password_confirmation" />
+                <InputError id="password-confirmation-error" class="mt-2" :message="form.errors.password_confirmation" />
             </div>
 
-            <InputError class="mt-2" :message="form.errors.invitation_token" />
+            <InputError id="invitation-error" class="mt-2" :message="form.errors.invitation_token" />
 
-            <div class="flex items-center justify-end mt-4">
+            <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
                 <Link
                     :href="route('login')"
-                    class="underline text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 dark:focus:ring-offset-gray-800"
+                    class="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-amber-800 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 dark:text-amber-300"
                 >
                     Already registered?
                 </Link>
 
-                <PrimaryButton class="ms-4" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
+                <PrimaryButton class="min-h-11 rounded-lg px-5" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
                     Register
                 </PrimaryButton>
             </div>

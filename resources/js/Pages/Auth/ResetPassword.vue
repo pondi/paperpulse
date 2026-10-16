@@ -4,7 +4,7 @@ import InputError from '@/Components/Forms/InputError.vue';
 import InputLabel from '@/Components/Forms/InputLabel.vue';
 import PrimaryButton from '@/Components/Buttons/PrimaryButton.vue';
 import TextInput from '@/Components/Forms/TextInput.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
     email: {
@@ -32,7 +32,7 @@ const submit = () => {
 </script>
 
 <template>
-    <GuestLayout>
+    <GuestLayout title="Choose a new password" description="Use a strong password you don’t use for another account.">
         <Head title="Reset Password" />
 
         <form @submit.prevent="submit">
@@ -47,9 +47,11 @@ const submit = () => {
                     required
                     autofocus
                     autocomplete="username"
+                    :aria-invalid="!!form.errors.email"
+                    :aria-describedby="form.errors.email ? 'email-error' : undefined"
                 />
 
-                <InputError class="mt-2" :message="form.errors.email" />
+                <InputError id="email-error" class="mt-2" :message="form.errors.email" />
             </div>
 
             <div class="mt-4">
@@ -62,9 +64,10 @@ const submit = () => {
                     v-model="form.password"
                     required
                     autocomplete="new-password"
+                    :aria-invalid="!!form.errors.password"
                 />
 
-                <InputError class="mt-2" :message="form.errors.password" />
+                <InputError id="password-error" class="mt-2" :message="form.errors.password" />
             </div>
 
             <div class="mt-4">
@@ -77,13 +80,16 @@ const submit = () => {
                     v-model="form.password_confirmation"
                     required
                     autocomplete="new-password"
+                    :aria-invalid="!!form.errors.password_confirmation"
+                    :aria-describedby="form.errors.password_confirmation ? 'password-confirmation-error' : undefined"
                 />
 
-                <InputError class="mt-2" :message="form.errors.password_confirmation" />
+                <InputError id="password-confirmation-error" class="mt-2" :message="form.errors.password_confirmation" />
             </div>
 
-            <div class="flex items-center justify-end mt-4">
-                <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
+            <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+                <Link :href="route('login')" class="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-amber-800 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 dark:text-amber-300">Back to sign in</Link>
+                <PrimaryButton class="min-h-11 rounded-lg px-5" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
                     Reset Password
                 </PrimaryButton>
             </div>

@@ -18,12 +18,8 @@ const submit = () => {
 </script>
 
 <template>
-    <GuestLayout>
+    <GuestLayout title="Confirm your password" description="For your security, confirm your password before continuing to this protected area.">
         <Head title="Confirm Password" />
-
-        <div class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-            This is a secure area of the application. Please confirm your password before continuing.
-        </div>
 
         <form @submit.prevent="submit">
             <div>
@@ -36,12 +32,14 @@ const submit = () => {
                     required
                     autocomplete="current-password"
                     autofocus
+                    :aria-invalid="!!form.errors.password"
+                    :aria-describedby="form.errors.password ? 'password-error' : undefined"
                 />
-                <InputError class="mt-2" :message="form.errors.password" />
+                <InputError id="password-error" class="mt-2" :message="form.errors.password" />
             </div>
 
-            <div class="flex justify-end mt-4">
-                <PrimaryButton class="ms-4" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
+            <div class="mt-5 flex justify-end">
+                <PrimaryButton class="min-h-11 rounded-lg px-5" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
                     Confirm
                 </PrimaryButton>
             </div>

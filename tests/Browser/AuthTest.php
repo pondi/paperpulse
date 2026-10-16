@@ -133,9 +133,86 @@ test('forgot password page loads', function () {
         $browser->visit('/forgot-password')
             ->waitFor('#email')
             ->assertSee('Email')
-            ->assertSee('Forgot your password?')
+            ->assertSee('Reset your password')
+            ->assertSee('Back to sign in')
             ->assertPresent('form button');
     });
+});
+
+test('guest authentication and recovery screens are titled accessible and responsive', function (): void {
+    $email = 'dusk-auth-'.strtolower(Str::random(8)).'@example.com';
+    $invitation = Invitation::create(['email' => $email, 'status' => 'sent']);
+
+    $this->browse(function (Browser $browser) use ($email, $invitation): void {
+        foreach ([320, 390, 768] as $width) {
+            $browser->resize($width, 844)->visit('/login')->waitFor('#email')
+                ->assertSeeIn('h1', 'Sign in')
+                ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+                ->assertPresent('label[for="email"]')
+                ->assertAttribute('#email', 'autocomplete', 'username')
+                ->assertScript("document.querySelector('form button').getBoundingClientRect().height >= 44", true);
+
+            if ($width === 320) {
+                $browser->screenshot('auth-login-mobile');
+            }
+
+            $browser->visit('/forgot-password')->waitFor('#email')
+                ->assertSeeIn('h1', 'Reset your password')
+                ->assertSee('Back to sign in')
+                ->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
+
+            $browser->visit('/register?token='.$invitation->token)->waitFor('#name')
+                ->assertSeeIn('h1', 'Create your account')
+                ->assertSee('You\'ve been invited')
+                ->assertAttribute('#name', 'autocomplete', 'name')
+                ->assertAttribute('#password', 'autocomplete', 'new-password')
+                ->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
+
+            $browser->visit('/reset-password/preview?email='.urlencode($email))->waitFor('#password')
+                ->assertSeeIn('h1', 'Choose a new password')
+                ->assertAttribute('#password_confirmation', 'autocomplete', 'new-password')
+                ->assertSee('Back to sign in')
+                ->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
+        }
+    });
+});
+
+test('login validation errors are announced and connected to the invalid field', function (): void {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->resize(390, 844)->visit('/login')->waitFor('#email')
+            ->type('#email', $user->email)
+            ->type('#password', 'incorrect-password')
+            ->click('form button')->waitFor('[role="alert"]')
+            ->assertAttribute('#email', 'aria-invalid', 'true')
+            ->assertAttribute('#email', 'aria-describedby', 'email-error')
+            ->assertPresent('#email-error[role="alert"]');
+    });
+});
+
+test('welcome invitation flow keeps its clear outcome on mobile', function (): void {
+    $email = 'dusk-invite-'.strtolower(Str::random(8)).'@example.com';
+
+    $this->browse(function (Browser $browser) use ($email): void {
+        $browser->resize(320, 844)->visit('/')->waitForText('Your receipts.')
+            ->screenshot('welcome-invitation-mobile')
+            ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+            ->click('main button')->waitFor('[role="dialog"]')
+            ->assertSee('Request an Invitation')
+            ->screenshot('welcome-invitation-dialog-mobile')
+            ->assertAttribute('#name', 'autocomplete', 'name')
+            ->assertAttribute('#email', 'autocomplete', 'email')
+            ->assertScript("Array.from(document.querySelectorAll('[role=dialog] button')).every(button => button.getBoundingClientRect().height >= 44)", true)
+            ->type('#name', 'Dusk Invitation Request')
+            ->type('#email', $email)
+            ->type('#company', 'PaperPulse Test')
+            ->click('[role="dialog"] button[type="submit"]')
+            ->waitForText('We\'ve received your invitation request')
+            ->assertPresent('[role="status"][aria-live="polite"]');
+    });
+
+    expect(Invitation::query()->where('email', $email)->firstOrFail()->status)->toBe('pending');
 });
 
 test('logout works', function () {

@@ -12,6 +12,7 @@ use App\Models\Receipt;
 use App\Models\Voucher;
 use App\Models\Warranty;
 use App\Services\Analytics\ProcessingAnalyticsService;
+use App\Services\HistoricalCurrencyService;
 use App\Services\MonetarySummaryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ use Inertia\Inertia;
 
 class AnalyticsController extends Controller
 {
-    public function __construct(private MonetarySummaryService $summaries) {}
+    public function __construct(private MonetarySummaryService $summaries, private HistoricalCurrencyService $historicalCurrency) {}
 
     public function index(Request $request)
     {
@@ -29,13 +30,14 @@ class AnalyticsController extends Controller
         $tab = $request->input('tab', 'overview');
         $startDate = $this->getStartDate($period);
         $endDate = Carbon::now();
+        $summaryCurrency = $request->user()->preference('currency', 'NOK');
 
         $overviewCounts = $this->getOverviewCounts($userId);
 
         $tabData = match ($tab) {
             'receipts' => $this->getReceiptData($userId, $startDate, $endDate),
             'invoices' => $this->getInvoiceData($userId, $startDate, $endDate),
-            'banking' => $this->getBankingData($userId, $startDate, $endDate),
+            'banking' => $this->getBankingData($userId, $startDate, $endDate, $summaryCurrency),
             'contracts' => $this->getContractData($userId, $startDate, $endDate),
             'documents' => $this->getDocumentData($userId, $startDate, $endDate),
             default => $this->getOverviewData($userId, $startDate, $endDate),
@@ -46,7 +48,18 @@ class AnalyticsController extends Controller
             'tab_data' => $tabData,
             'current_period' => $period,
             'current_tab' => $tab,
-            'summary_currency' => $request->user()->preference('currency', 'NOK'),
+            'summary_currency' => $summaryCurrency,
+            'report_context' => [
+                'period_label' => match ($period) {
+                    'month' => 'Past month',
+                    'quarter' => 'Past quarter',
+                    'year' => 'Past year',
+                    default => 'All time',
+                },
+                'start_date' => $startDate?->toDateString(),
+                'end_date' => $endDate->toDateString(),
+                'currency' => $summaryCurrency,
+            ],
         ]);
     }
 
@@ -284,7 +297,7 @@ class AnalyticsController extends Controller
         ];
     }
 
-    private function getBankingData(int $userId, ?Carbon $startDate, Carbon $endDate): array
+    private function getBankingData(int $userId, ?Carbon $startDate, Carbon $endDate, string $summaryCurrency): array
     {
         $transactions = BankTransaction::query()->where('user_id', $userId)
             ->whereHas('bankStatement', fn ($query) => $query->where('user_id', $userId))
@@ -294,7 +307,7 @@ class AnalyticsController extends Controller
 
         $statementCount = (clone $transactions)->distinct()->count('bank_statement_id');
         $transactionCount = (clone $transactions)->count();
-        $currency = auth()->user()->preference('currency', 'NOK');
+        $currency = $summaryCurrency;
         $credits = $this->summaries->aggregate((clone $transactions)->where('amount', '>', 0)->lazyById(200), ['total' => 'amount'], 'transaction_date', $currency);
         $debits = $this->summaries->aggregate((clone $transactions)->where('amount', '<', 0)->lazyById(200), ['total' => 'amount'], 'transaction_date', $currency, [
             'category' => fn ($row) => ($row->category_group?->value ?? '').'|'.($row->subcategory ?? ''),
@@ -302,13 +315,26 @@ class AnalyticsController extends Controller
         ]);
         $totalCredits = $credits['amounts']['total'];
         $totalDebits = $debits['amounts']['total'] === null ? null : -$debits['amounts']['total'];
-        $balanceTrend = (clone $transactions)->whereNotNull('balance_after')->with('bankStatement:id,bank_name')
-            ->orderBy('transaction_date')->orderBy('id')->get()->map(fn (BankTransaction $item): array => [
-                'date' => $item->transaction_date->format('Y-m-d'),
-                'opening' => round((float) $item->balance_after - (float) $item->amount, 2),
-                'closing' => (float) $item->balance_after, 'currency' => $item->currency,
-                'bank' => $item->bankStatement->bank_name,
-            ]);
+        $balanceTrend = (clone $transactions)->whereNotNull('balance_after')->with('bankStatement:id,bank_name,account_number')
+            ->orderBy('transaction_date')->orderBy('id')->get()->map(function (BankTransaction $item) use ($summaryCurrency): array {
+                $date = $item->transaction_date->format('Y-m-d');
+                $opening = (float) $item->balance_after - (float) $item->amount;
+                $accountNumber = preg_replace('/\s+/', '', $item->bankStatement->account_number ?? '');
+                $accountSuffix = $accountNumber !== '' ? ' · ••'.substr($accountNumber, -4) : '';
+                $seriesId = $accountNumber !== ''
+                    ? hash('sha256', $item->bankStatement->bank_name.'|'.$accountNumber)
+                    : 'statement-'.$item->bank_statement_id;
+
+                return [
+                    'date' => $date,
+                    'opening' => $this->historicalCurrency->convert($opening, $item->currency, $date, $summaryCurrency),
+                    'closing' => $this->historicalCurrency->convert((float) $item->balance_after, $item->currency, $date, $summaryCurrency),
+                    'currency' => $summaryCurrency,
+                    'bank' => $item->bankStatement->bank_name,
+                    'series_id' => $seriesId,
+                    'series_label' => $item->bankStatement->bank_name.$accountSuffix,
+                ];
+            });
         $spendingByCategory = collect($debits['groups']['category'])->map(function ($item, $key): array {
             [$group, $subcategory] = explode('|', $key, 2);
 

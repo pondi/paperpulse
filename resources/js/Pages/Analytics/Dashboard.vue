@@ -1,19 +1,20 @@
 <template>
     <AuthenticatedLayout>
-        <Head title="Reports" />
+        <Head :title="reportTitle" />
         <template #header>
-            <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-100 leading-tight">Analytics Dashboard</h2>
+            <h2 class="font-black text-2xl text-zinc-900 dark:text-zinc-100 leading-tight">{{ reportTitle }}</h2>
         </template>
 
         <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div class="report-content max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <!-- Tab Navigation + Period Selector -->
-                <div class="flex items-center gap-4 mb-8">
-                    <div class="flex gap-1 bg-amber-50 dark:bg-zinc-800 border border-amber-200 dark:border-zinc-700 rounded-lg p-1 overflow-x-auto flex-1">
+                <div class="report-controls flex flex-col items-stretch gap-4 mb-6 sm:flex-row sm:items-center">
+                    <div role="group" aria-label="Report type" class="flex gap-1 bg-amber-50 dark:bg-zinc-800 border border-amber-200 dark:border-zinc-700 rounded-lg p-1 overflow-x-auto flex-1">
                         <button
                             v-for="tab in tabs"
                             :key="tab.key"
                             @click="changeTab(tab.key)"
+                            :aria-pressed="activeTab === tab.key"
                             :class="[
                                 'px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200',
                                 activeTab === tab.key
@@ -39,11 +40,18 @@
                         class="rounded-md border-amber-200 dark:border-zinc-700 bg-amber-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
                     >
                         <option value="all">All Time</option>
-                        <option value="month">Last Month</option>
-                        <option value="quarter">Last Quarter</option>
-                        <option value="year">Last Year</option>
+                        <option value="month">Past Month</option>
+                        <option value="quarter">Past Quarter</option>
+                        <option value="year">Past Year</option>
                     </select>
+                    <button type="button" class="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200" @click="printReport">Print report</button>
                 </div>
+
+                <header class="report-heading mb-8 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+                    <h1 class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{{ reportTitle }}</h1>
+                    <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{{ reportPeriodLabel }} · {{ reportDateRange }}</p>
+                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Financial totals are shown in {{ summary_currency }} using historical exchange rates where available.</p>
+                </header>
 
                 <p v-if="reportLoading" role="status" class="rounded-lg bg-white p-6 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">Loading report…</p>
                 <div v-else-if="reportError" role="alert" class="rounded-lg bg-white p-6 text-red-700 dark:bg-zinc-800 dark:text-red-400">
@@ -53,30 +61,38 @@
                 <template v-else>
                 <!-- Overview Tab -->
                 <div v-if="activeTab === 'overview'">
-                    <!-- Entity Count Cards -->
-                    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
-                        <div v-for="entity in entityCards" :key="entity.key"
-                            class="bg-white dark:bg-zinc-800 shadow rounded-lg px-4 py-4 cursor-pointer hover:ring-2 hover:ring-amber-500/50 transition-all"
-                            @click="changeTab(entity.tab)"
-                        >
-                            <dt class="text-xs font-bold text-zinc-500 dark:text-zinc-400 truncate">{{ entity.label }}</dt>
-                            <dd class="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ overview_counts[entity.key] }}</dd>
+                    <!-- Financial Summary -->
+                    <div class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
+                        <div class="rounded-lg bg-white px-4 py-5 shadow dark:bg-zinc-800 sm:p-6">
+                            <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Receipt Spending</dt>
+                            <dd class="mt-1 text-3xl font-semibold text-zinc-900 dark:text-zinc-100">{{ formatCurrency(tab_data.financial_totals?.receipts, summary_currency) }}</dd>
+                        </div>
+                        <div class="rounded-lg bg-white px-4 py-5 shadow dark:bg-zinc-800 sm:p-6">
+                            <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Invoice Total</dt>
+                            <dd class="mt-1 text-3xl font-semibold text-zinc-900 dark:text-zinc-100">{{ formatCurrency(tab_data.financial_totals?.invoices, summary_currency) }}</dd>
+                        </div>
+                        <div class="rounded-lg bg-white px-4 py-5 shadow dark:bg-zinc-800 sm:p-6">
+                            <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Contract Value</dt>
+                            <dd class="mt-1 text-3xl font-semibold text-zinc-900 dark:text-zinc-100">{{ formatCurrency(tab_data.financial_totals?.contracts, summary_currency) }}</dd>
                         </div>
                     </div>
-
-                    <!-- Financial Summary -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg px-4 py-5 sm:p-6">
-                            <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Receipt Spending</dt>
-                            <dd class="mt-1 text-3xl font-semibold text-zinc-900 dark:text-zinc-100">{{ formatCurrency(tab_data.financial_totals?.receipts) }}</dd>
+                    <!-- Coverage summary -->
+                    <div class="mb-8 overflow-hidden rounded-lg bg-white shadow dark:bg-zinc-800">
+                        <div class="border-b border-zinc-200 px-4 py-4 dark:border-zinc-700 sm:px-6">
+                            <h3 class="font-semibold text-zinc-900 dark:text-zinc-100">Report coverage</h3>
+                            <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Record counts across your workspace. Select a report to view its details.</p>
                         </div>
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg px-4 py-5 sm:p-6">
-                            <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Invoice Total</dt>
-                            <dd class="mt-1 text-3xl font-semibold text-zinc-900 dark:text-zinc-100">{{ formatCurrency(tab_data.financial_totals?.invoices) }}</dd>
-                        </div>
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg px-4 py-5 sm:p-6">
-                            <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Contract Value</dt>
-                            <dd class="mt-1 text-3xl font-semibold text-zinc-900 dark:text-zinc-100">{{ formatCurrency(tab_data.financial_totals?.contracts) }}</dd>
+                        <div class="overflow-x-auto" tabindex="0" aria-label="Scrollable report coverage table">
+                            <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+                                <thead><tr class="text-left text-zinc-500 dark:text-zinc-400"><th scope="col" class="px-4 py-3 font-medium">Record type</th><th scope="col" class="px-4 py-3 text-right font-medium">Records</th><th scope="col" class="px-4 py-3 text-right font-medium">Report</th></tr></thead>
+                                <tbody class="divide-y divide-zinc-100 dark:divide-zinc-700">
+                                    <tr v-for="entity in entityCards" :key="entity.key">
+                                        <th scope="row" class="px-4 py-3 text-left font-medium text-zinc-800 dark:text-zinc-200">{{ entity.label }}</th>
+                                        <td class="px-4 py-3 text-right tabular-nums text-zinc-700 dark:text-zinc-300">{{ overview_counts[entity.key] }}</td>
+                                        <td class="px-4 py-3 text-right"><button v-if="entity.tab" type="button" class="font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-400" @click="changeTab(entity.tab)">Open {{ entity.reportLabel }} report</button><span v-else class="text-zinc-500 dark:text-zinc-400">Coverage only</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -99,10 +115,10 @@
                     <!-- Combined Monthly Trend -->
                     <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
                         <div class="px-4 py-5 sm:p-6">
-                            <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Spending by Observed Month</h3>
+                            <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Receipt and invoice totals by Observed Month</h3>
                             <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
                             <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
-                                <canvas ref="overviewChart"></canvas>
+                                <canvas ref="overviewChart" role="img" aria-label="Monthly receipt and invoice totals in the selected reporting currency"></canvas>
                             </div>
                             <div v-else class="text-zinc-500 dark:text-zinc-400 text-center py-8">No data available</div>
                         </div>
@@ -163,7 +179,7 @@
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Spending by Observed Month</h3>
                                 <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
                             <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
-                                    <canvas ref="receiptChart"></canvas>
+                                <canvas ref="receiptChart" role="img" aria-label="Monthly receipt spending in the selected reporting currency"></canvas>
                                 </div>
                                 <EmptyState v-else />
                             </div>
@@ -265,7 +281,7 @@
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Invoices by Observed Month</h3>
                                 <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
                             <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
-                                    <canvas ref="invoiceChart"></canvas>
+                                    <canvas ref="invoiceChart" role="img" aria-label="Monthly invoice totals in the selected reporting currency"></canvas>
                                 </div>
                                 <EmptyState v-else />
                             </div>
@@ -340,7 +356,7 @@
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Account Balance Trend</h3>
                                 <div v-if="tab_data.balance_trend?.length > 0" class="h-64">
-                                    <canvas ref="bankingChart"></canvas>
+                                    <canvas ref="bankingChart" role="img" aria-label="Opening and closing balances for each bank account in the selected reporting currency"></canvas>
                                 </div>
                                 <EmptyState v-else />
                             </div>
@@ -417,13 +433,14 @@
                         <div v-if="tab_data.expiring_soon?.length > 0" class="bg-white dark:bg-zinc-800 shadow rounded-lg lg:col-span-2">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-amber-600 dark:text-amber-400 mb-4">Expiring Within 90 Days</h3>
+                                <p class="mb-3 text-sm text-zinc-500 dark:text-zinc-400">Values remain in each contract’s original currency.</p>
                                 <div class="overflow-x-auto">
                                     <table class="min-w-full text-sm">
                                         <thead>
                                             <tr class="text-left text-zinc-500 dark:text-zinc-400">
                                                 <th class="pb-2 font-medium">Contract</th>
                                                 <th class="pb-2 font-medium">Type</th>
-                                                <th class="pb-2 font-medium text-right">Value</th>
+                                                <th class="pb-2 font-medium text-right">Original value</th>
                                                 <th class="pb-2 font-medium text-right">Expiry Date</th>
                                                 <th class="pb-2 font-medium text-right">Days Left</th>
                                             </tr>
@@ -481,7 +498,7 @@
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Uploads by Observed Month</h3>
                                 <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
                             <div v-if="tab_data.monthly_trend?.length > 0" class="h-64">
-                                    <canvas ref="documentChart"></canvas>
+                                    <canvas ref="documentChart" role="img" aria-label="Document uploads by observed month"></canvas>
                                 </div>
                                 <EmptyState v-else />
                             </div>
@@ -489,13 +506,23 @@
                     </div>
                 </div>
                 </template>
+                <details v-if="!reportLoading && !reportError && chartTable.rows.length" class="chart-data mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800" open>
+                    <summary class="cursor-pointer font-semibold text-zinc-900 dark:text-zinc-100">{{ chartTable.title }} data</summary>
+                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Values use {{ summary_currency }} where applicable.</p>
+                    <div class="mt-3 overflow-x-auto" tabindex="0" :aria-label="`Scrollable ${chartTable.title} data table`">
+                        <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+                            <thead><tr class="text-left text-zinc-500 dark:text-zinc-400"><th v-for="column in chartTable.columns" :key="column.key" scope="col" class="px-3 py-2 font-medium">{{ column.label }}</th></tr></thead>
+                            <tbody class="divide-y divide-zinc-100 dark:divide-zinc-700"><tr v-for="(row, rowIndex) in chartTable.rows" :key="rowIndex"><td v-for="column in chartTable.columns" :key="column.key" class="px-3 py-2 text-zinc-800 dark:text-zinc-200">{{ column.currency ? formatCurrency(row[column.key], summary_currency) : row[column.key] ?? 'Unavailable' }}</td></tr></tbody>
+                        </table>
+                    </div>
+                </details>
             </div>
         </div>
     </AuthenticatedLayout>
 </template>
 
 <script setup>
-import { h, ref, computed, onMounted, nextTick, watch } from 'vue';
+import { h, ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { Link } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -527,6 +554,8 @@ const props = defineProps({
     tab_data: Object,
     current_period: String,
     current_tab: String,
+    summary_currency: { type: String, default: 'NOK' },
+    report_context: Object,
 });
 
 const selectedPeriod = ref(props.current_period);
@@ -554,14 +583,30 @@ const tabs = [
 ];
 
 const entityCards = [
-    { key: 'receipts', label: 'Receipts', tab: 'receipts' },
-    { key: 'invoices', label: 'Invoices', tab: 'invoices' },
-    { key: 'contracts', label: 'Contracts', tab: 'contracts' },
-    { key: 'bank_statements', label: 'Statements', tab: 'banking' },
-    { key: 'documents', label: 'Documents', tab: 'documents' },
-    { key: 'vouchers', label: 'Vouchers', tab: 'overview' },
-    { key: 'warranties', label: 'Warranties', tab: 'overview' },
+    { key: 'receipts', label: 'Receipts', tab: 'receipts', reportLabel: 'receipts' },
+    { key: 'invoices', label: 'Invoices', tab: 'invoices', reportLabel: 'invoices' },
+    { key: 'contracts', label: 'Contracts', tab: 'contracts', reportLabel: 'contracts' },
+    { key: 'bank_statements', label: 'Statements', tab: 'banking', reportLabel: 'banking' },
+    { key: 'documents', label: 'Documents', tab: 'documents', reportLabel: 'documents' },
+    { key: 'vouchers', label: 'Vouchers', tab: null },
+    { key: 'warranties', label: 'Warranties', tab: null },
 ];
+
+const tabLabel = computed(() => tabs.find(tab => tab.key === activeTab.value)?.label ?? 'Overview');
+const reportTitle = computed(() => activeTab.value === 'overview' ? 'Reports overview' : `${tabLabel.value} report`);
+const reportPeriodLabel = computed(() => props.report_context?.period_label ?? 'All time');
+const reportDateRange = computed(() => props.report_context?.start_date
+    ? `${props.report_context.start_date} to ${props.report_context.end_date}`
+    : `All recorded dates through ${props.report_context?.end_date ?? ''}`);
+const chartTable = computed(() => {
+    const data = props.tab_data ?? {};
+    if (activeTab.value === 'overview') return { title: 'Monthly receipt and invoice totals', columns: [{ key: 'month', label: 'Observed month' }, { key: 'receipts', label: 'Receipts', currency: true }, { key: 'invoices', label: 'Invoices', currency: true }], rows: data.monthly_trend ?? [] };
+    if (activeTab.value === 'receipts') return { title: 'Monthly receipt totals', columns: [{ key: 'month', label: 'Observed month' }, { key: 'receipt_count', label: 'Receipts' }, { key: 'total', label: 'Total', currency: true }], rows: data.monthly_trend ?? [] };
+    if (activeTab.value === 'invoices') return { title: 'Monthly invoice totals', columns: [{ key: 'month', label: 'Observed month' }, { key: 'invoice_count', label: 'Invoices' }, { key: 'total', label: 'Total', currency: true }], rows: data.monthly_trend ?? [] };
+    if (activeTab.value === 'banking') return { title: 'Account balance trend', columns: [{ key: 'date', label: 'Date' }, { key: 'series_label', label: 'Bank account' }, { key: 'opening', label: 'Opening balance', currency: true }, { key: 'closing', label: 'Closing balance', currency: true }], rows: data.balance_trend ?? [] };
+    if (activeTab.value === 'documents') return { title: 'Monthly document uploads', columns: [{ key: 'month', label: 'Observed month' }, { key: 'count', label: 'Documents' }], rows: data.monthly_trend ?? [] };
+    return { title: '', columns: [], rows: [] };
+});
 
 const totalExpiring = computed(() => {
     const e = props.tab_data?.expiring_soon;
@@ -570,9 +615,12 @@ const totalExpiring = computed(() => {
 });
 
 const changeTab = (tab) => {
+    if (!tab) return;
     activeTab.value = tab;
     updateParams();
 };
+
+const printReport = () => window.print();
 
 const updateParams = () => {
     router.visit(route('analytics.index', { tab: activeTab.value, period: selectedPeriod.value }), {
@@ -635,6 +683,7 @@ const destroyAllCharts = () => {
 const initCharts = () => {
     destroyAllCharts();
     nextTick(() => {
+        try {
         if (activeTab.value === 'overview' && overviewChart.value && props.tab_data?.monthly_trend?.length > 0) {
             chartInstances.overview = new Chart(overviewChart.value.getContext('2d'), {
                 type: 'line',
@@ -695,28 +744,17 @@ const initCharts = () => {
         }
 
         if (activeTab.value === 'banking' && bankingChart.value && props.tab_data?.balance_trend?.length > 0) {
+            const balanceRows = props.tab_data.balance_trend;
+            const series = [...new Map(balanceRows.map(row => [row.series_id, row.series_label])).entries()];
+            const colors = ['rgb(34, 197, 94)', 'rgb(79, 70, 229)', 'rgb(245, 158, 11)', 'rgb(14, 165, 233)', 'rgb(236, 72, 153)'];
             chartInstances.banking = new Chart(bankingChart.value.getContext('2d'), {
                 type: 'line',
                 data: {
-                    labels: props.tab_data.balance_trend.map(i => i.date),
-                    datasets: [
-                        {
-                            label: 'Opening Balance',
-                            data: props.tab_data.balance_trend.map(i => i.opening),
-                            borderColor: 'rgb(156, 163, 175)',
-                            borderDash: [5, 5],
-                            tension: 0.1,
-                            pointRadius: 3,
-                        },
-                        {
-                            label: 'Closing Balance',
-                            data: props.tab_data.balance_trend.map(i => i.closing),
-                            borderColor: 'rgb(34, 197, 94)',
-                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                            fill: true,
-                            tension: 0.1,
-                        },
-                    ],
+                    labels: balanceRows.map(row => row.date),
+                    datasets: series.flatMap(([id, label], index) => [
+                        { label: `${label} · opening`, data: balanceRows.map(row => row.series_id === id ? row.opening : null), borderColor: colors[index % colors.length], borderDash: [5, 5], tension: 0.1, pointRadius: 2 },
+                        { label: `${label} · closing`, data: balanceRows.map(row => row.series_id === id ? row.closing : null), borderColor: colors[index % colors.length], backgroundColor: colors[index % colors.length].replace('rgb', 'rgba').replace(')', ', 0.1)'), fill: false, tension: 0.1, pointRadius: 3 },
+                    ]),
                 },
                 options: chartOptions(),
             });
@@ -740,11 +778,15 @@ const initCharts = () => {
                         ...chartOptions().scales,
                         y: {
                             beginAtZero: true,
-                            ticks: { stepSize: 1 },
+                            ticks: { stepSize: 1, callback: value => value },
                         },
                     },
                 },
             });
+        }
+        } catch {
+            destroyAllCharts();
+            reportError.value = 'The report chart could not be displayed. Try reloading the report.';
         }
     });
 };
@@ -760,7 +802,7 @@ const chartOptions = () => ({
             beginAtZero: true,
             ticks: {
                 callback: function (value) {
-                    return formatCurrency(value);
+                    return formatCurrency(value, props.summary_currency);
                 },
             },
         },
@@ -771,7 +813,83 @@ onMounted(() => {
     initCharts();
 });
 
+onBeforeUnmount(destroyAllCharts);
+
 watch(() => props.current_tab, () => {
     activeTab.value = props.current_tab;
 });
 </script>
+
+<style scoped>
+@media print {
+    :global(.app-toolbar),
+    :global(.workspace-navigation),
+    :global(aside),
+    .report-controls {
+        display: none !important;
+    }
+
+    :global(body),
+    :global(#app) {
+        background: #fff !important;
+        color: #111827 !important;
+    }
+
+    :global(.dark [class~="dark:bg-zinc-800"]),
+    :global(.dark [class~="dark:bg-zinc-900"]) {
+        background: #fff !important;
+    }
+
+    :global(.dark [class~="dark:text-zinc-100"]),
+    :global(.dark [class~="dark:text-zinc-200"]),
+    :global(.dark [class~="dark:text-zinc-300"]) {
+        color: #111827 !important;
+    }
+
+    :global(main#main-content) {
+        width: 100% !important;
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .report-content {
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .report-heading,
+    .chart-data,
+    .bg-white {
+        color: #111827 !important;
+        background: #fff !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+    }
+
+    .chart-data > summary {
+        display: none;
+    }
+
+    .chart-data > div {
+        display: block !important;
+        overflow: visible !important;
+    }
+
+    canvas {
+        max-height: 240px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th,
+    td {
+        color: #111827 !important;
+        border: 1px solid #d1d5db;
+    }
+}
+</style>

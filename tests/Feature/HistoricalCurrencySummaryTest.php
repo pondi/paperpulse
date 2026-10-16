@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\BankStatement;
+use App\Models\BankTransaction;
 use App\Models\Collection;
 use App\Models\Contract;
 use App\Models\ExchangeRateObservation;
@@ -86,6 +88,32 @@ it('uses dated conversion in owner summaries without changing original amounts',
         ->where('tab_data.stats.total', 220)->where('tab_data.stats.tax', 12));
     $this->get(route('dashboard'))->assertOk()->assertInertia(fn (Assert $page) => $page->where('totalAmount', 220));
     expect($foreignCurrency->fresh()->total_amount)->toBe('10.00')->and($foreignCurrency->fresh()->currency)->toBe('EUR');
+    Http::assertNothingSent();
+});
+
+it('converts bank balance trends to the report currency at the transaction date', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+    storedHistoricalRate('EUR', '2026-09-25', '12');
+    $statement = BankStatement::factory()->create(['user_id' => $user->id]);
+    $transaction = BankTransaction::factory()->create([
+        'user_id' => $user->id,
+        'bank_statement_id' => $statement->id,
+        'transaction_date' => '2026-09-27',
+        'amount' => 10,
+        'balance_after' => 100,
+        'currency' => 'EUR',
+    ]);
+
+    $this->get(route('analytics.index', ['tab' => 'banking']))->assertInertia(fn (Assert $page) => $page
+        ->where('summary_currency', 'NOK')
+        ->where('report_context.period_label', 'All time')
+        ->where('tab_data.balance_trend.0.opening', 1080)
+        ->where('tab_data.balance_trend.0.closing', 1200)
+        ->where('tab_data.balance_trend.0.currency', 'NOK'));
+
+    expect($transaction->fresh()->balance_after)->toBe('100.00')
+        ->and($transaction->fresh()->currency)->toBe('EUR');
     Http::assertNothingSent();
 });
 

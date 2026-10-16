@@ -1105,6 +1105,24 @@ it('renders report statistic labels and zero or populated values with the produc
     });
 })->with([false, true]);
 
+it('prints structured reports with period currency and accessible chart data on narrow screens', function (): void {
+    $user = $this->createUser();
+    Receipt::factory()->create(['user_id' => $user->id, 'receipt_date' => '2026-09-27', 'total_amount' => 42, 'currency' => 'NOK']);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user)->resize(390, 844)->visit('/analytics')->waitForText('Report coverage')
+            ->assertSee('Reports overview')->assertSee('All time')->assertSee('Financial totals are shown in NOK')
+            ->assertSee('Receipt and invoice totals by Observed Month')->assertSee('Monthly receipt and invoice totals data')
+            ->assertPresent('div[aria-label="Scrollable report coverage table"]')
+            ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
+            ->assertScript("Array.from(document.styleSheets).some(sheet => { try { return Array.from(sheet.cssRules).some(rule => rule.conditionText === 'print'); } catch { return false; } })", true)
+            ->script('window.reportPrintCalled = false; window.print = () => { window.reportPrintCalled = true; }');
+        $browser->press('Print report')->assertScript('window.reportPrintCalled', true)->assertPathIs('/analytics')
+            ->click('.report-controls [aria-pressed]:nth-of-type(2)')->waitForText('Receipts report')->assertSee('All time')
+            ->assertSee('Monthly receipt totals data');
+    });
+});
+
 it('renders both duplicate candidates including files with missing extracted metadata', function (): void {
     $user = $this->createUser();
     $first = File::factory()->create(['user_id' => $user->id, 'fileName' => 'First scan.pdf', 'status' => 'completed']);

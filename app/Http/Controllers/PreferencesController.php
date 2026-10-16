@@ -97,12 +97,12 @@ class PreferencesController extends Controller
     /**
      * Reset preferences to default values.
      */
-    public function reset()
+    public function reset(): RedirectResponse
     {
         $user = auth()->user();
 
         if ($user->preferences) {
-            $user->preferences->delete();
+            $user->preferences->update([...UserPreference::defaultPreferences(), 'default_category_id' => null]);
         }
 
         // Reset locale to default

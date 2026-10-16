@@ -154,7 +154,7 @@ test('preferences page loads', function () {
     });
 });
 
-test('can change currency', function () {
+test('saves currency with the application preference action', function () {
     $user = $this->createUser();
 
     $this->browse(function (Browser $browser) use ($user) {
@@ -163,26 +163,11 @@ test('can change currency', function () {
         $browser->visit('/preferences')
             ->waitFor('#currency')
             ->select('#currency', 'USD')
-            ->pause(300);
-
-        // The save button is far below the fold — scroll to it and click
-        $browser->script("document.querySelector('button.bg-zinc-900, button.dark\\\\:bg-amber-600').scrollIntoView()");
-        $browser->pause(300);
-
-        // Click the PrimaryButton save (outside the form, at the bottom of the page)
-        $browser->script("
-            const buttons = document.querySelectorAll('button');
-            for (const btn of buttons) {
-                if (btn.classList.contains('uppercase') && btn.textContent.trim().toLowerCase() === 'save') {
-                    btn.click();
-                    break;
-                }
-            }
-        ");
-
-        $browser->pause(1000)
-            ->assertSee('Saved');
+            ->click('@save-application-preferences')->waitForText('Application preferences saved')
+            ->assertScript("document.querySelector('[aria-live=polite]').textContent.trim()", 'Application preferences saved');
     });
+
+    expect($user->fresh()->preference('currency'))->toBe('USD');
 });
 
 test('reset preferences button exists', function () {
@@ -191,14 +176,59 @@ test('reset preferences button exists', function () {
     $this->browse(function (Browser $browser) use ($user) {
         $this->loginAs($browser, $user);
 
-        $browser->visit('/preferences')
-            ->waitFor('#language');
+        $browser->visit('/preferences')->waitFor('#language')
+            ->assertPresent('@reset-application-preferences')
+            ->assertAttribute('@reset-application-preferences', 'type', 'button');
+    });
+});
 
-        // Scroll to the bottom to find the reset button
-        $browser->script('window.scrollTo(0, document.body.scrollHeight)');
-        $browser->pause(500)
-            // SecondaryButton has uppercase CSS, check for the button element
-            ->assertPresent('button.uppercase.border-2');
+test('resetting application preferences preserves separately saved organization choices', function (): void {
+    $user = $this->createUser();
+    $user->preferences()->create([
+        'currency' => 'EUR',
+        'organization_naming_rules' => ['building_root' => 'Properties', 'work_root' => 'Employment', 'work_structure' => 'year', 'role_labels' => []],
+    ]);
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->resize(390, 844)->loginAs($user)->visit('/preferences')->waitFor('#currency')->screenshot('preferences-mobile')
+            ->assertSelected('#currency', 'EUR')->select('#currency', 'USD')->waitForText('Unsaved application preferences')
+            ->assertSee('No unsaved organization choices');
+        $browser->script('window.confirm = () => true');
+        $browser->click('@reset-application-preferences')->waitForText('Application preferences reset')
+            ->assertSelected('#currency', 'NOK')
+            ->assertScript("document.querySelector('[aria-live=polite]').textContent.trim()", 'Application preferences reset')
+            ->assertSee('No unsaved organization choices')->assertInputValue('#preferences-organization input', 'Properties')
+            ->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
+    });
+
+    expect($user->fresh()->preference('currency'))->toBe('NOK')
+        ->and($user->fresh()->preferences->organization_naming_rules['building_root'])->toBe('Properties');
+});
+
+test('profile navigation separates account deletion from routine account changes', function (): void {
+    $user = $this->createUser();
+
+    $this->browse(function (Browser $browser) use ($user): void {
+        $browser->loginAs($user);
+        foreach ([320, 390, 768] as $width) {
+            $browser->resize($width, 844)->visit('/profile')->waitFor('nav[aria-label="Profile sections"]')
+                ->assertPresent('section#account-deletion[aria-labelledby="account-deletion-heading"]')
+                ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+                ->assertScript("Array.from(document.querySelectorAll('nav[aria-label^=Profile] a')).every(link => { const rect = link.getBoundingClientRect(); return rect.height >= 44 && rect.right <= innerWidth; })", true);
+            if ($width === 320) {
+                $browser->screenshot('profile-settings-mobile');
+            }
+        }
+
+        $browser->script("document.querySelector('a[href=\"#account-deletion\"]').focus()");
+        $browser->keys('nav[aria-label="Profile sections"] a[href="#account-deletion"]', WebDriverKeys::ENTER)
+            ->assertScript('location.hash', '#account-deletion')
+            ->assertScript("document.querySelector('#account-deletion').closest('form') === null", true)
+            ->assertSee('Danger zone')->click('section#account-deletion button')->waitFor('[role="dialog"]')
+            ->assertSee('Are you sure you want to delete your account?')->assertPresent('[role="dialog"] input[type="password"]')
+            ->screenshot('profile-danger-zone-mobile')
+            ->click('[role="dialog"] button')->waitUntilMissing('[role="dialog"]')
+            ->assertPresent('#name')->assertPresent('#current_password');
     });
 });
 

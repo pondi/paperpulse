@@ -1,6 +1,7 @@
 <?php
 
 use App\Contracts\Services\TextAnalysisContract;
+use App\Models\Category;
 use App\Models\File;
 use App\Models\OrganizationAlias;
 use App\Models\User;
@@ -28,6 +29,29 @@ it('saves owner naming rules and aliases and uses them before provider calls', f
     expect($file->primaryFolder->name)->toBe('Agreements')->and($file->primaryFolder->parent->name)->toBe('Birch house')
         ->and($file->primaryFolder->parent->parent->name)->toBe('Homes');
     $this->get(route('preferences.index'))->assertInertia(fn ($page) => $page->where('organizationAliases.0.canonical_name', 'Birch house'));
+});
+
+it('resets application preferences without changing organization choices or feedback', function (): void {
+    $user = User::factory()->create();
+    $category = Category::create(['user_id' => $user->id, 'name' => 'Office', 'slug' => 'office']);
+    $preferences = UserPreference::create(array_replace(UserPreference::defaultPreferences(), [
+        'user_id' => $user->id,
+        'currency' => 'EUR',
+        'default_category_id' => $category->id,
+        'organization_naming_rules' => ['building_root' => 'Properties', 'work_root' => 'Employment'],
+        'organization_feedback_reset_at' => now()->subDay(),
+    ]));
+    $alias = OrganizationAlias::factory()->create(['user_id' => $user->id, 'canonical_name' => 'Birch house']);
+    $feedbackResetAt = $preferences->organization_feedback_reset_at;
+
+    $this->actingAs($user)->post(route('preferences.reset'))->assertRedirect()->assertSessionHasNoErrors();
+
+    $preferences->refresh();
+    expect($preferences->currency)->toBe('NOK')
+        ->and($preferences->default_category_id)->toBeNull()
+        ->and($preferences->organization_naming_rules)->toBe(['building_root' => 'Properties', 'work_root' => 'Employment'])
+        ->and($preferences->organization_feedback_reset_at->equalTo($feedbackResetAt))->toBeTrue()
+        ->and($alias->fresh())->not->toBeNull();
 });
 
 it('isolates aliases and validates owned IDs and folder labels', function () {

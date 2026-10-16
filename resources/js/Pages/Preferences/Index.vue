@@ -8,17 +8,18 @@
       </h2>
     </template>
 
-    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+    <div class="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
       <nav aria-label="Settings sections" class="flex flex-wrap gap-2 rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
-        <a v-for="section in settingsSections" :key="section.id" :href="`#preferences-${section.id}`" class="rounded-md px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-amber-50 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ section.label }}</a>
+        <a v-for="section in settingsSections" :key="section.id" :href="`#preferences-${section.id}`" class="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-zinc-700 hover:bg-amber-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ section.label }}</a>
       </nav>
       <section aria-labelledby="application-preferences-heading" class="flex flex-col gap-6">
         <header class="px-4 sm:px-0 text-zinc-900 dark:text-zinc-100">
           <h2 id="application-preferences-heading" class="text-lg font-semibold">Application preferences</h2>
           <p class="text-sm text-zinc-600 dark:text-zinc-400">Save application preferences saves language, processing, notifications, display and scanner settings together. Organization choices are saved separately.</p>
-          <p aria-live="polite" class="mt-2 text-sm">{{ form.isDirty ? 'Unsaved application preferences' : form.recentlySuccessful ? 'Application preferences saved' : 'No unsaved application preferences' }}</p>
+          <p role="status" aria-live="polite" class="mt-2 text-sm">{{ form.isDirty ? 'Unsaved application preferences' : resetNotice ? 'Application preferences reset' : form.recentlySuccessful ? 'Application preferences saved' : 'No unsaved application preferences' }}</p>
         </header>
-      <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
+        <form @submit.prevent="updatePreferences" class="flex flex-col gap-6">
+          <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
         <section id="preferences-general" class="scroll-mt-24">
           <header>
             <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
@@ -29,8 +30,7 @@
             </p>
           </header>
 
-          <form @submit.prevent="updatePreferences" class="mt-6 space-y-6">
-            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
                 <InputLabel for="language" :value="__('language')" />
                 <select
@@ -91,7 +91,6 @@
                 <InputError class="mt-2" :message="form.errors.currency" />
               </div>
             </div>
-          </form>
         </section>
       </div>
 
@@ -483,12 +482,12 @@
         </section>
       </div>
 
-      <div class="flex items-center gap-4 pb-6">
-        <PrimaryButton type="button" dusk="save-application-preferences" :disabled="form.processing" @click="updatePreferences">
+          <div class="flex flex-wrap items-center gap-3 pb-6">
+        <PrimaryButton type="submit" dusk="save-application-preferences" :disabled="form.processing">
           Save application preferences
         </PrimaryButton>
 
-        <SecondaryButton :disabled="form.processing" @click="resetPreferences">
+        <SecondaryButton type="button" dusk="reset-application-preferences" :disabled="form.processing" @click="resetPreferences">
           Reset application preferences
         </SecondaryButton>
 
@@ -502,12 +501,13 @@
             {{ __('saved') }}
           </p>
         </Transition>
-      </div>
+          </div>
+        </form>
       </section>
       <section id="preferences-organization" class="scroll-mt-24 flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800 dark:text-zinc-100">
         <h2 class="text-lg font-medium">Organization choices</h2>
         <p>Saved labels and aliases guide folder placement. Pinned folders and manual placements stay fixed. Declined suggestions remain suppressed until their evidence changes.</p>
-        <p aria-live="polite" class="text-sm">{{ organization.isDirty ? 'Unsaved organization choices' : organization.recentlySuccessful ? 'Organization choices saved' : 'No unsaved organization choices' }}</p>
+        <p role="status" aria-live="polite" class="text-sm">{{ organization.isDirty ? 'Unsaved organization choices' : organization.recentlySuccessful ? 'Organization choices saved' : 'No unsaved organization choices' }}</p>
         <p class="text-sm text-zinc-600 dark:text-zinc-400">Save organization choices saves only the folder names, template and aliases below.</p>
         <form class="flex flex-col gap-4" @submit.prevent="saveOrganization">
           <label class="flex flex-col gap-2">Building folder name<input v-model="organization.naming_rules.building_root" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
@@ -588,9 +588,9 @@ const props = defineProps({
 
 const settingsSections = [
   { id: 'general', label: 'Language & timezone' },
-  { id: 'display', label: 'Display' },
-  { id: 'notifications', label: 'Notifications' },
   { id: 'processing', label: 'Processing' },
+  { id: 'notifications', label: 'Notifications' },
+  { id: 'display', label: 'Display' },
   { id: 'scanner', label: 'Scanner' },
   { id: 'organization', label: 'Organization choices' },
   { id: 'archive', label: 'Existing archive' },
@@ -654,12 +654,13 @@ const startBackfill = () => backfill.post(route('preferences.backfill.start'), {
 const resumeBackfill = () => backfill.post(route('preferences.backfill.resume', props.organizationBackfill.id), { preserveScroll: true });
 
 const page = usePage();
+const resetNotice = ref(false);
 const __ = (key) => {
   const messages = page.props?.language?.messages || {};
   return messages[key] || key;
 };
 
-const form = useForm({
+const defaultPreferenceValues = () => ({
   language: props.preferences.language || 'en',
   timezone: props.preferences.timezone || 'UTC',
   date_format: props.preferences.date_format || 'Y-m-d',
@@ -693,7 +694,10 @@ const form = useForm({
   pulsedav_realtime_sync: props.preferences.pulsedav_realtime_sync ?? false,
 });
 
+const form = useForm(defaultPreferenceValues());
+
 const updatePreferences = () => {
+  resetNotice.value = false;
   form.patch(route('preferences.update'), {
     preserveScroll: true,
     onSuccess: () => {
@@ -710,7 +714,9 @@ const resetPreferences = () => {
     router.post(route('preferences.reset'), {}, {
       preserveScroll: true,
       onSuccess: () => {
-        router.reload();
+        form.defaults(defaultPreferenceValues());
+        form.reset();
+        resetNotice.value = true;
       },
     });
   }

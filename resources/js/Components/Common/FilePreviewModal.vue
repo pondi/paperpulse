@@ -1,7 +1,8 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { Link } from '@inertiajs/vue3';
-import Modal from '@/Components/Common/Modal.vue';
+import WorkspaceDrawer from '@/Components/Common/WorkspaceDrawer.vue';
+import { ArrowLeftIcon, ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline';
 import FileInspector from '@/Components/Domain/FileInspector.vue';
 import DocumentPreview from '@/Components/Domain/DocumentPreview.vue';
 const props = defineProps({ show: Boolean, item: { type: Object, default: null } });
@@ -12,12 +13,15 @@ watch(() => props.show, () => { dirty.value = false; });
 function close() { if (!dirty.value || confirm('Discard unsaved changes?')) emit('close'); }
 </script>
 <template>
-    <Modal :show="show" max-width="6xl" @close="close" v-slot="{ titleId }">
-        <div class="max-h-[85vh] overflow-auto">
-            <div class="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"><h2 :id="titleId" class="truncate text-sm font-semibold">{{ item?.title || 'Document workspace' }}</h2><button class="workspace-button" aria-label="Close preview" @click="close">Close</button></div>
-            <FileInspector v-if="show && fileId" :file-id="Number(fileId)" @dirty="dirty = $event" />
-            <DocumentPreview v-else-if="item?.file" :file="item.file" />
-            <div class="border-t border-zinc-200 p-3 dark:border-zinc-800"><Link v-if="fileId" :href="route('files.show', fileId)" class="workspace-button" @click="event => { if (dirty && !confirm('Discard unsaved changes?')) event.preventDefault(); else emit('close'); }">Open document workspace</Link></div>
-        </div>
-    </Modal>
+    <WorkspaceDrawer :show="show" :title="item?.title || 'Document preview'" @close="close">
+        <FileInspector v-if="show && fileId" :file-id="Number(fileId)" framed @dirty="dirty = $event">
+            <template #leading><button class="workspace-button shrink-0" aria-label="Close preview" @click="close"><ArrowLeftIcon class="h-4 w-4" aria-hidden="true" /><span class="hidden sm:inline">Back</span></button></template>
+            <template #actions><Link :href="route('files.show', fileId)" class="workspace-button shrink-0" aria-label="Open document workspace" @click="event => { if (dirty && !confirm('Discard unsaved changes?')) event.preventDefault(); else emit('close'); }"><ArrowTopRightOnSquareIcon class="h-4 w-4" aria-hidden="true" /></Link></template>
+        </FileInspector>
+        <template v-else>
+            <header class="flex min-h-[48px] shrink-0 items-center gap-3 border-b border-zinc-200 px-3 py-1.5 dark:border-zinc-800"><button class="workspace-button" aria-label="Close preview" @click="close"><ArrowLeftIcon class="h-4 w-4" /></button><h2 class="truncate text-sm font-semibold">{{ item?.title || 'Document preview' }}</h2></header>
+            <DocumentPreview v-if="item?.file" :file="item.file" framed class="min-h-0 flex-1" />
+            <p v-else class="p-4 text-sm text-zinc-500">No preview available for this item.</p>
+        </template>
+    </WorkspaceDrawer>
 </template>

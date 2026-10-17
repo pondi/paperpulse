@@ -1,5 +1,5 @@
 <template>
-    <AuthenticatedLayout>
+    <AuthenticatedLayout framed>
         <Head :title="parentName ? `Subfolders in ${parentName}` : 'Collections'" />
         <template #header>
             <div class="flex flex-wrap items-start justify-between gap-3">
@@ -14,16 +14,15 @@
             </div>
         </template>
 
-        <div class="space-y-5">
-            <Breadcrumbs :crumbs="folderCrumbs" />
-            <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <div class="workspace-stack">
+            <Breadcrumbs v-if="parentName" :crumbs="folderCrumbs" />
+            <div v-if="parentName" class="flex flex-wrap items-center justify-between gap-3 text-sm">
                 <Link v-if="parentName" :href="breadcrumbs[breadcrumbs.length - 1].href" class="min-w-0 text-zinc-700 underline underline-offset-4 [overflow-wrap:anywhere] dark:text-zinc-300">Back to {{ parentName }}</Link>
-                <Link :href="route('collections.organization.index')" class="text-zinc-600 underline underline-offset-4 dark:text-zinc-400">Review folder recommendations</Link>
             </div>
             <p v-if="actionError" role="alert" class="text-sm text-red-700 dark:text-red-400">{{ actionError }}</p>
             <p v-if="actionMessage" role="status" class="text-sm text-zinc-700 dark:text-zinc-300">{{ actionMessage }}</p>
 
-            <form role="search" aria-label="Find folders" class="workspace-surface grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_auto_auto]" @submit.prevent="applyFilters">
+            <form role="search" aria-label="Find folders" class="workspace-surface grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_auto_auto]" @submit.prevent="applyFilters">
                 <div class="min-w-0 sm:col-span-2 xl:col-span-1">
                     <label for="folder-search" class="mb-1 block text-sm font-medium">{{ parentName ? 'Search these subfolders' : 'Search top-level folders' }}</label>
                     <input id="folder-search" v-model="searchQuery" @input="debounceSearch" type="search" maxlength="255" placeholder="Name or description" class="workspace-filter w-full" />
@@ -47,24 +46,24 @@
             <div v-if="requestError" role="alert" class="flex flex-wrap items-center gap-3 text-sm text-red-700 dark:text-red-400">
                 <p>{{ requestError }}</p><button class="workspace-button" @click="applyFilters">Retry</button>
             </div>
-            <section aria-label="Folders" :aria-busy="loading" class="space-y-4">
+            <section aria-label="Folders" :aria-busy="loading" class="workspace-fill flex min-h-0 flex-col gap-3">
                 <div class="flex flex-wrap items-center justify-between gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                     <p role="status">{{ loading ? 'Loading folders…' : `${collections.total ?? 0} folder${collections.total === 1 ? '' : 's'}` }}</p>
                     <button v-if="searchQuery || showArchived" class="workspace-button" @click="resetFilters">Reset filters</button>
                 </div>
-                <ul v-if="collections.data.length" class="grid items-start gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                <ul v-if="collections.data.length" class="workspace-fill workspace-scroll grid content-start items-start gap-3 overflow-y-auto p-1 md:grid-cols-2 2xl:grid-cols-3" scroll-region>
                     <li v-for="collection in collections.data" :key="collection.id" class="min-w-0">
                         <CollectionCard :collection="collection" :busy="actionBusy" @edit="editCollection" @archive="runAction($event, 'Archive')" @unarchive="runAction($event, 'Restore')" @delete="runAction($event, 'Delete')" />
                     </li>
                 </ul>
-                <div v-else-if="!loading" class="workspace-surface flex flex-col items-center gap-3 px-4 py-12 text-center">
+                <div v-else-if="!loading" class="workspace-fill workspace-surface flex flex-col items-center justify-center gap-3 overflow-auto px-4 py-6 text-center">
                     <FolderIcon class="h-10 w-10 text-zinc-400" aria-hidden="true" />
                     <h2 class="max-w-full text-lg font-medium [overflow-wrap:anywhere]">{{ searchQuery ? 'No folders match your search' : parentName ? `No subfolders in ${parentName}` : 'No collections' }}</h2>
                     <p class="max-w-md text-sm text-zinc-600 dark:text-zinc-400">{{ searchQuery ? 'Try another name or description, or reset the filters.' : 'Create a folder to keep related files together. You can add files after creating it.' }}</p>
                     <button v-if="searchQuery" class="workspace-button" @click="resetFilters">Clear search</button>
                     <button v-else class="workspace-primary" @click="openCreateModal">{{ parentName ? 'Create Subfolder' : 'Create Collection' }}</button>
                 </div>
-                <nav v-if="collections.last_page > 1" aria-label="Folder pagination" class="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800">
+                <nav v-if="collections.last_page > 1" aria-label="Folder pagination" class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800">
                     <span class="text-zinc-600 dark:text-zinc-400">{{ collections.from }}–{{ collections.to }} of {{ collections.total }} folders · Page {{ collections.current_page }} of {{ collections.last_page }}</span>
                     <div class="flex gap-2">
                         <Link v-if="collections.prev_page_url" :href="collections.prev_page_url" class="workspace-button" @click="cancelSearch">Previous</Link>

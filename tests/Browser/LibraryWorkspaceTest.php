@@ -29,7 +29,7 @@ test('library filters and saved views work through their complete browser lifecy
         $saved = SavedSearch::where('user_id', $user->id)->firstOrFail();
         expect($saved->filters['query'])->toBe('Business')->and($saved->filters['display'])->toBe('grid');
         $browser->refresh()->waitFor('@library-query')->assertInputValue('@library-query', 'Business')
-            ->click('@library-file-'.$file->id)->waitForText('Document information')
+            ->click('@library-file-'.$file->id)->waitFor('.inspector-content')->press('Details')->waitForText('Document information')
             ->click('a[aria-label="Open document in full view"]')->waitFor('@workspace-back')->click('@workspace-back')
             ->waitFor('@library-query')->assertInputValue('@library-query', 'Business')->assertQueryStringHas('saved_search', (string) $saved->id)
             ->click('aside a[href$="/saved-views"]')->waitForText('Your views')->screenshot('saved-views-desktop')
@@ -64,21 +64,21 @@ test('document workspace previews the original beside extracted information and 
             $browser->resize(1440, 1000);
             $this->loginAs($browser, $user);
             $browser->visit('/library')->waitFor('@library-file-'.$file->id)->click('@library-file-'.$file->id)
-                ->waitForText('Document information')->assertSee('A twelve-month service agreement')->assertPresent('iframe[title]')
+                ->waitFor('[aria-label="Selected document"]')->press('Details')->waitForText('Document information')->assertSee('A twelve-month service agreement')->assertPresent('iframe[title]')
                 ->assertPresent('a[target="_blank"][rel="noopener noreferrer"]')->screenshot('document-workspace-desktop');
             $browser->resize(390, 844)->screenshot('document-workspace-mobile');
             $browser->assertSee('Document information')->assertSee('A twelve-month service agreement');
             expect($browser->script('return document.documentElement.scrollWidth <= window.innerWidth')[0])->toBeTrue();
-            $browser->click('button[aria-label="Open navigation"]')->waitFor('button[aria-label="Close navigation"]')
+            $browser->click('button[aria-label="Back to files"]')->waitUntilMissing('[aria-label="Selected document"]')->click('button[aria-label="Open navigation"]')->waitFor('button[aria-label="Close navigation"]')
                 ->click('[role="dialog"] a[href$="/library"]')->waitFor('@library-query')->waitUntilMissing('[role="dialog"]')
                 ->screenshot('library-mobile');
             expect($browser->script('return document.documentElement.scrollWidth <= window.innerWidth')[0])->toBeTrue();
             $browser->click('@add-document')->waitForText('Upload files')->assertSee('Scan a document')->assertSee('Import from scanner');
             $browser->click('@add-document')->waitUntilMissing('[role="menu"]')->resize(1440, 1000)->visit('/dashboard')->waitFor('input[aria-label="Search your library"]')->type('input[aria-label="Search your library"]', 'Northstar')
                 ->waitFor('ul[aria-label="Search results"] button')->click('ul[aria-label="Search results"] button')
-                ->waitForText('Open document workspace')->resize(390, 844)->assertSee('Northstar Studio service agreement');
+                ->waitFor('a[aria-label="Open document workspace"]')->resize(390, 844)->assertSee('Northstar Studio service agreement');
             expect($browser->script('return document.documentElement.scrollWidth <= window.innerWidth')[0])->toBeTrue();
-            $browser->click('[role="dialog"] a[href$="/files/'.$file->id.'"]')->waitForText('Document information');
+            $browser->click('[role="dialog"] a[href$="/files/'.$file->id.'"]')->waitFor('.inspector-framed')->press('Details')->waitForText('Document information');
         });
     } finally {
         Storage::disk('paperpulse')->delete($path);
@@ -141,7 +141,7 @@ it('keeps library filters visible when collapsed and clears them without duplica
         $browser->pause(250);
         $browser->screenshot('library-discovery-dark');
         $browser->script('document.documentElement.classList.remove("dark")');
-        $browser->resize(1440, 1000)->click('summary')->assertSee('Invoices')
+        $browser->resize(1440, 1000)->click('button[aria-controls="library-more-filters"]')->click('summary')->assertSee('Invoices')
             ->assertPresent('nav[aria-label="Specialist lists"] a[href$="/vouchers"]');
     });
 });
@@ -161,5 +161,68 @@ it('distinguishes first use and validation errors and preserves pagination when 
         $browser->waitFor('[role="alert"]')->assertSee('The end date must be on or after the start date.')
             ->assertInputValue('date_to', '2026-10-01')->press('Clear all filters')->waitUntilMissing('[role="alert"]')
             ->waitForText('26 files');
+    });
+});
+
+it('keeps workspaces inside the viewport and restores the list after a sliding preview', function (): void {
+    $user = $this->createUser();
+    $folder = Collection::factory()->for($user)->create(['name' => 'Workspace collection']);
+    Collection::factory()->count(14)->for($user)->create(['parent_id' => $folder->id]);
+    $files = File::factory()->count(26)->for($user)->create(['status' => 'completed', 'fileName' => 'Workspace document.pdf']);
+    foreach ($files as $file) {
+        $file->collections()->attach($folder);
+    }
+
+    $this->browse(function (Browser $browser) use ($user, $folder): void {
+        $browser->loginAs($user);
+        foreach ([[1440, 900], [1280, 800], [1920, 1080]] as [$width, $height]) {
+            foreach (['/dashboard', '/library', '/collections', '/collections/'.$folder->id] as $path) {
+                $browser->resize($width, $height)->visit($path)->waitFor('.workspace-frame')->pause(150)
+                    ->assertScript('document.documentElement.scrollHeight <= innerHeight + 1', true)
+                    ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+                    ->assertScript('document.querySelector("#main-content").getBoundingClientRect().bottom <= innerHeight + 1', true);
+                if ($path !== '/collections') {
+                    $browser->assertScript('document.querySelector(".file-list").clientHeight > 250', true);
+                }
+            }
+        }
+        $browser->resize(1440, 900)->visit('/library')->waitFor('.file-list');
+        $browser->script('document.querySelector(".file-list").scrollTop = 300; window.workspaceScroll = document.querySelector(".file-list").scrollTop; window.workspaceButton = document.querySelectorAll("[dusk^=library-file-]")[5]; window.workspaceButton.click();');
+        $browser->waitFor('[aria-label="Selected document"]')->waitFor('.inspector-content')->pause(350)
+            ->assertScript('document.querySelector("[aria-label=\"Selected document\"]").getBoundingClientRect().width > innerWidth - 280', true)
+            ->assertScript('document.querySelector(".inspector-content").getBoundingClientRect().bottom <= innerHeight + 1', true)
+            ->assertScript('document.querySelector("[aria-label=\"Document preview\"]").getBoundingClientRect().top < 65', true)
+            ->assertScript('document.querySelector("[aria-label=\"Selected document\"]").querySelectorAll("header").length', 1)
+            ->screenshot('workspace-redesign-preview-desktop')
+            ->click('button[aria-label="Next document"]')->waitFor('.inspector-content')
+            ->click('button[aria-label="Previous document"]')->waitFor('.inspector-content');
+        $browser->keys('button[aria-label="Back to files"]', WebDriverKeys::ESCAPE)
+            ->waitUntilMissing('[aria-label="Selected document"]')->pause(250)
+            ->assertScript('document.querySelector(".file-list").scrollTop === window.workspaceScroll', true)
+            ->assertScript('document.activeElement === window.workspaceButton', true)
+            ->screenshot('workspace-redesign-library-desktop');
+        $browser->script('document.documentElement.classList.add("dark"); window.workspaceButton.click();');
+        $browser->waitFor('.inspector-content')->pause(350)->screenshot('workspace-redesign-preview-dark')
+            ->click('button[aria-label="Back to files"]')->waitUntilMissing('[aria-label="Selected document"]');
+        $browser->script('document.documentElement.classList.remove("dark")');
+        foreach ([320, 390, 768] as $width) {
+            $browser->resize($width, 844)->visit('/library')->waitFor('.file-list');
+            $browser->script('document.querySelector("[dusk^=library-file-]").click()');
+            $browser->waitFor('[aria-label="Selected document"]')->waitFor('.inspector-content')->pause(350)
+                ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+                ->assertScript('document.querySelector("[aria-label=\"Selected document\"]").getBoundingClientRect().bottom <= innerHeight + 1', true)
+                ->press('Details')->waitForText('Document information')->press('Hide details')
+                ->screenshot('workspace-redesign-preview-'.$width)
+                ->click('button[aria-label="Back to files"]')->waitUntilMissing('[aria-label="Selected document"]');
+        }
+        $browser->resize(1440, 900)->visit('/collections/'.$folder->id)->waitForText('Subfolders')
+            ->screenshot('workspace-redesign-collection-desktop')->press('Details')
+            ->waitFor('[data-folder-details]')->assertSee('Files directly here')
+            ->click('[data-public-sharing] summary')->assertSee('Public Sharing');
+        $browser->resize(320, 844)->visit('/collections/'.$folder->id)->waitFor('.file-list')
+            ->assertScript('document.querySelector(".file-list").getBoundingClientRect().bottom <= innerHeight', true)
+            ->assertScript('document.querySelector(".workspace-page").scrollHeight <= document.querySelector(".workspace-page").clientHeight + 1', true)
+            ->press('Folders')->waitForText('Browse folders')->press('Close')->waitUntilMissing('[role="dialog"]');
+        $browser->resize(1440, 900)->visit('/dashboard')->waitFor('.file-list')->screenshot('workspace-redesign-home-desktop');
     });
 });

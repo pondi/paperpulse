@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { ArrowLeftIcon } from '@heroicons/vue/24/outline';
 import FileInspector from '@/Components/Domain/FileInspector.vue';
 const props = defineProps({ file: { type: Object, required: true }, extractedEntities: { type: Array, default: () => [] }, hasLegacyData: Boolean });
 const dirty = ref(false);
@@ -12,9 +13,10 @@ onBeforeUnmount(() => { removeBefore?.(); window.removeEventListener('beforeunlo
 </script>
 
 <template>
-    <AuthenticatedLayout>
+    <AuthenticatedLayout framed document-focus>
         <Head :title="file.name || 'Document workspace'" />
-        <template #header><div class="flex flex-col gap-2"><Link dusk="workspace-back" :href="file.back_url || route('library.index')" class="self-start text-xs text-zinc-500">← {{ file.back_label || 'Back to Library' }}</Link><h1 class="break-words text-xl font-semibold">{{ file.name }}</h1></div></template>
-        <FileInspector :file-id="file.id" :initial="{ file, extractedEntities }" @dirty="dirty = $event" />
+        <FileInspector :file-id="file.id" :initial="{ file, extractedEntities }" framed @dirty="dirty = $event">
+            <template #leading><Link dusk="workspace-back" :href="file.back_url || route('library.index')" class="workspace-button shrink-0" :aria-label="file.back_label || 'Back to Library'"><ArrowLeftIcon class="h-4 w-4" aria-hidden="true" /><span class="hidden sm:inline">{{ file.back_label || 'Back to Library' }}</span></Link></template>
+        </FileInspector>
     </AuthenticatedLayout>
 </template>

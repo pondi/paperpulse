@@ -165,11 +165,13 @@ if (scenario === 'folder content priority') {
             stats: { total_files: populated ? 1 : 0, documents_count: populated ? 1 : 0, receipts_count: 0 },
             children: { data: [{ id: 2, name: 'Contracts' }] }, isOwner: true
         });
-        assert.ok(html.includes('aria-label="Subfolders"'));
-        assert.ok(html.indexOf('Subfolders') < html.indexOf('<details'));
-        assert.ok(html.indexOf('Files in this folder') < html.indexOf('<details'));
-        assert.ok(html.includes('<summary class="cursor-pointer'));
-        assert.ok(!html.includes('<details open'));
+        const folders = await render('Components/Domain/CollectionFolderNavigation.vue', { children: { data: [{ id: 2, name: 'Contracts' }] }, collectionId: 1, isOwner: true });
+        assert.ok(folders.includes('aria-label="Subfolders"'));
+        assert.ok(folders.includes('aria-label="Folder navigation"'));
+        assert.ok(folders.includes('/collections/2'));
+        assert.ok(html.includes('Files in this folder'));
+        assert.ok(html.includes('Details'));
+        assert.ok(!html.includes('data-public-sharing'));
         assert.ok(!html.includes('sm:grid-cols-3'));
         assert.ok(html.includes('Search this folder'));
         assert.ok(html.includes('across all pages'));
@@ -257,10 +259,9 @@ if (scenario === 'scanner onboarding') {
     }
 }
 if (scenario === 'mobile dashboard amounts') {
-    const html = await render('Pages/Dashboard.vue', { archiveStats: { total: 1, failed: 0, needs_review: 0, processing: 0 },
-        recentUploads: [{ id: 5, name: 'Receipt.pdf', original_name: 'Receipt.pdf', status: 'completed', uploaded_at: '2026-10-06',
-            identity: { title: 'Long merchant name', amount: 42, currency: 'EUR' } }] });
-    for (const text of ['Long merchant name', '42 EUR', '2026-10-06', '/files/5', 'No action needed']) assert.ok(html.includes(text), text);
+    const files = [{ id: 5, name: 'Receipt.pdf', original_name: 'Receipt.pdf', status: 'completed', uploaded_at: '2026-10-06', identity: { title: 'Long merchant name', amount: 42, currency: 'EUR' } }];
+    const html = await render('Pages/Dashboard.vue', { archiveStats: { total: 1, failed: 0, needs_review: 0, processing: 0 }, recentUploads: files }) + await render('Components/Domain/FileWorkspace.vue', { files });
+    for (const text of ['Long merchant name', '42 EUR', '2026-10-06', 'library-file-5', 'No action needed']) assert.ok(html.includes(text), text);
     assert.ok(!html.includes('hidden text-sm'));
 }
 if (scenario === 'receipt totals review') {
@@ -356,8 +357,8 @@ if (scenario === 'archive home') {
         recentUploads: [{ id: 10, name: 'New invoice.pdf', file_type: 'invoice', status: 'failed', uploaded_at: '2026-10-06T10:00:00Z' },
             { id: 11, name: 'New contract.pdf', file_type: 'contract', status: 'completed', uploaded_at: '2026-10-06T09:00:00Z' }],
         expiringVouchers: { total: 0, items: [] }, endingWarranties: { total: 0, items: [] } };
-    const html = await render('Pages/Dashboard.vue', props);
-    for (const text of ['Needs attention', 'Recent uploads', 'New invoice.pdf', 'New contract.pdf', '/files/10', '/files/11',
+    const html = await render('Pages/Dashboard.vue', props) + await render('Components/Domain/FileWorkspace.vue', { files: props.recentUploads });
+    for (const text of ['Needs attention', 'Recent uploads', 'New invoice.pdf', 'New contract.pdf', 'library-file-10', 'library-file-11',
         '39 files could not be processed', '2 files need a review', '3 files processing', 'view=needs-review&amp;status=failed']) assert.ok(html.includes(text), text);
     assert.ok(html.indexOf('Needs attention') < html.indexOf('Recent uploads'));
     assert.ok(!html.includes('No action needed'));

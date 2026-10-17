@@ -11,6 +11,7 @@ import ThemeToggle from '@/Components/Common/ThemeToggle.vue';
 import FilePreviewModal from '@/Components/Common/FilePreviewModal.vue';
 import Toast from '@/Components/Common/Toast.vue';
 
+defineProps({ framed: Boolean, documentFocus: Boolean });
 const page = usePage();
 const sidebarOpen = ref(false);
 const navigationButton = ref(null);
@@ -42,7 +43,7 @@ const addActions = [
 </script>
 
 <template>
-    <div class="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div class="min-h-screen bg-zinc-50 dark:bg-zinc-950" :class="{ 'workspace-frame': framed, 'document-focus': documentFocus }">
         <a href="#main-content" class="sr-only z-[100] rounded-md bg-zinc-900 px-4 py-3 text-sm font-medium text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to content</a>
         <TransitionRoot as="template" :show="sidebarOpen" @after-leave="restoreNavigationFocus">
             <Dialog class="relative z-50 lg:hidden" @close="sidebarOpen = false">
@@ -60,10 +61,10 @@ const addActions = [
                 </div>
             </Dialog>
         </TransitionRoot>
-        <aside class="fixed inset-y-0 left-0 z-40 hidden w-60 lg:block"><AppSidebar /></aside>
+        <aside v-if="!documentFocus" class="fixed inset-y-0 left-0 z-40 hidden w-60 lg:block"><AppSidebar /></aside>
 
-        <div class="min-w-0 lg:pl-60">
-            <header class="app-toolbar sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-zinc-200 bg-white px-4 sm:gap-5 sm:px-6 lg:px-8 dark:border-zinc-800 dark:bg-zinc-900">
+        <div class="app-body min-w-0 lg:pl-60">
+            <header v-if="!documentFocus" class="app-toolbar sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-4 sm:gap-5 sm:px-6 lg:px-8 dark:border-zinc-800 dark:bg-zinc-900">
                 <button ref="navigationButton" type="button" aria-label="Open navigation" class="rounded p-2 text-zinc-600 hover:bg-zinc-100 lg:hidden dark:text-zinc-300 dark:hover:bg-zinc-800" @click="sidebarOpen = true"><Bars3Icon class="h-5 w-5" /></button>
                 <div class="flex min-w-0 flex-1 items-center">
                     <div v-if="!['/library', '/search'].includes(page.url.split('?')[0])" class="hidden w-full max-w-xl sm:block"><SearchBar @preview="openPreview" /></div>
@@ -95,9 +96,9 @@ const addActions = [
                     </Menu>
                 </div>
             </header>
-            <WorkspaceNavigation />
+            <WorkspaceNavigation v-if="!documentFocus" />
             <main id="main-content" tabindex="-1" class="mx-auto min-w-0 max-w-[1600px] px-4 py-6 focus:outline-none sm:px-6 lg:px-8 lg:py-8">
-                <header v-if="$slots.header" class="mb-6"><slot name="header" /></header>
+                <header v-if="$slots.header" class="workspace-heading mb-6"><slot name="header" /></header>
                 <div class="workspace-page"><slot /></div>
             </main>
         </div>

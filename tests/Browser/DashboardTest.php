@@ -26,7 +26,7 @@ test('dashboard identifies failed work and opens the filtered review queue', fun
 
     $this->browse(function (Browser $browser) use ($user, $file): void {
         $this->loginAs($browser, $user)->assertSee('1 file could not be processed')
-            ->assertPresent('a[href$="/files/'.$file->id.'"]')
+            ->assertPresent('@library-file-'.$file->id)
             ->click('main a[href*="status=failed"]')->waitFor('@library-query')
             ->assertQueryStringHas('view', 'needs-review')->assertQueryStringHas('status', 'failed')
             ->assertSee('Failed statement.pdf');

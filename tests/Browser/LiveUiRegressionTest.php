@@ -864,8 +864,16 @@ it('keeps folder content ahead of collapsed public sharing at desktop and mobile
     Collection::factory()->for($user)->create(['name' => 'Contracts', 'parent_id' => $folder->id]);
     $this->browse(function (Browser $browser) use ($user, $folder): void {
         foreach ([1440, 390] as $width) {
-            $browser->resize($width, 900)->loginAs($user)->visit('/collections/'.$folder->id)->waitForText('Subfolders');
-            $browser->assertScript("document.querySelector('section[aria-label=Subfolders] h2').getBoundingClientRect().bottom < innerHeight", true)
+            $browser->resize($width, 900)->loginAs($user)->visit('/collections/'.$folder->id)->waitFor('.file-list');
+            if ($width < 768) {
+                $browser->press('Folders')->waitForText('Browse folders');
+            }
+            $browser->assertScript("Array.from(document.querySelectorAll('section[aria-label=Subfolders] h2')).some(el => el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().bottom < innerHeight)", true);
+            if ($width < 768) {
+                $browser->press('Close')->waitUntilMissing('[role="dialog"]');
+            }
+            $browser
+                ->press('Details')->waitFor('[data-public-sharing]')
                 ->assertScript("document.querySelector('[data-public-sharing]').open", false)
                 ->click('[data-public-sharing] summary')->assertSee('Public Sharing');
         }
@@ -1094,15 +1102,15 @@ it('distinguishes direct mixed file counts from the folder subtree total', funct
     $this->browse(function (Browser $browser) use ($user, $root, $leaf): void {
         $browser->loginAs($user)->visit('/collections')->waitForText('Building')
             ->assertSee('direct files')->assertSee('1 subfolder');
-        $browser->visit('/collections/'.$root->id)->waitFor('[data-folder-details]')->click('[data-folder-details] summary')->waitForText('Files including subfolders')
+        $browser->visit('/collections/'.$root->id)->press('Details')->waitFor('[data-folder-details]')->waitForText('Files including subfolders')
             ->assertScript("Object.fromEntries(Array.from(document.querySelectorAll('dl > div')).map(el => [el.querySelector('dt')?.textContent, el.querySelector('dd')?.textContent]))['Files including subfolders']", '3')
             ->assertScript("Array.from(document.querySelectorAll('dt')).find(el => el.textContent === 'Files directly here').nextElementSibling.textContent", '0')
-            ->visit('/collections/'.$leaf->id)->waitFor('[data-folder-details]')->click('[data-folder-details] summary')->waitForText('Documents directly here');
+            ->visit('/collections/'.$leaf->id)->press('Details')->waitFor('[data-folder-details]')->waitForText('Documents directly here');
         foreach (['Documents directly here', 'Receipts directly here', 'Invoices directly here'] as $label) {
             $browser->assertScript("Array.from(document.querySelectorAll('dt')).find(el => el.textContent === '".$label."').nextElementSibling.textContent", '1');
         }
         $leaf->files()->detach();
-        $browser->refresh()->waitFor('[data-folder-details]')->click('[data-folder-details] summary')->waitForText('Files including subfolders')
+        $browser->refresh()->press('Details')->waitFor('[data-folder-details]')->waitForText('Files including subfolders')
             ->assertScript("Array.from(document.querySelectorAll('dt')).find(el => el.textContent === 'Files including subfolders').nextElementSibling.textContent", '0');
     });
 });

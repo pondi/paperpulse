@@ -18,6 +18,7 @@ const props = defineProps({
 const defaults = { query: '', type: 'all', view: 'all', status: '', review_status: '', confidence: '', date_range: 'all', date_from: '', date_to: '', collection_id: '', tag_id: '', sort: 'newest', display: 'list' };
 const form = reactive({ ...defaults, ...props.filters });
 const expanded = ref(false);
+const reviewColumns = ref(false);
 const loading = ref(false);
 const requestError = ref('');
 let timer;
@@ -25,7 +26,6 @@ let cancelVisit;
 let sequence = 0;
 const view = computed(() => smartViews.find(item => item.value === form.view));
 const title = computed(() => props.activeView?.name || view.value?.label || 'Library');
-const description = computed(() => view.value?.description || 'Find a file, browse its contents and pick up where you left off.');
 const saveFilters = computed(() => cleanViewFilters(form));
 const dateRanges = { last_30_days: 'Last 30 days', this_month: 'This month', this_year: 'This year', custom: 'Custom dates' };
 const reviewStates = { pending: 'Pending', approved: 'Approved', flagged: 'Flagged' };
@@ -81,35 +81,35 @@ onBeforeUnmount(() => { clearTimeout(timer); cancelVisit?.cancel(); });
 </script>
 
 <template>
-    <AuthenticatedLayout>
+    <AuthenticatedLayout framed>
         <Head :title="title" />
         <template #header>
             <div class="flex flex-wrap items-start justify-between gap-4">
-                <div>
+                <div class="min-w-0 flex-1">
                     <p v-if="activeView" class="mb-1 text-xs font-semibold uppercase tracking-wider text-orange-700 dark:text-orange-400">Saved view</p>
                     <h1 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-white">{{ title }}</h1>
-                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ description }}</p>
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400" role="status">{{ loading ? 'Finding files…' : files.total + (files.total === 1 ? ' file' : ' files') }}</p>
                 </div>
                 <SaveViewButton :filters="saveFilters" :active-view="activeView" />
             </div>
         </template>
 
-        <div class="flex flex-col gap-4">
-            <section aria-label="Library filters" class="workspace-surface">
-                <form @submit.prevent="apply" class="grid grid-cols-2 items-end gap-3 p-4 lg:flex lg:flex-wrap">
+        <div class="workspace-stack">
+            <section aria-label="Library filters" class="workspace-surface max-h-[45dvh] overflow-y-auto">
+                <form @submit.prevent="apply" class="grid grid-cols-2 items-end gap-2 p-3 lg:flex lg:flex-wrap">
                     <label class="col-span-2 flex min-w-0 flex-col gap-1.5 text-xs font-medium text-zinc-600 lg:flex-1 dark:text-zinc-400">
-                        Find a file
+                        <span class="sr-only">Find a file</span>
                         <span class="relative block">
                             <MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-2.5 h-5 w-5 text-zinc-400" aria-hidden="true" />
                             <input dusk="library-query" v-model="form.query" @input="scheduleSearch" type="search" maxlength="200" placeholder="Name, merchant or content…" class="workspace-filter w-full pl-10" />
                         </span>
                     </label>
-                    <label class="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">Type
+                    <label class="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400"><span class="sr-only">Type</span>
                         <select v-model="form.type" @change="apply" aria-label="Document type" class="workspace-filter">
                             <option v-for="type in documentTypes" :key="type.value" :value="type.value">{{ type.label }}</option>
                         </select>
                     </label>
-                    <label class="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">View
+                    <label class="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400"><span class="sr-only">View</span>
                         <select :value="form.view" @change="chooseView($event.target.value)" aria-label="Library view" class="workspace-filter">
                             <option value="all">All files</option>
                             <option v-for="item in smartViews" :key="item.value" :value="item.value">{{ item.label }}</option>
@@ -118,6 +118,10 @@ onBeforeUnmount(() => { clearTimeout(timer); cancelVisit?.cancel(); });
                     <button type="button" @click="expanded = !expanded" :aria-expanded="expanded" aria-controls="library-more-filters" class="workspace-button justify-center">
                         <AdjustmentsHorizontalIcon class="h-4 w-4" aria-hidden="true" />Filters<span v-if="secondaryCount" class="rounded bg-orange-100 px-1.5 text-xs text-orange-800 dark:bg-orange-500/20 dark:text-orange-300">{{ secondaryCount }}</span>
                     </button>
+                    <select v-model="form.sort" @change="apply" aria-label="Sort files" class="workspace-filter"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name A–Z</option></select>
+                    <div role="group" aria-label="File presentation" class="flex gap-1">
+                        <button v-for="[value, label, icon] in [['list', 'List view', ListBulletIcon], ['grid', 'Grid view', Squares2X2Icon]]" :key="value" type="button" @click="chooseDisplay(value)" :aria-label="label" :aria-pressed="form.display === value" :class="form.display === value ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'" class="rounded-md border border-zinc-200 p-2.5 dark:border-zinc-700"><component :is="icon" class="h-5 w-5" aria-hidden="true" /></button>
+                    </div>
                 </form>
                 <div v-show="expanded" id="library-more-filters" class="grid gap-4 border-t border-zinc-200 p-4 sm:grid-cols-2 xl:grid-cols-3 dark:border-zinc-800">
                     <label class="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">Review status<select name="review_status" v-model="form.review_status" @change="apply" class="workspace-filter"><option value="">Any review status</option><option v-for="(label, value) in reviewStates" :key="value" :value="value">{{ label }}</option></select></label>
@@ -132,9 +136,19 @@ onBeforeUnmount(() => { clearTimeout(timer); cancelVisit?.cancel(); });
                         <label class="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">Uploaded from<input name="date_from" v-model="form.date_from" type="date" @change="apply" class="workspace-filter min-w-0" /></label>
                         <label class="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">Uploaded to<input name="date_to" v-model="form.date_to" type="date" :min="form.date_from || undefined" @change="apply" class="workspace-filter min-w-0" /></label>
                     </template>
+                    <div class="flex flex-wrap items-center justify-between gap-3 text-sm sm:col-span-2 xl:col-span-3">
+                        <Link :href="route('search', cleanViewFilters({ query: form.query, type: form.type, collection_id: form.collection_id }))" class="inline-flex items-center gap-2 rounded-md text-orange-700 dark:text-orange-400">Search by amount or document date<ArrowRightIcon class="h-4 w-4 shrink-0" aria-hidden="true" /></Link>
+                        <details class="min-w-0">
+                            <summary class="cursor-pointer rounded-md text-zinc-600 dark:text-zinc-300">Browse specialist lists</summary>
+                            <nav aria-label="Specialist lists" class="mt-3 flex flex-wrap gap-x-4 gap-y-3">
+                                <Link v-for="[label, name] in specialistLists" :key="name" :href="route(name)" class="rounded-md text-orange-700 dark:text-orange-400">{{ label }}</Link>
+                            </nav>
+                        </details>
+                    </div>
+                    <button type="button" class="workspace-button justify-self-start" :aria-pressed="reviewColumns" @click="reviewColumns = !reviewColumns">{{ reviewColumns ? 'Hide review columns' : 'Show review columns' }}</button>
                     <p class="text-xs text-zinc-500 sm:col-span-2 xl:col-span-3 dark:text-zinc-400">Upload dates describe when you added a file. Use advanced search for dates found inside documents.</p>
                 </div>
-                <div v-if="activeFilters.length" aria-label="Active filters" class="flex flex-wrap items-center gap-2 border-t border-zinc-200 p-4 dark:border-zinc-800">
+                <div v-if="activeFilters.length" aria-label="Active filters" class="flex flex-wrap items-center gap-2 border-t border-zinc-200 px-3 py-2 dark:border-zinc-800">
                     <button v-for="filter in activeFilters" :key="filter.key" type="button" @click="removeFilter(filter.key)" :aria-label="'Remove ' + filter.label" class="inline-flex max-w-full items-center gap-2 rounded-md bg-zinc-100 px-2.5 py-1.5 text-left text-xs text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700">
                         <span class="min-w-0 break-words">{{ filter.label }}</span><XMarkIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     </button>
@@ -142,30 +156,11 @@ onBeforeUnmount(() => { clearTimeout(timer); cancelVisit?.cancel(); });
                 </div>
             </section>
 
-            <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
-                <Link :href="route('search', cleanViewFilters({ query: form.query, type: form.type, collection_id: form.collection_id }))" class="inline-flex items-center gap-2 rounded-md text-orange-700 dark:text-orange-400">Search by amount or document date<ArrowRightIcon class="h-4 w-4 shrink-0" aria-hidden="true" /></Link>
-                <details class="min-w-0">
-                    <summary class="cursor-pointer rounded-md text-zinc-600 dark:text-zinc-300">Browse specialist lists</summary>
-                    <nav aria-label="Specialist lists" class="mt-3 flex flex-wrap gap-x-4 gap-y-3">
-                        <Link v-for="[label, name] in specialistLists" :key="name" :href="route(name)" class="rounded-md text-orange-700 dark:text-orange-400">{{ label }}</Link>
-                    </nav>
-                </details>
-            </div>
             <div v-if="requestError || Object.keys(errors).length" role="alert" class="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
                 <p>{{ requestError || Object.values(errors)[0] }}</p>
                 <button v-if="requestError" type="button" @click="apply" class="mt-2 rounded font-semibold underline">Try again</button>
             </div>
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <p class="text-sm text-zinc-500 dark:text-zinc-400" role="status">{{ loading ? 'Finding files…' : files.total + (files.total === 1 ? ' file' : ' files') }}</p>
-                <div class="flex flex-wrap items-center gap-3">
-                    <select v-model="form.sort" @change="apply" aria-label="Sort files" class="workspace-filter"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name A–Z</option></select>
-                    <div role="group" aria-label="File presentation" class="flex gap-1">
-                        <button v-for="[value, label, icon] in [['list', 'List view', ListBulletIcon], ['grid', 'Grid view', Squares2X2Icon]]" :key="value" type="button" @click="chooseDisplay(value)" :aria-label="label" :aria-pressed="form.display === value" :class="form.display === value ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'" class="rounded-md border border-zinc-200 p-2.5 dark:border-zinc-700"><component :is="icon" class="h-5 w-5" aria-hidden="true" /></button>
-                    </div>
-                </div>
-            </div>
-
-            <FileWorkspace :files="files.data" :tags="options.tags" :loading="loading" :display="form.display"
+            <FileWorkspace :review-mode="reviewColumns" class="workspace-fill" :files="files.data" :tags="options.tags" :loading="loading" :display="form.display"
                 :empty-title="loading ? 'Finding files…' : activeFilters.length ? 'No files match these filters' : 'Your library starts here'"
                 :empty-description="loading ? 'Updating your results.' : activeFilters.length ? 'Remove a filter or try a different name, merchant or phrase.' : 'Add your first file using Upload, scan a document or connect a scanner from the navigation.'" />
 

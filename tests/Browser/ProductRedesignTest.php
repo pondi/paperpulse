@@ -32,30 +32,27 @@ it('previews and edits a document without losing its place or unsaved changes', 
             $browser->resize(1440, 1000)->loginAs($user)->visit('/library')->waitFor('@library-file-'.$file->id)
                 ->assertScript('Array.from(document.querySelectorAll("th")).some(el => el.textContent.trim() === "Tax")', false)
                 ->check('input[aria-label="Select Service agreement"]')->assertSee('1 selected')->press('Clear selection')
-                ->press('Show review columns')->assertSee('AI confidence')
-                ->press('Hide review columns')->click('@library-file-'.$file->id)->waitForText('Design services for the coming year.')
+                ->click('button[aria-controls="library-more-filters"]')->press('Show review columns')->assertSee('AI confidence')
+                ->press('Hide review columns')->click('button[aria-controls="library-more-filters"]')->click('@library-file-'.$file->id)->waitFor('.inspector-content')->press('Details')->waitForText('Design services for the coming year.')
                 ->assertPresent('iframe[title="Preview of Service agreement"]')->assertMissing('input[name="title"]')
                 ->press('Edit details')->waitFor('input[name="title"]')->type('title', 'Updated service agreement')
-                ->click('@library-file-'.$other->id)->waitForDialog()->dismissDialog()
+                ->click('button[aria-label="Previous document"]')->waitForDialog()->dismissDialog()
                 ->assertInputValue('title', 'Updated service agreement')->press('Save changes')
                 ->waitUntilMissing('input[name="title"]')->waitForText('Updated service agreement')
                 ->screenshot('redesign-workspace-desktop');
             expect($document->fresh()->title)->toBe('Updated service agreement');
-            $browser->click('button[aria-label="Close preview"]')
-                ->waitUntilMissing('aside[aria-label="Selected document"]')
+            $browser->click('button[aria-label="Back to files"]')
+                ->waitUntilMissing('[aria-label="Selected document"]')
                 ->assertScript('document.activeElement.getAttribute("dusk")', 'library-file-'.$file->id);
             $browser->keys('@library-file-'.$file->id, WebDriverKeys::ARROW_UP)
-                ->waitFor('button[dusk="library-file-'.$other->id.'"][aria-pressed="true"]')
                 ->assertScript('document.activeElement.getAttribute("dusk")', 'library-file-'.$other->id)
                 ->keys('@library-file-'.$other->id, WebDriverKeys::ARROW_DOWN)
-                ->waitFor('button[dusk="library-file-'.$file->id.'"][aria-pressed="true"]')
-                ->keys('@library-file-'.$file->id, WebDriverKeys::ESCAPE)
-                ->waitUntilMissing('aside[aria-label="Selected document"]');
+                ->assertScript('document.activeElement.getAttribute("dusk")', 'library-file-'.$file->id);
             foreach ([320, 390, 768] as $width) {
-                $browser->resize($width, 844)->click('@library-file-'.$file->id)->waitForText('Document information')
+                $browser->resize($width, 844)->click('@library-file-'.$file->id)->waitFor('.inspector-content')->press('Details')->waitForText('Document information')
                     ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
                     ->screenshot('redesign-workspace-'.$width)
-                    ->click('button[aria-label="Close preview"]')->waitUntilMissing('aside[aria-label="Selected document"]');
+                    ->click('button[aria-label="Back to files"]')->waitUntilMissing('[aria-label="Selected document"]');
             }
         });
     } finally {
@@ -74,9 +71,9 @@ it('keeps preview available but excludes shared read-only files from batch mutat
         $browser->resize(1440, 1000)->loginAs($viewer)->visit('/library?view=shared')->waitFor('@library-file-'.$file->id)
             ->assertDisabled('input[aria-label="Select all editable files on this page"]')
             ->assertDisabled('input[aria-label="Select Shared policy"]')->click('@library-file-'.$file->id)
-            ->waitForText('A policy shared for reading.')->assertSee('Shared file · read only')
+            ->waitFor('.inspector-content')->press('Details')->waitForText('A policy shared for reading.')->assertSee('Shared file · read only')
             ->assertDontSee('Edit details')
-            ->assertScript('Array.from(document.querySelectorAll("aside[aria-label=\"Selected document\"] button")).some(el => el.textContent.trim() === "Approve")', false);
+            ->assertScript('Array.from(document.querySelectorAll("[aria-label=\"Selected document\"] button")).some(el => el.textContent.trim() === "Approve")', false);
     });
 });
 

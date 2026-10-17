@@ -1,6 +1,13 @@
 <template>
-    <div v-if="links.length > 3" class="flex items-center justify-between border-t-2 border-amber-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 sm:px-6">
-        <div class="flex flex-1 justify-between sm:hidden">
+    <div v-if="links.length > 3" :class="compact ? 'flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2 border-t border-zinc-200 py-2 text-xs text-zinc-500 dark:border-zinc-800' : 'flex items-center justify-between border-t-2 border-amber-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 sm:px-6'">
+        <template v-if="compact">
+            <span v-if="from != null && to != null" class="tabular-nums">{{ from }}–{{ to }} of {{ total }}</span>
+            <nav aria-label="Pagination" class="flex gap-2">
+                <component :is="links[0].url ? Link : 'span'" :href="links[0].url" class="rounded-md border border-zinc-300 px-2 py-1.5 dark:border-zinc-700" :class="links[0].url ? 'text-zinc-700 dark:text-zinc-200' : 'opacity-40'" :aria-disabled="!links[0].url">Previous</component>
+                <component :is="links[links.length - 1].url ? Link : 'span'" :href="links[links.length - 1].url" class="rounded-md border border-zinc-300 px-2 py-1.5 dark:border-zinc-700" :class="links[links.length - 1].url ? 'text-zinc-700 dark:text-zinc-200' : 'opacity-40'" :aria-disabled="!links[links.length - 1].url">Next</component>
+            </nav>
+        </template>
+        <div v-if="!compact" class="flex flex-1 justify-between sm:hidden">
             <component
                 :is="links[0].url ? Link : 'span'"
                 :href="links[0].url"
@@ -26,7 +33,7 @@
                 Next
             </component>
         </div>
-        <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+        <div v-if="!compact" class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
             <div>
                 <p class="text-sm text-zinc-700 dark:text-zinc-300">
                     Showing
@@ -67,6 +74,7 @@
 import { Link } from '@inertiajs/vue3'
 
 defineProps({
+    compact: Boolean,
     links: Array,
     from: Number,
     to: Number,

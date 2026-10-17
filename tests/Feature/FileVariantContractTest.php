@@ -100,3 +100,23 @@ it('advertises a working original PDF search link without an archive', function 
     expect($url)->toBe(route('api.files.content', $file).'?variant=original');
     expect($this->get($url)->assertOk()->streamedContent())->toBe('%PDF plain');
 });
+
+it('keeps workspace media URLs on the current browser origin', function (): void {
+    $owner = User::factory()->create();
+    $file = File::factory()->for($owner)->create([
+        'fileExtension' => 'pdf', 'file_type' => 'document',
+        's3_original_path' => 'assets/original.pdf',
+        'has_image_preview' => true, 's3_image_path' => 'assets/preview.jpg',
+    ]);
+    $this->actingAs($owner);
+    $data = FileInertiaResource::forShow($file)->resolve();
+
+    foreach (['url', 'viewUrl', 'pdfUrl', 'previewUrl'] as $key) {
+        expect($data[$key])->toStartWith('/documents/serve?')
+            ->and(parse_url($data[$key], PHP_URL_HOST))->toBeNull();
+    }
+    parse_str(parse_url($data['pdfUrl'], PHP_URL_QUERY), $pdfQuery);
+    parse_str(parse_url($data['previewUrl'], PHP_URL_QUERY), $previewQuery);
+    expect($pdfQuery['variant'])->toBe('original')
+        ->and($previewQuery['type'])->toBe('preview');
+});

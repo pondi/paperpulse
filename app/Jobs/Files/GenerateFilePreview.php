@@ -38,7 +38,7 @@ class GenerateFilePreview implements ShouldBeUnique, ShouldQueue
     public function handle(FilePreviewManager $previews, WorkerFileManager $files): void
     {
         $file = File::withoutGlobalScope('user')->find($this->fileId);
-        if ($file === null || $file->has_image_preview) {
+        if ($file === null || StoragePathBuilder::variantPath($file, 'preview') !== null) {
             Cache::put('file-preview-repair:'.$this->fileId, false, now()->addMinutes(30));
 
             return;

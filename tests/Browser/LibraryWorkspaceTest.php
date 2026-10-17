@@ -29,8 +29,8 @@ test('library filters and saved views work through their complete browser lifecy
         $saved = SavedSearch::where('user_id', $user->id)->firstOrFail();
         expect($saved->filters['query'])->toBe('Business')->and($saved->filters['display'])->toBe('grid');
         $browser->refresh()->waitFor('@library-query')->assertInputValue('@library-query', 'Business')
-            ->click('@library-file-'.$file->id)->waitFor('.inspector-content')->press('Details')->waitForText('Document information')
-            ->click('a[aria-label="Open document in full view"]')->waitFor('@workspace-back')->click('@workspace-back')
+            ->click('@library-file-'.$file->id)->waitFor('.inspector-content')->waitForText('Document information')
+            ->assertMissing('a[aria-label="Open document in full view"]')->visit('/files/'.$file->id.'?return_to='.urlencode('/library?query=Business&display=grid&saved_search='.$saved->id))->waitFor('@workspace-back')->click('@workspace-back')
             ->waitFor('@library-query')->assertInputValue('@library-query', 'Business')->assertQueryStringHas('saved_search', (string) $saved->id)
             ->click('aside a[href$="/saved-views"]')->waitForText('Your views')->screenshot('saved-views-desktop')
             ->assertSee('Library view')->assertSee('“Business”')
@@ -64,8 +64,8 @@ test('document workspace previews the original beside extracted information and 
             $browser->resize(1440, 1000);
             $this->loginAs($browser, $user);
             $browser->visit('/library')->waitFor('@library-file-'.$file->id)->click('@library-file-'.$file->id)
-                ->waitFor('[aria-label="Selected document"]')->press('Details')->waitForText('Document information')->assertSee('A twelve-month service agreement')->assertPresent('iframe[title]')
-                ->assertPresent('a[target="_blank"][rel="noopener noreferrer"]')->screenshot('document-workspace-desktop');
+                ->waitFor('[aria-label="Selected document"]')->waitForText('Document information')->assertSee('A twelve-month service agreement')->assertPresent('iframe[title]')
+                ->assertPresent('a[aria-label="Open original"]')->assertScript('document.querySelectorAll("[aria-label=\"Selected document\"] a[target=\"_blank\"]").length', 1)->screenshot('document-workspace-desktop');
             $browser->resize(390, 844)->screenshot('document-workspace-mobile');
             $browser->assertSee('Document information')->assertSee('A twelve-month service agreement');
             expect($browser->script('return document.documentElement.scrollWidth <= window.innerWidth')[0])->toBeTrue();
@@ -76,9 +76,9 @@ test('document workspace previews the original beside extracted information and 
             $browser->click('@add-document')->waitForText('Upload files')->assertSee('Scan a document')->assertSee('Import from scanner');
             $browser->click('@add-document')->waitUntilMissing('[role="menu"]')->resize(1440, 1000)->visit('/dashboard')->waitFor('input[aria-label="Search your library"]')->type('input[aria-label="Search your library"]', 'Northstar')
                 ->waitFor('ul[aria-label="Search results"] button')->click('ul[aria-label="Search results"] button')
-                ->waitFor('a[aria-label="Open document workspace"]')->resize(390, 844)->assertSee('Northstar Studio service agreement');
+                ->waitFor('[aria-label="Selected document"] .inspector-content')->resize(390, 844)->assertSee('Northstar Studio service agreement');
             expect($browser->script('return document.documentElement.scrollWidth <= window.innerWidth')[0])->toBeTrue();
-            $browser->click('[role="dialog"] a[href$="/files/'.$file->id.'"]')->waitFor('.inspector-framed')->press('Details')->waitForText('Document information');
+            $browser->visit('/files/'.$file->id)->waitFor('.inspector-framed')->waitForText('Document information');
         });
     } finally {
         Storage::disk('paperpulse')->delete($path);
@@ -211,7 +211,7 @@ it('keeps workspaces inside the viewport and restores the list after a sliding p
             $browser->waitFor('[aria-label="Selected document"]')->waitFor('.inspector-content')->pause(350)
                 ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
                 ->assertScript('document.querySelector("[aria-label=\"Selected document\"]").getBoundingClientRect().bottom <= innerHeight + 1', true)
-                ->press('Details')->waitForText('Document information')->press('Hide details')
+                ->waitForText('Document information')
                 ->screenshot('workspace-redesign-preview-'.$width)
                 ->click('button[aria-label="Back to files"]')->waitUntilMissing('[aria-label="Selected document"]');
         }

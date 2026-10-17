@@ -78,7 +78,7 @@ if (scenario === 'original downloads') {
         assert.ok(html.includes(row.file.url.replaceAll('&', '&amp;')));
     }
     const preview = await render('Components/Common/FilePreviewModal.vue', { item: rows[1], show: true });
-    assert.ok(preview.includes('/files/2'));
+    assert.ok(!preview.includes('Open document workspace'));
     assert.ok(!preview.includes('/documents/7/download'));
 }
 if (scenario === 'category browsing') {
@@ -240,8 +240,7 @@ if (scenario === 'report navigation') {
 if (scenario === 'pdf initial fit') {
     for (const [file, props] of [
         ['Components/Domain/DocumentPreview.vue', { file: { id: 1, name: 'Scan', pdfUrl: '/scan.pdf?variant=original', url: '/scan.pdf', extension: 'pdf' } }],
-        ['Components/Common/PdfViewer.vue', { show: true, pdfUrl: '/scan.pdf?variant=original' }],
-        ['Components/Common/FilePreviewModal.vue', { show: true, item: { title: 'Scan', type: 'invoice', file_id: 1, file: { pdfUrl: '/scan.pdf?variant=original' } } }]
+        ['Components/Common/PdfViewer.vue', { show: true, pdfUrl: '/scan.pdf?variant=original' }]
     ]) {
         const html = await render(file, props);
         assert.ok(html.includes('/scan.pdf?variant=original#navpanes=0&amp;view=Fit'), file);
@@ -249,6 +248,15 @@ if (scenario === 'pdf initial fit') {
     const image = await render('Components/Domain/DocumentPreview.vue', { file: { id: 1, name: 'Portrait', url: '/scan.jpg', extension: 'jpg' } });
     assert.ok(image.includes('src="/scan.jpg"'));
     assert.ok(!image.includes('<iframe'));
+    const generated = await render('Components/Domain/DocumentPreview.vue', { framed: true, file: { id: 2, name: 'Invoice', extension: 'pdf', pdfUrl: '/original.pdf', previewUrl: '/generated.jpg', viewUrl: '/original.pdf' } });
+    assert.ok(generated.includes('src="/generated.jpg"'));
+    assert.ok(!generated.includes('<iframe'));
+    assert.ok(generated.includes('View full PDF'));
+    assert.ok(!generated.includes('target="_blank"'));
+    const inspector = await render('Components/Domain/FileInspector.vue', { fileId: 2, framed: true, initial: { file: { id: 2, name: 'Invoice', status: 'completed', viewUrl: '/original.pdf', tags: [], collections: [] }, extractedEntities: [] } });
+    assert.ok(inspector.includes('Document information'));
+    assert.ok(!inspector.includes('Hide details'));
+    assert.equal((inspector.match(/aria-label="Open original"/g) || []).length, 1);
 }
 if (scenario === 'scanner onboarding') {
     for (const enabled of [true, false]) {

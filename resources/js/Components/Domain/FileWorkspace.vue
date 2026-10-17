@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { Link, router, usePage } from '@inertiajs/vue3';
-import { DocumentTextIcon, ChevronUpIcon, ChevronDownIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline';
+import { router } from '@inertiajs/vue3';
+import { DocumentTextIcon, ChevronUpIcon, ChevronDownIcon, XMarkIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline';
 import { fileStatusLabel } from '@/utils/fileStatus';
 import FileInspector from '@/Components/Domain/FileInspector.vue';
 import WorkspaceDrawer from '@/Components/Common/WorkspaceDrawer.vue';
@@ -9,7 +9,6 @@ import { useDateFormatter } from '@/Composables/useDateFormatter';
 
 const props = defineProps({ files: { type: Array, default: () => [] }, tags: { type: Array, default: () => [] }, loading: Boolean, display: { type: String, default: 'list' }, reviewMode: Boolean, emptyTitle: { type: String, default: 'No documents here' }, emptyDescription: { type: String, default: 'Upload a file or adjust your filters to get started.' } });
 const { formatDate, formatCurrency } = useDateFormatter();
-const page = usePage();
 const workspace = ref(null);
 let returnFocusId;
 let swipeStart;
@@ -26,7 +25,6 @@ function swipeEnd(event) {
 const showReviewDetails = ref(props.reviewMode);
 watch(() => props.reviewMode, value => { showReviewDetails.value = value; });
 const hasAmounts = computed(() => props.files.some(file => file.identity?.amount != null));
-const returnTo = computed(() => /^\/(library|search)(\?|$)/.test(page.url) ? page.url : undefined);
 const activeId = ref(null);
 const previewOpen = ref(false);
 const selected = ref([]);
@@ -172,11 +170,9 @@ onBeforeUnmount(() => { window.removeEventListener('beforeunload', beforeUnload)
                         <button class="workspace-button shrink-0 !px-2" :disabled="activeIndex >= files.length - 1" aria-label="Next document" @click="move(1)"><ChevronDownIcon class="h-4 w-4" aria-hidden="true" /></button>
                     </template>
                     <template #actions>
-                        <Link :href="route('files.show', { file: activeId, return_to: returnTo })" class="workspace-button hidden shrink-0 md:inline-flex" aria-label="Open document in full view"><ArrowTopRightOnSquareIcon class="h-4 w-4" aria-hidden="true" /></Link>
                         <button class="workspace-button hidden shrink-0 sm:inline-flex" aria-label="Close preview" @click="close"><XMarkIcon class="h-4 w-4" aria-hidden="true" /></button>
                     </template>
                     <template #context>
-                        <Link :href="route('files.show', { file: activeId, return_to: returnTo })" class="m-3 inline-flex text-sm underline md:hidden">Open document in full view</Link>
                         <slot v-if="files[activeIndex]" name="file-context" :file="files[activeIndex]" :dirty="dirty" />
                     </template>
                 </FileInspector>

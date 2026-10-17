@@ -46,7 +46,7 @@ class FileInertiaResource extends JsonResource
                 'guid' => $this->guid,
                 'type' => 'preview',
                 'extension' => 'jpg',
-            ]);
+            ], false);
         }
 
         $data = [
@@ -66,7 +66,7 @@ class FileInertiaResource extends JsonResource
                 'type' => $typeFolder,
                 'extension' => $extension,
                 'variant' => 'original',
-            ]),
+            ], false),
         ];
 
         $primary = $this->relationLoaded('primaryEntity') ? $this->primaryEntity : null;
@@ -113,7 +113,7 @@ class FileInertiaResource extends JsonResource
                     'type' => $typeFolder,
                     'extension' => 'pdf',
                     'variant' => $pdfVariant,
-                ]);
+                ], false);
             }
 
             $data = array_merge($data, [
@@ -121,7 +121,7 @@ class FileInertiaResource extends JsonResource
                     'guid' => $this->guid,
                     'type' => $typeFolder,
                     'extension' => $extension,
-                ]),
+                ], false),
                 'pdfUrl' => $pdfUrl,
                 'size' => $this->fileSize,
                 'is_pdf' => $hasPdfVariant,

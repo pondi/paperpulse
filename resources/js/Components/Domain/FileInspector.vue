@@ -15,7 +15,6 @@ import { fileStatusLabel } from '@/utils/fileStatus';
 const props = defineProps({ fileId: { type: Number, required: true }, initial: { type: Object, default: null }, framed: Boolean });
 const emit = defineEmits(['updated', 'dirty', 'swipe-start', 'swipe-end']);
 const payload = ref(null);
-const detailView = ref(false);
 const loading = ref(false);
 const error = ref('');
 const saving = ref(false);
@@ -47,7 +46,7 @@ async function load() {
     loading.value = true;
     error.value = '';
     try {
-        const { data } = await axios.get(route('files.show', props.fileId), { signal: request.signal, headers: { Accept: 'application/json' } });
+        const { data } = await axios.get(route('files.show', props.fileId, false), { signal: request.signal, headers: { Accept: 'application/json' } });
         if (!request.signal.aborted) hydrate(data);
     } catch (exception) {
         if (!request.signal.aborted) error.value = 'Could not load this file. Check your connection and try again.';
@@ -137,13 +136,13 @@ defineExpose({ dirty });
 </script>
 
 <template>
-    <section :class="{ 'inspector-framed': framed, 'inspector-details-open': detailView }" class="file-inspector min-w-0 bg-white text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200" aria-label="Preview and edit" :aria-busy="loading || saving">
+    <section :class="{ 'inspector-framed': framed }" class="file-inspector min-w-0 bg-white text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200" aria-label="Preview and edit" :aria-busy="loading || saving">
         <header class="flex min-h-[48px] shrink-0 items-center gap-2 border-b border-zinc-200 px-3 py-1.5 dark:border-zinc-800" @touchstart.passive="$emit('swipe-start', $event)" @touchend.passive="$emit('swipe-end', $event)">
             <slot name="leading" />
             <h2 class="min-w-0 flex-1 truncate text-sm font-semibold" :title="payload?.file.name">{{ payload?.file.name || 'Loading document…' }}</h2>
             <slot name="navigation" />
-            <button v-if="framed" type="button" class="workspace-button shrink-0" :class="detailView ? '!border-orange-600 !text-orange-700 dark:!text-orange-300' : ''" :aria-pressed="detailView" @click="detailView = !detailView">{{ detailView ? 'Hide details' : 'Details' }}<span v-if="dirty" class="text-orange-600" aria-label="Unsaved changes">•</span></button>
-            <a v-if="framed && payload" :href="payload.file.viewUrl || payload.file.url" target="_blank" rel="noopener noreferrer" class="workspace-button hidden shrink-0 sm:inline-flex" aria-label="Open original"><ArrowTopRightOnSquareIcon class="h-4 w-4" aria-hidden="true" /></a>
+            <span v-if="dirty" class="text-orange-600" aria-label="Unsaved changes">•</span>
+            <a v-if="framed && payload" :href="payload.file.viewUrl || payload.file.url" target="_blank" rel="noopener noreferrer" class="workspace-button shrink-0" aria-label="Open original"><ArrowTopRightOnSquareIcon class="h-4 w-4" aria-hidden="true" /><span class="hidden sm:inline">Open original</span></a>
             <slot name="actions" />
         </header>
         <p v-if="loading" class="p-6 text-sm text-zinc-500" role="status">Loading document…</p>
@@ -153,7 +152,6 @@ defineExpose({ dirty });
                 <DocumentPreview :file="payload.file" :framed="framed" />
                 <div class="inspector-details min-w-0" :tabindex="framed ? 0 : undefined" aria-label="Document details" :role="framed ? 'region' : undefined">
                     <slot name="context" />
-                    <a v-if="framed" :href="payload.file.viewUrl || payload.file.url" target="_blank" rel="noopener noreferrer" class="m-3 inline-flex text-sm underline sm:hidden">Open original</a>
                     <div class="border-b border-zinc-200 p-3 dark:border-zinc-800">
                         <p class="mb-2 text-xs text-zinc-500">{{ fileStatusLabel(payload.file) }}<span v-if="payload.file.review_status" class="capitalize"> · {{ payload.file.review_status }}</span></p>
                         <div class="flex flex-wrap items-center justify-between gap-3"><h3 class="section-heading">Document information</h3><button v-if="hasEditableDetails" type="button" class="workspace-button" :disabled="saving" @click="editing ? cancelEditing() : editing = true">{{ editing ? 'Cancel editing' : 'Edit details' }}</button></div>
@@ -234,13 +232,11 @@ defineExpose({ dirty });
 .file-inspector { container-type: inline-size; }
 @container (min-width: 700px) { .file-inspector:not(.inspector-framed) .inspector-content { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 .inspector-framed { @apply flex min-h-0 flex-1 flex-col overflow-hidden; }
-.inspector-framed .inspector-content { @apply min-h-0 flex-1 grid-cols-1 overflow-hidden; }
-.inspector-framed .inspector-details { @apply hidden min-h-0 overflow-y-auto overscroll-contain; }
-.inspector-framed.inspector-details-open .inspector-details { @apply block; }
-.inspector-framed.inspector-details-open .inspector-content > :first-child { @apply hidden; }
+.inspector-framed .inspector-content { @apply min-h-0 flex-1 grid-cols-1 overflow-hidden; grid-template-rows: minmax(0, 3fr) minmax(0, 2fr); }
+.inspector-framed .inspector-details { @apply min-h-0 overflow-y-auto overscroll-contain border-t border-zinc-200 dark:border-zinc-800; }
 @container (min-width: 850px) {
-    .inspector-framed.inspector-details-open .inspector-content { grid-template-columns: minmax(0, 1fr) 340px; }
-    .inspector-framed.inspector-details-open .inspector-content > :first-child { @apply flex; }
+    .inspector-framed .inspector-content { grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: minmax(0, 1fr); }
+    .inspector-framed .inspector-details { @apply border-l border-t-0; }
 }
 label { @apply flex min-w-0 flex-col gap-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400; }
 input, select, textarea { @apply w-full min-w-0 rounded border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 focus:border-orange-600 focus:ring-orange-600 disabled:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:disabled:bg-zinc-950; }

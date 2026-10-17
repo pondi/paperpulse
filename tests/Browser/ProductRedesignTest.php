@@ -33,7 +33,7 @@ it('previews and edits a document without losing its place or unsaved changes', 
                 ->assertScript('Array.from(document.querySelectorAll("th")).some(el => el.textContent.trim() === "Tax")', false)
                 ->check('input[aria-label="Select Service agreement"]')->assertSee('1 selected')->press('Clear selection')
                 ->click('button[aria-controls="library-more-filters"]')->press('Show review columns')->assertSee('AI confidence')
-                ->press('Hide review columns')->click('button[aria-controls="library-more-filters"]')->click('@library-file-'.$file->id)->waitFor('.inspector-content')->press('Details')->waitForText('Design services for the coming year.')
+                ->press('Hide review columns')->click('button[aria-controls="library-more-filters"]')->click('@library-file-'.$file->id)->waitFor('.inspector-content')->waitForText('Design services for the coming year.')
                 ->assertPresent('iframe[title="Preview of Service agreement"]')->assertMissing('input[name="title"]')
                 ->press('Edit details')->waitFor('input[name="title"]')->type('title', 'Updated service agreement')
                 ->click('button[aria-label="Previous document"]')->waitForDialog()->dismissDialog()
@@ -49,7 +49,7 @@ it('previews and edits a document without losing its place or unsaved changes', 
                 ->keys('@library-file-'.$other->id, WebDriverKeys::ARROW_DOWN)
                 ->assertScript('document.activeElement.getAttribute("dusk")', 'library-file-'.$file->id);
             foreach ([320, 390, 768] as $width) {
-                $browser->resize($width, 844)->click('@library-file-'.$file->id)->waitFor('.inspector-content')->press('Details')->waitForText('Document information')
+                $browser->resize($width, 844)->click('@library-file-'.$file->id)->waitFor('.inspector-content')->waitForText('Document information')
                     ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
                     ->screenshot('redesign-workspace-'.$width)
                     ->click('button[aria-label="Back to files"]')->waitUntilMissing('[aria-label="Selected document"]');
@@ -71,7 +71,7 @@ it('keeps preview available but excludes shared read-only files from batch mutat
         $browser->resize(1440, 1000)->loginAs($viewer)->visit('/library?view=shared')->waitFor('@library-file-'.$file->id)
             ->assertDisabled('input[aria-label="Select all editable files on this page"]')
             ->assertDisabled('input[aria-label="Select Shared policy"]')->click('@library-file-'.$file->id)
-            ->waitFor('.inspector-content')->press('Details')->waitForText('A policy shared for reading.')->assertSee('Shared file · read only')
+            ->waitFor('.inspector-content')->waitForText('A policy shared for reading.')->assertSee('Shared file · read only')
             ->assertDontSee('Edit details')
             ->assertScript('Array.from(document.querySelectorAll("[aria-label=\"Selected document\"] button")).some(el => el.textContent.trim() === "Approve")', false);
     });

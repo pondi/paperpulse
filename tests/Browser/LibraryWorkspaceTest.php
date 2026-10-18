@@ -175,17 +175,23 @@ it('keeps workspaces inside the viewport and restores the list after a sliding p
 
     $this->browse(function (Browser $browser) use ($user, $folder): void {
         $browser->loginAs($user);
-        foreach ([[1440, 900], [1280, 800], [1920, 1080]] as [$width, $height]) {
+        foreach ([[1440, 900], [1280, 800], [1920, 1080], [320, 844]] as [$width, $height]) {
             foreach (['/dashboard', '/library', '/collections', '/collections/'.$folder->id] as $path) {
                 $browser->resize($width, $height)->visit($path)->waitFor('.workspace-frame')->pause(150)
                     ->assertScript('document.documentElement.scrollHeight <= innerHeight + 1', true)
                     ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
                     ->assertScript('document.querySelector("#main-content").getBoundingClientRect().bottom <= innerHeight + 1', true);
-                if ($path !== '/collections') {
+                if ($path !== '/collections' && $width >= 1280) {
                     $browser->assertScript('document.querySelector(".file-list").clientHeight > 250', true);
                 }
             }
         }
+        $browser->resize(1280, 450)->visit('/library')->waitFor('.file-list')
+            ->assertScript('document.documentElement.scrollHeight <= innerHeight + 1', true)
+            ->assertScript('document.querySelector(".workspace-page").scrollHeight > document.querySelector(".workspace-page").clientHeight', true);
+        $browser->script('document.querySelector("[aria-label=\"Library pagination\"]").scrollIntoView({block: "end"})');
+        $browser->assertScript('document.querySelector("[aria-label=\"Library pagination\"]").getBoundingClientRect().bottom <= innerHeight + 1', true)
+            ->press('Next')->waitForText('Showing 25–26 of 26');
         $browser->resize(1440, 900)->visit('/library')->waitFor('.file-list');
         $browser->script('document.querySelector(".file-list").scrollTop = 300; window.workspaceScroll = document.querySelector(".file-list").scrollTop; window.workspaceButton = document.querySelectorAll("[dusk^=library-file-]")[5]; window.workspaceButton.click();');
         $browser->waitFor('[aria-label="Selected document"]')->waitFor('.inspector-content')->pause(350)
@@ -218,7 +224,7 @@ it('keeps workspaces inside the viewport and restores the list after a sliding p
         $browser->resize(1440, 900)->visit('/collections/'.$folder->id)->waitForText('Subfolders')
             ->screenshot('workspace-redesign-collection-desktop')->press('Details')
             ->waitFor('[data-folder-details]')->assertSee('Files directly here')
-            ->click('[data-public-sharing] summary')->assertSee('Public Sharing');
+            ->click('[data-public-sharing] summary')->assertSee('Public sharing');
         $browser->resize(320, 844)->visit('/collections/'.$folder->id)->waitFor('.file-list')
             ->assertScript('document.querySelector(".file-list").getBoundingClientRect().bottom <= innerHeight', true)
             ->assertScript('document.querySelector(".workspace-page").scrollHeight <= document.querySelector(".workspace-page").clientHeight + 1', true)

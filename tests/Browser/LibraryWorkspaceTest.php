@@ -151,7 +151,15 @@ it('distinguishes first use and validation errors and preserves pagination when 
     $this->browse(function (Browser $browser) use ($user): void {
         $browser->resize(1440, 1000)->loginAs($user)->visit('/library')->waitForText('Your library starts here');
         File::factory()->count(26)->for($user)->create(['status' => 'completed', 'fileName' => 'Invoice.pdf']);
-        $browser->refresh()->waitForText('26 files')->press('Next')->waitForText('Showing 25–26 of 26')
+        $browser->refresh()->waitForText('26 files');
+        foreach (['List view', 'Grid view'] as $presentation) {
+            $browser->click('button[aria-label="'.$presentation.'"]')->waitFor('[aria-label="'.$presentation.'"][aria-pressed="true"]');
+            $browser->script('window.paginationTop = document.querySelector("[aria-label=\"Library pagination\"]").getBoundingClientRect().top; document.querySelector(".file-list").scrollTop = 10000');
+            $browser->assertScript('document.querySelector(".file-list").scrollTop > 0', true)
+                ->assertScript('document.querySelector("[aria-label=\"Library pagination\"]").getBoundingClientRect().top === window.paginationTop', true)
+                ->assertScript('document.querySelector("[aria-label=\"Library pagination\"]").getBoundingClientRect().bottom <= innerHeight', true);
+        }
+        $browser->press('Next')->waitForText('Showing 25–26 of 26')
             ->click('button[aria-label="Grid view"]')->waitFor('[aria-label="Grid view"][aria-pressed="true"]')
             ->assertQueryStringHas('page', '2')->refresh()->waitFor('@library-query')->assertQueryStringHas('display', 'grid')
             ->type('@library-query', 'Invoice')->waitUsing(10, 100, fn (): bool => str_contains($browser->driver->getCurrentURL(), 'query=Invoice'))

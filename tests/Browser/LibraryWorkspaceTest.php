@@ -6,10 +6,72 @@ use App\Models\ExtractableEntity;
 use App\Models\File;
 use App\Models\SavedSearch;
 use App\Models\Tag;
+use App\Services\Files\FilePreviewManager;
 use App\Services\Files\StoragePathBuilder;
 use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Dusk\Browser;
+
+it('loads generated PDF images and recovers from missing previews and originals', function (int $width): void {
+    $user = $this->createUser();
+    $file = File::factory()->for($user)->create(['fileName' => 'Generated preview.pdf', 'file_type' => 'document', 'fileExtension' => 'pdf', 'status' => 'completed']);
+    $original = StoragePathBuilder::storagePath($user->id, $file->guid, 'document', 'original', 'pdf');
+    $local = tempnam(sys_get_temp_dir(), 'browser-preview-');
+    file_put_contents($local, conversionPdfFixture());
+    Storage::disk('paperpulse')->put($original, file_get_contents($local));
+    $file->update(['s3_original_path' => $original]);
+    $manager = app(FilePreviewManager::class);
+
+    try {
+        expect($manager->generatePreviewForFile($file, $local))->toBeTrue();
+        $this->browse(function (Browser $browser) use ($user, $file, $original, $local, $manager, $width): void {
+            $browser->resize($width, 900)->loginAs($user)->visit('/files/'.$file->id)->waitForText('Document information')
+                ->waitUntil('document.querySelector("[aria-label=\"Document preview\"] img")?.naturalWidth > 0')
+                ->assertMissing('iframe')->assertSee('Page 1 preview')
+                ->assertAttribute('[aria-label="Document preview"]', 'aria-busy', 'false')
+                ->assertScript('document.querySelectorAll("a[aria-label=\"Open original\"]").length', 1)
+                ->screenshot('workspace-generated-preview-'.$width)
+                ->press('View full PDF')->waitFor('iframe')
+                ->waitUntil('document.querySelector("[aria-label=\"Document preview\"]").getAttribute("aria-busy") === "false"')
+                ->press('Image preview')->waitUntil('document.querySelector("[aria-label=\"Document preview\"] img")?.naturalWidth > 0');
+
+            Storage::disk('paperpulse')->delete($file->s3_image_path);
+            $browser->refresh()->waitFor('iframe')
+                ->waitUntil('document.querySelector("[aria-label=\"Document preview\"]").getAttribute("aria-busy") === "false"')
+                ->assertDontSee('Preview could not load');
+            Storage::disk('paperpulse')->delete($original);
+            $browser->refresh()->waitForText('Preview could not load')
+                ->assertAttribute('[aria-label="Document preview"]', 'aria-busy', 'false')
+                ->assertSee('Retry preview')->assertSee('Document information')
+                ->screenshot('workspace-preview-retry-'.$width);
+
+            expect($manager->generatePreviewForFile($file, $local))->toBeTrue();
+            $browser->press('Retry preview')->waitUntil('document.querySelector("[aria-label=\"Document preview\"] img")?.naturalWidth > 0')
+                ->assertAttribute('[aria-label="Document preview"]', 'aria-busy', 'false')->assertDontSee('Preview could not load');
+        });
+    } finally {
+        Storage::disk('paperpulse')->delete([$original, $file->s3_image_path]);
+        unlink($local);
+    }
+})->with([1440, 320]);
+
+it('falls back to the original image when the generated preview is missing', function (): void {
+    $user = $this->createUser();
+    $file = File::factory()->for($user)->create(['fileName' => 'Original scan.jpg', 'file_type' => 'document', 'fileExtension' => 'jpg', 'status' => 'completed']);
+    $original = StoragePathBuilder::storagePath($user->id, $file->guid, 'document', 'original', 'jpg');
+    $file->update(['s3_original_path' => $original, 's3_image_path' => StoragePathBuilder::previewPath($user->id, $file->guid, 'document'), 'has_image_preview' => true]);
+    Storage::disk('paperpulse')->put($original, file_get_contents(__DIR__.'/fixtures/test-image.jpg'));
+    try {
+        $this->browse(function (Browser $browser) use ($user, $file): void {
+            $browser->resize(320, 844)->loginAs($user)->visit('/files/'.$file->id)->waitForText('Document information')
+                ->waitUntil('document.querySelector("[aria-label=\"Document preview\"] img")?.naturalWidth > 0')
+                ->assertScript('document.querySelector("[aria-label=\"Document preview\"] img").src.includes("variant=original")', true)
+                ->assertAttribute('[aria-label="Document preview"]', 'aria-busy', 'false')->assertMissing('iframe');
+        });
+    } finally {
+        Storage::disk('paperpulse')->delete($original);
+    }
+});
 
 it('keeps image previews and long metadata usable through every document entry point', function (int $width, int $height): void {
     $user = $this->createUser();

@@ -161,12 +161,12 @@ function getLinkStatus(link) {
                     :key="link.id"
                     class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3"
                 >
-                    <div class="flex-1 min-w-0">
+                    <div class="min-w-0 basis-full sm:flex-1 sm:basis-0">
                         <div class="flex items-center gap-2">
                             <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
                                 {{ link.label || 'Public Link' }}
                             </span>
-                            <span :class="['rounded-full px-2 py-0.5 text-[10px] font-semibold', getLinkStatus(link).classes]">
+                            <span :class="['shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold', getLinkStatus(link).classes]">
                                 {{ getLinkStatus(link).label }}
                             </span>
                             <svg v-if="link.is_password_protected" class="h-3.5 w-3.5 text-zinc-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -180,7 +180,7 @@ function getLinkStatus(link) {
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2 ml-3">
+                    <div class="flex items-center gap-2 sm:ml-3">
                         <button
                             @click="viewLogs(link.id)"
                             class="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"

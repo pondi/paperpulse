@@ -459,7 +459,7 @@ test('collection contents preserve search sort and page context at all screen wi
         $browser->resize(1440, 1000)->loginAs($user)->visit('/collections/'.$folder->id)->waitFor('#collection-search')
             ->assertSee('Reports')->select('#collection-sort', '-name')->waitForText('Report 51.pdf')
             ->type('#collection-search', 'Report')->press('Search')->waitUntil('new URL(location.href).searchParams.get("search") === "Report"')
-            ->waitUntil('document.querySelector("section[aria-label=Subfolders]").getAttribute("aria-busy") === "false"')
+            ->waitUntil('document.querySelector(".file-workspace").getAttribute("aria-busy") === "false"')
             ->screenshot('redesign-contents-desktop');
         $browser->click('section[aria-label="Files in this folder"] nav[aria-label="Pagination"] a[href*="files_page=2"]')
             ->waitUntil('new URL(location.href).searchParams.get("files_page") === "2"')->assertSee('Report 01.pdf')
@@ -471,7 +471,7 @@ test('collection contents preserve search sort and page context at all screen wi
                 ->screenshot('redesign-contents-'.$width);
         }
         $browser->script('document.documentElement.classList.add("dark")');
-        $browser->pause(300)->screenshot('redesign-contents-dark')->click('article a[href$="/collections/'.$child->id.'"]')
+        $browser->pause(300)->screenshot('redesign-contents-dark')->click('section[aria-label="Subfolders"] a[href$="/collections/'.$child->id.'"]')
             ->waitForLocation('/collections/'.$child->id)->assertSee('No files directly in this collection')
             ->clickLink('Back to '.$folder->name)->waitForLocation('/collections/'.$folder->id);
         $browser->script('document.documentElement.classList.remove("dark")');
@@ -485,20 +485,20 @@ test('collection editing supports cancel rename errors and validated moves', fun
     Collection::factory()->for($user)->create(['name' => 'Existing folder']);
     $target = Collection::factory()->for($user)->create(['name' => 'Archive']);
     $this->browse(function (Browser $browser) use ($user, $folder, $child, $target): void {
-        $browser->resize(320, 844)->loginAs($user)->visit('/collections/'.$folder->id)->waitForText('Edit Collection')
-            ->press('Edit Collection')->waitFor('#collection-name')->type('#collection-name', 'Discarded name')
+        $browser->resize(320, 844)->loginAs($user)->visit('/collections/'.$folder->id)->waitFor('#collection-search')->press('Details')->waitForText('Edit Collection')
+            ->press('Edit Collection')->waitUntilMissing('[data-folder-details]')->waitFor('#collection-name')->type('#collection-name', 'Discarded name')
             ->press('Cancel')->waitUntilMissing('#collection-name')->assertSee('Home records');
         expect($folder->fresh()->name)->toBe('Home records');
-        $browser->assertScript('document.activeElement.textContent.trim()', 'Edit Collection')
-            ->press('Edit Collection')->waitFor('#collection-name')->type('#collection-name', 'Existing folder')
+        $browser->press('Details')->waitForText('Edit Collection')
+            ->press('Edit Collection')->waitUntilMissing('[data-folder-details]')->waitFor('#collection-name')->type('#collection-name', 'Existing folder')
             ->press('Save changes')->waitForText('A folder with this name already exists in this location.')
             ->assertInputValue('#collection-name', 'Existing folder')->type('#collection-name', 'Renamed records')
             ->press('Save changes')->waitUntilMissing('#collection-name')->waitForText('Renamed records');
-        $browser->press('Edit Collection')->waitFor('#collection-name')->press('Choose folder')->waitForText('Use this location')
+        $browser->press('Details')->waitForText('Edit Collection')->press('Edit Collection')->waitUntilMissing('[data-folder-details]')->waitFor('#collection-name')->press('Choose folder')->waitForText('Use this location')
             ->press('Archive →')->waitForText('Up one level')->press('Use this location')->press('Save changes')
-            ->waitUntilMissing('#collection-name')->waitForText('Back to Archive');
+            ->waitUntilMissing('[role="dialog"]')->press('Folders')->waitForText('Back to Archive')->click('[role="dialog"] button.workspace-button')->waitUntilMissing('[role="dialog"]');
         expect($folder->fresh()->parent_id)->toBe($target->id)->and($child->fresh()->parent_id)->toBe($folder->id);
-        $browser->press('Edit Collection')->waitFor('#collection-name')->press('Choose folder')->waitForText('Use this location')
+        $browser->press('Details')->waitForText('Edit Collection')->press('Edit Collection')->waitUntilMissing('[data-folder-details]')->waitFor('#collection-name')->press('Choose folder')->waitForText('Use this location')
             ->press('Archive →')->waitForText('Up one level');
         $browser->assertDontSeeIn('[role="dialog"]', 'Renamed records →')->press('Cancel')->press('Cancel')->waitUntilMissing('#collection-name');
         $browser->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
@@ -540,13 +540,13 @@ test('shared collection contents hide private descendants and management actions
     $file = File::factory()->for($owner)->create(['fileName' => 'Shared file.pdf']);
     $folder->files()->attach($file);
     $this->browse(function (Browser $browser) use ($viewer, $folder, $child, $file): void {
-        $browser->resize(390, 844)->loginAs($viewer)->visit('/collections/'.$folder->id)->waitForText('Shared records')
+        $browser->resize(390, 844)->loginAs($viewer)->visit('/collections/'.$folder->id)->waitForText('Shared records')->press('Folders')->waitForText('Browse folders')
             ->assertSee('Shared child')->assertDontSee('Private child')->assertDontSee('Edit Collection')->assertDontSee('Public sharing')
-            ->assertDontSee('Manage subfolders')->assertDisabled('input[aria-label="Select Shared file.pdf"]')
+            ->assertDontSee('Manage subfolders')->press('Close')->waitUntilMissing('[role="dialog"]')->assertDisabled('input[aria-label="Select Shared file.pdf"]')
             ->click('@library-file-'.$file->id)->waitForText('Shared file · read only')->assertDontSee('Remove from this folder')
-            ->click('button[aria-label="Close preview"]')->waitUntilMissing('aside[aria-label="Selected document"]')
-            ->click('article a[href$="/collections/'.$child->id.'"]')->waitForLocation('/collections/'.$child->id)
-            ->assertDontSee('Private grandchild')->assertSee('Shared collections');
+            ->click('button[aria-label="Back to files"]')->waitUntilMissing('[aria-label="Selected document"]')
+            ->press('Folders')->waitForText('Browse folders')->click('[role="dialog"] a[href$="/collections/'.$child->id.'"]')->waitForLocation('/collections/'.$child->id)
+            ->press('Folders')->waitForText('Browse folders')->assertDontSee('Private grandchild')->assertSee('Shared collections');
     });
 });
 
@@ -577,7 +577,7 @@ test('collection public links stay secondary and support explicit create cancel 
     $user = $this->createUser();
     $folder = Collection::factory()->for($user)->create(['name' => 'Tax records']);
     $this->browse(function (Browser $browser) use ($user, $folder): void {
-        $browser->resize(320, 844)->loginAs($user)->visit('/collections/'.$folder->id)->waitFor('[data-public-sharing]')
+        $browser->resize(320, 844)->loginAs($user)->visit('/collections/'.$folder->id)->waitFor('#collection-search')->press('Details')->waitFor('[data-public-sharing]')
             ->assertScript('document.querySelector("[data-public-sharing]").open', false)
             ->click('[data-public-sharing] summary')->press('Create Public Link')->waitFor('#public-link-label')
             ->type('#public-link-label', 'Discarded link')->press('Cancel')->waitUntilMissing('#public-link-label');
@@ -586,9 +586,13 @@ test('collection public links stay secondary and support explicit create cancel 
             ->type('#public-link-label', str_repeat('x', 256))->press('Create Link')->waitForText('Label cannot exceed 255 characters.')
             ->type('#public-link-label', 'Accountant')->select('#public-link-expiration_preset', '30d')
             ->screenshot('redesign-contents-sharing-mobile')->press('Create Link')->waitForText('Link Created')
-            ->press('Done')->waitUntilMissing('[role="dialog"]')->assertSee('Accountant')
+            ->press('Done')->waitUntil('!Array.from(document.querySelectorAll("[role=dialog] h3")).some(el => el.textContent.trim() === "Link Created")')
+            ->waitFor('button[aria-label="Revoke Accountant"]');
+        $browser->script('document.querySelector("button[aria-label=\"Revoke Accountant\"]").scrollIntoView({block: "center"})');
+        $browser->assertSee('Accountant')
             ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
             ->assertSee('Expires')->assertSee('for Tax records')
+            ->screenshot('workspace-collection-public-link-mobile')
             ->click('button[aria-label="Revoke Accountant"]')->waitForDialog()->acceptDialog()->waitForText('Revoked');
     });
     expect($folder->publicLinks()->sole()->is_active)->toBeFalse();

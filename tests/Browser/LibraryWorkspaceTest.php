@@ -11,6 +11,50 @@ use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Dusk\Browser;
 
+it('keeps image previews and long metadata usable through every document entry point', function (int $width, int $height): void {
+    $user = $this->createUser();
+    $file = File::factory()->for($user)->create(['fileName' => 'Northstar scan.jpg', 'file_type' => 'document', 'fileExtension' => 'jpg', 'status' => 'completed']);
+    $document = Document::factory()->for($user)->create([
+        'file_id' => $file->id, 'title' => 'Northstar '.str_repeat('LongTitle', 25),
+        'summary' => str_repeat('LongMetadata', 75),
+    ]);
+    ExtractableEntity::factory()->create(['user_id' => $user->id, 'file_id' => $file->id, 'entity_type' => 'document', 'entity_id' => $document->id, 'is_primary' => true]);
+    $path = StoragePathBuilder::storagePath($user->id, $file->guid, 'document', 'original', 'jpg');
+    Storage::disk('paperpulse')->put($path, file_get_contents(__DIR__.'/fixtures/test-image.jpg'));
+    $file->update(['s3_original_path' => $path, 'has_image_preview' => false, 's3_image_path' => null]);
+
+    try {
+        $this->browse(function (Browser $browser) use ($user, $file, $width, $height): void {
+            $browser->resize($width, $height)->loginAs($user);
+            foreach (['library', 'direct', 'search'] as $entry) {
+                if ($entry === 'direct') {
+                    $browser->visit('/files/'.$file->id);
+                } elseif ($entry === 'library') {
+                    $browser->visit('/library')->waitFor('@library-file-'.$file->id)->click('@library-file-'.$file->id);
+                } else {
+                    $browser->visit('/search?query=Northstar&type=document')->waitFor('button[aria-label^="Quick preview of"]')
+                        ->click('button[aria-label^="Quick preview of"]');
+                }
+                $browser->waitFor('.inspector-content')->waitForText('Document information')
+                    ->waitUntil('document.querySelector("[aria-label=\"Document preview\"] img")?.naturalWidth > 0')
+                    ->assertScript('document.querySelectorAll(".file-inspector header").length', 1)
+                    ->assertScript('document.querySelectorAll("a[aria-label=\"Open original\"]").length', 1)
+                    ->assertMissing('a[aria-label="Open document in full view"]')
+                    ->assertScript('document.querySelector("[aria-label=\"Document preview\"]").getBoundingClientRect().height > 150', true)
+                    ->assertScript('document.querySelector(".inspector-details").clientHeight > 100', true)
+                    ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
+                    ->assertScript('document.querySelector(".file-inspector").getBoundingClientRect().bottom <= innerHeight + 1', true)
+                    ->assertScript('document.querySelector(".inspector-details").scrollHeight > document.querySelector(".inspector-details").clientHeight', true)
+                    ->screenshot('workspace-long-metadata-'.$entry.'-'.$width);
+                $browser->script('document.querySelector(".inspector-details").scrollTop = 10000');
+                $browser->assertScript('document.querySelector(".file-inspector header").getBoundingClientRect().top >= 0', true);
+            }
+        });
+    } finally {
+        Storage::disk('paperpulse')->delete($path);
+    }
+})->with([[1440, 900], [320, 844]]);
+
 test('library filters and saved views work through their complete browser lifecycle', function (): void {
     $user = $this->createUser();
     $file = File::factory()->create(['user_id' => $user->id, 'fileName' => 'Business October.pdf', 'status' => 'completed', 'file_type' => 'document']);

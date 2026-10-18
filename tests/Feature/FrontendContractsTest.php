@@ -99,7 +99,7 @@ if (scenario === 'category browsing') {
 if (scenario === 'vendor details') {
     const html = await render('Pages/Receipt/VendorShow.vue', { vendor: { name: 'DigitalOcean', description: 'Cloud hosting', contact_email: 'support@example.test' },
         items: { total: 1, data: [{ id: 1, text: 'Cloud subscription', qty: 1, price: 100, currency: 'NOK', receipt_id: 9, merchant: 'Store', receipt_date: '2026-10-06' }], links: [] } });
-    for (const text of ['DigitalOcean', 'Vendor details', 'Cloud hosting', 'support@example.test', 'Cloud subscription', '100 NOK', '/receipts/9', 'All vendors']) {
+    for (const text of ['DigitalOcean', 'Vendor details', 'Cloud hosting', 'support@example.test', 'Cloud subscription', '100 NOK', '/receipts/9', 'Back to vendors']) {
         assert.ok(html.includes(text), text);
     }
     const optional = await render('Pages/Receipt/VendorShow.vue', { vendor: { name: 'DigitalOcean' },
@@ -220,7 +220,9 @@ if (scenario === 'invoice native line values') {
     assert.ok(html.includes('0%'));
     assert.ok(html.includes('42.00 EUR'));
     assert.ok(html.includes('25.00%'));
-    assert.equal((html.match(/Not recorded/g) || []).length, 3);
+    const missingRow = [...html.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)].find(([row]) => row.includes('Missing values'))?.[0];
+    assert.ok(missingRow);
+    assert.equal((missingRow.match(/Not recorded/g) || []).length, 3);
     assert.ok(!html.includes('Conversion unavailable'));
     assert.ok(!html.includes('>%<'));
 }
@@ -283,8 +285,10 @@ if (scenario === 'receipt totals review') {
 }
 if (scenario === 'processing timing') {
     for (const status of ['pending', 'processing', 'completed', 'failed']) {
-        await render('Pages/Files/Show.vue', { file: { id: 402, name: 'Upload.pdf', status }, extractedEntities: [] });
-        assert.equal(pollCalls.at(-1), ['pending', 'processing'].includes(status) ? 'start' : 'stop');
+        const file = { id: 402, name: 'Upload.pdf', status };
+        const html = await render('Components/Domain/FileInspector.vue', { fileId: file.id, framed: true, initial: { file, extractedEntities: [] } });
+        assert.ok(html.includes(fileStatus.fileStatusLabel(file)), status);
+        assert.ok(html.includes('Document information'), status);
     }
     for (const [state, label] of [['pending', 'Queued'], ['processing', 'Active'], ['retrying', 'Waiting to retry'], ['completed', 'Ready'], ['failed', 'Failed']]) {
         const html = await render('Components/Domain/ProcessingProgress.vue', { processing: { state, stage: 'Extract text',
@@ -301,12 +305,13 @@ if (scenario === 'failure diagnostics') {
     for (const [category, cause, recovery] of [['unsupported_format', 'source format is not supported', 'Upload a supported'],
         ['api_timeout', 'extraction service timed out', 'retried automatically'], ['unknown_error', 'failure cause was not recorded', 'Contact support']]) {
         const html = await render('Components/Domain/ProcessingFailure.vue', { fileId: 402, failure: { category, timestamp: '2026-10-06T10:00:00Z' }, processing: { stage: 'Extract text' } });
-        for (const text of [cause, recovery, 'Failed stage: Extract text', 'Failed at 2026-10-06T10:00:00Z', '/files-processing?file_id=402']) assert.ok(html.includes(text), text);
+        for (const text of [cause, recovery, 'Failed stage</dt><dd>Extract text', 'Failed at</dt><dd>2026-10-06T10:00:00Z', '/files-processing?file_id=402']) assert.ok(html.includes(text), text);
         assert.ok(!html.includes('unknown error'));
     }
-    const html = await render('Pages/Files/Show.vue', { file: { id: 402, name: 'Failed.pdf', status: 'failed', can_view_extraction_report: true }, extractedEntities: [] });
-    assert.ok(html.includes('Extraction stopped'));
-    assert.ok(html.includes('You can still view the original'));
+    const html = await render('Components/Domain/FileInspector.vue', { fileId: 402, framed: true, initial: { file: { id: 402, name: 'Failed.pdf', status: 'failed', viewUrl: '/original.pdf', can_view_extraction_report: true }, extractedEntities: [] } });
+    assert.ok(html.includes('Failed'));
+    assert.ok(html.includes('aria-label="Open original"'));
+    assert.ok(html.includes('/files/402/extraction-report'));
     assert.ok(!html.includes('while its information is being extracted'));
     assert.ok(!html.includes('Your document is being processed'));
 }
@@ -341,11 +346,12 @@ if (scenario === 'state semantics') {
     for (const status of ['completed', 'needs_review']) {
         const file = { id: 391, status, name: 'Receipt.pdf', file_type: 'receipt', detailsUrl: route('files.show', 391), review: status === 'needs_review' ? { reason: 'receipt_totals' } : null, folder: { name: 'Needs review' }, collections: [{ id: 1, name: 'Needs review' }] };
         const label = fileStatus.fileStatusLabel(file);
-        const library = await render('Pages/Library/Index.vue', { files: { data: [file], total: 1 }, filters: {} });
-        assert.ok(library.includes('Folder: Needs review'));
+        const library = await render('Components/Domain/FileWorkspace.vue', { files: [file] });
+        assert.equal(label, status === 'completed' ? 'Ready' : 'Needs review');
         assert.ok(library.includes(label));
-        const workspace = await render('Pages/Files/Show.vue', { file, extractedEntities: [] });
-        assert.ok(workspace.includes('Folder: Needs review'));
+        const workspace = await render('Components/Domain/FileInspector.vue', { fileId: file.id, framed: true, initial: { file, extractedEntities: [] } });
+        assert.ok(workspace.includes('Collections'));
+        assert.ok(workspace.includes('/collections/1'));
         assert.ok(workspace.includes(label));
         const activity = await render('Pages/Files/Index.vue', { files: { data: [file], links: [] } });
         assert.ok(activity.includes(label));

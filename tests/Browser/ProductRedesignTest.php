@@ -13,9 +13,71 @@ use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Models\Voucher;
 use App\Services\Files\StoragePathBuilder;
+use Facebook\WebDriver\Chrome\ChromeDevToolsDriver;
 use Facebook\WebDriver\WebDriverKeys;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Dusk\Browser;
+
+it('reviews empty and dense workspaces at exact viewport sizes with reduced motion', function (): void {
+    $user = $this->createUser();
+    $this->browse(function (Browser $browser) use ($user): void {
+        $this->loginAs($browser, $user);
+        $devTools = new ChromeDevToolsDriver($browser->driver);
+        $devTools->execute('Emulation.setEmulatedMedia', ['features' => [['name' => 'prefers-reduced-motion', 'value' => 'reduce']]]);
+        try {
+            foreach (['empty', 'dense'] as $state) {
+                $routes = ['/dashboard' => 'Recent uploads', '/library' => 'Library', '/collections' => 'My collections'];
+                if ($state === 'dense') {
+                    $folder = Collection::factory()->for($user)->create(['name' => 'Dense validation folder']);
+                    Collection::factory()->count(14)->for($user)->create(['parent_id' => $folder->id]);
+                    $files = File::factory()->count(26)->for($user)->create(['status' => 'completed', 'fileName' => 'Validation document.pdf', 'fileExtension' => 'pdf']);
+                    $folder->files()->attach($files->modelKeys());
+                    $routes['/collections/'.$folder->id] = 'Dense validation folder';
+                }
+                foreach ([[1440, 900], [1280, 800], [320, 844]] as [$width, $height]) {
+                    $devTools->execute('Emulation.setDeviceMetricsOverride', ['width' => $width, 'height' => $height, 'deviceScaleFactor' => 1, 'mobile' => false]);
+                    foreach ($routes as $path => $text) {
+                        $browser->visit($path)->waitFor('.workspace-frame')->waitForText($text)
+                            ->assertScript('innerWidth', $width)->assertScript('innerHeight', $height)
+                            ->assertScript('document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight', true)
+                            ->screenshot('workspace-validation-'.$state.'-'.str_replace('/', '-', trim($path, '/')).'-'.$width);
+                        if ($state === 'empty') {
+                            $browser->assertSee(match ($path) {
+                                '/dashboard' => 'Upload your first files',
+                                '/library' => 'Your library starts here',
+                                '/collections' => 'No collections',
+                            });
+                        }
+                    }
+                }
+            }
+            $browser->visit('/library')->waitFor('.file-list');
+            $browser->script('document.documentElement.classList.add("dark"); document.querySelector("[dusk^=library-file-]").click()');
+            $browser->waitFor('.inspector-content')->waitForText('Preview could not load')
+                ->assertScript('matchMedia("(prefers-reduced-motion: reduce)").matches', true)
+                ->assertScript('parseFloat(getComputedStyle(document.querySelector("[aria-label=\"Selected document\"]")).transitionDuration) < 0.001', true)
+                ->assertSee('Document information')->screenshot('workspace-validation-dark-unavailable');
+        } finally {
+            $browser->script('document.documentElement.classList.remove("dark")');
+            $devTools->execute('Emulation.clearDeviceMetricsOverride');
+            $devTools->execute('Emulation.setEmulatedMedia', ['features' => []]);
+        }
+    });
+});
+
+it('refreshes a queued standalone document when extraction finishes without reloading the page', function (): void {
+    $user = $this->createUser();
+    $file = File::factory()->for($user)->create(['status' => 'pending', 'file_type' => 'document', 'fileName' => 'Processing document.txt', 'fileExtension' => 'txt']);
+    $this->browse(function (Browser $browser) use ($user, $file): void {
+        $browser->resize(1280, 800)->loginAs($user)->visit('/files/'.$file->id)->waitForText('Queued');
+        $browser->script('window.originalWorkspaceDocument = document');
+        $document = Document::factory()->for($user)->create(['file_id' => $file->id, 'title' => 'Completed after processing']);
+        ExtractableEntity::factory()->create(['user_id' => $user->id, 'file_id' => $file->id, 'entity_type' => 'document', 'entity_id' => $document->id, 'is_primary' => true]);
+        $file->update(['status' => 'completed']);
+        $browser->waitForText('Completed after processing', 15)->assertSee('Ready')->assertDontSee('Queued')
+            ->assertScript('document === window.originalWorkspaceDocument', true)->assertPathIs('/files/'.$file->id);
+    });
+});
 
 it('previews and edits a document without losing its place or unsaved changes', function (): void {
     $user = $this->createUser();
@@ -36,6 +98,7 @@ it('previews and edits a document without losing its place or unsaved changes', 
                 ->press('Hide review columns')->click('button[aria-controls="library-more-filters"]')->click('@library-file-'.$file->id)->waitFor('.inspector-content')->waitForText('Design services for the coming year.')
                 ->assertPresent('iframe[title="Preview of Service agreement"]')->assertMissing('input[name="title"]')
                 ->press('Edit details')->waitFor('input[name="title"]')->type('title', 'Updated service agreement')
+                ->screenshot('workspace-editing-desktop')
                 ->keys('input[name="title"]', WebDriverKeys::ESCAPE)->waitForDialog()->dismissDialog()
                 ->assertInputValue('title', 'Updated service agreement')
                 ->click('button[aria-label="Back to files"]')->waitForDialog()->dismissDialog()
@@ -56,6 +119,9 @@ it('previews and edits a document without losing its place or unsaved changes', 
                 $browser->resize($width, 844)->click('@library-file-'.$file->id)->waitFor('.inspector-content')->waitForText('Document information')
                     ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
                     ->screenshot('redesign-workspace-'.$width)
+                    ->press('Edit details')->waitFor('input[name="title"]')
+                    ->assertScript('document.querySelector(".inspector-details").scrollWidth <= document.querySelector(".inspector-details").clientWidth', true)
+                    ->screenshot('workspace-editing-'.$width)->press('Cancel editing')->waitUntilMissing('input[name="title"]')
                     ->click('button[aria-label="Back to files"]')->waitUntilMissing('[aria-label="Selected document"]');
             }
         });

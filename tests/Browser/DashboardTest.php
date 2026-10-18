@@ -27,6 +27,16 @@ test('dashboard identifies failed work and opens the filtered review queue', fun
     $this->browse(function (Browser $browser) use ($user, $file): void {
         $this->loginAs($browser, $user)->assertSee('1 file could not be processed')
             ->assertPresent('@library-file-'.$file->id)
+            ->click('@library-file-'.$file->id)->waitFor('[aria-label="Selected document"]')->waitForText('Document information')
+            ->click('button[aria-label="Back to files"]')->waitUntilMissing('[aria-label="Selected document"]')
+            ->assertScript('document.activeElement.getAttribute("dusk")', 'library-file-'.$file->id);
+        foreach ([[1440, 900], [1280, 800]] as [$width, $height]) {
+            $browser->resize($width, $height)
+                ->assertScript('document.querySelector("[aria-label=\"Archive shortcuts\"]").getBoundingClientRect().bottom <= innerHeight', true)
+                ->assertScript('document.querySelector("#attention-heading").getBoundingClientRect().top >= 0', true)
+                ->assertScript('document.documentElement.scrollHeight <= innerHeight', true);
+        }
+        $browser
             ->click('main a[href*="status=failed"]')->waitFor('@library-query')
             ->assertQueryStringHas('view', 'needs-review')->assertQueryStringHas('status', 'failed')
             ->assertSee('Failed statement.pdf');

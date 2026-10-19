@@ -74,5 +74,9 @@ test('authorized receipt metadata retains merchant names for recipients', functi
     $receipt = Receipt::factory()->create(['file_id' => $file->id, 'user_id' => $owner->id, 'merchant_id' => $merchant->id]);
     FileShare::create(['file_id' => $file->id, 'file_type' => 'receipt',
         'shared_by_user_id' => $owner->id, 'shared_with_user_id' => $recipient->id, 'permission' => 'view', 'shared_at' => now()]);
-    $this->actingAs($recipient)->get('/receipts/'.$receipt->id)->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->where('receipt.merchant.name', 'Visible merchant'));
+    $this->actingAs($recipient)->get(route('receipts.show', $receipt))->assertRedirect(route('files.show', $file));
+    $this->get(route('files.show', $file))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('Files/Show')
+        ->where('file.can_edit', false)
+        ->where('extractedEntities.0.entity.merchant.name', 'Visible merchant'));
 });

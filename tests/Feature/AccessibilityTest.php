@@ -14,7 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('renders receipt show page with breadcrumbs prop', function () {
+it('opens receipts in the file workspace with an accessible return destination', function () {
     $user = User::factory()->create();
     $file = File::factory()->create(['user_id' => $user->id]);
     $merchant = Merchant::create(['name' => 'Test Store', 'user_id' => $user->id]);
@@ -26,10 +26,16 @@ it('renders receipt show page with breadcrumbs prop', function () {
 
     $this->actingAs($user)
         ->get(route('receipts.show', $receipt))
+        ->assertRedirect(route('files.show', $file));
+
+    $this->get(route('files.show', $file))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('Receipt/Show')
-            ->has('breadcrumbs')
+            ->component('Files/Show')
+            ->where('file.id', $file->id)
+            ->where('file.back_url', route('library.index'))
+            ->where('file.back_label', 'Back to Library')
+            ->where('extractedEntities.0.entity_id', $receipt->id)
         );
 });
 
@@ -84,7 +90,7 @@ it('renders voucher show page with breadcrumbs prop', function () {
         );
 });
 
-it('renders document show page with breadcrumbs prop', function () {
+it('opens documents in the file workspace with an accessible return destination', function () {
     $user = User::factory()->create();
     $file = File::factory()->create(['user_id' => $user->id]);
     $document = Document::factory()->create([
@@ -94,9 +100,15 @@ it('renders document show page with breadcrumbs prop', function () {
 
     $this->actingAs($user)
         ->get(route('documents.show', $document))
+        ->assertRedirect(route('files.show', $file));
+
+    $this->get(route('files.show', $file))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('Documents/Show')
-            ->has('breadcrumbs')
+            ->component('Files/Show')
+            ->where('file.id', $file->id)
+            ->where('file.back_url', route('library.index'))
+            ->where('file.back_label', 'Back to Library')
+            ->where('extractedEntities.0.entity_id', $document->id)
         );
 });

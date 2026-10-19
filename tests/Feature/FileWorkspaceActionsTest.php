@@ -1,10 +1,48 @@
 <?php
 
+use App\Models\Collection;
 use App\Models\Document;
 use App\Models\File;
 use App\Models\FileShare;
 use App\Models\Receipt;
 use App\Models\User;
+
+it('saves notes descriptions and staged folders through owned metadata', function (string $model, string $type): void {
+    $file = File::factory()->create(['status' => 'completed', 'note' => 'Original note']);
+    $entity = $model::factory()->create(['user_id' => $file->user_id, 'file_id' => $file->id]);
+    $old = Collection::factory()->create(['user_id' => $file->user_id]);
+    $new = Collection::factory()->create(['user_id' => $file->user_id]);
+    $shared = Collection::factory()->create();
+    $file->collections()->attach([$old->id, $shared->id]);
+    $data = [
+        'action' => 'save', 'file_ids' => [$file->id], 'entity_type' => $type, 'entity_id' => $entity->id,
+        'title' => 'Updated title', 'total_amount' => 42, 'receipt_date' => '2026-10-05', 'currency' => 'NOK',
+        'receipt_description' => 'Updated description', 'note' => "First line\nSecond line", 'collection_ids' => [$new->id],
+    ];
+    $this->actingAs($file->user)->post(route('workspace.actions'), $data)->assertRedirect()->assertSessionHasNoErrors();
+    expect($file->fresh()->note)->toBe("First line\nSecond line")
+        ->and($file->collections()->withoutGlobalScope('user')->get()->modelKeys())->toEqualCanonicalizing([$new->id, $shared->id]);
+    if ($type === 'receipt') {
+        expect($entity->fresh()->receipt_description)->toBe('Updated description');
+    }
+    $this->post(route('workspace.actions'), [...$data, 'collection_ids' => []])->assertRedirect()->assertSessionHasNoErrors();
+    expect($file->collections()->withoutGlobalScope('user')->get()->modelKeys())->toBe([$shared->id]);
+})->with([[Receipt::class, 'receipt'], [Document::class, 'document']]);
+
+it('rejects invalid metadata edits without changing notes or folders', function (string $field): void {
+    $file = File::factory()->create(['status' => 'completed', 'note' => 'Original note']);
+    $document = Document::factory()->create(['user_id' => $file->user_id, 'file_id' => $file->id, 'title' => 'Original title', 'note' => 'Original note']);
+    $folder = Collection::factory()->create(['user_id' => $file->user_id]);
+    $file->collections()->attach($folder);
+    $value = $field === 'collection_ids' ? [Collection::factory()->create()->id] : str_repeat('x', 1001);
+    $this->actingAs($file->user)->postJson(route('workspace.actions'), [
+        'action' => 'save', 'file_ids' => [$file->id], 'entity_type' => 'document', 'entity_id' => $document->id,
+        'title' => 'Changed title', $field => $value,
+    ])->assertUnprocessable()->assertJsonValidationErrors($field === 'collection_ids' ? 'collection_ids.0' : $field);
+    expect($file->fresh()->note)->toBe('Original note')
+        ->and($document->fresh()->title)->toBe('Original title')
+        ->and($file->collections()->withoutGlobalScope('user')->get()->modelKeys())->toBe([$folder->id]);
+})->with(['note', 'receipt_description', 'collection_ids']);
 
 it('saves owned document details and clears the previous approval', function (): void {
     $file = File::factory()->create(['status' => 'completed', 'meta' => ['workspace_review' => ['status' => 'approved']]]);

@@ -5,6 +5,7 @@ import axios from 'axios';
 import { ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline';
 import SharingControls from '@/Components/Domain/SharingControls.vue';
 import TagManager from '@/Components/Domain/TagManager.vue';
+import CollectionSelector from '@/Components/Domain/CollectionSelector.vue';
 import DocumentPreview from '@/Components/Domain/DocumentPreview.vue';
 import ProcessingLimit from '@/Components/Domain/ProcessingLimit.vue';
 import ProcessingFailure from '@/Components/Domain/ProcessingFailure.vue';
@@ -22,9 +23,12 @@ const editing = ref(false);
 const { formatDate, formatCurrency } = useDateFormatter();
 const drafts = ref([]);
 const collectionId = ref('');
+const collectionIds = ref([]);
+const baselineCollections = ref('[]');
 const baseline = ref('');
 let controller;
-const dirty = computed(() => JSON.stringify(drafts.value) !== baseline.value && Boolean(payload.value));
+const collectionsDirty = computed(() => JSON.stringify(collectionIds.value) !== baselineCollections.value);
+const dirty = computed(() => (JSON.stringify(drafts.value) !== baseline.value || collectionsDirty.value) && Boolean(payload.value));
 watch(dirty, value => emit('dirty', value));
 function hydrate(data) {
     payload.value = data;
@@ -35,9 +39,12 @@ function hydrate(data) {
         currency: extraction.entity.currency, receipt_date: extraction.entity.receipt_date?.slice(0, 10),
         category_id: extraction.entity.category_id ?? extraction.entity.category?.id ?? null,
         title: extraction.entity.title || '', summary: extraction.entity.summary || '',
+        receipt_description: extraction.entity.receipt_description || '', note: extraction.entity.note || '',
         line_items: (extraction.entity.lineItems || []).map(item => ({ id: item.id, text: item.description, qty: item.quantity, price: item.unit_price, total: item.total_amount })),
     }));
     baseline.value = JSON.stringify(drafts.value);
+    collectionIds.value = (data.file.collections || []).filter(collection => (data.file.available_collections || []).some(available => available.id === collection.id)).map(collection => collection.id);
+    baselineCollections.value = JSON.stringify(collectionIds.value);
 }
 async function load() {
     controller?.abort();
@@ -68,7 +75,7 @@ function save(draft) {
     const previousBaseline = JSON.parse(baseline.value);
     saving.value = true;
     error.value = '';
-    router.post(route('workspace.actions'), { ...draft, action: 'save', file_ids: [props.fileId] }, {
+    router.post(route('workspace.actions'), { ...draft, ...(collectionsDirty.value ? { collection_ids: collectionIds.value } : {}), action: 'save', file_ids: [props.fileId] }, {
         preserveScroll: true,
         onSuccess: async () => {
             await load();
@@ -123,11 +130,11 @@ function lineSku(extraction, id) {
 }
 function fields(extraction) {
     const entity = extraction.entity;
-    if (extraction.entity_type === 'document') return [['Title', entity.title], ['Summary', entity.summary], ['Document date', entity.document_date ? formatDate(entity.document_date) : null]];
+    if (extraction.entity_type === 'document') return [['Title', entity.title], ['Summary', entity.summary], ['Note', entity.note], ['Document date', entity.document_date ? formatDate(entity.document_date) : null]];
     if (extraction.entity_type === 'receipt') return [
         ['Merchant', entity.merchant?.name], ['Receipt date', entity.receipt_date ? formatDate(entity.receipt_date) : null],
         ['Total', entity.total_amount == null ? null : formatCurrency(entity.total_amount, entity.currency)],
-        ['Tax', entity.tax_amount == null ? null : formatCurrency(entity.tax_amount, entity.currency)], ['Category', entity.category?.name || entity.receipt_category], ['Description', entity.receipt_description],
+        ['Tax', entity.tax_amount == null ? null : formatCurrency(entity.tax_amount, entity.currency)], ['Category', entity.category?.name || entity.receipt_category], ['Description', entity.receipt_description], ['Note', entity.note],
     ];
     return Object.entries(entity).filter(([key, value]) => value != null && typeof value !== 'object' && !['id', 'file_id', 'user_id', 'created_at', 'updated_at'].includes(key))
         .map(([key, value]) => [key.replaceAll('_', ' '), typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value]);
@@ -166,10 +173,11 @@ defineExpose({ dirty });
                         <div class="flex flex-wrap justify-between gap-2 text-sm"><h3 class="font-semibold capitalize">{{ draft.entity_type.replaceAll('_', ' ') }}</h3><Link v-if="recordUrl(payload.extractedEntities[index])" :href="recordUrl(payload.extractedEntities[index])" class="text-xs text-zinc-500 underline">Full details</Link></div>
                         <fieldset v-if="editing && ['receipt', 'document'].includes(draft.entity_type)" :disabled="!editable || saving" class="flex min-w-0 flex-col gap-3">
                             <template v-if="draft.entity_type === 'receipt'">
-                                <label>Vendor<input v-model="draft.vendor" type="text" maxlength="255" /></label>
-                                <div class="grid grid-cols-2 gap-2"><label>Total<input v-model="draft.total_amount" type="number" step="any" required /></label><label>Tax<input v-model="draft.tax_amount" type="number" step="any" /></label></div>
-                                <div class="grid grid-cols-2 gap-2"><label>Date<input v-model="draft.receipt_date" type="date" required /></label><label>Currency<input v-model="draft.currency" maxlength="3" minlength="3" required /></label></div>
-                                <label v-if="editable">Category<select v-model="draft.category_id"><option :value="null">Uncategorized</option><option v-for="category in payload.file.categories" :key="category.id" :value="category.id">{{ category.name }}</option></select></label>
+                                <label>Vendor<input name="vendor" v-model="draft.vendor" type="text" maxlength="255" /></label>
+                                <div class="grid grid-cols-2 gap-2"><label>Total<input name="total_amount" v-model="draft.total_amount" type="number" step="any" required /></label><label>Tax<input name="tax_amount" v-model="draft.tax_amount" type="number" step="any" /></label></div>
+                                <div class="grid grid-cols-2 gap-2"><label>Date<input name="receipt_date" v-model="draft.receipt_date" type="date" required /></label><label>Currency<input name="currency" v-model="draft.currency" maxlength="3" minlength="3" required /></label></div>
+                                <label v-if="editable">Category<select name="category_id" v-model="draft.category_id"><option :value="null">Uncategorized</option><option v-for="category in payload.file.categories" :key="category.id" :value="category.id">{{ category.name }}</option></select></label>
+                                <label>Description<textarea name="receipt_description" aria-label="Description" v-model="draft.receipt_description" rows="4" maxlength="1000" class="whitespace-pre-wrap" /></label>
                                 <details :open="draft.line_items.length <= 5">
                                     <summary class="cursor-pointer text-xs font-semibold">Line items · {{ draft.line_items.length }}</summary>
                                     <div v-for="(item, itemIndex) in draft.line_items" :key="item.id" class="mt-3 flex flex-col gap-2 border-t border-zinc-200 pt-2 dark:border-zinc-700">
@@ -182,6 +190,7 @@ defineExpose({ dirty });
                                 <label>Title<input name="title" v-model="draft.title" maxlength="255" required /></label>
                                 <label>Summary<textarea name="summary" v-model="draft.summary" rows="5" maxlength="1000" /></label>
                             </template>
+                            <label>Note<textarea name="note" v-model="draft.note" rows="4" maxlength="1000" class="whitespace-pre-wrap" /></label>
                             <button v-if="editable && ['receipt', 'document'].includes(draft.entity_type)" type="submit" class="workspace-primary self-start" :disabled="saving || !dirty">{{ saving ? 'Saving…' : 'Save changes' }}</button>
                         </fieldset>
                         <template v-else>
@@ -205,7 +214,11 @@ defineExpose({ dirty });
                     <details class="border-b border-zinc-200 p-4 dark:border-zinc-800">
                         <summary class="cursor-pointer text-sm font-medium">Collections <span class="ml-1 font-normal text-zinc-500">{{ payload.file.collections?.length || 0 }}</span></summary>
                         <div class="my-3 flex flex-wrap gap-2"><Link v-for="collection in payload.file.collections" :key="collection.id" :href="route('collections.show', collection.id)" class="text-sm text-zinc-500 underline">{{ collection.name }}</Link><span v-if="!payload.file.collections?.length" class="text-sm text-zinc-500">Not assigned to a collection</span></div>
-                        <form v-if="payload.file.can_edit" @submit.prevent="addToCollection" class="flex items-end gap-2"><label class="flex-1">Add to collection<select v-model="collectionId" :disabled="saving || dirty"><option value="">Choose collection</option><option v-for="collection in payload.file.available_collections" :key="collection.id" :value="collection.id">{{ collection.path || collection.name }}</option></select></label><button class="workspace-button" :disabled="!collectionId || saving || dirty">Add</button></form>
+                        <div v-if="editing && hasEditableDetails" class="flex flex-col gap-2">
+                            <CollectionSelector v-model="collectionIds" :allow-create="false" placeholder="Add to collections..." />
+                            <p class="text-xs text-zinc-500">Folder changes save with Save changes.</p>
+                        </div>
+                        <form v-else-if="payload.file.can_edit" @submit.prevent="addToCollection" class="flex items-end gap-2"><label class="flex-1">Add to collection<select v-model="collectionId" :disabled="saving || dirty"><option value="">Choose collection</option><option v-for="collection in payload.file.available_collections" :key="collection.id" :value="collection.id">{{ collection.path || collection.name }}</option></select></label><button class="workspace-button" :disabled="!collectionId || saving || dirty">Add</button></form>
                     </details>
                     <details class="border-b border-zinc-200 p-3 dark:border-zinc-800">
                         <summary class="cursor-pointer text-sm font-medium">File information</summary>

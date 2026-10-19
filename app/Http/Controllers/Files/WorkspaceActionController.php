@@ -10,6 +10,7 @@ use App\Models\Merchant;
 use App\Models\Receipt;
 use App\Services\Files\FileDeletionService;
 use App\Services\Files\FileReviewService;
+use App\Services\Tags\TagAttachmentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
 
@@ -30,10 +31,12 @@ class WorkspaceActionController extends Controller
                 $this->authorize($data['action'] === 'delete' ? 'delete' : 'update', $file);
                 if ($data['action'] === 'delete') {
                     $deletion->deleteFile($file, $userId);
+
                     continue;
                 }
                 if ($data['action'] === 'tag') {
-                    \App\Services\Tags\TagAttachmentService::attachTags($file, [$data['tag_id']]);
+                    TagAttachmentService::attachTags($file, [$data['tag_id']]);
+
                     continue;
                 }
                 if (! in_array($file->status, ['completed', 'needs_review'], true)) {
@@ -44,7 +47,7 @@ class WorkspaceActionController extends Controller
                     $entity = $model::query()->where('user_id', $userId)->where('file_id', $file->id)->findOrFail($data['entity_id']);
                     $this->authorize('update', $entity);
                     if ($entity instanceof Receipt) {
-                        $values = array_intersect_key($data, array_flip(['total_amount', 'tax_amount', 'receipt_date', 'currency', 'category_id']));
+                        $values = array_intersect_key($data, array_flip(['total_amount', 'tax_amount', 'receipt_date', 'currency', 'category_id', 'receipt_description']));
                         if (array_key_exists('vendor', $data)) {
                             $values['merchant_id'] = filled($data['vendor']) ? Merchant::query()->firstOrCreate(['user_id' => $userId, 'name' => trim($data['vendor'])])->id : null;
                         }
@@ -55,9 +58,17 @@ class WorkspaceActionController extends Controller
                     } else {
                         $entity->update(array_intersect_key($data, array_flip(['title', 'summary', 'category_id'])));
                     }
+                    if (array_key_exists('note', $data)) {
+                        $file->update(['note' => $data['note']]);
+                    }
+                    if (array_key_exists('collection_ids', $data)) {
+                        $sharedCollections = $file->collections()->withoutGlobalScope('user')->where('collections.user_id', '!=', $userId)->pluck('collections.id')->all();
+                        $file->collections()->sync(array_unique([...$data['collection_ids'], ...$sharedCollections]));
+                    }
                     $meta = $file->meta ?? [];
                     unset($meta['workspace_review']);
                     $file->update(['meta' => $meta]);
+
                     continue;
                 }
                 if ($data['action'] === 'approve' && $file->status === 'needs_review') {

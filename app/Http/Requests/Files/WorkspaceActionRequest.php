@@ -28,6 +28,10 @@ class WorkspaceActionRequest extends FormRequest
             'currency' => ['required_if:entity_type,receipt', 'nullable', 'string', 'size:3'],
             'title' => ['required_if:entity_type,document', 'nullable', 'string', 'max:255'],
             'summary' => ['nullable', 'string', 'max:1000'],
+            'receipt_description' => ['nullable', 'string', 'max:1000'],
+            'note' => ['nullable', 'string', 'max:1000'],
+            'collection_ids' => ['sometimes', 'array', 'max:100'],
+            'collection_ids.*' => ['required', 'integer', 'distinct', new ExistsForUser('collections')],
             'category_id' => ['nullable', 'integer', new ExistsForUser('categories')],
             'line_items' => ['sometimes', 'array', 'max:500'],
             'line_items.*.id' => ['required', 'integer', 'distinct'],
@@ -43,6 +47,8 @@ class WorkspaceActionRequest extends FormRequest
         return ['file_ids.required' => 'Select at least one file.',
             'tag_id.required_if' => 'Choose a tag to apply.',
             'line_items.*.text.required' => 'Each line item needs a description.',
+            'note.max' => 'Keep notes within 1,000 characters.',
+            'receipt_description.max' => 'Keep descriptions within 1,000 characters.',
             'currency.size' => 'Use a three-letter currency code.'];
     }
 }

@@ -127,7 +127,7 @@ it('names row selection and search result links with distinct record identities'
         $browser->loginAs($user)->visit('/receipts')->waitFor('tbody input[type="checkbox"]')
             ->assertScript("new Set(Array.from(document.querySelectorAll('tbody input[type=checkbox]')).map(el => el.getAttribute('aria-label'))).size", 2)
             ->visit('/documents')->waitFor('input[aria-label="Select Named source (file #'.$file->id.')"]')
-            ->click('div.flex.items-center.space-x-2 > button:last-child')->waitFor('table')
+            ->click('button[aria-label="List view"]')->waitFor('table')
             ->assertPresent('thead input[aria-label="Select all documents on this page"]')
             ->check('thead input[type="checkbox"]')->assertChecked('tbody input[type="checkbox"]')
             ->visit('/search?query=Same%20store&type=receipt')->waitFor('input[aria-label^="Select receipt"]')
@@ -244,6 +244,7 @@ it('keeps failed file retry actions visible on narrow activity pages', function 
 
 it('renders document metadata and navigation with populated and nullable dates', function (): void {
     $user = $this->createUser();
+    UserPreference::create(['user_id' => $user->id, 'date_format' => 'Y-m-d', 'timezone' => 'UTC']);
 
     $this->browse(function (Browser $browser) use ($user): void {
         foreach (['2026-10-05', null] as $date) {
@@ -255,9 +256,9 @@ it('renders document metadata and navigation with populated and nullable dates',
                 'updated_at' => $date,
             ]);
             $browser->loginAs($user)->visit('/documents/'.$document->id)
-                ->waitForText('Electrical plan')->assertSee('File Information')
-                ->assertSee('Last Updated in PaperPulse')->assertPresent('a[href$="/documents"]');
-            $browser->assertScript("Array.from(document.querySelectorAll('dt')).find(el => el.textContent === 'Last Updated in PaperPulse').nextElementSibling.textContent.trim()", $date ?? '');
+                ->waitForText('Electrical plan')->waitForText('Document information')->assertPresent('@workspace-back');
+            $browser->assertScript("Array.from(document.querySelectorAll('dt')).find(el => el.textContent === 'Document date').nextElementSibling.textContent.trim()", $date ?? 'Not available')
+                ->click('@workspace-back')->waitForLocation('/library')->assertPresent('@library-query');
         }
     });
 });
@@ -273,7 +274,7 @@ it('keeps nested folder actions and breadcrumbs within narrow viewports', functi
         foreach ([320, 390, 768] as $width) {
             $browser->resize($width, 844);
             $browser->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
-            $browser->assertSee('Edit Collection')->assertSee('Review recommendations');
+            $browser->press('Details')->waitFor('[data-folder-details]')->assertSee('Edit Collection')->assertSee('Review recommendations')->press('Close')->waitUntilMissing('[role="dialog"]');
             $browser->assertScript("Array.from(document.querySelectorAll('header a, header button, nav[aria-label=Breadcrumb] a')).every(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= window.innerWidth; })", true);
         }
     });
@@ -299,11 +300,10 @@ it('names management actions with their folder or category target', function ():
 
     $this->browse(function (Browser $browser) use ($user): void {
         $browser->loginAs($user)->visit('/collections')->waitForText('Named folder')
-            ->assertPresent('button[aria-label="Edit Named folder"]')
-            ->assertPresent('button[aria-label="Archive Named folder"]')
-            ->assertPresent('button[aria-label="Delete Named folder"]')
+            ->click('button[aria-label="Actions for Named folder"]')->waitFor('[role="menu"]')
+            ->assertSeeIn('[role="menu"]', 'Edit folder')->assertSeeIn('[role="menu"]', 'Archive folder')->assertSeeIn('[role="menu"]', 'Delete folder')
             ->visit('/collections?archived=1')->waitForText('Archived folder')
-            ->assertPresent('button[aria-label="Unarchive Archived folder"]')
+            ->click('button[aria-label="Actions for Archived folder"]')->waitFor('[role="menu"]')->assertSeeIn('[role="menu"]', 'Restore folder')
             ->visit('/categories')->waitForText('Named category')
             ->assertPresent('button[aria-label="Edit Category: Named category"]')
             ->assertPresent('button[aria-label="Delete Category: Named category"]')
@@ -321,20 +321,23 @@ it('gives mobile folder controls separated touch targets aligned with their icon
         $browser->loginAs($user)->visit('/collections')->waitForText('Long folder name for mobile management');
 
         foreach ([320, 390] as $width) {
-            $browser->resize($width, 844);
+            $browser->resize($width, 844)->click('button[aria-label="Actions for Long folder name for mobile management"]')->waitFor('[role="menu"]');
             $browser->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
             $browser->assertScript(<<<'JS'
                 (() => {
-                    const controls = Array.from(document.querySelectorAll('button[aria-label$="mobile management"]'));
-                    return controls.length === 3 && controls.every((button, index) => {
+                    const trigger = document.querySelector('button[aria-label="Actions for Long folder name for mobile management"]');
+                    const rect = trigger.getBoundingClientRect();
+                    const icon = trigger.querySelector('svg').getBoundingClientRect();
+                    const controls = Array.from(document.querySelectorAll('[role="menu"] button'));
+                    return rect.width >= 44 && rect.height >= 44 && Math.abs((rect.left + rect.right) / 2 - (icon.left + icon.right) / 2) < 1
+                        && controls.length === 3 && controls.every((button, index) => {
                         const target = button.getBoundingClientRect();
-                        const icon = button.querySelector('svg').getBoundingClientRect();
                         return target.width >= 44 && target.height >= 44 && target.right <= window.innerWidth
-                            && Math.abs((target.left + target.right) / 2 - (icon.left + icon.right) / 2) < 1
-                            && (!index || controls[index - 1].getBoundingClientRect().right < target.left);
+                            && target.left >= 0 && (!index || controls[index - 1].getBoundingClientRect().bottom <= target.top);
                     });
                 })()
                 JS, true);
+            $browser->keys('[role="menu"]', WebDriverKeys::ESCAPE)->waitUntilMissing('[role="menu"]');
         }
     });
 });
@@ -359,10 +362,10 @@ it('keeps long invoice identities dates and amounts readable in mobile search ca
             $browser->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
             $browser->assertScript(<<<'JS'
                 (() => {
-                    const title = document.querySelector('h3[ class*="text-base"]');
-                    const heading = title.parentElement.parentElement;
-                    const date = heading.querySelector('span.text-xs.text-zinc-500').getBoundingClientRect();
-                    const amount = heading.querySelector('.text-lg.font-bold').getBoundingClientRect();
+                    const card = document.querySelector('[aria-label="Search results"] article');
+                    const title = card.querySelector('h2 button span');
+                    const date = card.querySelector('h2').previousElementSibling.getBoundingClientRect();
+                    const amount = card.querySelector('p.tabular-nums').getBoundingClientRect();
                     const style = getComputedStyle(title);
                     return style.textOverflow !== 'ellipsis' && (date.bottom <= amount.top || date.right <= amount.left);
                 })()
@@ -386,13 +389,12 @@ it('keeps distinct visible associated labels on populated search filters', funct
             'search-collection' => 'Collection',
         ];
 
-        $browser->assertSeeIn('label[for="search-sort"]', 'Sort by:')
-            ->assertScript("document.getElementById('search-sort').labels[0].textContent.trim()", 'Sort by:')
+        $browser->assertScript("document.getElementById('search-sort').labels[0].firstChild.textContent.trim()", 'Order this page')
             ->type('#search-amount-min', '0')->type('#search-amount-max', '100');
 
         foreach ($labels as $id => $label) {
-            $browser->assertSeeIn('label[for="'.$id.'"]', $label);
-            $browser->assertScript("document.getElementById('$id').labels[0].textContent.trim()", $label);
+            $browser->assertScript("document.getElementById('$id').labels[0].firstChild.textContent.trim()", $label)
+                ->assertVisible('#'.$id);
         }
     });
 });
@@ -405,7 +407,7 @@ it('recovers from mobile no results by clearing filters while preserving the que
     $this->browse(function (Browser $browser) use ($user): void {
         $browser->resize(390, 844)->loginAs($user)->visit('/search?query=Filter%20recovery&type=invoice')
             ->waitForText('No results found')->assertSee('Clear filters (keep search)')
-            ->press('Clear filters (keep search)')->waitForText('Found 1 result')
+            ->press('Clear filters (keep search)')->waitForText('1 result')->waitFor('button[aria-label^="Quick preview of"]')
             ->assertInputValue('input[aria-label="Search document contents"]', 'Filter recovery')
             ->waitUntil("new URL(location.href).searchParams.get('type') === 'all'");
         $browser->visit('/search?query=unmatched-search-identity')->waitForText('No results found')
@@ -424,12 +426,12 @@ it('fits notification identities and footer actions within mobile viewports', fu
 
     $this->browse(function (Browser $browser) use ($user): void {
         $browser->resize(390, 844)->loginAs($user)->visit('/dashboard')
-            ->waitFor('.relative.ml-3 > div > button')->click('.relative.ml-3 > div > button')
+            ->waitFor('button[aria-label="View notifications"]')->click('button[aria-label="View notifications"]')
             ->waitFor('[role="menu"] a[href$="/preferences"]');
 
         foreach ([320, 390] as $width) {
             $browser->resize($width, 844);
-            $browser->script('const bell = document.querySelector(".relative.ml-3"); bell.style.position = "absolute"; bell.style.left = "80px";');
+            $browser->script("const bell = document.querySelector('[aria-label=\"View notifications\"]').closest('div.relative'); bell.style.position = 'absolute'; bell.style.left = '80px';");
 
             foreach ([false, true] as $dark) {
                 $browser->script('document.documentElement.classList.toggle("dark", '.($dark ? 'true' : 'false').')');
@@ -457,7 +459,7 @@ it('dismisses notifications with Escape from the trigger or panel and preserves 
     ]);
 
     $this->browse(function (Browser $browser) use ($user): void {
-        $trigger = '.relative.ml-3 > div > button';
+        $trigger = 'button[aria-label="View notifications"]';
         $browser->loginAs($user)->visit('/dashboard')->waitFor($trigger);
 
         foreach ([$trigger, '[role="menu"]'] as $focusTarget) {
@@ -496,7 +498,7 @@ it('shows default and legacy timezone selections without changing saved values',
 
 it('discards receipt edits on cancel and saves only through Save Changes', function (): void {
     $user = $this->createUser();
-    $receipt = Receipt::factory()->for(File::factory()->for($user))->create([
+    $receipt = Receipt::factory()->for(File::factory()->for($user)->state(['status' => 'completed']))->create([
         'user_id' => $user->id,
         'total_amount' => 42,
         'receipt_date' => '2026-10-05',
@@ -506,12 +508,12 @@ it('discards receipt edits on cancel and saves only through Save Changes', funct
 
     $this->browse(function (Browser $browser) use ($user, $receipt): void {
         $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitForText('Persisted description')
-            ->press('Edit Receipt')->tap(fn (Browser $browser) => $browser->script('window.scrollTo(0, 0)'))->press('Cancel')->waitForText('Edit Receipt')
-            ->press('Edit Receipt')->type('dl input[type="number"]', '99')
-            ->tap(fn (Browser $browser) => $browser->script('window.scrollTo(0, 0)'))->press('Cancel')->waitForText('Edit Receipt');
+            ->press('Edit details')->press('Cancel editing')->waitForText('Edit details')
+            ->press('Edit details')->type('input[name="total_amount"]', '99')
+            ->press('Cancel editing')->waitForText('Edit details');
         expect($receipt->fresh()->total_amount)->toEqual(42);
-        $browser->press('Edit Receipt')->assertInputValue('dl input[type="number"]', '42.00')
-            ->type('dl input[type="number"]', '55')->tap(fn (Browser $browser) => $browser->script('window.scrollTo(0, 0)'))->press('Save Changes')->waitForText('Edit Receipt');
+        $browser->press('Edit details')->assertInputValue('input[name="total_amount"]', '42.00')
+            ->type('input[name="total_amount"]', '55')->press('Save changes')->waitForText('Edit details');
     });
 
     expect($receipt->fresh()->total_amount)->toEqual(55);
@@ -521,25 +523,25 @@ it('wraps long receipt descriptions and preserves multiline notes while editing'
     $user = $this->createUser();
     $description = str_repeat('A readable sentence describing the receipt. ', 5);
     $note = "First line\nSecond line\nThird line";
-    $receipt = Receipt::factory()->for(File::factory()->for($user))->create([
+    $receipt = Receipt::factory()->for(File::factory()->for($user)->state(['status' => 'completed']))->create([
         'user_id' => $user->id, 'receipt_description' => $description, 'note' => $note,
         'receipt_date' => '2026-10-05', 'currency' => 'NOK', 'total_amount' => 42,
     ]);
 
     $this->browse(function (Browser $browser) use ($user, $receipt, $description, $note): void {
-        $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitForText('Edit Receipt')->press('Edit Receipt')
+        $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitForText('Edit details')->press('Edit details')
             ->assertInputValue('textarea[aria-label="Description"]', $description)
-            ->assertInputValue('dl > div:last-child textarea', $note);
+            ->assertInputValue('textarea[name="note"]', $note);
         foreach ([320, 390, 1440] as $width) {
             $browser->resize($width, 844)->assertScript(<<<'JS'
-                Array.from(document.querySelectorAll('dl textarea')).every(el =>
+                Array.from(document.querySelectorAll('.inspector-details textarea')).every(el =>
                     el.rows >= 4 && el.scrollWidth <= el.clientWidth && getComputedStyle(el).whiteSpace === 'pre-wrap')
                 JS, true);
         }
-        $browser->type('dl > div:last-child textarea', $note."\nSaved fourth line")
-            ->tap(fn (Browser $browser) => $browser->script('window.scrollTo(0, 0)'))->press('Save Changes')->waitForText('Edit Receipt')
-            ->refresh()->waitForText('Saved fourth line')->press('Edit Receipt')
-            ->assertInputValue('dl > div:last-child textarea', $note."\nSaved fourth line");
+        $browser->type('textarea[name="note"]', $note."\nSaved fourth line")
+            ->press('Save changes')->waitForText('Edit details')
+            ->refresh()->waitForText('Saved fourth line')->press('Edit details')
+            ->assertInputValue('textarea[name="note"]', $note."\nSaved fourth line");
     });
 });
 
@@ -561,7 +563,7 @@ it('keeps shared upload pickers readable in both themes through focus selection 
     Tag::factory()->create(['user_id' => $user->id, 'name' => 'Picker tag', 'color' => '#18181b']);
 
     $this->browse(function (Browser $browser) use ($user): void {
-        $browser->loginAs($user)->visit('/documents/upload')->waitFor('input[placeholder="Search or create collections..."]');
+        $browser->loginAs($user)->visit('/documents/upload')->waitForText('2. Add notes and organization')->click('summary')->waitFor('input[placeholder="Search or create collections..."]');
         foreach ([false, true] as $dark) {
             $browser->script('document.documentElement.classList.toggle("dark", '.($dark ? 'true' : 'false').')');
             foreach (['collections' => 'Picker folder', 'tags' => 'Picker tag'] as $kind => $name) {
@@ -607,10 +609,10 @@ it('guides export creation and distinguishes empty pending and expired exports',
 it('sets distinct browser titles with exactly one product suffix', function (): void {
     $user = $this->createUser();
     $titles = [
-        '/analytics' => 'Reports',
+        '/analytics' => 'Reports overview',
         '/invoices' => 'Invoices',
         '/contracts' => 'Contracts',
-        '/bank-statements' => 'Bank Statements',
+        '/bank-statements' => 'Bank statements',
         '/vouchers' => 'Vouchers',
         '/documents/upload' => 'Upload files',
         '/pulsedav' => 'Scanner imports',
@@ -620,8 +622,7 @@ it('sets distinct browser titles with exactly one product suffix', function (): 
     $this->browse(function (Browser $browser) use ($user, $titles): void {
         $browser->loginAs($user);
         foreach ($titles as $url => $title) {
-            $browser->visit($url)->waitUntil('document.title === '.json_encode($title.' - PaperPulse'))
-                ->assertTitle($title.' - PaperPulse');
+            $browser->visit($url)->waitUntil('document.title === '.json_encode($title.' - PaperPulse'))->assertTitle($title.' - PaperPulse');
         }
         $browser->visit('/')->waitUntil('document.title === "Welcome - PaperPulse"')->assertTitle('Welcome - PaperPulse');
     });
@@ -654,25 +655,25 @@ it('keeps every theme reachable and indicates the active theme on mobile', funct
 
 it('shows each receipt membership once and gives optional metadata clear empty states', function (): void {
     $user = $this->createUser();
-    $file = File::factory()->for($user)->create();
+    $file = File::factory()->for($user)->create(['status' => 'completed']);
     $receipt = Receipt::factory()->for($file)->create(['user_id' => $user->id]);
-    $collection = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Needs review']);
+    $collection = Collection::factory()->for($user)->create(['name' => 'Needs review']);
     $file->collections()->attach($collection);
-
-    $this->browse(function (Browser $browser) use ($user, $receipt, $file, $collection): void {
-        $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitForText('Needs review')
-            ->assertSee('No tags added.')->assertSee('Folder changes save immediately.');
-        $membershipCount = <<<'JS'
-            (() => {
-                const panel = Array.from(document.querySelectorAll('h3')).find(el => el.textContent.trim() === 'Collections').parentElement;
-                return (panel.textContent.match(/Needs review/g) || []).length;
-            })()
-            JS;
-        $browser->assertScript($membershipCount, 1)
-            ->press('Edit Receipt')->waitForText('Save Changes')->assertScript($membershipCount, 1)
-            ->press('Cancel')->waitForText('Edit Receipt')->assertScript($membershipCount, 1);
-        $file->collections()->detach($collection);
-        $browser->refresh()->waitForText('Not assigned to any collections')->assertSee('No tags added.');
+    $this->browse(function (Browser $browser) use ($user, $receipt): void {
+        $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitFor('.inspector-details');
+        foreach (['Tags', 'Collections'] as $label) {
+            $browser->script("Array.from(document.querySelectorAll('.inspector-details summary')).find(el => el.textContent.trim().startsWith('{$label}')).click()");
+        }
+        $browser->assertSee('Needs review')->assertSee('No tags added.')
+            ->assertScript('document.querySelectorAll(".inspector-details a[href*=\"/collections/\"]").length', 1)
+            ->press('Edit details')->waitFor('input[placeholder="Add to collections..."]')->assertSee('Folder changes save with Save changes.')
+            ->press('Cancel editing')->waitUntilMissing('input[placeholder="Add to collections..."]');
+    });
+    $file->collections()->detach($collection);
+    $this->browse(function (Browser $browser): void {
+        $browser->refresh()->waitFor('.inspector-details');
+        $browser->script("Array.from(document.querySelectorAll('.inspector-details summary')).find(el => el.textContent.trim().startsWith('Collections')).click()");
+        $browser->assertSee('Not assigned to a collection');
     });
 });
 
@@ -751,23 +752,23 @@ it('reconciles the activity summary including review and pending files', functio
 
 it('explains empty direct folder contents and links to populated subfolders', function (): void {
     $user = $this->createUser();
-    $parent = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Building']);
-    $child = Collection::factory()->create(['user_id' => $user->id, 'parent_id' => $parent->id, 'name' => 'Contracts']);
-    $file = File::factory()->create(['user_id' => $user->id, 'fileName' => 'contract.pdf', 'status' => 'completed']);
+    $parent = Collection::factory()->for($user)->create(['name' => 'Building']);
+    $child = Collection::factory()->for($user)->create(['name' => 'Contracts', 'parent_id' => $parent->id]);
+    $file = File::factory()->for($user)->create(['fileName' => 'contract.pdf', 'status' => 'completed']);
     $child->files()->attach($file);
-
-    $this->browse(function (Browser $browser) use ($user, $parent, $child, $file): void {
-        $browser->loginAs($user)->visit('/collections/'.$parent->id)->waitForText('Building');
+    $this->browse(function (Browser $browser) use ($user, $parent, $child): void {
         foreach ([390, 1440] as $width) {
-            $browser->resize($width, 900)->assertSee('No files directly in this collection')
-                ->assertSee('Files in subfolders are listed separately')->assertSee('Upload to this collection')
-                ->assertPresent('a[href$="/collections/'.$child->id.'"]');
+            $browser->resize($width, 900)->loginAs($user)->visit('/collections/'.$parent->id)->waitFor('.file-list')
+                ->assertSee('No files directly in this collection')->assertSee('Upload files here or open a subfolder above.')->assertSee('Upload files');
+            if ($width < 768) {
+                $browser->press('Folders')->waitForText('Browse folders');
+            }
+            $browser->click(($width < 768 ? '[role="dialog"] ' : '').'section[aria-label="Subfolders"] a[href$="/collections/'.$child->id.'"]')
+                ->waitForLocation('/collections/'.$child->id)->waitForText('contract.pdf')->assertDontSee('No files directly in this collection');
         }
-        $browser->clickLink('Browse Contracts')->waitForLocation('/collections/'.$child->id)->waitForText('contract.pdf')
-            ->assertDontSee('No files directly in this collection');
-        $child->files()->detach($file);
-        $browser->refresh()->waitForText('No files directly in this collection')->assertSee('Upload to this collection');
     });
+    $child->files()->detach($file);
+    $this->browse(fn (Browser $browser) => $browser->refresh()->waitForText('No files directly in this collection')->assertSee('Upload files'));
 });
 
 it('explains sparse and consecutive observed months in reports', function (): void {
@@ -789,17 +790,17 @@ it('explains sparse and consecutive observed months in reports', function (): vo
 it('edits receipts using managed categories and an uncategorized option', function (): void {
     $user = $this->createUser();
     $category = Category::create(['user_id' => $user->id, 'name' => 'Garden & Plants', 'slug' => 'garden-plants', 'is_active' => true]);
-    $receipt = Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id, 'category_id' => $category->id, 'receipt_date' => '2026-10-05', 'total_amount' => 42, 'currency' => 'NOK']);
+    $receipt = Receipt::factory()->for(File::factory()->for($user)->state(['status' => 'completed']))->create(['user_id' => $user->id, 'category_id' => $category->id, 'receipt_date' => '2026-10-05', 'total_amount' => 42, 'currency' => 'NOK']);
     $this->browse(function (Browser $browser) use ($user, $receipt, $category): void {
-        $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitForText('Edit Receipt')
-            ->press('Edit Receipt')->waitForText('Save Changes')
+        $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitForText('Edit details')
+            ->press('Edit details')->waitForText('Save changes')
             ->assertScript("document.querySelector('select').value", (string) $category->id)
             ->assertScript("Array.from(document.querySelector('select').options).map(option => option.textContent.trim())", ['Uncategorized', 'Garden & Plants'])
-            ->type('dl input[type="number"]', '43')->tap(fn (Browser $browser) => $browser->script('window.scrollTo(0, 0)'))->press('Save Changes')->waitForText('Receipt updated successfully')
-            ->refresh()->waitForText('Edit Receipt')->press('Edit Receipt')->waitForText('Save Changes')
+            ->type('input[name="total_amount"]', '43')->press('Save changes')->waitForText('Edit details')
+            ->refresh()->waitForText('Edit details')->press('Edit details')->waitForText('Save changes')
             ->assertScript("document.querySelector('select').value", (string) $category->id)
-            ->select('select', 'Uncategorized')->assertScript("document.querySelector('select').selectedIndex", 0)->tap(fn (Browser $browser) => $browser->script('window.scrollTo(0, 0)'))->press('Save Changes')->waitForText('Receipt updated successfully')->refresh()->waitForText('Edit Receipt')
-            ->press('Edit Receipt')->assertScript("document.querySelector('select').selectedIndex", 0);
+            ->select('select', 'Uncategorized')->assertScript("document.querySelector('select').selectedIndex", 0)->press('Save changes')->waitForText('Edit details')->refresh()->waitForText('Edit details')
+            ->press('Edit details')->assertScript("document.querySelector('select').selectedIndex", 0);
     });
 });
 
@@ -809,10 +810,10 @@ it('renders translated expiry scanner and review labels', function (): void {
     Voucher::factory()->create(['user_id' => $user->id, 'expiry_date' => now()->addDays(10)]);
     Warranty::factory()->create(['user_id' => $user->id, 'warranty_end_date' => now()->addDays(10)]);
     $this->browse(function (Browser $browser) use ($user, $file): void {
-        $browser->loginAs($user)->visit('/dashboard')->waitForText('Expiring Vouchers')
-            ->assertSee('Ending Warranties')->assertSee('Expiring within 30 days')
+        $browser->loginAs($user)->visit('/dashboard')->waitForText('1 expiring voucher')
+            ->assertSee('1 warranty ending')->assertSee('Expiring within 30 days')
             ->assertDontSee('No vouchers expiring soon.')->assertDontSee('No warranties ending soon.')
-            ->visit('/preferences')->waitForText('Scanner Preferences')
+            ->visit('/preferences#preferences-scanner')->waitForText('Scanner Preferences')->assertSee('Auto-process scanner uploads')
             ->visit('/files/'.$file->id.'/extraction-report')->waitForText('Extraction report')
             ->assertSee('Needs review')->assertDontSee('needs_review');
     });
@@ -825,35 +826,35 @@ it('keeps merchant receipt context when inspecting details and returning from al
     $this->browse(function (Browser $browser) use ($user, $merchant): void {
         $path = '/receipts/merchant/'.$merchant->id;
         $browser->loginAs($user)->visit($path)->waitForText('Receipts · Eik Senteret')
-            ->assertTitleContains('Eik Senteret')->click('tbody tr td:nth-child(3)')->waitFor('div.fixed.right-0')
+            ->assertTitleContains('Eik Senteret')->click('tbody button[dusk^="receipt-preview-"]')->waitFor('[aria-label="Selected document"]')
             ->assertPathIs($path)->assertSee('Receipts · Eik Senteret')
-            ->waitUntil("document.querySelector('div.fixed.right-0 button').getBoundingClientRect().right <= innerWidth")
-            ->click('div.fixed.right-0 button')->waitUntilMissing('div.fixed.right-0')->clickLink('All Receipts')->waitForLocation('/receipts');
+            ->waitUntil('document.querySelector("[aria-label=\"Selected document\"]").getBoundingClientRect().right <= innerWidth + 1')
+            ->click('button[aria-label="Close preview"]')->waitUntilMissing('[aria-label="Selected document"]')->clickLink('All Receipts')->waitForLocation('/receipts');
         $browser->back()->waitForLocation($path)->waitForText('Receipts · Eik Senteret');
     });
 });
 
 it('saves receipt folder edits and cancels them without changing saved memberships', function (): void {
     $user = $this->createUser();
-    $file = File::factory()->for($user)->create();
-    $receipt = Receipt::factory()->create(['user_id' => $user->id, 'file_id' => $file->id, 'receipt_date' => '2026-10-05', 'total_amount' => 42, 'currency' => 'NOK']);
+    $file = File::factory()->for($user)->create(['status' => 'completed']);
+    $receipt = Receipt::factory()->for($file)->create(['user_id' => $user->id, 'receipt_date' => '2026-10-05', 'total_amount' => 42, 'currency' => 'NOK']);
     $old = Collection::factory()->for($user)->create(['name' => 'Old Folder']);
     $new = Collection::factory()->for($user)->create(['name' => 'New Folder']);
     $file->collections()->attach($old);
     $this->browse(function (Browser $browser) use ($user, $receipt, $file, $old, $new): void {
-        $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitForText('Old Folder');
-        foreach (['Cancel', 'Save Changes'] as $action) {
-            $browser->press('Edit Receipt')->waitForText('Save Changes')
-                ->click('div:has(> input[placeholder="Add to collections..."]) > span > button')
-                ->type('input[placeholder="Add to collections..."]', 'New Folder')->waitForText('New Folder')
-                ->click('div.absolute.z-10 div.cursor-pointer:has(> span.flex)')->tap(fn (Browser $browser) => $browser->script('window.scrollTo(0, 0)'))->press($action);
-            if ($action === 'Save Changes') {
-                $browser->waitForText('Receipt updated successfully');
-            } else {
-                $browser->waitForText('Edit Receipt');
-            }
-            expect($file->fresh()->collections->modelKeys())->toBe([$action === 'Cancel' ? $old->id : $new->id]);
-            $browser->refresh()->waitForText($action === 'Cancel' ? 'Old Folder' : 'New Folder');
+        $browser->loginAs($user)->visit('/receipts/'.$receipt->id)->waitFor('.inspector-details');
+        foreach (['Cancel editing', 'Save changes'] as $action) {
+            $browser->press('Edit details')->waitFor('input[name="total_amount"]');
+            $browser->script("const summary = Array.from(document.querySelectorAll('.inspector-details summary')).find(el => el.textContent.trim().startsWith('Collections')); if (!summary.parentElement.open) summary.click()");
+            $browser->waitFor('input[placeholder="Add to collections..."]')
+                ->waitUntil('document.querySelector("input[placeholder=\"Add to collections...\"]").parentElement.querySelector("span > button") !== null');
+            $browser->script('document.querySelector("input[placeholder=\"Add to collections...\"]").parentElement.querySelector("span > button").click()');
+            $browser->type('input[placeholder="Add to collections..."]', 'New Folder')
+                ->waitFor('.relative:has(input[placeholder="Add to collections..."]) > .absolute')
+                ->click('.relative:has(input[placeholder="Add to collections..."]) > .absolute > div:first-child')
+                ->press($action)->waitUntilMissing('input[name="total_amount"]');
+            expect($file->fresh()->collections->modelKeys())->toBe([$action === 'Cancel editing' ? $old->id : $new->id]);
+            $browser->refresh()->waitForText('Document information');
         }
     });
 });
@@ -875,7 +876,7 @@ it('keeps folder content ahead of collapsed public sharing at desktop and mobile
             $browser
                 ->press('Details')->waitFor('[data-public-sharing]')
                 ->assertScript("document.querySelector('[data-public-sharing]').open", false)
-                ->click('[data-public-sharing] summary')->assertSee('Public Sharing');
+                ->click('[data-public-sharing] summary')->assertSee('Public sharing');
         }
     });
 });
@@ -937,7 +938,7 @@ it('fits portrait and multipage PDF sources in previews at different widths', fu
             $this->browse(function (Browser $browser) use ($user, $file): void {
                 foreach ([1440, 768, 390] as $width) {
                     $browser->resize($width, 900)->loginAs($user)->visit('/files/'.$file->id)->waitFor('iframe')
-                        ->assertScript("document.querySelector('iframe').src.endsWith('#navpanes=0&view=Fit')", true)
+                        ->assertScript("(() => { const hash = new URL(document.querySelector('iframe').src).hash; return hash.includes('navpanes=0') && hash.includes('view=Fit'); })()", true)
                         ->assertScript("document.querySelector('iframe').getBoundingClientRect().width <= innerWidth", true)
                         ->assertPresent('a[target="_blank"]');
                 }
@@ -963,14 +964,15 @@ it('keeps recent receipt merchant and amount pairs visible at phone widths', fun
     $user = $this->createUser();
     $merchant = Merchant::create(['user_id' => $user->id, 'name' => 'Long merchant name with multiple words']);
     foreach ([42, 1234.56] as $amount) {
-        Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id, 'merchant_id' => $merchant->id,
+        $receipt = Receipt::factory()->for(File::factory()->for($user)->state(['status' => 'completed']))->create(['user_id' => $user->id, 'merchant_id' => $merchant->id,
             'receipt_date' => '2026-10-06', 'total_amount' => $amount, 'currency' => 'EUR', 'receipt_category' => 'Groceries']);
+        ExtractableEntity::factory()->create(['user_id' => $user->id, 'file_id' => $receipt->file_id, 'entity_type' => 'receipt', 'entity_id' => $receipt->id, 'is_primary' => true]);
     }
     $this->browse(function (Browser $browser) use ($user): void {
         foreach ([320, 390] as $width) {
-            $browser->resize($width, 844)->loginAs($user)->visit('/dashboard')->waitFor('details summary')->click('details summary')->waitFor('tbody tr')
+            $browser->resize($width, 844)->loginAs($user)->visit('/dashboard')->waitFor('tbody tr')
                 ->assertSee('€42.00')->assertSee('€1,234.56')
-                ->assertScript("Array.from(document.querySelectorAll('tbody tr td:nth-child(3)')).every(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.width > 0; })", true)
+                ->assertScript("Array.from(document.querySelectorAll('tbody tr td:has(.tabular-nums), tbody tr td.tabular-nums')).every(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.width > 0; })", true)
                 ->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
         }
     });
@@ -988,7 +990,11 @@ it('stacks entity details and keeps actions within phone and tablet widths', fun
     $this->browse(function (Browser $browser) use ($user, $receipt, $invoice): void {
         foreach (['/receipts/'.$receipt->id, '/invoices/'.$invoice->id] as $path) {
             foreach ([320, 390, 768] as $width) {
-                $browser->resize($width, 844)->loginAs($user)->visit($path)->waitForText('Share');
+                $browser->resize($width, 844)->loginAs($user)->visit($path)->waitFor('#main-content');
+                if (str_starts_with($path, '/receipts/')) {
+                    $browser->waitFor('.inspector-details')->script("Array.from(document.querySelectorAll('.inspector-details summary')).find(el => el.textContent.trim() === 'Sharing').click()");
+                }
+                $browser->waitFor('.sharing-controls > button');
                 $browser->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
                     ->assertScript(<<<'JS'
                         Array.from(document.querySelectorAll('header button, header a')).filter(el => el.getBoundingClientRect().width).every(el => {
@@ -996,37 +1002,34 @@ it('stacks entity details and keeps actions within phone and tablet widths', fun
                             return r.left >= 0 && r.right <= innerWidth;
                         })
                         JS, true)
-                    ->press('Share')->waitFor('[role="dialog"]')->keys('[role="dialog"] input', '{escape}')
+                    ->click('.sharing-controls > button')->waitFor('[role="dialog"]')->keys('[role="dialog"] input', '{escape}')
                     ->waitUntilMissing('[role="dialog"] input');
             }
         }
     });
 });
 
-it('uses page scrolling for long details and expands tables when hiding the source', function (): void {
+it('keeps long receipt details scrollable and expands invoice tables when hiding the source', function (): void {
     $user = $this->createUser();
     $receipt = Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
-    LineItem::create(['receipt_id' => $receipt->id, 'text' => 'Short receipt item', 'qty' => 1, 'price' => 10, 'total' => 10]);
+    foreach (range(1, 50) as $number) {
+        LineItem::create(['receipt_id' => $receipt->id, 'text' => 'Receipt item '.$number, 'qty' => 1, 'price' => 10, 'total' => 10]);
+    }
     $invoice = Invoice::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
     InvoiceLineItem::factory()->count(50)->create(['invoice_id' => $invoice->id, 'description' => 'Long invoice line description']);
     $this->browse(function (Browser $browser) use ($user, $receipt, $invoice): void {
-        foreach (['/receipts/'.$receipt->id, '/invoices/'.$invoice->id] as $path) {
-            $browser->resize(1440, 900)->loginAs($user)->visit($path)->waitForText('Hide source preview');
-            $browser->assertScript(<<<'JS'
-                (() => {
-                    const table = document.querySelector('table');
-                    for (let el = table.parentElement; el && el !== document.body; el = el.parentElement) {
-                        if (el.scrollHeight > el.clientHeight && ['auto', 'scroll', 'hidden'].includes(getComputedStyle(el).overflowY)) return false;
-                    }
-                    return true;
-                })()
-                JS, true)
-                ->press('Hide source preview')->waitForText('Show source preview')
-                ->assertScript("document.querySelector('table').parentElement.clientWidth > 950", true);
-            $browser->scrollIntoView('table')->keys('div[tabindex="0"]', '{end}');
-            $browser->script('window.scrollTo(0, 0)');
-            $browser->press('Show source preview')->waitForText('Hide source preview');
-        }
+        $browser->resize(1440, 900)->loginAs($user)->visit('/receipts/'.$receipt->id)->waitFor('.inspector-details');
+        $browser->script("Array.from(document.querySelectorAll('.inspector-details summary')).find(el => el.textContent.includes('Line items')).click()");
+        $browser->assertScript('document.querySelector(".inspector-details").scrollHeight > document.querySelector(".inspector-details").clientHeight', true)
+            ->assertScript('document.documentElement.scrollHeight <= innerHeight', true)
+            ->keys('.inspector-details', WebDriverKeys::END)->waitUntil('document.querySelector(".inspector-details").scrollTop > 0')
+            ->assertSee('Receipt item 50')->assertScript('document.querySelector(".file-inspector header").getBoundingClientRect().top >= 0', true);
+        $browser->visit('/invoices/'.$invoice->id)->waitForText('Hide source preview')
+            ->press('Hide source preview')->waitForText('Show source preview')
+            ->assertScript("document.querySelector('table').parentElement.clientWidth > 950", true)
+            ->scrollIntoView('table')->keys('div[tabindex="0"]', WebDriverKeys::END);
+        $browser->script('window.scrollTo(0, 0)');
+        $browser->press('Show source preview')->waitForText('Hide source preview');
     });
 });
 
@@ -1080,7 +1083,7 @@ it('explains the receipt table and library display scopes without offering an un
             ->assertMissing('#receipt_list_view')->assertSelected('#receipts_per_page', '10')
             ->assertSelected('#default_sort', 'date_asc')->assertSee('Page size and sorting apply to the receipt table')
             ->visit('/receipts')->waitForText('Receipt overview · Table view.')
-            ->click('a[href$="/library?type=receipt"]')->waitForLocation('/library')->waitForText('Library uses the view and sort controls below')
+            ->click('a[href$="/library?type=receipt"]')->waitForLocation('/library')->waitFor('@library-query')->assertPresent('select[aria-label="Sort files"]')
             ->click('button[aria-label="Grid view"]')->waitUntil("document.querySelector('button[aria-label=\"Grid view\"]').getAttribute('aria-pressed') === 'true'")
             ->refresh()->waitUntil("document.querySelector('button[aria-label=\"Grid view\"]').getAttribute('aria-pressed') === 'true'")
             ->click('button[aria-label="List view"]')->waitUntil("document.querySelector('button[aria-label=\"List view\"]').getAttribute('aria-pressed') === 'true'");
@@ -1115,21 +1118,24 @@ it('distinguishes direct mixed file counts from the folder subtree total', funct
     });
 });
 
-it('browses compact folder rows with visible child paths at desktop and mobile widths', function (): void {
+it('browses folder cards and retains nested context at desktop and mobile widths', function (): void {
     $user = $this->createUser();
     $root = Collection::factory()->for($user)->create(['name' => 'Building']);
     $child = Collection::factory()->for($user)->create(['name' => 'Contracts', 'parent_id' => $root->id]);
     $leaf = Collection::factory()->for($user)->create(['name' => 'Eksempelveien', 'parent_id' => $child->id]);
     $this->browse(function (Browser $browser) use ($user, $root, $child, $leaf): void {
         foreach ([1440, 390] as $width) {
-            $browser->resize($width, 900)->loginAs($user)->visit('/collections')->waitForText('Building → Contracts')
+            $browser->resize($width, 900)->loginAs($user)->visit('/collections')->waitForText('Building')
                 ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
-                ->assertPresent('button[aria-label="Edit Building"]')
-                ->clickLink('Building → Contracts')->waitForLocation('/collections/'.$child->id)->waitForText('Eksempelveien')
-                ->assertSee('Building')->click('a[href$="/collections/'.$leaf->id.'"]')->waitForLocation('/collections/'.$leaf->id)
-                ->assertSee('Building')->assertSee('Contracts')->assertSee('Eksempelveien');
-            $browser->visit('/collections?parent_id='.$root->id)->waitForText('Contracts → Eksempelveien')
-                ->assertPresent('button[aria-label="Edit Contracts"]')
+                ->assertPresent('button[aria-label="Actions for Building"]')
+                ->click('a[aria-label="Browse 1 subfolders in Building"]')->waitForText('Subfolders in Building')
+                ->assertQueryStringHas('parent_id', (string) $root->id)
+                ->click('article a[href$="/collections/'.$child->id.'"]')->waitForLocation('/collections/'.$child->id);
+            if ($width < 768) {
+                $browser->press('Folders')->waitForText('Browse folders');
+            }
+            $browser->click(($width < 768 ? '[role="dialog"] ' : '').'section[aria-label="Subfolders"] a[href$="/collections/'.$leaf->id.'"]')->waitForLocation('/collections/'.$leaf->id)
+                ->visit('/collections?parent_id='.$child->id)->waitForText('Subfolders in Contracts')->assertSee('Building')->assertSee('Contracts')->assertSee('Eksempelveien')
                 ->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
         }
     });
@@ -1140,7 +1146,11 @@ it('names active dialogs with their headings and restores focus after Escape', f
     $receipt = Receipt::factory()->for(File::factory()->for($user))->create(['user_id' => $user->id]);
     $path = $path === 'receipt' ? '/receipts/'.$receipt->id : $path;
     $this->browse(function (Browser $browser) use ($user, $path, $trigger, $heading): void {
-        $browser->loginAs($user)->visit($path)->waitFor($trigger)
+        $browser->loginAs($user)->visit($path);
+        if (str_starts_with($path, '/receipts/')) {
+            $browser->waitFor('.inspector-details')->script("Array.from(document.querySelectorAll('.inspector-details summary')).find(el => el.textContent.trim() === 'Sharing').click()");
+        }
+        $browser->waitFor($trigger)
             ->assertMissing('[role="dialog"]')->click($trigger)->waitFor('[role="dialog"] input')
             ->assertScript(<<<'JS'
                 (() => {
@@ -1155,7 +1165,7 @@ it('names active dialogs with their headings and restores focus after Escape', f
             ->assertScript("document.activeElement.matches('".$trigger."')", true);
     });
 })->with([
-    ['/collections', 'button:has(svg path[d="M12 4v16m8-8H4"])', 'Create New Collection'],
+    ['/collections', 'main header button.workspace-primary', 'Create New Collection'],
     ['receipt', '.sharing-controls > button', 'Share Receipt'],
     ['/tags', 'button:has(svg path[d="M12 4v16m8-8H4"])', 'Create New Tag'],
     ['/library', '[dusk=save-view]', 'Save a view'],
@@ -1167,13 +1177,10 @@ it('discloses native currency range semantics before applying search filters', f
     $this->browse(function (Browser $browser) use ($user): void {
         foreach ([1440, 390] as $width) {
             $browser->resize($width, 900)->loginAs($user)->visit('/search');
-            if ($width === 390) {
-                $browser->waitForText('Show filters')->press('Show filters');
-            }
+
             $browser->waitFor('#search-amount-min');
-            $browser->assertSee('Amount Range · Source currency')
-                ->assertSee("Amounts use each document's source currency, with no currency conversion.")
-                ->assertSee('100 NOK, 100 EUR and 100 USD')
+            $browser->assertSee('Amount · Source currency')
+                ->assertSee('No currency conversion: 100 can mean 100 NOK, EUR or USD.')
                 ->assertScript("['search-amount-min', 'search-amount-max'].every(id => document.getElementById(id).getAttribute('aria-describedby') === 'search-amount-basis')", true);
         }
     });
@@ -1417,7 +1424,7 @@ it('retains nested folder context in upload library and search selectors', funct
     $leaf = Collection::factory()->create(['user_id' => $user->id, 'name' => 'Eksempelveien', 'parent_id' => $parent->id]);
     $this->browse(function (Browser $browser) use ($user): void {
         $this->loginAs($browser, $user);
-        $browser->visit('/documents/upload')->waitFor('input[placeholder="Search or create collections..."]')
+        $browser->visit('/documents/upload')->waitForText('2. Add notes and organization')->click('summary')->waitFor('input[placeholder="Search or create collections..."]')
             ->type('input[placeholder="Search or create collections..."]', 'Building')->pause(200)
             ->assertSee('Building → Contracts → Eksempelveien')->keys('input[placeholder="Search or create collections..."]', WebDriverKeys::ARROW_DOWN);
         $browser->type('input[placeholder="Search or create collections..."]', 'Eksempelveien')->keys('input[placeholder="Search or create collections..."]', WebDriverKeys::ENTER)
@@ -1437,7 +1444,7 @@ it('uses one library type and view control and keeps mobile file content visible
             ->select('select[aria-label="Document type"]', 'receipt')->waitFor('@library-file-'.$file->id)
             ->select('select[aria-label="Library view"]', 'processing')->waitForText('In progress')->assertSelected('select[aria-label="Document type"]', 'receipt');
         $browser->assertScript("document.querySelector('[dusk=library-file-".$file->id."]').getBoundingClientRect().bottom < window.innerHeight", true);
-        $browser->press('Filters')->waitFor('#library-more-filters')->select('select[aria-label="Document type"]', 'invoice')->waitForText('No matching documents');
+        $browser->press('Filters')->waitFor('#library-more-filters')->select('select[aria-label="Document type"]', 'invoice')->waitForText('No files match these filters');
     });
 });
 
@@ -1508,7 +1515,7 @@ it('uses selected dates and source currency consistently in invoice listings sea
         foreach (['/invoices', '/search?query=LOCALE-CHECK&type=invoice', '/invoices/'.$invoice->id] as $path) {
             $browser->visit($path)->waitForText('Locale supplier')->assertSee($date)->assertSee($amount);
         }
-        $browser->click('.relative.ml-3 > div > button')->waitFor('[role="menu"]')
+        $browser->click('button[aria-label="View notifications"]')->waitFor('[role="menu"]')
             ->assertSeeIn('[role="menu"]', $date)->assertSeeIn('[role="menu"]', $amount);
     });
     expect($invoice->fresh()->total_amount)->toBe('1234.56')->and($invoice->fresh()->currency)->toBe('USD');

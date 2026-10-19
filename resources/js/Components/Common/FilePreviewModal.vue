@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import WorkspaceDrawer from '@/Components/Common/WorkspaceDrawer.vue';
 import { ArrowLeftIcon, ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline';
 import FileInspector from '@/Components/Domain/FileInspector.vue';
@@ -7,12 +7,20 @@ import DocumentPreview from '@/Components/Domain/DocumentPreview.vue';
 const props = defineProps({ show: Boolean, item: { type: Object, default: null } });
 const emit = defineEmits(['close']);
 const dirty = ref(false);
+let returnFocus;
 const fileId = computed(() => props.item?.file_id || props.item?.file?.id);
-watch(() => props.show, () => { dirty.value = false; });
+watch(() => props.show, show => {
+    dirty.value = false;
+    if (show) returnFocus = document.activeElement;
+});
+async function restoreFocus() {
+    await nextTick();
+    if (!props.show && returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+}
 function close() { if (!dirty.value || confirm('Discard unsaved changes?')) emit('close'); }
 </script>
 <template>
-    <WorkspaceDrawer :show="show" :title="item?.title || 'Document preview'" @close="close">
+    <WorkspaceDrawer :show="show" :title="item?.title || 'Document preview'" @close="close" @after-leave="restoreFocus">
         <FileInspector v-if="show && fileId" :file-id="Number(fileId)" framed @dirty="dirty = $event">
             <template #leading><button class="workspace-button shrink-0" aria-label="Close preview" @click="close"><ArrowLeftIcon class="h-4 w-4" aria-hidden="true" /><span class="hidden sm:inline">Back</span></button></template>
         </FileInspector>

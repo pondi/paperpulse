@@ -135,7 +135,7 @@ test('receipt show page loads', function () {
         $browser->visit('/receipts/'.$receipt->id)
             ->waitForText('Show Page Store')
             ->assertSee('Show Page Store')
-            ->assertPathIs('/receipts/'.$receipt->id);
+            ->assertPathIs('/files/'.$receipt->file_id);
     });
 });
 
@@ -146,7 +146,7 @@ test('receipt show has edit button and toggles edit mode', function () {
         'name' => 'Edit Toggle Store',
     ]);
 
-    $receipt = Receipt::factory()->for(File::factory()->for($user))->create([
+    $receipt = Receipt::factory()->for(File::factory()->for($user)->state(['status' => 'completed']))->create([
         'user_id' => $user->id,
         'merchant_id' => $merchant->id,
         'total_amount' => 50.00,
@@ -159,11 +159,9 @@ test('receipt show has edit button and toggles edit mode', function () {
 
         $browser->visit('/receipts/'.$receipt->id)
             ->waitForText('Edit Toggle Store')
-            ->assertSee('Edit Receipt')
-            ->pause(300)
-            ->press('Edit Receipt')
-            ->pause(500)
-            ->assertSee('Save Changes')
+            ->assertSee('Edit details')->press('Edit details')->waitFor('input[type="number"]')
+            ->assertSee('Save changes')->press('Cancel editing')->waitUntilMissing('input[type="number"]')
+            ->press('Edit details')->waitFor('input[type="number"]')
             ->assertPresent('input[type="number"]');
     });
 });
@@ -219,8 +217,8 @@ test('receipt show displays line items section', function () {
 
         $browser->visit('/receipts/'.$receipt->id)
             ->waitForText('Line Items Store')
-            ->assertSee('Line Items')
-            ->assertSee('Widget Alpha')
+            ->waitFor('.inspector-details')->tap(fn (Browser $browser) => $browser->script("Array.from(document.querySelectorAll('.inspector-details summary')).find(el => el.textContent.includes('Line items')).click()"))
+            ->waitForText('Widget Alpha')
             ->assertSee('WA-001');
     });
 });
@@ -248,7 +246,7 @@ test('receipt show displays collections section', function () {
     });
 });
 
-test('receipt show has breadcrumbs', function () {
+test('receipt workspace provides a named return link', function () {
     $user = $this->createUser();
     $merchant = Merchant::create([
         'user_id' => $user->id,
@@ -267,8 +265,7 @@ test('receipt show has breadcrumbs', function () {
 
         $browser->visit('/receipts/'.$receipt->id)
             ->waitForText('Breadcrumb Store')
-            ->assertSee('Dashboard')
-            ->assertSee('Receipts');
+            ->assertPresent('a[aria-label="Back to Library"]')->assertPresent('a[href$="/library"]');
     });
 });
 
@@ -291,7 +288,7 @@ test('receipt show has back to overview link', function () {
 
         $browser->visit('/receipts/'.$receipt->id)
             ->waitForText('Back Link Store')
-            ->assertPresent('a[href$="/receipts"]');
+            ->click('@workspace-back')->waitForLocation('/library')->assertPresent('@library-query');
     });
 });
 

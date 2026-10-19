@@ -30,8 +30,8 @@ it('uses source file downloads in mixed document cards rows and drawers', functi
             ->click('button[aria-label="List view"]')->waitFor('table')
             ->assertPresent('tbody a[download="Invoice.pdf"]')
             ->click('tbody tr td:nth-child(2) button')->waitFor('[role="dialog"]')
-            ->waitFor('[role="dialog"] section[aria-label="Document preview"] a')
-            ->assertScript("document.querySelector('[role=dialog] section[aria-label=\"Document preview\"] a').href.includes('/documents/serve?guid=')", true);
+            ->waitFor('[role="dialog"] a[aria-label="Open original"]')
+            ->assertScript("document.querySelector('[role=dialog] a[aria-label=\"Open original\"]').href.includes('/documents/serve?guid=')", true);
     });
 });
 

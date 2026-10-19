@@ -182,9 +182,10 @@ test('completed receipt appears on receipts index with a working private preview
         expect($receipt->currency)->toBe('NOK');
         $browser->visit('/receipts')->waitForText('Local E2E Store')
             ->assertDontSee('Upload your first receipts')
-            ->visit('/receipts/'.$receipt->id)->waitForText('Browser fixture item')
+            ->visit('/receipts/'.$receipt->id)->waitFor('.inspector-details')
+            ->tap(fn (Browser $browser) => $browser->script("Array.from(document.querySelectorAll('.inspector-details summary')).find(el => el.textContent.includes('Line items')).click()"))->waitForText('Browser fixture item')
             ->waitUntil(<<<'JS'
-                document.querySelector('img[src*="/image"]')?.naturalWidth > 0
+                document.querySelector('[aria-label="Document preview"] img')?.naturalWidth > 0
             JS);
     });
 });

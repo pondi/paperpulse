@@ -31,6 +31,16 @@ class SecurityHeaders
         // Control which referrer information is sent
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
+        if ($request->user() || $request->routeIs('shared.*')) {
+            $response->headers->set('Cache-Control', 'private, no-store');
+            $response->headers->set('Pragma', 'no-cache');
+            $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        }
+
+        if ($request->routeIs('shared.*')) {
+            $response->headers->set('Referrer-Policy', 'no-referrer');
+        }
+
         // Permissions Policy (formerly Feature Policy)
         $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
 

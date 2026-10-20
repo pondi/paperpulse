@@ -238,7 +238,7 @@ const handleTagRemoved = (tag: Tag) => {
         <template #header>
             <div class="flex flex-col items-start gap-3 xl:flex-row xl:items-center xl:justify-between">
                 <div class="min-w-0">
-                    <h2 class="min-w-0 break-words font-black text-xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2 sm:text-2xl">
+                    <h2 class="min-w-0 wrap-break-word font-black text-xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2 sm:text-2xl">
                         <BanknotesIcon class="size-6" />
                         {{ statementTitle }}
                     </h2>
@@ -326,7 +326,7 @@ const handleTagRemoved = (tag: Tag) => {
                                 </h3>
                                 <button
                                     @click="showFilters = !showFilters"
-                                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-amber-50 dark:hover:bg-zinc-700"
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-sm border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-amber-50 dark:hover:bg-zinc-700"
                                 >
                                     <FunnelIcon class="h-3.5 w-3.5" />
                                     Filters
@@ -340,7 +340,7 @@ const handleTagRemoved = (tag: Tag) => {
                                     v-model="txSearch"
                                     type="text"
                                     placeholder="Search transactions..."
-                                    class="w-full pl-9 pr-3 py-2 text-sm border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
+                                    class="w-full pl-9 pr-3 py-2 text-sm border border-zinc-300 dark:border-zinc-600 rounded-sm bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
                                 />
                             </div>
 
@@ -348,7 +348,7 @@ const handleTagRemoved = (tag: Tag) => {
                             <div v-if="showFilters" class="mt-3 grid grid-cols-2 gap-3">
                                 <select
                                     v-model="txTypeFilter"
-                                    class="text-sm border border-zinc-300 dark:border-zinc-600 rounded px-3 py-2 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
+                                    class="text-sm border border-zinc-300 dark:border-zinc-600 rounded-sm px-3 py-2 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
                                 >
                                     <option value="">All Types</option>
                                     <option value="credit">Credits</option>
@@ -357,7 +357,7 @@ const handleTagRemoved = (tag: Tag) => {
                                 </select>
                                 <select
                                     v-model="txCategoryFilter"
-                                    class="text-sm border border-zinc-300 dark:border-zinc-600 rounded px-3 py-2 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
+                                    class="text-sm border border-zinc-300 dark:border-zinc-600 rounded-sm px-3 py-2 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
                                 >
                                     <option value="">All Categories</option>
                                     <option v-for="cat in category_groups" :key="cat.value" :value="cat.value">
@@ -365,13 +365,13 @@ const handleTagRemoved = (tag: Tag) => {
                                     </option>
                                 </select>
                                 <label class="text-sm text-zinc-700 dark:text-zinc-300">From
-                                    <input v-model="txDateFrom" type="date" class="w-full rounded border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700" />
+                                    <input v-model="txDateFrom" type="date" class="w-full rounded-sm border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700" />
                                 </label>
                                 <label class="text-sm text-zinc-700 dark:text-zinc-300">To
-                                    <input v-model="txDateTo" type="date" class="w-full rounded border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700" />
+                                    <input v-model="txDateTo" type="date" class="w-full rounded-sm border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700" />
                                 </label>
                                 <label class="text-sm text-zinc-700 dark:text-zinc-300">Rows per page
-                                    <select v-model="txPerPage" class="w-full rounded border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700">
+                                    <select v-model="txPerPage" class="w-full rounded-sm border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700">
                                         <option :value="50">50</option><option :value="100">100</option><option :value="200">200</option>
                                     </select>
                                 </label>
@@ -382,7 +382,7 @@ const handleTagRemoved = (tag: Tag) => {
 
                         <!-- Table -->
                         <div class="overflow-x-auto" tabindex="0" aria-label="Transactions, scroll horizontally to see all columns">
-                            <table class="min-w-[52rem] divide-y divide-amber-200 dark:divide-zinc-700">
+                            <table class="min-w-208 divide-y divide-amber-200 dark:divide-zinc-700">
                                 <thead class="bg-amber-50 dark:bg-zinc-700">
                                     <tr>
                                         <th @click="sortBy('transaction_date')" class="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-300 uppercase tracking-wider cursor-pointer hover:text-zinc-800 dark:hover:text-zinc-100">
@@ -444,11 +444,11 @@ const handleTagRemoved = (tag: Tag) => {
                         <div class="flex items-center justify-between gap-3 p-4 text-sm text-zinc-700 dark:text-zinc-300">
                             <button @click="loadTransactions(transactionPage.meta.current_page - 1)"
                                 :disabled="txLoading || transactionPage.meta.current_page <= 1"
-                                class="rounded border border-zinc-300 dark:border-zinc-600 px-3 py-2 disabled:opacity-50">Previous</button>
+                                class="rounded-sm border border-zinc-300 dark:border-zinc-600 px-3 py-2 disabled:opacity-50">Previous</button>
                             <span>Page {{ transactionPage.meta.current_page }} of {{ transactionPage.meta.last_page }}</span>
                             <button @click="loadTransactions(transactionPage.meta.current_page + 1)"
                                 :disabled="txLoading || transactionPage.meta.current_page >= transactionPage.meta.last_page"
-                                class="rounded border border-zinc-300 dark:border-zinc-600 px-3 py-2 disabled:opacity-50">Next</button>
+                                class="rounded-sm border border-zinc-300 dark:border-zinc-600 px-3 py-2 disabled:opacity-50">Next</button>
                         </div>
                     </div>
 

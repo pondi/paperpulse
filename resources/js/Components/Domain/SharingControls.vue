@@ -5,7 +5,7 @@
             v-if="!readonly"
             @click="showShareModal = true"
             type="button"
-            class="inline-flex items-center px-3 py-2 border border-zinc-300 dark:border-zinc-600 shadow-sm text-sm leading-4 font-medium rounded-md text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-700 hover:bg-amber-50 dark:hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+            class="inline-flex items-center px-3 py-2 border border-zinc-300 dark:border-zinc-600 shadow-xs text-sm leading-4 font-medium rounded-md text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-700 hover:bg-amber-50 dark:hover:bg-amber-600 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
         >
             <ShareIcon class="h-5 w-5 mr-2" />
             Share
@@ -23,7 +23,7 @@
                     class="flex items-center justify-between p-3 bg-amber-50 dark:bg-zinc-700 rounded-lg"
                 >
                     <div class="flex items-center">
-                        <div class="flex-shrink-0">
+                        <div class="shrink-0">
                             <UserCircleIcon class="h-8 w-8 text-zinc-400" />
                         </div>
                         <div class="ml-3">

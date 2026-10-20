@@ -294,7 +294,7 @@ const getContractTypeClass = () => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex flex-col items-start gap-3 xl:flex-row xl:items-center xl:justify-between">
-                <h2 class="min-w-0 break-words font-black text-xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2 sm:text-2xl">
+                <h2 class="min-w-0 wrap-break-word font-black text-xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2 sm:text-2xl">
                     <DocumentIcon class="size-6" />
                     {{ contract.contract_title || 'Contract' }}
                 </h2>
@@ -362,7 +362,7 @@ const getContractTypeClass = () => {
                                     v-else
                                     v-model="editedContract.contract_title"
                                     type="text"
-                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
+                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-xs ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
                                 />
                             </div>
 
@@ -400,7 +400,7 @@ const getContractTypeClass = () => {
                                     v-else
                                     v-model="editedContract.summary"
                                     rows="3"
-                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
+                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-xs ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
                                 />
                             </div>
                         </dl>
@@ -489,7 +489,7 @@ const getContractTypeClass = () => {
                         <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-200 mb-4">Key Terms</h3>
                         <ul class="space-y-2">
                             <li v-for="(term, index) in contract.key_terms" :key="index" class="flex items-start">
-                                <svg class="h-5 w-5 text-blue-500 dark:text-blue-400 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <svg class="h-5 w-5 text-blue-500 dark:text-blue-400 mr-2 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                                 </svg>
                                 <span class="text-zinc-700 dark:text-zinc-300">{{ term }}</span>

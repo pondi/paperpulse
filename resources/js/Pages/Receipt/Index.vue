@@ -46,7 +46,7 @@ function toggleAll() { selectedReceipts.value = allSelected.value ? [] : props.r
         <template #header>
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div class="min-w-0 basis-full sm:flex-1 sm:basis-0">
-                    <h1 class="page-heading [overflow-wrap:anywhere]">{{ __('receipts') }}<span v-if="merchant || category"> · {{ (merchant || category).name }}</span></h1>
+                    <h1 class="page-heading wrap-anywhere">{{ __('receipts') }}<span v-if="merchant || category"> · {{ (merchant || category).name }}</span></h1>
                     <p class="page-description">Compare merchants, amounts and dates, then open a receipt to review the original.</p>
                 </div>
                 <Link :href="route('documents.upload')" class="workspace-primary">{{ __('upload_receipts') }}</Link>
@@ -77,9 +77,9 @@ function toggleAll() { selectedReceipts.value = allSelected.value ? [] : props.r
                                 <td class="min-w-[160px] max-w-xs px-3 py-4"><button type="button" :dusk="`receipt-preview-${receipt.id}`" class="max-w-full truncate text-left font-medium text-zinc-900 hover:underline dark:text-zinc-100" @click="selectedReceipt = receipt">{{ receipt.merchant?.name || __('unknown_merchant') }}</button><p v-if="receipt.note || receipt.receipt_description" class="mt-1 max-w-xs truncate text-xs text-zinc-500">{{ receipt.note || receipt.receipt_description }}</p></td>
                                 <td class="whitespace-nowrap px-3 py-4 text-right font-medium tabular-nums">{{ receipt.total_amount == null ? '—' : formatCurrency(receipt.total_amount, receipt.currency) }}</td>
                                 <td class="whitespace-nowrap px-3 py-4 text-zinc-600 dark:text-zinc-400">{{ formatDate(receipt.receipt_date) }}</td>
-                                <td class="max-w-[180px] px-3 py-4 text-zinc-600 [overflow-wrap:anywhere] dark:text-zinc-400">{{ receipt.category?.name || receipt.receipt_category || __('uncategorized') }}</td>
+                                <td class="max-w-[180px] px-3 py-4 text-zinc-600 wrap-anywhere dark:text-zinc-400">{{ receipt.category?.name || receipt.receipt_category || __('uncategorized') }}</td>
                                 <td class="whitespace-nowrap px-3 py-4 text-xs text-zinc-500 dark:text-zinc-400">{{ receipt.file?.status ? fileStatusLabel(receipt.file) : 'No source file' }}</td>
-                                <td class="max-w-[200px] px-3 py-4 text-xs text-zinc-500 [overflow-wrap:anywhere] dark:text-zinc-400">{{ receipt.tags?.map(tag => tag.name).join(', ') || '—' }}</td>
+                                <td class="max-w-[200px] px-3 py-4 text-xs text-zinc-500 wrap-anywhere dark:text-zinc-400">{{ receipt.tags?.map(tag => tag.name).join(', ') || '—' }}</td>
                             </tr>
                         </tbody>
                     </table>

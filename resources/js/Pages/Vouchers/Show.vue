@@ -138,7 +138,7 @@
       </div>
 
       <!-- Tags -->
-      <div v-if="voucher.tags && voucher.tags.length > 0" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+      <div v-if="voucher.tags && voucher.tags.length > 0" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
         <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Tags</h3>
         <div class="flex flex-wrap gap-2">
           <span

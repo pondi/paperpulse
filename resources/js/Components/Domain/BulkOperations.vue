@@ -58,11 +58,11 @@ async function exportSelected(format) {
             <button type="button" class="workspace-button" :disabled="busy" @click="open('categorize')">Categorize</button>
             <Menu as="div" class="relative">
                 <MenuButton class="workspace-button" :disabled="busy">Export</MenuButton>
-                <MenuItems class="absolute right-0 z-20 mt-1 w-44 rounded-md border border-zinc-200 bg-white p-1 text-sm shadow-lg focus:outline-none dark:border-zinc-700 dark:bg-zinc-900">
-                    <MenuItem v-for="format in ['csv', 'pdf']" :key="format" v-slot="{ active }"><button type="button" class="min-h-11 w-full rounded px-3 py-2 text-left" :class="active ? 'bg-zinc-100 dark:bg-zinc-800' : ''" @click="exportSelected(format)">Export as {{ format.toUpperCase() }}</button></MenuItem>
+                <MenuItems class="absolute right-0 z-20 mt-1 w-44 rounded-md border border-zinc-200 bg-white p-1 text-sm shadow-lg focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-900">
+                    <MenuItem v-for="format in ['csv', 'pdf']" :key="format" v-slot="{ active }"><button type="button" class="min-h-11 w-full rounded-sm px-3 py-2 text-left" :class="active ? 'bg-zinc-100 dark:bg-zinc-800' : ''" @click="exportSelected(format)">Export as {{ format.toUpperCase() }}</button></MenuItem>
                 </MenuItems>
             </Menu>
-            <button type="button" class="workspace-button !text-red-700 dark:!text-red-400" :disabled="busy" @click="open('delete')">Delete</button>
+            <button type="button" class="workspace-button text-red-700! dark:text-red-400!" :disabled="busy" @click="open('delete')">Delete</button>
             <button type="button" class="workspace-button" :disabled="busy" @click="emit('clear-selection')">Clear selection</button>
             <p v-if="error && !modal" role="alert" class="w-full text-sm text-red-700 dark:text-red-400">{{ error }}</p>
             <p v-if="exportMessage" role="status" class="w-full text-sm text-zinc-500">{{ exportMessage }}</p>

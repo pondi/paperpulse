@@ -295,7 +295,7 @@ const getDocumentTypeClass = () => {
                                     v-else
                                     v-model="editedDocument.title"
                                     type="text"
-                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
+                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-xs ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
                                 />
                             </div>
 
@@ -309,7 +309,7 @@ const getDocumentTypeClass = () => {
                                     v-else
                                     v-model="editedDocument.summary"
                                     rows="3"
-                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
+                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-xs ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
                                 />
                             </div>
 
@@ -323,7 +323,7 @@ const getDocumentTypeClass = () => {
                                     v-else
                                     v-model="editedDocument.note"
                                     rows="2"
-                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
+                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-xs ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
                                 />
                             </div>
 
@@ -344,7 +344,7 @@ const getDocumentTypeClass = () => {
                                 <select
                                     v-else
                                     v-model="editedDocument.category_id"
-                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
+                                    class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-xs ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
                                 >
                                     <option :value="null">No category</option>
                                     <option v-for="category in categories" :key="category.id" :value="category.id">

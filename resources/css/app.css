@@ -1,8 +1,22 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss' source(none);
+
+@source '../js';
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@plugin '@tailwindcss/forms';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: Figtree, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
 
 @layer base {
+  *, ::before, ::after, ::backdrop, ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
   :root {
     color-scheme: light;
   }
@@ -19,7 +33,7 @@
     @apply border-zinc-200 dark:border-zinc-700;
   }
   :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-    @apply outline outline-2 outline-offset-2 outline-orange-600;
+    @apply outline-solid outline-2 outline-offset-2 outline-orange-600;
   }
   ::selection {
     @apply bg-orange-100 text-orange-950;
@@ -49,10 +63,10 @@
 
 @layer components {
   .workspace-button {
-    @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium leading-5 text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800;
+    @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium leading-5 text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800;
   }
   .workspace-primary {
-    @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-orange-700 bg-orange-700 px-3 py-2 text-sm font-semibold leading-5 text-white transition-colors hover:border-orange-800 hover:bg-orange-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-orange-700 bg-orange-700 px-3 py-2 text-sm font-semibold leading-5 text-white transition-colors hover:border-orange-800 hover:bg-orange-800 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .workspace-danger {
     @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-red-700 bg-red-700 px-3 py-2 text-sm font-semibold leading-5 text-white transition-colors hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50;

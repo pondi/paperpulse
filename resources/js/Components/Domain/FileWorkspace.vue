@@ -110,7 +110,7 @@ onBeforeUnmount(() => { window.removeEventListener('beforeunload', beforeUnload)
                 <button class="workspace-button" :disabled="busy" @click="exportSelected">Export CSV</button>
                 <select v-model="tagId" aria-label="Tag selected files" class="workspace-filter max-w-[180px]"><option value="">Choose tag</option><option v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</option></select>
                 <button class="workspace-button" :disabled="busy || !tagId" @click="action('tag')">Apply tag</button>
-                <button class="workspace-button !text-red-700 dark:!text-red-400" :disabled="busy" @click="action('delete')">Delete</button>
+                <button class="workspace-button text-red-700! dark:text-red-400!" :disabled="busy" @click="action('delete')">Delete</button>
                 <button class="ml-auto rounded-md px-2 py-2 text-sm text-zinc-500" :disabled="busy" @click="selected = []">Clear selection</button>
             </template>
             <template v-else>
@@ -166,8 +166,8 @@ onBeforeUnmount(() => { window.removeEventListener('beforeunload', beforeUnload)
                     <template #leading><button type="button" class="workspace-button shrink-0" aria-label="Back to files" @click="close"><ArrowLeftIcon class="h-4 w-4" aria-hidden="true" /><span class="hidden lg:inline">Back to files</span></button></template>
                     <template #navigation>
                         <span class="hidden text-xs tabular-nums text-zinc-500 sm:block">{{ activeIndex + 1 }} / {{ files.length }}</span>
-                        <button class="workspace-button shrink-0 !px-2" :disabled="activeIndex <= 0" aria-label="Previous document" @click="move(-1)"><ChevronUpIcon class="h-4 w-4" aria-hidden="true" /></button>
-                        <button class="workspace-button shrink-0 !px-2" :disabled="activeIndex >= files.length - 1" aria-label="Next document" @click="move(1)"><ChevronDownIcon class="h-4 w-4" aria-hidden="true" /></button>
+                        <button class="workspace-button shrink-0 px-2!" :disabled="activeIndex <= 0" aria-label="Previous document" @click="move(-1)"><ChevronUpIcon class="h-4 w-4" aria-hidden="true" /></button>
+                        <button class="workspace-button shrink-0 px-2!" :disabled="activeIndex >= files.length - 1" aria-label="Next document" @click="move(1)"><ChevronDownIcon class="h-4 w-4" aria-hidden="true" /></button>
                     </template>
                     <template #actions>
                         <button class="workspace-button hidden shrink-0 sm:inline-flex" aria-label="Close preview" @click="close"><XMarkIcon class="h-4 w-4" aria-hidden="true" /></button>
@@ -182,5 +182,6 @@ onBeforeUnmount(() => { window.removeEventListener('beforeunload', beforeUnload)
 </template>
 
 <style scoped>
-input[type='checkbox'] { @apply rounded-sm border-zinc-300 text-orange-600 focus:ring-orange-600 disabled:opacity-30 dark:border-zinc-600 dark:bg-zinc-800; }
+@reference '../../../css/app.css';
+input[type='checkbox'] { @apply rounded-xs border-zinc-300 text-orange-600 focus:ring-orange-600 disabled:opacity-30 dark:border-zinc-600 dark:bg-zinc-800; }
 </style>

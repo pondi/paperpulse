@@ -15,11 +15,11 @@
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg bg-white dark:bg-zinc-800 shadow-xl border-2 border-amber-200 dark:border-zinc-700 ring-1 ring-black ring-opacity-5"
+          class="pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg bg-white dark:bg-zinc-800 shadow-xl border-2 border-amber-200 dark:border-zinc-700 ring-1 ring-black/5"
         >
           <div class="p-4">
             <div class="flex items-start">
-              <div class="flex-shrink-0">
+              <div class="shrink-0">
                 <CheckCircleIcon
                   v-if="toast.type === 'success'"
                   class="h-6 w-6 text-green-400"
@@ -53,11 +53,11 @@
                   {{ toast.message }}
                 </p>
               </div>
-              <div class="ml-4 flex flex-shrink-0">
+              <div class="ml-4 flex shrink-0">
                 <button
                   type="button"
                   @click="removeToast(toast.id)"
-                  class="inline-flex rounded-md bg-white dark:bg-zinc-800 text-zinc-400 hover:text-zinc-500 dark:hover:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-colors duration-200"
+                  class="inline-flex rounded-md bg-white dark:bg-zinc-800 text-zinc-400 hover:text-zinc-500 dark:hover:text-zinc-300 focus:outline-hidden focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-colors duration-200"
                 >
                   <span class="sr-only">Close</span>
                   <XMarkIcon class="h-5 w-5" aria-hidden="true" />

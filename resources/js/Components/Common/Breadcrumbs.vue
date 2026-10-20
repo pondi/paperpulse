@@ -18,11 +18,11 @@ defineProps<{
                 <Link
                     v-if="crumb.href"
                     :href="crumb.href"
-                    class="min-w-0 break-words hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+                    class="min-w-0 wrap-break-word hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
                 >
                     {{ crumb.label }}
                 </Link>
-                <span v-else :aria-current="i === crumbs.length - 1 ? 'page' : undefined" class="min-w-0 break-words font-medium text-zinc-900 dark:text-zinc-100">
+                <span v-else :aria-current="i === crumbs.length - 1 ? 'page' : undefined" class="min-w-0 wrap-break-word font-medium text-zinc-900 dark:text-zinc-100">
                     {{ crumb.label }}
                 </span>
                 <span v-if="i < crumbs.length - 1" aria-hidden="true" class="shrink-0 text-zinc-400 dark:text-zinc-500">/</span>

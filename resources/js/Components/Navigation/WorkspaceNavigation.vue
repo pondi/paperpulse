@@ -63,7 +63,7 @@ const tabs = computed(() => {
 
 <template>
     <div v-if="tabs.length" class="workspace-navigation border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <nav aria-label="Workspace navigation" class="workspace-scroll mx-auto flex max-w-screen-2xl items-center gap-1 overflow-x-auto px-4 sm:px-6 lg:px-8">
+        <nav aria-label="Workspace navigation" class="workspace-scroll mx-auto flex max-w-(--breakpoint-2xl) items-center gap-1 overflow-x-auto px-4 sm:px-6 lg:px-8">
             <Link v-for="tab in tabs" :key="tab.label" :href="tab.href" :aria-current="tab.active ? 'page' : undefined"
                 :class="[tab.active ? 'border-orange-600 text-zinc-900 dark:border-orange-500 dark:text-zinc-100' : 'border-transparent text-zinc-500 hover:border-zinc-300 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white', 'shrink-0 border-b-2 px-3 py-3 text-sm font-medium transition-colors']">
                 {{ tab.label }}

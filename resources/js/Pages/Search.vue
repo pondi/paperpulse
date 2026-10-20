@@ -44,7 +44,7 @@
                     <fieldset class="flex min-w-0 flex-col gap-3 md:col-span-2 xl:col-span-1">
                         <legend class="mb-3 section-heading">Location &amp; classification</legend>
                         <label class="field-label">Collection<select id="search-collection" v-model="filters.collection_id" class="workspace-filter"><option value="">All collections</option><option v-for="collection in collections" :key="collection.id" :value="collection.id">{{ collection.path }}</option></select></label>
-                        <p v-if="collectionsError" role="alert" class="text-xs text-red-700 dark:text-red-300">{{ collectionsError }} <button type="button" @click="loadCollections" class="rounded underline">Retry collections</button></p>
+                        <p v-if="collectionsError" role="alert" class="text-xs text-red-700 dark:text-red-300">{{ collectionsError }} <button type="button" @click="loadCollections" class="rounded-sm underline">Retry collections</button></p>
                         <label class="field-label">Category<input id="search-category" v-model="filters.category" maxlength="100" placeholder="Exact category name" class="workspace-filter" /></label>
                         <label class="field-label">Item vendor (receipts)<input id="search-vendor" v-model="filters.vendor" maxlength="100" placeholder="Exact vendor name" class="workspace-filter" aria-describedby="search-vendor-help" /></label>
                         <p id="search-vendor-help" class="text-xs leading-5 text-zinc-500 dark:text-zinc-400">Item vendors apply to receipts. To find a merchant or invoice sender, use Search text.</p>
@@ -52,19 +52,19 @@
                     </fieldset>
                 </div>
                 <div v-if="activeFilters.length" aria-label="Active search filters" class="flex flex-wrap items-center gap-2 border-t border-zinc-200 p-4 dark:border-zinc-800">
-                    <button v-for="filter in activeFilters" :key="filter.key" type="button" :aria-label="'Remove ' + filter.label" @click="removeFilter(filter.key)" class="inline-flex max-w-full items-center gap-2 rounded-md bg-zinc-100 px-2.5 py-1.5 text-left text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"><span class="min-w-0 break-words">{{ filter.label }}</span><XMarkIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" /></button>
+                    <button v-for="filter in activeFilters" :key="filter.key" type="button" :aria-label="'Remove ' + filter.label" @click="removeFilter(filter.key)" class="inline-flex max-w-full items-center gap-2 rounded-md bg-zinc-100 px-2.5 py-1.5 text-left text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"><span class="min-w-0 wrap-break-word">{{ filter.label }}</span><XMarkIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" /></button>
                     <button type="button" @click="clearFilters" class="rounded-md px-2 py-1.5 text-sm font-medium text-orange-700 dark:text-orange-400">Clear filters (keep search)</button>
                 </div>
             </section>
-            <p class="text-xs text-zinc-500 dark:text-zinc-400">Search covers extracted records. <Link :href="route('library.index', { query: searchQuery, type: filters.type })" class="rounded underline">Find original files and unfinished uploads in Library.</Link></p>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400">Search covers extracted records. <Link :href="route('library.index', { query: searchQuery, type: filters.type })" class="rounded-sm underline">Find original files and unfinished uploads in Library.</Link></p>
 
-            <div v-if="searchError" role="alert" class="flex flex-wrap items-center gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"><p>{{ searchError }}</p><button type="button" @click="performSearch" :disabled="searching" class="rounded font-semibold underline disabled:opacity-50">Retry</button></div>
+            <div v-if="searchError" role="alert" class="flex flex-wrap items-center gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"><p>{{ searchError }}</p><button type="button" @click="performSearch" :disabled="searching" class="rounded-sm font-semibold underline disabled:opacity-50">Retry</button></div>
             <p v-if="bulkSuccess" role="status" class="text-sm text-emerald-700 dark:text-emerald-400">{{ bulkSuccess }}</p>
             <div v-if="selectedCount" class="workspace-surface flex flex-wrap items-center gap-3 p-4">
                 <span class="text-sm font-medium">{{ selectedCount }} selected</span>
                 <button type="button" @click="openBulkActions('add')" class="workspace-primary">Add to Collection</button>
                 <button type="button" @click="openBulkActions('remove')" class="workspace-button">Remove from Collection</button>
-                <button type="button" @click="clearSelection" class="ml-auto rounded px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">Clear selection</button>
+                <button type="button" @click="clearSelection" class="ml-auto rounded-sm px-2 py-1 text-sm text-zinc-500 dark:text-zinc-400">Clear selection</button>
             </div>
             <section aria-label="Search results" :aria-busy="searching" class="flex min-w-0 flex-col gap-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
@@ -73,7 +73,7 @@
                         <select id="search-sort" v-model="sortBy" class="workspace-filter"><option value="relevance">Relevance</option><option value="date_desc">Date (newest)</option><option value="date_asc">Date (oldest)</option><option v-if="['receipt', 'invoice', 'contract', 'voucher', 'bank_statement'].includes(filters.type)" value="amount_desc">Amount (highest)</option><option v-if="['receipt', 'invoice', 'contract', 'voucher', 'bank_statement'].includes(filters.type)" value="amount_asc">Amount (lowest)</option></select>
                     </label>
                 </div>
-                <label v-if="results.length" class="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400"><input type="checkbox" aria-label="Select all search results on this page" :checked="allSelected" :indeterminate="someSelected" @change="toggleSelectAll" class="rounded border-zinc-300 text-orange-600 focus:ring-orange-600 dark:border-zinc-600 dark:bg-zinc-800" />Select all on this page</label>
+                <label v-if="results.length" class="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400"><input type="checkbox" aria-label="Select all search results on this page" :checked="allSelected" :indeterminate="someSelected" @change="toggleSelectAll" class="rounded-sm border-zinc-300 text-orange-600 focus:ring-orange-600 dark:border-zinc-600 dark:bg-zinc-800" />Select all on this page</label>
                 <div v-if="results.length" class="workspace-surface divide-y divide-zinc-200 overflow-hidden dark:divide-zinc-800">
                     <SearchResultCard v-for="result in sortedResults" :key="`${result.type}-${result.id}`" :result="result" :search-query="searchQuery" :selected="isSelected(result)" @preview="openPreview" @toggle-select="toggleSelect(result)" />
                 </div>

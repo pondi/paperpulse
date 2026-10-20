@@ -164,9 +164,9 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
 
                 <!-- Stats -->
                 <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-6">
-                    <div class="rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
+                    <div class="rounded-lg bg-white p-4 shadow-sm dark:bg-zinc-800">
                         <div class="flex items-center">
-                            <div class="flex-shrink-0 rounded-md bg-amber-100 p-3 dark:bg-orange-900/40">
+                            <div class="shrink-0 rounded-md bg-amber-100 p-3 dark:bg-orange-900/40">
                                 <svg class="h-6 w-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
@@ -178,9 +178,9 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
                         </div>
                     </div>
 
-                    <div class="rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
+                    <div class="rounded-lg bg-white p-4 shadow-sm dark:bg-zinc-800">
                         <div class="flex items-center">
-                            <div class="flex-shrink-0 rounded-md bg-green-100 p-3 dark:bg-green-900/40">
+                            <div class="shrink-0 rounded-md bg-green-100 p-3 dark:bg-green-900/40">
                                 <svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
@@ -192,9 +192,9 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
                         </div>
                     </div>
 
-                    <div class="rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
+                    <div class="rounded-lg bg-white p-4 shadow-sm dark:bg-zinc-800">
                         <div class="flex items-center">
-                            <div class="flex-shrink-0 rounded-md bg-yellow-100 p-3 dark:bg-yellow-900/40">
+                            <div class="shrink-0 rounded-md bg-yellow-100 p-3 dark:bg-yellow-900/40">
                                 <svg class="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
@@ -206,9 +206,9 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
                         </div>
                     </div>
 
-                    <div class="rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
+                    <div class="rounded-lg bg-white p-4 shadow-sm dark:bg-zinc-800">
                         <div class="flex items-center">
-                            <div class="flex-shrink-0 rounded-md bg-amber-100 p-3 dark:bg-orange-900/40">
+                            <div class="shrink-0 rounded-md bg-amber-100 p-3 dark:bg-orange-900/40">
                                 <svg class="h-6 w-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2" /></svg>
                             </div>
                             <div class="ml-4">
@@ -218,9 +218,9 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
                         </div>
                     </div>
 
-                    <div class="rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
+                    <div class="rounded-lg bg-white p-4 shadow-sm dark:bg-zinc-800">
                         <div class="flex items-center">
-                            <div class="flex-shrink-0 rounded-md bg-red-100 p-3 dark:bg-red-900/40">
+                            <div class="shrink-0 rounded-md bg-red-100 p-3 dark:bg-red-900/40">
                                 <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
@@ -231,14 +231,14 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
                             </div>
                         </div>
                     </div>
-                    <div class="rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
+                    <div class="rounded-lg bg-white p-4 shadow-sm dark:bg-zinc-800">
                         <p class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Needs review</p>
                         <p class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ props.stats.needs_review }}</p>
                     </div>
                 </div>
 
                 <!-- Filters -->
-                <div class="mb-6 rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
+                <div class="mb-6 rounded-lg bg-white p-4 shadow-sm dark:bg-zinc-800">
                     <div class="flex flex-wrap gap-3">
                         <input dusk="activity-query" v-model="form.query" @input="form.page = 1" type="search" maxlength="200" aria-label="Find activity by filename" placeholder="Find a filename…" class="min-w-0 flex-1 rounded-md border-zinc-300 text-sm dark:border-zinc-600 dark:bg-zinc-700 dark:text-white" />
                         <select v-model="form.sort" @change="form.page = 1" aria-label="Sort activity" class="rounded-md border-zinc-300 text-sm dark:border-zinc-600 dark:bg-zinc-700 dark:text-white">
@@ -248,7 +248,7 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
                             aria-label="Processing status"
                             v-model="form.status"
                             @change="form.page = 1"
-                            class="bg-white text-zinc-900 dark:bg-zinc-700 dark:text-white rounded-md border border-zinc-300 dark:border-zinc-600 shadow-sm focus:border-amber-500 focus:ring focus:ring-amber-500 focus:ring-opacity-50"
+                            class="bg-white text-zinc-900 dark:bg-zinc-700 dark:text-white rounded-md border border-zinc-300 dark:border-zinc-600 shadow-xs focus:border-amber-500 focus:ring-3 focus:ring-amber-500/50"
                         >
                             <option value="">All statuses</option>
                             <option value="pending">Queued</option>
@@ -261,7 +261,7 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
                         <select
                             v-model.number="form.per_page"
                             @change="form.page = 1"
-                            class="bg-white text-zinc-900 dark:bg-zinc-700 dark:text-white rounded-md border border-zinc-300 dark:border-zinc-600 shadow-sm focus:border-amber-500 focus:ring focus:ring-amber-500 focus:ring-opacity-50"
+                            class="bg-white text-zinc-900 dark:bg-zinc-700 dark:text-white rounded-md border border-zinc-300 dark:border-zinc-600 shadow-xs focus:border-amber-500 focus:ring-3 focus:ring-amber-500/50"
                         >
                             <option :value="50">50 per page</option>
                             <option :value="100">100 per page</option>
@@ -279,7 +279,7 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
 
                 <Link v-if="filters.file_id" :href="route('files.index')" class="mb-4 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline">All processing activity</Link>
                 <!-- Files List -->
-                <div v-if="props.files.data.length === 0" class="rounded-lg bg-white p-12 text-center shadow dark:bg-zinc-800">
+                <div v-if="props.files.data.length === 0" class="rounded-lg bg-white p-12 text-center shadow-sm dark:bg-zinc-800">
                     <svg class="mx-auto h-12 w-12 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
@@ -303,7 +303,7 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-3">
                                         <!-- File Icon -->
-                                        <div class="flex-shrink-0">
+                                        <div class="shrink-0">
                                             <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-100 dark:bg-zinc-700">
                                                 <!-- Receipt icon -->
                                                 <svg v-if="file.file_type === 'receipt'" class="h-6 w-6 text-zinc-600 dark:text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -404,9 +404,9 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
 
                             <div class="mt-4 flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                                 <PrimaryButton v-if="file.status === 'failed' && canRetry(file)" :disabled="retryingFileId !== null || correctingFileId !== null" @click="retryFile(file)">{{ retryingFileId === file.id ? 'Queuing retry…' : 'Retry Processing' }}</PrimaryButton>
-                                <Link v-else-if="file.status === 'needs_review' && file.review?.reason === 'receipt_totals'" :href="route('files.extraction-report', file.id)" class="inline-flex min-h-10 items-center justify-center rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-500">Review and confirm totals</Link>
+                                <Link v-else-if="file.status === 'needs_review' && file.review?.reason === 'receipt_totals'" :href="route('files.extraction-report', file.id)" class="inline-flex min-h-10 items-center justify-center rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500">Review and confirm totals</Link>
                                 <details v-if="file.status === 'failed' && canCorrectType(file)" class="min-w-0">
-                                    <summary class="cursor-pointer rounded-md px-3 py-2 text-sm font-semibold text-amber-800 underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-amber-300">Change type and retry</summary>
+                                    <summary class="cursor-pointer rounded-md px-3 py-2 text-sm font-semibold text-amber-800 underline focus:outline-hidden focus:ring-2 focus:ring-amber-500 dark:text-amber-300">Change type and retry</summary>
                                     <form class="mt-3 flex min-w-0 flex-col items-stretch gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700 sm:flex-row sm:items-end" @submit.prevent="correctType(file)">
                                         <label class="min-w-0 flex-1 text-sm font-medium text-zinc-700 dark:text-zinc-200">Document type<select :value="correctedType(file)" :aria-label="`Correct document type for ${file.name}`" class="mt-1 block w-full rounded-md border-zinc-300 text-sm dark:border-zinc-600 dark:bg-zinc-700 dark:text-white" @change="setCorrectedType(file, $event)"><option v-for="type in availableTypes(file)" :key="type" :value="type">{{ typeLabel(type) }}</option></select></label>
                                         <PrimaryButton type="submit" :disabled="correctingFileId !== null || retryingFileId !== null">{{ correctingFileId === file.id ? 'Queuing correction…' : 'Correct type and retry' }}</PrimaryButton>
@@ -432,7 +432,7 @@ onBeforeUnmount(() => clearTimeout(filterTimer));
                                 <a
                                     :href="file.viewUrl"
                                     target="_blank"
-                                    class="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm ring-1 ring-inset ring-zinc-300 hover:bg-amber-50 dark:bg-zinc-700 dark:text-zinc-200 dark:ring-zinc-600 dark:hover:bg-amber-600"
+                                    class="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-xs ring-1 ring-inset ring-zinc-300 hover:bg-amber-50 dark:bg-zinc-700 dark:text-zinc-200 dark:ring-zinc-600 dark:hover:bg-amber-600"
                                 >
                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

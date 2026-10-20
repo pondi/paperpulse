@@ -63,7 +63,7 @@ function submit() {
                         type="password"
                         :aria-invalid="Boolean(page.props.errors?.password)"
                         :aria-describedby="page.props.errors?.password ? 'password-error' : undefined"
-                        class="w-full rounded-lg border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100"
+                        class="w-full rounded-lg border-zinc-300 shadow-xs focus:border-amber-500 focus:ring-amber-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100"
                         placeholder="Enter the password"
                         autofocus
                         required
@@ -81,7 +81,7 @@ function submit() {
                 <button
                     type="submit"
                     :disabled="processing || !form.password"
-                    class="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold uppercase tracking-widest text-white shadow-sm transition duration-200 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 dark:bg-amber-600 dark:hover:bg-amber-500 dark:focus:ring-offset-zinc-800"
+                    class="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold uppercase tracking-widest text-white shadow-xs transition duration-200 hover:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 dark:bg-amber-600 dark:hover:bg-amber-500 dark:focus:ring-offset-zinc-800"
                 >
                     <span v-if="processing">Verifying...</span>
                     <span v-else>Unlock Collection</span>

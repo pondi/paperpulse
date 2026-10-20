@@ -26,7 +26,7 @@ const details = computed(() => causes[props.failure.category] || ['The failure c
         <p><span class="font-medium">What happened: </span>{{ details[0] }}</p>
         <p><span class="font-medium">Next step: </span>{{ details[1] }}</p>
         <details class="rounded-md border border-amber-200 p-3 dark:border-amber-800">
-            <summary dusk="failure-diagnostics" class="cursor-pointer font-medium focus:outline-none focus:ring-2 focus:ring-amber-500">Failure diagnostics</summary>
+            <summary dusk="failure-diagnostics" class="cursor-pointer font-medium focus:outline-hidden focus:ring-2 focus:ring-amber-500">Failure diagnostics</summary>
             <dl class="mt-3 flex flex-col gap-2 text-xs">
                 <div><dt class="font-semibold">Failed stage</dt><dd>{{ processing?.stage || 'Not recorded' }}</dd></div>
                 <div><dt class="font-semibold">Failed at</dt><dd>{{ failure.timestamp ? formatDateTime(failure.timestamp) : 'Not recorded' }}</dd></div>

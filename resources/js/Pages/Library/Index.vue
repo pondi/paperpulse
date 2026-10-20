@@ -116,7 +116,7 @@ onBeforeUnmount(() => { clearTimeout(timer); cancelVisit?.cancel(); });
                         </select>
                     </label>
                     <button type="button" @click="expanded = !expanded" :aria-expanded="expanded" aria-controls="library-more-filters" class="workspace-button justify-center">
-                        <AdjustmentsHorizontalIcon class="h-4 w-4" aria-hidden="true" />Filters<span v-if="secondaryCount" class="rounded bg-orange-100 px-1.5 text-xs text-orange-800 dark:bg-orange-500/20 dark:text-orange-300">{{ secondaryCount }}</span>
+                        <AdjustmentsHorizontalIcon class="h-4 w-4" aria-hidden="true" />Filters<span v-if="secondaryCount" class="rounded-sm bg-orange-100 px-1.5 text-xs text-orange-800 dark:bg-orange-500/20 dark:text-orange-300">{{ secondaryCount }}</span>
                     </button>
                     <select v-model="form.sort" @change="apply" aria-label="Sort files" class="workspace-filter"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name A–Z</option></select>
                     <div role="group" aria-label="File presentation" class="flex gap-1">
@@ -150,7 +150,7 @@ onBeforeUnmount(() => { clearTimeout(timer); cancelVisit?.cancel(); });
                 </div>
                 <div v-if="activeFilters.length" aria-label="Active filters" class="flex flex-wrap items-center gap-2 border-t border-zinc-200 px-3 py-2 dark:border-zinc-800">
                     <button v-for="filter in activeFilters" :key="filter.key" type="button" @click="removeFilter(filter.key)" :aria-label="'Remove ' + filter.label" class="inline-flex max-w-full items-center gap-2 rounded-md bg-zinc-100 px-2.5 py-1.5 text-left text-xs text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700">
-                        <span class="min-w-0 break-words">{{ filter.label }}</span><XMarkIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        <span class="min-w-0 wrap-break-word">{{ filter.label }}</span><XMarkIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     </button>
                     <button type="button" @click="clear" class="rounded-md px-2 py-1.5 text-sm font-medium text-orange-700 dark:text-orange-400">Clear all filters</button>
                 </div>
@@ -158,7 +158,7 @@ onBeforeUnmount(() => { clearTimeout(timer); cancelVisit?.cancel(); });
 
             <div v-if="requestError || Object.keys(errors).length" role="alert" class="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
                 <p>{{ requestError || Object.values(errors)[0] }}</p>
-                <button v-if="requestError" type="button" @click="apply" class="mt-2 rounded font-semibold underline">Try again</button>
+                <button v-if="requestError" type="button" @click="apply" class="mt-2 rounded-sm font-semibold underline">Try again</button>
             </div>
             <FileWorkspace :review-mode="reviewColumns" class="workspace-fill" :files="files.data" :tags="options.tags" :loading="loading" :display="form.display"
                 :empty-title="loading ? 'Finding files…' : activeFilters.length ? 'No files match these filters' : 'Your library starts here'"

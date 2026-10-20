@@ -52,7 +52,7 @@ onUnmounted(() => clearInterval(timer));
                         <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ exports.length }} {{ exports.length === 1 ? 'export' : 'exports' }}</p>
                     </div>
                     <p v-if="!exports.length" class="rounded-lg border border-dashed border-zinc-300 bg-white p-6 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">No exports available. Completed downloads will appear here and stay available for 24 hours.</p>
-                    <article v-for="item in exports" :key="item.id" class="flex flex-col gap-2 rounded-lg bg-white p-4 shadow dark:bg-zinc-900 dark:text-zinc-200">
+                    <article v-for="item in exports" :key="item.id" class="flex flex-col gap-2 rounded-lg bg-white p-4 shadow-sm dark:bg-zinc-900 dark:text-zinc-200">
                         <p class="font-medium" :role="['pending', 'processing'].includes(item.status) ? 'status' : null">{{ item.format.toUpperCase() }} export · {{ item.status }}</p>
                         <template v-if="['pending', 'processing'].includes(item.status)">
                             <progress class="w-full" :max="item.total || 1" :value="item.processed" :aria-label="`${item.format.toUpperCase()} export progress`" />
@@ -61,7 +61,7 @@ onUnmounted(() => clearInterval(timer));
                         <p v-if="item.status === 'expired'" class="text-sm">This download expired<span v-if="item.expires_at"> on {{ formatExpiration(item.expires_at) }}</span>. Select the receipts again to create a new export.</p>
                         <p v-if="item.download_url" class="text-sm text-zinc-600 dark:text-zinc-400">Ready to download until {{ formatExpiration(item.expires_at) }}.</p>
                         <p v-if="item.error" role="alert" class="text-red-600 dark:text-red-400">{{ item.error }}</p>
-                        <a v-if="item.download_url" :href="item.download_url" class="inline-flex min-h-11 self-start items-center rounded font-semibold text-amber-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:text-amber-400">Download {{ item.format.toUpperCase() }} export</a>
+                        <a v-if="item.download_url" :href="item.download_url" class="inline-flex min-h-11 self-start items-center rounded-sm font-semibold text-amber-700 underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:text-amber-400">Download {{ item.format.toUpperCase() }} export</a>
                     </article>
                 </section>
             </div>

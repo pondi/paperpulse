@@ -44,7 +44,7 @@ const decide = (decision, ids) => post(route('collections.organization.decide'),
         </template>
         <div class="mx-auto flex max-w-7xl flex-col gap-6 p-6 text-zinc-900 dark:text-zinc-100">
             <Link :href="route('collections.index')" class="text-orange-600 dark:text-orange-400">Back to collections</Link>
-            <section aria-labelledby="review-status-heading" class="flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800">
+            <section aria-labelledby="review-status-heading" class="flex flex-col gap-4 rounded-lg bg-white p-6 shadow-sm dark:bg-zinc-800">
                 <h3 id="review-status-heading" class="text-lg font-bold">Review status</h3>
                 <p v-if="run?.status === 'failed'" class="font-semibold text-red-600 dark:text-red-400">Folder recommendation generation failed</p>
                 <p v-else role="status">{{ pending_count }} {{ pending_count === 1 ? 'decision' : 'decisions' }} remaining · {{ run?.status?.replaceAll('_', ' ') ?? 'No recommendations yet' }}</p>
@@ -66,14 +66,14 @@ const decide = (decision, ids) => post(route('collections.organization.decide'),
             <section v-if="pending.length" aria-labelledby="decision-tools-heading" class="flex flex-col gap-4 rounded-lg bg-white p-6 dark:bg-zinc-800">
                 <h3 id="decision-tools-heading" class="text-lg font-bold">Review pending suggestions</h3>
                 <label class="flex items-center gap-2"><input type="checkbox" :checked="selected.length === pending.length" @change="selected = $event.target.checked ? pending.map(item => item.id) : []" />Select this page</label>
-                <label class="flex flex-col gap-2">Reason for declining (optional)<input v-model="reason" maxlength="240" class="rounded border-zinc-300 dark:border-zinc-600 dark:bg-zinc-900" /></label>
+                <label class="flex flex-col gap-2">Reason for declining (optional)<input v-model="reason" maxlength="240" class="rounded-sm border-zinc-300 dark:border-zinc-600 dark:bg-zinc-900" /></label>
                 <label class="flex items-center gap-2"><input v-model="removeEmpty" type="checkbox" />Remove empty source folders when applying merges</label>
                 <div class="flex gap-3">
                     <PrimaryButton :disabled="!ready || !selected.length || busy" @click="decide('apply', selected)">Apply selected</PrimaryButton>
                     <SecondaryButton :disabled="!ready || !selected.length || busy" @click="decide('decline', selected)">Decline selected</SecondaryButton>
                 </div>
             </section>
-            <article v-for="item in recommendations?.data ?? []" :key="item.id" class="flex flex-col gap-3 rounded-lg bg-white p-6 shadow dark:bg-zinc-800">
+            <article v-for="item in recommendations?.data ?? []" :key="item.id" class="flex flex-col gap-3 rounded-lg bg-white p-6 shadow-sm dark:bg-zinc-800">
                 <label class="flex items-center gap-3">
                     <input v-if="['pending', 'conflict'].includes(item.status)" v-model="selected" type="checkbox" :value="item.id" :disabled="!ready || busy" />
                     <span class="font-semibold">{{ item.current_paths.join(', ') }} → {{ item.proposed_path }}</span>

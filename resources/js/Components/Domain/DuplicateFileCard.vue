@@ -32,13 +32,13 @@ const handleDelete = () => emit('delete-file', props.file.id);
         <div>
             <div class="flex min-w-0 items-start justify-between gap-3">
                 <div>
-                    <p class="break-words text-sm font-semibold text-zinc-900 dark:text-zinc-100" v-if="file">
+                    <p class="wrap-break-word text-sm font-semibold text-zinc-900 dark:text-zinc-100" v-if="file">
                         {{ file.name }}
                     </p>
                     <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100" v-else>
                         {{ __('file_missing') }}
                     </p>
-                    <p v-if="file?.original_name && file.original_name !== file.name" class="break-words text-xs text-zinc-500">{{ file.original_name }}</p>
+                    <p v-if="file?.original_name && file.original_name !== file.name" class="wrap-break-word text-xs text-zinc-500">{{ file.original_name }}</p>
                     <p v-if="file" class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ file.file_type }} · {{ fileStatusLabel(file) }} · {{ formatDate(file.uploaded_at) }}</p>
                 </div>
                 <Link
@@ -50,7 +50,7 @@ const handleDelete = () => emit('delete-file', props.file.id);
                 </Link>
             </div>
 
-            <a v-if="file?.viewUrl" :href="file.viewUrl" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex min-h-9 items-center rounded-md px-3 py-2 text-xs font-semibold text-amber-700 underline hover:text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-amber-300">Open original</a>
+            <a v-if="file?.viewUrl" :href="file.viewUrl" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex min-h-9 items-center rounded-md px-3 py-2 text-xs font-semibold text-amber-700 underline hover:text-amber-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500 dark:text-amber-300">Open original</a>
 
             <div v-if="summaryLabel" class="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
                 <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ summaryLabel.title }}</p>

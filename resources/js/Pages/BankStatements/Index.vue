@@ -29,14 +29,14 @@
       </section>
 
       <div v-if="statements.length" class="space-y-3">
-        <Link v-for="statement in statements" :key="statement.id" :href="route('bank-statements.show', statement.id)" class="group block rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-teal-400 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 dark:border-zinc-700 dark:bg-zinc-800 dark:focus-visible:ring-offset-zinc-900 sm:p-5">
+        <Link v-for="statement in statements" :key="statement.id" :href="route('bank-statements.show', statement.id)" class="group block rounded-xl border border-zinc-200 bg-white p-4 shadow-xs transition hover:border-teal-400 hover:shadow-md focus:outline-hidden focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 dark:border-zinc-700 dark:bg-zinc-800 dark:focus-visible:ring-offset-zinc-900 sm:p-5">
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="min-w-0">
               <p class="text-xs font-medium uppercase tracking-wide text-teal-700 dark:text-teal-300">{{ statement.account_holder_name || 'Bank statement' }}</p>
               <h2 class="mt-1 truncate text-base font-semibold text-zinc-950 group-hover:text-teal-800 dark:text-zinc-100 dark:group-hover:text-teal-300">{{ statement.bank_name || 'Bank statement' }}</h2>
               <p v-if="statement.account_number" class="mt-1 font-mono text-sm text-zinc-600 dark:text-zinc-300">Account {{ statement.account_number }}</p>
             </div>
-            <div class="min-w-[9rem] text-left sm:text-right">
+            <div class="min-w-36 text-left sm:text-right">
               <p class="text-xs text-zinc-500 dark:text-zinc-400">Closing balance</p>
               <p class="mt-1 text-lg font-semibold tabular-nums text-zinc-950 dark:text-zinc-100">{{ formatCurrency(statement.closing_balance, statement.currency) }}</p>
             </div>

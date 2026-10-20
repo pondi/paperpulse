@@ -4,7 +4,7 @@
             <span
                 v-for="collection in selectedCollections"
                 :key="collection.id"
-                class="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-zinc-900 dark:text-zinc-100"
+                class="inline-flex items-center px-2 py-1 rounded-sm text-xs font-medium text-zinc-900 dark:text-zinc-100"
                 :style="{ backgroundColor: collection.color + '20' }"
             >
                 <svg v-if="collection.icon" class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,7 +31,7 @@
                 @focus="showDropdown = true"
                 @blur="handleBlur"
                 type="text"
-                class="flex-1 outline-none border-0 focus:ring-0 text-sm min-w-[100px] bg-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-400"
+                class="flex-1 outline-hidden border-0 focus:ring-0 text-sm min-w-[100px] bg-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-400"
                 :placeholder="placeholder"
             />
         </div>

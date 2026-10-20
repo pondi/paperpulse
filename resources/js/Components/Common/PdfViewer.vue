@@ -50,7 +50,7 @@ const handleClose = () => {
             >
                 <!-- Backdrop -->
                 <div
-                    class="absolute inset-0 bg-black/75 backdrop-blur-sm"
+                    class="absolute inset-0 bg-black/75 backdrop-blur-xs"
                     @click="handleClose"
                 ></div>
 

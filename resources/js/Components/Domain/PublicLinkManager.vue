@@ -139,7 +139,7 @@ function getLinkStatus(link) {
                 <button
                     type="button"
                     @click="openCreateModal"
-                    class="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-amber-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600"
+                    class="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-amber-500 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600"
                 >
                     <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
@@ -183,7 +183,7 @@ function getLinkStatus(link) {
                     <div class="flex items-center gap-2 sm:ml-3">
                         <button
                             @click="viewLogs(link.id)"
-                            class="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                            class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-amber-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                             title="View access logs"
                             :aria-label="`View access log for ${link.label || 'public link'}`"
                         >
@@ -194,7 +194,7 @@ function getLinkStatus(link) {
                         <button
                             v-if="link.is_active"
                             @click="revokeLink(link.id)"
-                            class="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-red-500 transition hover:bg-red-50 hover:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+                            class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm text-red-500 transition hover:bg-red-50 hover:text-red-700 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-300"
                             title="Revoke link"
                             :aria-label="`Revoke ${link.label || 'public link'}`"
                         >
@@ -223,7 +223,7 @@ function getLinkStatus(link) {
                             id="public-link-label"
                             v-model="form.label"
                             type="text"
-                            class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 text-sm"
+                            class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 shadow-xs focus:border-amber-500 focus:ring-amber-500 text-sm"
                             placeholder="e.g., For accountant 2026"
                         />
                     </div>
@@ -232,7 +232,7 @@ function getLinkStatus(link) {
                         <input
                             v-model="form.is_password_protected"
                             type="checkbox"
-                            class="rounded border-zinc-300 dark:border-zinc-600 text-amber-600 shadow-sm focus:ring-amber-500"
+                            class="rounded-sm border-zinc-300 dark:border-zinc-600 text-amber-600 shadow-xs focus:ring-amber-500"
                             id="password-protected"
                         />
                         <label for="password-protected" class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -245,7 +245,7 @@ function getLinkStatus(link) {
                         <select
                             id="public-link-expiration_preset"
                             v-model="form.expiration_preset"
-                            class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 text-sm"
+                            class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 shadow-xs focus:border-amber-500 focus:ring-amber-500 text-sm"
                         >
                             <option value="7d">7 days</option>
                             <option value="30d">30 days</option>
@@ -267,7 +267,7 @@ function getLinkStatus(link) {
                             v-model.number="form.max_views"
                             type="number"
                             min="1"
-                            class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 text-sm"
+                            class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 shadow-xs focus:border-amber-500 focus:ring-amber-500 text-sm"
                             placeholder="Leave empty for unlimited"
                         />
                     </div>
@@ -280,7 +280,7 @@ function getLinkStatus(link) {
                             id="public-link-email"
                             v-model="form.notify_email"
                             type="email"
-                            class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 text-sm"
+                            class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 shadow-xs focus:border-amber-500 focus:ring-amber-500 text-sm"
                             placeholder="accountant@example.com"
                         />
                     </div>

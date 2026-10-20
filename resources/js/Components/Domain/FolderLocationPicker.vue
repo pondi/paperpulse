@@ -37,7 +37,7 @@ const select = () => {
 </script>
 
 <template>
-    <div class="min-w-0 space-y-2 text-sm text-zinc-700 [overflow-wrap:anywhere] dark:text-zinc-300">
+    <div class="min-w-0 space-y-2 text-sm text-zinc-700 wrap-anywhere dark:text-zinc-300">
         <div class="flex flex-wrap items-center gap-3">
             <span>Location: {{ modelValue === null ? 'Top level' : selectedName }}</span>
             <button type="button" class="text-blue-600 dark:text-blue-400" @click="browse()">Choose folder</button>

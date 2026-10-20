@@ -2,8 +2,8 @@
   <div class="fixed inset-0 bg-black text-white overflow-hidden flex flex-col z-50">
     <Head title="Scan a document" />
     <!-- Header -->
-    <div class="absolute top-0 left-0 right-0 z-[60] p-4 flex justify-between items-center bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
-      <Link :href="route('dashboard')" aria-label="Close scanner" class="text-white p-2 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition pointer-events-auto">
+    <div class="absolute top-0 left-0 right-0 z-60 p-4 flex justify-between items-center bg-linear-to-b from-black/70 to-transparent pointer-events-none">
+      <Link :href="route('dashboard')" aria-label="Close scanner" class="text-white p-2 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-xs transition pointer-events-auto">
         <XMarkIcon class="w-6 h-6" aria-hidden="true" />
       </Link>
       
@@ -12,14 +12,14 @@
         <button 
           @click="setMode('receipt')"
           :aria-pressed="mode === 'receipt'"
-          :class="['px-4 py-1.5 rounded-full text-sm font-medium transition-all', mode === 'receipt' ? 'bg-amber-500 text-white shadow-sm' : 'text-white/70 hover:text-white']"
+          :class="['px-4 py-1.5 rounded-full text-sm font-medium transition-all', mode === 'receipt' ? 'bg-amber-500 text-white shadow-xs' : 'text-white/70 hover:text-white']"
         >
           Receipt
         </button>
         <button 
           @click="setMode('document')"
           :aria-pressed="mode === 'document'"
-          :class="['px-4 py-1.5 rounded-full text-sm font-medium transition-all', mode === 'document' ? 'bg-amber-500 text-white shadow-sm' : 'text-white/70 hover:text-white']"
+          :class="['px-4 py-1.5 rounded-full text-sm font-medium transition-all', mode === 'document' ? 'bg-amber-500 text-white shadow-xs' : 'text-white/70 hover:text-white']"
         >
           Document
         </button>
@@ -61,7 +61,7 @@
       </div>
       
       <!-- Note Input Overlay -->
-      <div v-if="showNoteInput" class="absolute inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div v-if="showNoteInput" class="absolute inset-0 z-40 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
         <div class="bg-zinc-900 border border-zinc-700 p-6 rounded-2xl w-full max-w-md shadow-2xl">
           <h3 class="text-lg font-semibold mb-4 text-white">Add Details</h3>
           <div class="space-y-4">
@@ -98,7 +98,7 @@
       </div>
 
       <!-- Camera Controls Footer -->
-      <div class="absolute bottom-0 left-0 right-0 p-8 pb-12 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex justify-between items-center z-20">
+      <div class="absolute bottom-0 left-0 right-0 p-8 pb-12 bg-linear-to-t from-black/90 via-black/50 to-transparent flex justify-between items-center z-20">
         <button @click="showNoteInput = true" aria-label="Add scan details" class="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition relative group">
           <PencilSquareIcon class="w-6 h-6 text-white" aria-hidden="true" />
           <span v-if="note" class="absolute top-0 right-0 w-3 h-3 bg-amber-500 rounded-full border-2 border-black"></span>

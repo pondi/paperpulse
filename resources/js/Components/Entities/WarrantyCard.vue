@@ -1,11 +1,11 @@
 <template>
-  <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-sm p-6 border-l-4 border-blue-500 dark:border-blue-400">
+  <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-xs p-6 border-l-4 border-blue-500 dark:border-blue-400">
     <div class="flex justify-between items-start mb-4">
       <div class="flex-1">
         <h3 class="font-semibold text-lg text-zinc-900 dark:text-zinc-100">{{ warranty.product_name }}</h3>
         <p class="text-sm text-zinc-600 dark:text-zinc-400">{{ warranty.manufacturer }}</p>
       </div>
-      <span class="px-2 py-1 text-xs rounded font-medium" :class="statusClass">
+      <span class="px-2 py-1 text-xs rounded-sm font-medium" :class="statusClass">
         {{ statusLabel }}
       </span>
     </div>
@@ -24,7 +24,7 @@
         </div>
         <div v-if="warranty.serial_number" class="col-span-2">
           <span class="text-zinc-600 dark:text-zinc-400 block text-xs font-medium mb-1">Serial Number</span>
-          <span class="font-mono text-xs text-zinc-900 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-900/50 px-2 py-1 rounded">
+          <span class="font-mono text-xs text-zinc-900 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-900/50 px-2 py-1 rounded-sm">
             {{ warranty.serial_number }}
           </span>
         </div>
@@ -34,7 +34,7 @@
         </div>
       </div>
 
-      <div v-if="daysRemaining > 0" class="text-sm bg-blue-50 dark:bg-blue-900/20 p-3 rounded border border-blue-200 dark:border-blue-800">
+      <div v-if="daysRemaining > 0" class="text-sm bg-blue-50 dark:bg-blue-900/20 p-3 rounded-sm border border-blue-200 dark:border-blue-800">
         <p class="text-zinc-700 dark:text-zinc-300">
           <span class="font-semibold">{{ daysRemaining }}</span> days remaining on warranty
         </p>

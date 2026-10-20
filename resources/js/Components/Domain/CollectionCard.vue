@@ -1,14 +1,14 @@
 <template>
     <article :data-folder-id="collection.id" class="workspace-surface relative flex min-w-0 flex-col gap-4 p-4">
         <div class="flex items-start gap-2">
-            <Link :href="route('collections.show', collection.id)" class="group flex min-w-0 flex-1 items-start gap-3 rounded">
+            <Link :href="route('collections.show', collection.id)" class="group flex min-w-0 flex-1 items-start gap-3 rounded-sm">
                 <span class="relative shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden="true">
                     <FolderIcon class="h-10 w-10" />
-                    <svg v-if="collection.icon && collection.icon !== 'folder'" class="absolute bottom-0 right-0 h-5 w-5 rounded bg-white p-0.5 dark:bg-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getIconPath(collection.icon)" /></svg>
+                    <svg v-if="collection.icon && collection.icon !== 'folder'" class="absolute bottom-0 right-0 h-5 w-5 rounded-sm bg-white p-0.5 dark:bg-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getIconPath(collection.icon)" /></svg>
                     <span class="absolute left-1 top-1 h-1.5 w-3 rounded-full" :style="{ backgroundColor: collection.color }" />
                 </span>
                 <div class="min-w-0 flex-1 pt-1">
-                    <h2 class="font-medium text-zinc-900 group-hover:underline [overflow-wrap:anywhere] dark:text-zinc-100">{{ collection.name }}</h2>
+                    <h2 class="font-medium text-zinc-900 group-hover:underline wrap-anywhere dark:text-zinc-100">{{ collection.name }}</h2>
                     <div v-if="collection.is_archived || collection.is_pinned" class="mt-1 flex flex-wrap gap-2 text-xs text-zinc-500 dark:text-zinc-400">
                         <span v-if="collection.is_archived">Archived</span>
                         <span v-if="collection.is_pinned" title="Kept in place during automatic organization">Fixed location</span>
@@ -19,14 +19,14 @@
                 <MenuButton :disabled="busy" :aria-label="`Actions for ${collection.name}`" class="inline-flex h-11 w-11 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-400 dark:hover:bg-zinc-800">
                     <EllipsisHorizontalIcon class="h-5 w-5" aria-hidden="true" />
                 </MenuButton>
-                <MenuItems class="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-zinc-200 bg-white p-1 text-sm shadow-lg focus:outline-none dark:border-zinc-700 dark:bg-zinc-900">
-                    <MenuItem v-if="showEdit" v-slot="{ active }"><button class="min-h-11 w-full rounded px-3 py-2 text-left" :class="active ? 'bg-zinc-100 dark:bg-zinc-800' : ''" @click="$emit('edit', collection)">Edit folder</button></MenuItem>
-                    <MenuItem v-if="showArchive" v-slot="{ active }"><button class="min-h-11 w-full rounded px-3 py-2 text-left" :class="active ? 'bg-zinc-100 dark:bg-zinc-800' : ''" @click="$emit(collection.is_archived ? 'unarchive' : 'archive', collection)">{{ collection.is_archived ? 'Restore folder' : 'Archive folder' }}</button></MenuItem>
-                    <MenuItem v-if="canDelete" v-slot="{ active }"><button class="min-h-11 w-full rounded px-3 py-2 text-left text-red-700 dark:text-red-400" :class="active ? 'bg-zinc-100 dark:bg-zinc-800' : ''" @click="$emit('delete', collection)">Delete folder</button></MenuItem>
+                <MenuItems class="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-zinc-200 bg-white p-1 text-sm shadow-lg focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-900">
+                    <MenuItem v-if="showEdit" v-slot="{ active }"><button class="min-h-11 w-full rounded-sm px-3 py-2 text-left" :class="active ? 'bg-zinc-100 dark:bg-zinc-800' : ''" @click="$emit('edit', collection)">Edit folder</button></MenuItem>
+                    <MenuItem v-if="showArchive" v-slot="{ active }"><button class="min-h-11 w-full rounded-sm px-3 py-2 text-left" :class="active ? 'bg-zinc-100 dark:bg-zinc-800' : ''" @click="$emit(collection.is_archived ? 'unarchive' : 'archive', collection)">{{ collection.is_archived ? 'Restore folder' : 'Archive folder' }}</button></MenuItem>
+                    <MenuItem v-if="canDelete" v-slot="{ active }"><button class="min-h-11 w-full rounded-sm px-3 py-2 text-left text-red-700 dark:text-red-400" :class="active ? 'bg-zinc-100 dark:bg-zinc-800' : ''" @click="$emit('delete', collection)">Delete folder</button></MenuItem>
                 </MenuItems>
             </Menu>
         </div>
-        <p v-if="collection.description" class="line-clamp-2 text-sm text-zinc-600 [overflow-wrap:anywhere] dark:text-zinc-400">{{ collection.description }}</p>
+        <p v-if="collection.description" class="line-clamp-2 text-sm text-zinc-600 wrap-anywhere dark:text-zinc-400">{{ collection.description }}</p>
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-zinc-600 dark:text-zinc-400">
             <span>{{ collection.files_count || 0 }} direct file{{ collection.files_count === 1 ? '' : 's' }}</span>
             <Link v-if="collection.children_count" :href="childrenHref || route('collections.index', { parent_id: collection.id })" class="inline-flex min-h-11 items-center gap-1 underline underline-offset-4" :aria-label="`Browse ${collection.children_count} subfolders in ${collection.name}`">

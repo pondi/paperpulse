@@ -37,7 +37,7 @@ function save() {
 
 <template>
     <div>
-        <button type="button" dusk="save-view" @click="show" class="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800">
+        <button type="button" dusk="save-view" @click="show" class="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-xs hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800">
             <BookmarkIcon class="h-4 w-4" aria-hidden="true" />{{ activeView ? 'Save changes' : 'Save view' }}
         </button>
         <Modal :show="open" max-width="md" @close="!saving && (open = false)" v-slot="{ titleId }">
@@ -50,8 +50,8 @@ function save() {
                     <label for="saved-view-name" class="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">View name</label>
                     <input id="saved-view-name" dusk="saved-view-name" v-model="form.name" required maxlength="80" autofocus placeholder="e.g. Business receipts this month" :aria-invalid="Boolean(errors.name)" aria-describedby="saved-view-error" class="w-full rounded-lg border-zinc-300 text-sm focus:border-amber-500 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
                 </div>
-                <label class="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300"><input v-model="form.is_pinned" type="checkbox" class="rounded border-zinc-300 text-amber-600 focus:ring-amber-500" />Pin to navigation</label>
-                <label v-if="activeView && activeView.scope === scope" class="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300"><input v-model="form.replace" type="checkbox" class="rounded border-zinc-300 text-amber-600 focus:ring-amber-500" />Update “{{ activeView.name }}”</label>
+                <label class="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300"><input v-model="form.is_pinned" type="checkbox" class="rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500" />Pin to navigation</label>
+                <label v-if="activeView && activeView.scope === scope" class="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300"><input v-model="form.replace" type="checkbox" class="rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500" />Update “{{ activeView.name }}”</label>
                 <p v-if="Object.keys(errors).length" id="saved-view-error" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ Object.values(errors)[0] }}</p>
                 <div class="flex justify-end gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700">
                     <button type="button" :disabled="saving" @click="open = false" class="rounded-lg px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">Cancel</button>

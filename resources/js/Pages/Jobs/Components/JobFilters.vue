@@ -1,5 +1,5 @@
 <template>
-    <section aria-labelledby="job-filters-heading" class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-5">
+    <section aria-labelledby="job-filters-heading" class="rounded-xl border border-zinc-200 bg-white p-4 shadow-xs dark:border-zinc-700 dark:bg-zinc-800 sm:p-5">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h2 id="job-filters-heading" class="font-semibold text-zinc-950 dark:text-zinc-100">Find a job</h2>
@@ -8,7 +8,7 @@
             <button
                 v-if="hasFilters"
                 type="button"
-                class="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-amber-800 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 dark:text-amber-300 dark:hover:bg-zinc-700"
+                class="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-amber-800 hover:bg-amber-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-600 dark:text-amber-300 dark:hover:bg-zinc-700"
                 @click="$emit('update:form', { status: '', queue: '', search: '', per_page: form.per_page, page: 1 })"
             >
                 Clear filters
@@ -21,7 +21,7 @@
                 <select
                     :value="form.status"
                     aria-label="Job status"
-                    class="min-h-11 rounded-lg border-zinc-300 bg-white text-zinc-900 shadow-sm focus:border-amber-600 focus:ring-amber-600 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
+                    class="min-h-11 rounded-lg border-zinc-300 bg-white text-zinc-900 shadow-xs focus:border-amber-600 focus:ring-amber-600 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
                     @change="$emit('update:form', { ...form, status: ($event.target as HTMLSelectElement).value, page: 1 })"
                 >
                     <option value="">All statuses</option>
@@ -37,7 +37,7 @@
                 <select
                     :value="form.queue"
                     aria-label="Worker queue"
-                    class="min-h-11 rounded-lg border-zinc-300 bg-white text-zinc-900 shadow-sm focus:border-amber-600 focus:ring-amber-600 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
+                    class="min-h-11 rounded-lg border-zinc-300 bg-white text-zinc-900 shadow-xs focus:border-amber-600 focus:ring-amber-600 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
                     @change="$emit('update:form', { ...form, queue: ($event.target as HTMLSelectElement).value, page: 1 })"
                 >
                     <option value="">All queues</option>
@@ -50,7 +50,7 @@
                 <select
                     :value="form.per_page"
                     aria-label="Results per page"
-                    class="min-h-11 rounded-lg border-zinc-300 bg-white text-zinc-900 shadow-sm focus:border-amber-600 focus:ring-amber-600 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
+                    class="min-h-11 rounded-lg border-zinc-300 bg-white text-zinc-900 shadow-xs focus:border-amber-600 focus:ring-amber-600 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
                     @change="$emit('update:form', { ...form, per_page: parseInt(($event.target as HTMLSelectElement).value), page: 1 })"
                 >
                     <option :value="50">50 per page</option>
@@ -67,7 +67,7 @@
                     type="search"
                     autocomplete="off"
                     placeholder="For example, Process Receipt"
-                    class="min-h-11 rounded-lg border-zinc-300 bg-white text-zinc-900 shadow-sm placeholder:text-zinc-400 focus:border-amber-600 focus:ring-amber-600 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
+                    class="min-h-11 rounded-lg border-zinc-300 bg-white text-zinc-900 shadow-xs placeholder:text-zinc-400 focus:border-amber-600 focus:ring-amber-600 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
                     @input="$emit('update:form', { ...form, search: ($event.target as HTMLInputElement).value, page: 1 })"
                 >
             </label>

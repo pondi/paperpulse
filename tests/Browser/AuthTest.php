@@ -200,6 +200,7 @@ test('welcome invitation flow keeps its clear outcome on mobile', function (): v
             ->assertScript('document.documentElement.scrollWidth <= innerWidth', true)
             ->click('main button')->waitFor('[role="dialog"]')
             ->assertSee('Request an Invitation')
+            ->assertScript("getComputedStyle(document.querySelector('[role=dialog] .fixed.inset-0')).backgroundColor.endsWith('0.75)')", true)
             ->screenshot('welcome-invitation-dialog-mobile')
             ->assertAttribute('#name', 'autocomplete', 'name')
             ->assertAttribute('#email', 'autocomplete', 'email')

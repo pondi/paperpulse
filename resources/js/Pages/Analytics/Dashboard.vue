@@ -18,7 +18,7 @@
                             :class="[
                                 'px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200',
                                 activeTab === tab.key
-                                    ? 'bg-white dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 shadow-sm'
+                                    ? 'bg-white dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 shadow-xs'
                                     : 'text-zinc-500 dark:text-zinc-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-100/50 dark:hover:bg-zinc-700'
                             ]"
                         >
@@ -37,17 +37,17 @@
                     <select
                         v-model="selectedPeriod"
                         @change="updateParams"
-                        class="rounded-md border-amber-200 dark:border-zinc-700 bg-amber-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
+                        class="rounded-md border-amber-200 dark:border-zinc-700 bg-amber-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
                     >
                         <option value="all">All Time</option>
                         <option value="month">Past Month</option>
                         <option value="quarter">Past Quarter</option>
                         <option value="year">Past Year</option>
                     </select>
-                    <button type="button" class="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200" @click="printReport">Print report</button>
+                    <button type="button" class="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-xs hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200" @click="printReport">Print report</button>
                 </div>
 
-                <header class="report-heading mb-8 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+                <header class="report-heading mb-8 rounded-lg border border-zinc-200 bg-white p-5 shadow-xs dark:border-zinc-700 dark:bg-zinc-800">
                     <h1 class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{{ reportTitle }}</h1>
                     <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{{ reportPeriodLabel }} · {{ reportDateRange }}</p>
                     <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Financial totals are shown in {{ summary_currency }} using historical exchange rates where available.</p>
@@ -63,21 +63,21 @@
                 <div v-if="activeTab === 'overview'">
                     <!-- Financial Summary -->
                     <div class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
-                        <div class="rounded-lg bg-white px-4 py-5 shadow dark:bg-zinc-800 sm:p-6">
+                        <div class="rounded-lg bg-white px-4 py-5 shadow-sm dark:bg-zinc-800 sm:p-6">
                             <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Receipt Spending</dt>
                             <dd class="mt-1 text-3xl font-semibold text-zinc-900 dark:text-zinc-100">{{ formatCurrency(tab_data.financial_totals?.receipts, summary_currency) }}</dd>
                         </div>
-                        <div class="rounded-lg bg-white px-4 py-5 shadow dark:bg-zinc-800 sm:p-6">
+                        <div class="rounded-lg bg-white px-4 py-5 shadow-sm dark:bg-zinc-800 sm:p-6">
                             <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Invoice Total</dt>
                             <dd class="mt-1 text-3xl font-semibold text-zinc-900 dark:text-zinc-100">{{ formatCurrency(tab_data.financial_totals?.invoices, summary_currency) }}</dd>
                         </div>
-                        <div class="rounded-lg bg-white px-4 py-5 shadow dark:bg-zinc-800 sm:p-6">
+                        <div class="rounded-lg bg-white px-4 py-5 shadow-sm dark:bg-zinc-800 sm:p-6">
                             <dt class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Contract Value</dt>
                             <dd class="mt-1 text-3xl font-semibold text-zinc-900 dark:text-zinc-100">{{ formatCurrency(tab_data.financial_totals?.contracts, summary_currency) }}</dd>
                         </div>
                     </div>
                     <!-- Coverage summary -->
-                    <div class="mb-8 overflow-hidden rounded-lg bg-white shadow dark:bg-zinc-800">
+                    <div class="mb-8 overflow-hidden rounded-lg bg-white shadow-sm dark:bg-zinc-800">
                         <div class="border-b border-zinc-200 px-4 py-4 dark:border-zinc-700 sm:px-6">
                             <h3 class="font-semibold text-zinc-900 dark:text-zinc-100">Report coverage</h3>
                             <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Record counts across your workspace. Select a report to view its details.</p>
@@ -113,7 +113,7 @@
                     </div>
 
                     <!-- Combined Monthly Trend -->
-                    <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
+                    <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg">
                         <div class="px-4 py-5 sm:p-6">
                             <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Receipt and invoice totals by Observed Month</h3>
                             <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
@@ -136,7 +136,7 @@
 
                     <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
                         <!-- Spending by Category -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Spending by Category</h3>
                                 <div v-if="tab_data.spending_by_category?.length > 0" class="space-y-3">
@@ -155,7 +155,7 @@
                         </div>
 
                         <!-- Top Merchants -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Top Merchants</h3>
                                 <div v-if="tab_data.top_merchants?.length > 0" class="space-y-3">
@@ -174,7 +174,7 @@
                         </div>
 
                         <!-- Monthly Trend -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg lg:col-span-2">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg lg:col-span-2">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Spending by Observed Month</h3>
                                 <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
@@ -186,7 +186,7 @@
                         </div>
 
                         <!-- Recent Receipts -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Recent Receipts</h3>
                                 <div v-if="tab_data.recent_receipts?.length > 0" class="space-y-3">
@@ -207,7 +207,7 @@
                         </div>
 
                         <!-- Spending by Day of Week -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Spending by Day of Week</h3>
                                 <div v-if="tab_data.day_of_week?.length > 0" class="space-y-3">
@@ -238,7 +238,7 @@
 
                     <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
                         <!-- Top Recipients -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Top Recipients</h3>
                                 <div v-if="tab_data.top_recipients?.length > 0" class="space-y-3">
@@ -257,7 +257,7 @@
                         </div>
 
                         <!-- Top Vendors -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Top Vendors</h3>
                                 <div v-if="tab_data.top_vendors?.length > 0" class="space-y-3">
@@ -276,7 +276,7 @@
                         </div>
 
                         <!-- Monthly Trend -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg lg:col-span-2">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg lg:col-span-2">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Invoices by Observed Month</h3>
                                 <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
@@ -305,7 +305,7 @@
                     </div>
                     <div v-else class="grid grid-cols-1 gap-8 lg:grid-cols-2">
                         <!-- Money In vs Money Out -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Money In vs Money Out</h3>
                                 <div v-if="tab_data.stats?.total_credits > 0 || tab_data.stats?.total_debits > 0" class="space-y-4">
@@ -333,7 +333,7 @@
                         </div>
 
                         <!-- Spending by Category -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Spending by Category</h3>
                                 <div v-if="tab_data.spending_by_category?.length > 0" class="space-y-3">
@@ -352,7 +352,7 @@
                         </div>
 
                         <!-- Balance Trend -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg lg:col-span-2">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg lg:col-span-2">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Account Balance Trend</h3>
                                 <div v-if="tab_data.balance_trend?.length > 0" class="relative h-64 min-w-0 max-w-full">
@@ -363,7 +363,7 @@
                         </div>
 
                         <!-- Top Counterparties -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg lg:col-span-2">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg lg:col-span-2">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Top Counterparties by Spending</h3>
                                 <div v-if="tab_data.top_counterparties?.length > 0" class="space-y-3">
@@ -394,7 +394,7 @@
 
                     <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
                         <!-- Status Breakdown -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Status Breakdown</h3>
                                 <div v-if="tab_data.status_breakdown?.length > 0" class="space-y-3">
@@ -411,7 +411,7 @@
                         </div>
 
                         <!-- Type Distribution -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Contract Types</h3>
                                 <div v-if="tab_data.type_distribution?.length > 0" class="space-y-3">
@@ -430,7 +430,7 @@
                         </div>
 
                         <!-- Expiring Soon -->
-                        <div v-if="tab_data.expiring_soon?.length > 0" class="bg-white dark:bg-zinc-800 shadow rounded-lg lg:col-span-2">
+                        <div v-if="tab_data.expiring_soon?.length > 0" class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg lg:col-span-2">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-amber-600 dark:text-amber-400 mb-4">Expiring Within 90 Days</h3>
                                 <p class="mb-3 text-sm text-zinc-500 dark:text-zinc-400">Values remain in each contract’s original currency.</p>
@@ -472,7 +472,7 @@
 
                     <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
                         <!-- Type Distribution -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Document Types</h3>
                                 <div v-if="tab_data.type_distribution?.length > 0" class="space-y-3">
@@ -493,7 +493,7 @@
                         </div>
 
                         <!-- Monthly Trend -->
-                        <div class="bg-white dark:bg-zinc-800 shadow rounded-lg">
+                        <div class="bg-white dark:bg-zinc-800 shadow-sm rounded-lg">
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">Uploads by Observed Month</h3>
                                 <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Only months with records are shown. Missing months are omitted; spacing does not represent elapsed time.</p>
@@ -506,7 +506,7 @@
                     </div>
                 </div>
                 </template>
-                <details v-if="!reportLoading && !reportError && chartTable.rows.length" class="chart-data mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800" open>
+                <details v-if="!reportLoading && !reportError && chartTable.rows.length" class="chart-data mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-xs dark:border-zinc-700 dark:bg-zinc-800" open>
                     <summary class="cursor-pointer font-semibold text-zinc-900 dark:text-zinc-100">{{ chartTable.title }} data</summary>
                     <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Values use {{ summary_currency }} where applicable.</p>
                     <div class="mt-3 overflow-x-auto" tabindex="0" :aria-label="`Scrollable ${chartTable.title} data table`">
@@ -536,7 +536,7 @@ const StatCard = {
         alert: { type: Boolean, default: false },
     },
     render() {
-        return h('div', { class: 'bg-white dark:bg-zinc-800 overflow-hidden shadow rounded-lg' }, [
+        return h('div', { class: 'bg-white dark:bg-zinc-800 overflow-hidden shadow-sm rounded-lg' }, [
             h('div', { class: 'px-4 py-5 sm:p-6' }, [
                 h('dt', { class: 'text-sm font-bold text-zinc-500 dark:text-zinc-400 truncate' }, this.label),
                 h('dd', { class: ['mt-1 text-3xl font-semibold', this.alert ? 'text-red-600 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100'] }, this.value ?? 0),

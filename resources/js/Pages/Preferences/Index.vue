@@ -9,8 +9,8 @@
     </template>
 
     <div class="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-      <nav aria-label="Settings sections" class="flex flex-wrap gap-2 rounded-lg bg-white p-4 shadow dark:bg-zinc-800">
-        <a v-for="section in settingsSections" :key="section.id" :href="`#preferences-${section.id}`" class="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-zinc-700 hover:bg-amber-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ section.label }}</a>
+      <nav aria-label="Settings sections" class="flex flex-wrap gap-2 rounded-lg bg-white p-4 shadow-sm dark:bg-zinc-800">
+        <a v-for="section in settingsSections" :key="section.id" :href="`#preferences-${section.id}`" class="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-zinc-700 hover:bg-amber-50 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ section.label }}</a>
       </nav>
       <section aria-labelledby="application-preferences-heading" class="flex flex-col gap-6">
         <header class="px-4 sm:px-0 text-zinc-900 dark:text-zinc-100">
@@ -19,7 +19,7 @@
           <p role="status" aria-live="polite" class="mt-2 text-sm">{{ form.isDirty ? 'Unsaved application preferences' : resetNotice ? 'Application preferences reset' : form.recentlySuccessful ? 'Application preferences saved' : 'No unsaved application preferences' }}</p>
         </header>
         <form @submit.prevent="updatePreferences" class="flex flex-col gap-6">
-          <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
+          <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow-sm sm:rounded-lg">
         <section id="preferences-general" class="scroll-mt-24">
           <header>
             <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
@@ -36,7 +36,7 @@
                 <select
                   id="language"
                   v-model="form.language"
-                  class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
+                  class="mt-1 block w-full rounded-md border-zinc-300 shadow-xs focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
                 >
                   <option v-for="(label, value) in options.languages" :key="value" :value="value">
                     {{ label }}
@@ -50,7 +50,7 @@
                 <select
                   id="timezone"
                   v-model="form.timezone"
-                  class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
+                  class="mt-1 block w-full rounded-md border-zinc-300 shadow-xs focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
                 >
                   <option v-if="!timezones.some(timezone => timezone.value === form.timezone)" :value="form.timezone">
                     {{ form.timezone }} (saved value)
@@ -68,7 +68,7 @@
                 <select
                   id="date_format"
                   v-model="form.date_format"
-                  class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
+                  class="mt-1 block w-full rounded-md border-zinc-300 shadow-xs focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
                 >
                   <option v-for="(label, value) in options.date_formats" :key="value" :value="value">
                     {{ label }}
@@ -82,7 +82,7 @@
                 <select
                   id="currency"
                   v-model="form.currency"
-                  class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
+                  class="mt-1 block w-full rounded-md border-zinc-300 shadow-xs focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
                 >
                   <option v-for="(label, value) in options.currencies" :key="value" :value="value">
                     {{ label }}
@@ -94,7 +94,7 @@
         </section>
       </div>
 
-      <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
+      <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow-sm sm:rounded-lg">
         <section id="preferences-processing" class="scroll-mt-24">
           <header>
             <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
@@ -111,7 +111,7 @@
                 <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Organize documents automatically</span>
                 <span class="text-sm text-zinc-500 dark:text-zinc-400">New files start in Inbox. Clear subject evidence groups them by people, properties, projects, categories and related subgroups; ambiguous relationships need review. Manual placements are kept.</span>
               </label>
-              <input id="auto_organize_documents" v-model="form.auto_organize_documents" type="checkbox" class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500" />
+              <input id="auto_organize_documents" v-model="form.auto_organize_documents" type="checkbox" class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500" />
             </div>
             <div class="flex items-center justify-between">
               <label for="auto_categorize" class="flex flex-col">
@@ -122,7 +122,7 @@
                 id="auto_categorize"
                 v-model="form.auto_categorize"
                 type="checkbox"
-                class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
               />
             </div>
 
@@ -135,7 +135,7 @@
                 id="extract_line_items"
                 v-model="form.extract_line_items"
                 type="checkbox"
-                class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
               />
             </div>
 
@@ -144,7 +144,7 @@
               <select
                 id="default_category_id"
                 v-model="form.default_category_id"
-                class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
+                class="mt-1 block w-full rounded-md border-zinc-300 shadow-xs focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
               >
                 <option :value="null">{{ __('no_default_category') }}</option>
                 <option v-for="category in categories" :key="category.id" :value="category.id">
@@ -157,7 +157,7 @@
         </section>
       </div>
 
-      <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
+      <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow-sm sm:rounded-lg">
         <section id="preferences-notifications" class="scroll-mt-24">
           <header>
             <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
@@ -174,7 +174,7 @@
               <h3 class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ __('in_app_notifications') }}</h3>
               <div class="flex items-center justify-between">
                 <label for="notify_weekly_summary_ready" class="text-sm text-zinc-700 dark:text-zinc-300">{{ __('notify_weekly_summary_ready') }}</label>
-                <input id="notify_weekly_summary_ready" v-model="form.notify_weekly_summary_ready" type="checkbox" class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500" />
+                <input id="notify_weekly_summary_ready" v-model="form.notify_weekly_summary_ready" type="checkbox" class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500" />
               </div>
               
               <div class="space-y-3">
@@ -186,7 +186,7 @@
                     id="notify_processing_complete"
                     v-model="form.notify_processing_complete"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                    class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
@@ -198,7 +198,7 @@
                     id="notify_processing_failed"
                     v-model="form.notify_processing_failed"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                    class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
@@ -210,7 +210,7 @@
                     id="notify_bulk_complete"
                     v-model="form.notify_bulk_complete"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                    class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
@@ -222,7 +222,7 @@
                     id="notify_scanner_import"
                     v-model="form.notify_scanner_import"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                    class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
@@ -234,7 +234,7 @@
                     id="notify_voucher_expiring"
                     v-model="form.notify_voucher_expiring"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                    class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
@@ -246,7 +246,7 @@
                     id="notify_warranty_expiring"
                     v-model="form.notify_warranty_expiring"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                    class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
               </div>
@@ -264,7 +264,7 @@
                     id="email_notify_processing_complete"
                     v-model="form.email_notify_processing_complete"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                    class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
@@ -276,7 +276,7 @@
                     id="email_notify_processing_failed"
                     v-model="form.email_notify_processing_failed"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                    class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
@@ -288,7 +288,7 @@
                     id="email_notify_bulk_complete"
                     v-model="form.email_notify_bulk_complete"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                    class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
@@ -300,7 +300,7 @@
                     id="email_notify_scanner_import"
                     v-model="form.email_notify_scanner_import"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                    class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
@@ -312,7 +312,7 @@
                     id="email_notify_voucher_expiring"
                     v-model="form.email_notify_voucher_expiring"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                    class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
@@ -324,7 +324,7 @@
                     id="email_notify_warranty_expiring"
                     v-model="form.email_notify_warranty_expiring"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                    class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
@@ -336,7 +336,7 @@
                     id="email_notify_weekly_summary"
                     v-model="form.email_notify_weekly_summary"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                    class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
                   />
                 </div>
 
@@ -345,7 +345,7 @@
                   <select
                     id="weekly_summary_day"
                     v-model="form.weekly_summary_day"
-                    class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
+                    class="mt-1 block w-full rounded-md border-zinc-300 shadow-xs focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
                   >
                     <option v-for="(label, value) in options.weekly_summary_days" :key="value" :value="value">
                       {{ label }}
@@ -359,7 +359,7 @@
         </section>
       </div>
 
-      <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
+      <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow-sm sm:rounded-lg">
         <section id="preferences-display" class="scroll-mt-24">
           <header>
             <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
@@ -376,7 +376,7 @@
               <select
                 id="receipts_per_page"
                 v-model="form.receipts_per_page"
-                class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
+                class="mt-1 block w-full rounded-md border-zinc-300 shadow-xs focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
               >
                 <option v-for="value in options.per_page_options" :key="value" :value="value">
                   {{ value }}
@@ -390,7 +390,7 @@
               <select
                 id="default_sort"
                 v-model="form.default_sort"
-                class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
+                class="mt-1 block w-full rounded-md border-zinc-300 shadow-xs focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
               >
                 <option v-for="(label, value) in options.sort_options" :key="value" :value="value">
                   {{ label }}
@@ -402,7 +402,7 @@
         </section>
       </div>
 
-      <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow sm:rounded-lg">
+      <div class="p-4 sm:p-8 bg-white dark:bg-zinc-800 shadow-sm sm:rounded-lg">
         <section id="preferences-scanner" class="scroll-mt-24">
           <header>
             <h2 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
@@ -423,7 +423,7 @@
                 id="auto_process_scanner_uploads"
                 v-model="form.auto_process_scanner_uploads"
                 type="checkbox"
-                class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
               />
             </div>
 
@@ -436,7 +436,7 @@
                 id="delete_after_processing"
                 v-model="form.delete_after_processing"
                 type="checkbox"
-                class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
               />
             </div>
 
@@ -445,7 +445,7 @@
               <select
                 id="retention_mode"
                 v-model="form.retention_mode"
-                class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
+                class="mt-1 block w-full rounded-md border-zinc-300 shadow-xs focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
               >
                 <option value="source_only">{{ __('retention_source_only') }}</option>
                 <option value="full_delete">{{ __('retention_full_delete') }}</option>
@@ -461,7 +461,7 @@
                 type="number"
                 min="1"
                 max="365"
-                class="mt-1 block w-full rounded-md border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
+                class="mt-1 block w-full rounded-md border-zinc-300 shadow-xs focus:border-amber-500 focus:ring-amber-500 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600"
               />
               <InputError class="mt-2" :message="form.errors.file_retention_days" />
             </div>
@@ -475,7 +475,7 @@
                 id="pulsedav_realtime_sync"
                 v-model="form.pulsedav_realtime_sync"
                 type="checkbox"
-                class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
               />
             </div>
           </div>
@@ -504,22 +504,22 @@
           </div>
         </form>
       </section>
-      <section id="preferences-organization" class="scroll-mt-24 flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800 dark:text-zinc-100">
+      <section id="preferences-organization" class="scroll-mt-24 flex flex-col gap-4 rounded-lg bg-white p-6 shadow-sm dark:bg-zinc-800 dark:text-zinc-100">
         <h2 class="text-lg font-medium">Organization choices</h2>
         <p>Saved labels and aliases guide folder placement. Pinned folders and manual placements stay fixed. Declined suggestions remain suppressed until their evidence changes.</p>
         <p role="status" aria-live="polite" class="text-sm">{{ organization.isDirty ? 'Unsaved organization choices' : organization.recentlySuccessful ? 'Organization choices saved' : 'No unsaved organization choices' }}</p>
         <p class="text-sm text-zinc-600 dark:text-zinc-400">Save organization choices saves only the folder names, template and aliases below.</p>
         <form class="flex flex-col gap-4" @submit.prevent="saveOrganization">
-          <label class="flex flex-col gap-2">Building folder name<input v-model="organization.naming_rules.building_root" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
-          <label class="flex flex-col gap-2">Work folder name<input v-model="organization.naming_rules.work_root" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
-          <label class="flex flex-col gap-2">Work folder template<select v-model="organization.naming_rules.work_structure" class="rounded dark:bg-zinc-700"><option value="role">Work / employer / document role</option><option value="year">Work / employer / year</option></select></label>
+          <label class="flex flex-col gap-2">Building folder name<input v-model="organization.naming_rules.building_root" maxlength="180" class="rounded-sm dark:bg-zinc-700" /></label>
+          <label class="flex flex-col gap-2">Work folder name<input v-model="organization.naming_rules.work_root" maxlength="180" class="rounded-sm dark:bg-zinc-700" /></label>
+          <label class="flex flex-col gap-2">Work folder template<select v-model="organization.naming_rules.work_structure" class="rounded-sm dark:bg-zinc-700"><option value="role">Work / employer / document role</option><option value="year">Work / employer / year</option></select></label>
           <div v-for="role in ['contracts', 'invoices', 'receipts', 'payslips', 'letters', 'other']" :key="role">
-            <label class="flex flex-col gap-2">{{ role }} folder name<input :value="organization.naming_rules.role_labels[role] ?? role[0].toUpperCase() + role.slice(1)" @input="organization.naming_rules.role_labels[role] = $event.target.value" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
+            <label class="flex flex-col gap-2">{{ role }} folder name<input :value="organization.naming_rules.role_labels[role] ?? role[0].toUpperCase() + role.slice(1)" @input="organization.naming_rules.role_labels[role] = $event.target.value" maxlength="180" class="rounded-sm dark:bg-zinc-700" /></label>
           </div>
           <div v-for="(alias, index) in organization.aliases" :key="alias.id ?? index" class="flex flex-wrap items-center gap-3">
-            <label>Kind<input v-model="alias.kind" type="text" maxlength="22" placeholder="person, property, project…" class="rounded dark:bg-zinc-700" /></label>
-            <label v-if="!alias.id">Recognize<input v-model="alias.alias" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
-            <label>Use this label<input v-model="alias.canonical_name" maxlength="180" class="rounded dark:bg-zinc-700" /></label>
+            <label>Kind<input v-model="alias.kind" type="text" maxlength="22" placeholder="person, property, project…" class="rounded-sm dark:bg-zinc-700" /></label>
+            <label v-if="!alias.id">Recognize<input v-model="alias.alias" maxlength="180" class="rounded-sm dark:bg-zinc-700" /></label>
+            <label>Use this label<input v-model="alias.canonical_name" maxlength="180" class="rounded-sm dark:bg-zinc-700" /></label>
             <SecondaryButton type="button" @click="removeAlias(index)">Remove alias</SecondaryButton>
           </div>
           <p v-for="(message, field) in organization.errors" :key="field" role="alert" class="text-red-600 dark:text-red-400">{{ message }}</p>
@@ -530,7 +530,7 @@
           </div>
         </form>
       </section>
-      <section id="preferences-archive" class="scroll-mt-24 flex flex-col gap-4 rounded-lg bg-white p-6 shadow dark:bg-zinc-800 dark:text-zinc-100">
+      <section id="preferences-archive" class="scroll-mt-24 flex flex-col gap-4 rounded-lg bg-white p-6 shadow-sm dark:bg-zinc-800 dark:text-zinc-100">
         <h2 class="text-lg font-medium">Organize an existing archive</h2>
         <p class="text-sm text-zinc-600 dark:text-zinc-400">Preview reads your archive without saving settings or moving files. Organize this archive applies the saved organization choices using the limits below.</p>
         <p>Preview first. Saved summaries require no paid extraction. Manual placements and pinned folders are preserved; pending recommendations must be resolved first.</p>
@@ -539,8 +539,8 @@
         <details>
           <summary class="cursor-pointer text-sm font-medium">Advanced AI limits</summary>
           <div class="mt-3 flex flex-col gap-3">
-            <label class="flex flex-col gap-2">Maximum provider calls<input v-model.number="backfill.max_calls" type="number" min="1" max="100" class="rounded dark:bg-zinc-700" /></label>
-            <label class="flex flex-col gap-2">Maximum reserved tokens<input v-model.number="backfill.max_tokens" type="number" min="10000" max="1000000" class="rounded dark:bg-zinc-700" /></label>
+            <label class="flex flex-col gap-2">Maximum provider calls<input v-model.number="backfill.max_calls" type="number" min="1" max="100" class="rounded-sm dark:bg-zinc-700" /></label>
+            <label class="flex flex-col gap-2">Maximum reserved tokens<input v-model.number="backfill.max_tokens" type="number" min="10000" max="1000000" class="rounded-sm dark:bg-zinc-700" /></label>
             <p class="text-sm text-zinc-600 dark:text-zinc-400">Tokens measure the text sent to and returned by AI. Reservations include the maximum response size, so this is a processing allowance rather than actual billed usage.</p>
           </div>
         </details>

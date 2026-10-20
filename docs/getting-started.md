@@ -1,6 +1,6 @@
 # Getting Started
 
-The lockfiles use Laravel 13, Inertia 3, Vue 3.5, Vite 8, Tailwind 3 and Pest 4/PHPUnit 12. Use PHP 8.5 and Node.js 20.19+ or 22.12+. See [Developer Guide](developer.md) for manual checks.
+The lockfiles use Laravel 13, Inertia 3, Vue 3.5, Vite 8, Tailwind 4 and Pest 4/PHPUnit 12. Use PHP 8.5 and Node.js 20.19+ or 22.12+. The frontend requires Safari 16.4+, Chrome 111+ or Firefox 128+. See [Developer Guide](developer.md) for manual checks.
 
 ## Docker development and testing
 

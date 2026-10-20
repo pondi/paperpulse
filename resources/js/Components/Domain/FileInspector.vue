@@ -194,8 +194,8 @@ defineExpose({ dirty });
                             <button v-if="editable && ['receipt', 'document'].includes(draft.entity_type)" type="submit" class="workspace-primary self-start" :disabled="saving || !dirty">{{ saving ? 'Saving…' : 'Save changes' }}</button>
                         </fieldset>
                         <template v-else>
-                            <dl class="flex flex-col gap-4 text-sm"><div v-for="[label, value] in fields(payload.extractedEntities[index])" :key="label"><dt class="mb-1 text-xs capitalize text-zinc-500 dark:text-zinc-400">{{ label }}</dt><dd class="whitespace-pre-line break-words leading-6">{{ value ?? 'Not available' }}</dd></div></dl>
-                            <details v-if="draft.line_items.length"><summary class="cursor-pointer py-2 text-sm font-medium">Line items · {{ draft.line_items.length }}</summary><ul class="divide-y divide-zinc-100 dark:divide-zinc-800"><li v-for="item in draft.line_items" :key="item.id" class="flex items-start justify-between gap-3 py-3 text-sm"><span class="min-w-0 break-words">{{ item.text }}<span v-if="lineSku(payload.extractedEntities[index], item.id)" class="mt-1 block text-xs text-zinc-500">SKU: {{ lineSku(payload.extractedEntities[index], item.id) }}</span><span class="mt-1 block text-xs text-zinc-500">{{ item.qty }} × {{ formatCurrency(item.price, draft.currency) }}</span></span><span class="shrink-0 tabular-nums">{{ formatCurrency(item.total, draft.currency) }}</span></li></ul></details>
+                            <dl class="flex flex-col gap-4 text-sm"><div v-for="[label, value] in fields(payload.extractedEntities[index])" :key="label"><dt class="mb-1 text-xs capitalize text-zinc-500 dark:text-zinc-400">{{ label }}</dt><dd class="whitespace-pre-line wrap-break-word leading-6">{{ value ?? 'Not available' }}</dd></div></dl>
+                            <details v-if="draft.line_items.length"><summary class="cursor-pointer py-2 text-sm font-medium">Line items · {{ draft.line_items.length }}</summary><ul class="divide-y divide-zinc-100 dark:divide-zinc-800"><li v-for="item in draft.line_items" :key="item.id" class="flex items-start justify-between gap-3 py-3 text-sm"><span class="min-w-0 wrap-break-word">{{ item.text }}<span v-if="lineSku(payload.extractedEntities[index], item.id)" class="mt-1 block text-xs text-zinc-500">SKU: {{ lineSku(payload.extractedEntities[index], item.id) }}</span><span class="mt-1 block text-xs text-zinc-500">{{ item.qty }} × {{ formatCurrency(item.price, draft.currency) }}</span></span><span class="shrink-0 tabular-nums">{{ formatCurrency(item.total, draft.currency) }}</span></li></ul></details>
                         </template>
                         <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ payload.extractedEntities[index].confidence_score == null ? 'Extraction confidence unavailable' : Math.round(Number(payload.extractedEntities[index].confidence_score) * 100) + '% extraction confidence' }}</p>
                     </form>
@@ -242,6 +242,7 @@ defineExpose({ dirty });
 </template>
 
 <style scoped>
+@reference '../../../css/app.css';
 .file-inspector { container-type: inline-size; }
 @container (min-width: 700px) { .file-inspector:not(.inspector-framed) .inspector-content { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 .inspector-framed { @apply flex min-h-0 flex-1 flex-col overflow-hidden; }
@@ -252,5 +253,5 @@ defineExpose({ dirty });
     .inspector-framed .inspector-details { @apply border-l border-t-0; }
 }
 label { @apply flex min-w-0 flex-col gap-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400; }
-input, select, textarea { @apply w-full min-w-0 rounded border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 focus:border-orange-600 focus:ring-orange-600 disabled:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:disabled:bg-zinc-950; }
+input, select, textarea { @apply w-full min-w-0 rounded-sm border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 focus:border-orange-600 focus:ring-orange-600 disabled:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:disabled:bg-zinc-950; }
 </style>

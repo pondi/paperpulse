@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-sm p-6 border-l-4 border-emerald-500 dark:border-emerald-400">
+  <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-xs p-6 border-l-4 border-emerald-500 dark:border-emerald-400">
     <div class="flex justify-between items-start mb-4">
       <div class="flex-1">
         <h3 class="font-semibold text-lg text-zinc-900 dark:text-zinc-100">{{ statement.bank_name || 'Bank Statement' }}</h3>
@@ -16,7 +16,7 @@
         {{ formatDate(statement.statement_period_start) }} - {{ formatDate(statement.statement_period_end) }}
       </div>
 
-      <div class="grid grid-cols-2 gap-3 bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded border border-emerald-200 dark:border-emerald-800">
+      <div class="grid grid-cols-2 gap-3 bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-sm border border-emerald-200 dark:border-emerald-800">
         <div>
           <span class="text-xs text-zinc-600 dark:text-zinc-400 block mb-1">Opening Balance</span>
           <span class="text-lg font-bold text-zinc-900 dark:text-zinc-100">

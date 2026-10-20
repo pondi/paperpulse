@@ -4,7 +4,7 @@
             <span
                 v-for="tag in selectedTags"
                 :key="tag.id"
-                class="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-zinc-900 dark:text-zinc-100"
+                class="inline-flex items-center px-2 py-1 rounded-sm text-xs font-medium text-zinc-900 dark:text-zinc-100"
                 :style="{ backgroundColor: tag.color + '20' }"
             >
                 {{ tag.name }}
@@ -28,7 +28,7 @@
                 @focus="showDropdown = true"
                 @blur="handleBlur"
                 type="text"
-                class="flex-1 outline-none border-0 focus:ring-0 text-sm min-w-[100px] bg-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-400"
+                class="flex-1 outline-hidden border-0 focus:ring-0 text-sm min-w-[100px] bg-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-400"
                 :placeholder="placeholder"
             />
         </div>

@@ -44,7 +44,7 @@ const addActions = [
 
 <template>
     <div class="min-h-screen bg-zinc-50 dark:bg-zinc-950" :class="{ 'workspace-frame': framed, 'document-focus': documentFocus }">
-        <a href="#main-content" class="sr-only z-[100] rounded-md bg-zinc-900 px-4 py-3 text-sm font-medium text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to content</a>
+        <a href="#main-content" class="sr-only z-100 rounded-md bg-zinc-900 px-4 py-3 text-sm font-medium text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to content</a>
         <TransitionRoot as="template" :show="sidebarOpen" @after-leave="restoreNavigationFocus">
             <Dialog class="relative z-50 lg:hidden" @close="sidebarOpen = false">
                 <TransitionChild as="template" enter="transition-opacity duration-200" enter-from="opacity-0" enter-to="opacity-100" leave="transition-opacity duration-200" leave-from="opacity-100" leave-to="opacity-0">
@@ -54,7 +54,7 @@ const addActions = [
                     <TransitionChild as="template" enter="transition duration-200" enter-from="-translate-x-full" enter-to="translate-x-0" leave="transition duration-200" leave-from="translate-x-0" leave-to="-translate-x-full">
                         <DialogPanel class="relative w-72 max-w-[85vw]">
                             <DialogTitle class="sr-only">Workspace navigation</DialogTitle>
-                            <button type="button" aria-label="Close navigation" class="absolute right-3 top-5 z-10 rounded p-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white" @click="sidebarOpen = false"><XMarkIcon class="h-5 w-5" /></button>
+                            <button type="button" aria-label="Close navigation" class="absolute right-3 top-5 z-10 rounded-sm p-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white" @click="sidebarOpen = false"><XMarkIcon class="h-5 w-5" /></button>
                             <AppSidebar @navigate="sidebarOpen = false" />
                         </DialogPanel>
                     </TransitionChild>
@@ -65,7 +65,7 @@ const addActions = [
 
         <div class="app-body min-w-0 lg:pl-60">
             <header v-if="!documentFocus" class="app-toolbar sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-4 sm:gap-5 sm:px-6 lg:px-8 dark:border-zinc-800 dark:bg-zinc-900">
-                <button ref="navigationButton" type="button" aria-label="Open navigation" class="rounded p-2 text-zinc-600 hover:bg-zinc-100 lg:hidden dark:text-zinc-300 dark:hover:bg-zinc-800" @click="sidebarOpen = true"><Bars3Icon class="h-5 w-5" /></button>
+                <button ref="navigationButton" type="button" aria-label="Open navigation" class="rounded-sm p-2 text-zinc-600 hover:bg-zinc-100 lg:hidden dark:text-zinc-300 dark:hover:bg-zinc-800" @click="sidebarOpen = true"><Bars3Icon class="h-5 w-5" /></button>
                 <div class="flex min-w-0 flex-1 items-center">
                     <div v-if="!['/library', '/search'].includes(page.url.split('?')[0])" class="hidden w-full max-w-xl sm:block"><SearchBar @preview="openPreview" /></div>
                     <Link :href="route('search')" aria-label="Search your library" class="rounded-md p-2 text-zinc-500 hover:bg-zinc-100 sm:hidden dark:hover:bg-zinc-800"><MagnifyingGlassIcon class="h-5 w-5" aria-hidden="true" /></Link>
@@ -75,9 +75,9 @@ const addActions = [
                         <MenuButton dusk="add-document" class="workspace-primary">
                             <PlusIcon class="h-4 w-4" aria-hidden="true" /><span class="hidden sm:inline">Add document</span><span class="sr-only sm:hidden">Add document</span><ChevronDownIcon class="hidden h-3.5 w-3.5 sm:block" aria-hidden="true" />
                         </MenuButton>
-                        <MenuItems class="absolute right-0 mt-2 w-72 rounded border border-zinc-200 bg-white p-1.5 shadow-lg focus:outline-none dark:border-zinc-700 dark:bg-zinc-900">
+                        <MenuItems class="absolute right-0 mt-2 w-72 rounded-sm border border-zinc-200 bg-white p-1.5 shadow-lg focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-900">
                             <MenuItem v-for="action in addActions" :key="action.label" v-slot="{ active }">
-                                <Link :href="action.href" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'flex gap-3 rounded px-3 py-3']">
+                                <Link :href="action.href" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'flex gap-3 rounded-sm px-3 py-3']">
                                     <component :is="action.icon" class="mt-0.5 h-5 w-5 text-orange-600 dark:text-orange-400" aria-hidden="true" />
                                     <span><span class="block text-sm font-medium text-zinc-900 dark:text-white">{{ action.label }}</span><span class="block text-xs text-zinc-500 dark:text-zinc-400">{{ action.description }}</span></span>
                                 </Link>
@@ -87,17 +87,17 @@ const addActions = [
                     <ThemeToggle />
                     <NotificationBell />
                     <Menu as="div" class="relative">
-                        <MenuButton aria-label="Account menu" class="flex items-center gap-2 rounded p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"><UserCircleIcon class="h-7 w-7" /><span class="hidden text-sm text-zinc-700 xl:inline dark:text-zinc-300">{{ page.props.auth.user.name }}</span></MenuButton>
-                        <MenuItems class="absolute right-0 mt-2 w-48 rounded border border-zinc-200 bg-white p-1.5 shadow-lg focus:outline-none dark:border-zinc-700 dark:bg-zinc-900">
-                            <MenuItem v-slot="{ active }"><Link :href="route('profile.edit')" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'block rounded px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300']">Your profile</Link></MenuItem>
-                            <MenuItem v-slot="{ active }"><Link :href="route('preferences.index')" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'block rounded px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300']">Settings</Link></MenuItem>
-                            <MenuItem v-slot="{ active }"><button type="button" @click="logout" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'block w-full rounded px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300']">Log out</button></MenuItem>
+                        <MenuButton aria-label="Account menu" class="flex items-center gap-2 rounded-sm p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"><UserCircleIcon class="h-7 w-7" /><span class="hidden text-sm text-zinc-700 xl:inline dark:text-zinc-300">{{ page.props.auth.user.name }}</span></MenuButton>
+                        <MenuItems class="absolute right-0 mt-2 w-48 rounded-sm border border-zinc-200 bg-white p-1.5 shadow-lg focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-900">
+                            <MenuItem v-slot="{ active }"><Link :href="route('profile.edit')" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'block rounded-sm px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300']">Your profile</Link></MenuItem>
+                            <MenuItem v-slot="{ active }"><Link :href="route('preferences.index')" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'block rounded-sm px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300']">Settings</Link></MenuItem>
+                            <MenuItem v-slot="{ active }"><button type="button" @click="logout" :class="[active ? 'bg-zinc-100 dark:bg-zinc-800' : '', 'block w-full rounded-sm px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300']">Log out</button></MenuItem>
                         </MenuItems>
                     </Menu>
                 </div>
             </header>
             <WorkspaceNavigation v-if="!documentFocus" />
-            <main id="main-content" tabindex="-1" class="mx-auto min-w-0 max-w-[1600px] px-4 py-6 focus:outline-none sm:px-6 lg:px-8 lg:py-8">
+            <main id="main-content" tabindex="-1" class="mx-auto min-w-0 max-w-[1600px] px-4 py-6 focus:outline-hidden sm:px-6 lg:px-8 lg:py-8">
                 <header v-if="$slots.header" class="workspace-heading mb-6"><slot name="header" /></header>
                 <div class="workspace-page"><slot /></div>
             </main>

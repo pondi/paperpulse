@@ -67,6 +67,7 @@ const shortcuts = [
 </template>
 
 <style scoped>
+@reference '../../css/app.css';
 @media (max-width: 1023px) {
     .home-content { @apply flex flex-col; }
     .home-shortcuts { @apply shrink-0 gap-2; }

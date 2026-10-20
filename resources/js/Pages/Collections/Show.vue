@@ -93,7 +93,7 @@ function removeFile(file) {
                     <div class="flex items-start gap-3">
                         <FolderIcon class="mt-0.5 h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
                         <div class="min-w-0">
-                            <h1 class="page-heading [overflow-wrap:anywhere]">{{ collection.name }}</h1>
+                            <h1 class="page-heading wrap-anywhere">{{ collection.name }}</h1>
                                                         <p v-if="collection.is_archived || !isOwner" class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{{ collection.is_archived ? 'Archived folder' : 'Shared with you' }}</p>
                         </div>
                     </div>
@@ -154,7 +154,7 @@ function removeFile(file) {
         <Modal :show="showFolderDetails" max-width="lg" @close="showFolderDetails = false" v-slot="{ titleId }">
             <div class="flex flex-col gap-4 p-5">
                 <div class="flex items-center justify-between gap-3"><h2 :id="titleId" class="section-heading">Folder details</h2><button type="button" class="workspace-button" @click="showFolderDetails = false">Close</button></div>
-                <p class="break-words text-sm">{{ collection.description || collection.name }}</p>
+                <p class="wrap-break-word text-sm">{{ collection.description || collection.name }}</p>
                 <button v-if="isOwner" type="button" class="workspace-button self-start sm:hidden" @click="showFolderDetails = false; edit()">Edit Collection</button>
                 <details open class="workspace-surface p-4" data-folder-details>
                     <summary class="cursor-pointer text-sm font-medium">Folder details</summary>

@@ -11,7 +11,7 @@
         <button
           @click="showCreateModal = true"
           type="button"
-          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-md shadow-sm hover:shadow text-white bg-zinc-900 dark:bg-amber-600 hover:bg-zinc-800 dark:hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all duration-200"
+          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-md shadow-xs hover:shadow-sm text-white bg-zinc-900 dark:bg-amber-600 hover:bg-zinc-800 dark:hover:bg-amber-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all duration-200"
         >
           <PlusIcon class="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
           {{ __('add_category') }}
@@ -26,7 +26,7 @@
             <!-- Flash Messages -->
             <div v-if="$page.props.flash.success" class="mb-6 rounded-md bg-green-50 dark:bg-green-900/20 p-4 border border-green-200 dark:border-green-800">
               <div class="flex">
-                <div class="flex-shrink-0">
+                <div class="shrink-0">
                   <CheckCircleIcon class="h-5 w-5 text-green-400" aria-hidden="true" />
                 </div>
                 <div class="ml-3">
@@ -37,7 +37,7 @@
 
             <div v-if="$page.props.flash.error" class="mb-6 rounded-md bg-red-50 dark:bg-red-900/20 p-4 border border-red-200 dark:border-red-800">
               <div class="flex">
-                <div class="flex-shrink-0">
+                <div class="shrink-0">
                   <XCircleIcon class="h-5 w-5 text-red-400" aria-hidden="true" />
                 </div>
                 <div class="ml-3">
@@ -62,7 +62,7 @@
                 <div class="flex items-start justify-between mb-4">
                   <div class="flex items-center space-x-3">
                     <div
-                      class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                      class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
                       :style="{ backgroundColor: category.color }"
                     >
                       <component
@@ -79,7 +79,7 @@
                       </h3>
                     </div>
                   </div>
-                  <div class="flex items-center space-x-2 flex-shrink-0">
+                  <div class="flex items-center space-x-2 shrink-0">
                     <button
                       @click="editCategory(category)"
                       :aria-label="`${__('edit_category')}: ${category.name}`"
@@ -132,7 +132,7 @@
                 <button
                   @click="showCreateModal = true"
                   type="button"
-                  class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-bold rounded-md shadow-sm hover:shadow text-white bg-zinc-900 dark:bg-amber-600 hover:bg-zinc-800 dark:hover:bg-amber-700 transition-all duration-200"
+                  class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-bold rounded-md shadow-xs hover:shadow-sm text-white bg-zinc-900 dark:bg-amber-600 hover:bg-zinc-800 dark:hover:bg-amber-700 transition-all duration-200"
                 >
                   <PlusIcon class="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
                   {{ __('add_category') }}
@@ -154,7 +154,7 @@
     <!-- Create/Edit Modal -->
     <TransitionRoot as="template" :show="showModal">
       <Dialog as="div" class="relative z-50" @close="closeModal">
-        <div class="fixed inset-0 bg-zinc-500 bg-opacity-75 transition-opacity" />
+        <div class="fixed inset-0 bg-zinc-500/75 transition-opacity" />
 
         <div class="fixed inset-0 z-10 overflow-y-auto">
           <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
@@ -178,7 +178,7 @@
                           type="text"
                           id="name"
                           required
-                          class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
+                          class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-xs focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
                         />
                       </div>
 
@@ -198,7 +198,7 @@
                             type="text"
                             pattern="^#[0-9A-Fa-f]{6}$"
                             placeholder="#6B7280"
-                            class="block flex-1 rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
+                            class="block flex-1 rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-xs focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
                           />
                         </div>
                       </div>
@@ -211,7 +211,7 @@
                           v-model="form.description"
                           id="description"
                           rows="3"
-                          class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
+                          class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-xs focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
                         ></textarea>
                       </div>
 
@@ -220,7 +220,7 @@
                           v-model="form.is_active"
                           type="checkbox"
                           id="is_active"
-                          class="h-4 w-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500"
+                          class="h-4 w-4 rounded-sm border-zinc-300 text-amber-600 focus:ring-amber-500"
                         />
                         <label for="is_active" class="ml-2 block text-sm text-zinc-900 dark:text-zinc-100">
                           {{ __('active') }}
@@ -232,13 +232,13 @@
                 <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
                   <button
                     type="submit"
-                    class="inline-flex w-full justify-center rounded-md bg-zinc-900 dark:bg-amber-600 px-3 py-2 text-sm font-bold text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 transition-all duration-200 sm:col-start-2"
+                    class="inline-flex w-full justify-center rounded-md bg-zinc-900 dark:bg-amber-600 px-3 py-2 text-sm font-bold text-white shadow-xs hover:shadow-sm hover:bg-zinc-800 dark:hover:bg-amber-700 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 transition-all duration-200 sm:col-start-2"
                   >
                     {{ form.id ? __('save') : __('create') }}
                   </button>
                   <button
                     type="button"
-                    class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-zinc-800 px-3 py-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-amber-50 dark:hover:bg-zinc-700 transition-all duration-200 sm:col-start-1 sm:mt-0"
+                    class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-zinc-800 px-3 py-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 shadow-xs ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-amber-50 dark:hover:bg-zinc-700 transition-all duration-200 sm:col-start-1 sm:mt-0"
                     @click="closeModal"
                   >
                     {{ __('cancel') }}

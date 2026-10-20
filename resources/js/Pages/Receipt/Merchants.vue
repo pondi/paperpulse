@@ -43,7 +43,7 @@
                                         leave-from-class="transform opacity-100 scale-100" 
                                         leave-to-class="transform opacity-0 scale-95"
                                     >
-                                        <MenuItems class="absolute right-0 z-10 mt-0.5 w-32 origin-top-right rounded-md bg-white dark:bg-zinc-800 py-2 shadow-lg ring-1 ring-zinc-900/5 dark:ring-zinc-700 focus:outline-none">
+                                        <MenuItems class="absolute right-0 z-10 mt-0.5 w-32 origin-top-right rounded-md bg-white dark:bg-zinc-800 py-2 shadow-lg ring-1 ring-zinc-900/5 dark:ring-zinc-700 focus:outline-hidden">
                                             <MenuItem v-slot="{ active }">
                                                 <Link 
                                                     :href="route('receipts.byMerchant', merchant.id)" 
@@ -81,7 +81,7 @@
                                 </div>
                             </dl>
                             <div class="border-t border-amber-200 px-6 py-4 dark:border-zinc-700">
-                                <Link :href="route('receipts.byMerchant', merchant.id)" class="inline-flex min-h-11 items-center rounded font-semibold text-amber-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:text-amber-400">
+                                <Link :href="route('receipts.byMerchant', merchant.id)" class="inline-flex min-h-11 items-center rounded-sm font-semibold text-amber-700 hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:text-amber-400">
                                     View {{ merchant.receiptCount }} {{ merchant.receiptCount === 1 ? 'receipt' : 'receipts' }}
                                     <span class="sr-only"> for {{ merchant.name }}</span>
                                 </Link>
@@ -100,7 +100,7 @@
                                 <div class="mt-10">
                                     <Link
                                         :href="route('documents.upload')"
-                                        class="inline-flex items-center rounded-md bg-zinc-900 dark:bg-amber-600 px-6 py-3 text-sm font-bold text-white shadow-sm hover:shadow hover:bg-zinc-800 dark:hover:bg-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 transition-all duration-200"
+                                        class="inline-flex items-center rounded-md bg-zinc-900 dark:bg-amber-600 px-6 py-3 text-sm font-bold text-white shadow-xs hover:shadow-sm hover:bg-zinc-800 dark:hover:bg-amber-700 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 transition-all duration-200"
                                     >
                                         Upload Receipts
                                     </Link>
@@ -124,7 +124,7 @@
                     leave-from="opacity-100"
                     leave-to="opacity-0"
                 >
-                    <div class="fixed inset-0 bg-zinc-500 bg-opacity-75 transition-opacity" />
+                    <div class="fixed inset-0 bg-zinc-500/75 transition-opacity" />
                 </TransitionChild>
 
                 <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
@@ -158,7 +158,7 @@
                                                     <div class="mt-4 flex text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                                                         <label
                                                             for="logo-upload"
-                                                            class="relative cursor-pointer rounded-md bg-white dark:bg-zinc-800 font-semibold text-amber-600 dark:text-amber-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-amber-600 focus-within:ring-offset-2 hover:text-amber-500"
+                                                            class="relative cursor-pointer rounded-md bg-white dark:bg-zinc-800 font-semibold text-amber-600 dark:text-amber-400 focus-within:outline-hidden focus-within:ring-2 focus-within:ring-amber-600 focus-within:ring-offset-2 hover:text-amber-500"
                                                         >
                                                             <span>Upload a file</span>
                                                             <input 
@@ -198,14 +198,14 @@
                                         <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
                                             <button
                                                 type="submit"
-                                                class="inline-flex w-full justify-center rounded-md bg-zinc-900 dark:bg-amber-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:hover:bg-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 sm:col-start-2"
+                                                class="inline-flex w-full justify-center rounded-md bg-zinc-900 dark:bg-amber-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-zinc-800 dark:hover:bg-amber-700 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 sm:col-start-2"
                                                 :disabled="!selectedFile"
                                             >
                                                 Upload
                                             </button>
                                             <button
                                                 type="button"
-                                                class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-zinc-800 px-3 py-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-amber-50 dark:hover:bg-zinc-700 sm:col-start-1 sm:mt-0"
+                                                class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-zinc-800 px-3 py-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 shadow-xs ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-amber-50 dark:hover:bg-zinc-700 sm:col-start-1 sm:mt-0"
                                                 @click="closeLogoModal"
                                             >
                                                 Cancel

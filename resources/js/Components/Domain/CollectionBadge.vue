@@ -11,7 +11,7 @@
         <button
             v-if="removable"
             @click.stop="$emit('remove', collection.id)"
-            class="ml-1 hover:opacity-70 focus:outline-none"
+            class="ml-1 hover:opacity-70 focus:outline-hidden"
             type="button"
         >
             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">

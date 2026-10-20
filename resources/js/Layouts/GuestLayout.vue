@@ -16,9 +16,9 @@ defineProps({
 
 <template>
     <div class="relative flex min-h-screen flex-col justify-center overflow-hidden bg-zinc-50 px-4 py-8 dark:bg-zinc-950 sm:px-6">
-        <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-amber-100/80 to-transparent dark:from-amber-950/30"></div>
+        <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 h-64 bg-linear-to-b from-amber-100/80 to-transparent dark:from-amber-950/30"></div>
         <main class="relative mx-auto flex w-full max-w-md flex-col gap-6">
-            <Link href="/" class="mx-auto inline-flex min-h-11 items-center gap-3 rounded-lg px-3 text-zinc-900 outline-none transition hover:bg-white focus-visible:ring-2 focus-visible:ring-amber-600 dark:text-zinc-100 dark:hover:bg-zinc-900">
+            <Link href="/" class="mx-auto inline-flex min-h-11 items-center gap-3 rounded-lg px-3 text-zinc-900 outline-hidden transition hover:bg-white focus-visible:ring-2 focus-visible:ring-amber-600 dark:text-zinc-100 dark:hover:bg-zinc-900">
                 <ApplicationLogo class="h-10 w-10" />
                 <span class="text-xl font-bold tracking-tight">PaperPulse</span>
             </Link>

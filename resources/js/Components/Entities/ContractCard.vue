@@ -1,7 +1,7 @@
 <template>
   <Link
     :href="route('contracts.show', contract.id)"
-    class="group block rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-amber-400 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:border-zinc-700 dark:bg-zinc-800 dark:focus-visible:ring-offset-zinc-900 sm:p-5"
+    class="group block rounded-xl border border-zinc-200 bg-white p-4 shadow-xs transition hover:border-amber-400 hover:shadow-md focus:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:border-zinc-700 dark:bg-zinc-800 dark:focus-visible:ring-offset-zinc-900 sm:p-5"
   >
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="min-w-0">

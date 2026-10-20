@@ -88,7 +88,7 @@ const submit = () => {
             </div>
 
             <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
-                <Link :href="route('login')" class="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-amber-800 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 dark:text-amber-300">Back to sign in</Link>
+                <Link :href="route('login')" class="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-amber-800 underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-600 dark:text-amber-300">Back to sign in</Link>
                 <PrimaryButton class="min-h-11 rounded-lg px-5" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
                     Reset Password
                 </PrimaryButton>

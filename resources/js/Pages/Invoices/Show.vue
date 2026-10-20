@@ -263,7 +263,7 @@ const getInvoiceTypeClass = () => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex flex-wrap justify-between items-center gap-3">
-                <h2 class="min-w-0 break-words font-black text-xl sm:text-2xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2">
+                <h2 class="min-w-0 wrap-break-word font-black text-xl sm:text-2xl text-zinc-900 dark:text-zinc-200 leading-tight flex items-center gap-x-2">
                     <DocumentIcon class="size-6" />
                     Invoice #{{ invoice.invoice_number }}
                 </h2>
@@ -300,7 +300,7 @@ const getInvoiceTypeClass = () => {
 
         <div class="flex flex-col xl:flex-row items-start">
             <!-- Invoice details -->
-            <div class="w-full min-w-0 break-words p-3 sm:p-6" :class="showPreview ? 'xl:w-2/3' : 'xl:w-full'">
+            <div class="w-full min-w-0 wrap-break-word p-3 sm:p-6" :class="showPreview ? 'xl:w-2/3' : 'xl:w-full'">
                 <div class="space-y-8">
                     <section aria-label="Invoice summary" class="rounded-lg border border-amber-300 bg-amber-50 p-5 dark:border-amber-800 dark:bg-zinc-800">
                         <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-300">Invoice summary</h3>
@@ -509,7 +509,7 @@ const getInvoiceTypeClass = () => {
                             v-else
                             v-model="editedInvoice.notes"
                             rows="3"
-                            class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
+                            class="mt-1 block w-full rounded-md border-0 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-xs ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600"
                         />
                         <div class="mt-4">
                             <button

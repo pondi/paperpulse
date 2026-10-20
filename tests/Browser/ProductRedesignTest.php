@@ -176,13 +176,18 @@ it('keeps shared controls readable and exposes keyboard focus in both themes', f
         $browser->visit('/login')->waitFor('#email');
         $browser->script("localStorage.setItem('theme', 'light'); document.documentElement.classList.remove('dark'); document.querySelector('#email').focus();");
         $browser->assertScript('getComputedStyle(document.documentElement).colorScheme', 'light')
+            ->assertScript("getComputedStyle(document.querySelector('#email')).borderTopWidth", '1px')
+            ->assertScript("getComputedStyle(document.querySelector('form button')).alignItems", 'center')
+            ->assertScript("getComputedStyle(document.body).fontFamily.includes('Figtree')", true)
             ->assertScript("getComputedStyle(document.querySelector('form button')).textTransform", 'none')
             ->assertScript("getComputedStyle(document.querySelector('#email')).outlineStyle", 'solid')
             ->assertScript("parseFloat(getComputedStyle(document.querySelector('form button')).fontSize) >= 14", true);
         $browser->script("document.documentElement.classList.add('dark')");
         $browser->assertScript('getComputedStyle(document.documentElement).colorScheme', 'dark')
             ->assertScript("getComputedStyle(document.querySelector('#email')).outlineStyle", 'solid');
+        $browser->script("window.darkInputBackground = getComputedStyle(document.querySelector('#email')).backgroundColor");
         $browser->script("document.documentElement.classList.remove('dark'); localStorage.removeItem('theme');");
+        $browser->assertScript("getComputedStyle(document.querySelector('#email')).backgroundColor !== window.darkInputBackground", true);
     });
 });
 
@@ -232,9 +237,10 @@ it('presents financial entity lists as compact responsive links with statement r
                 }
             }
         }
+        $browser->script("const probe = document.createElement('span'); probe.style.backgroundColor = 'var(--color-zinc-800)'; document.body.append(probe); window.expectedBankCardBackground = getComputedStyle(probe).backgroundColor; probe.remove();");
         $browser->click('button[aria-label$="Switch to dark mode"]')
             ->waitUntil('document.documentElement.classList.contains("dark")')
-            ->waitUntil("getComputedStyle(Array.from(document.querySelectorAll('a')).find(link => /\\/bank-statements\\/\\d+$/.test(link.pathname))).backgroundColor === 'rgb(39, 39, 42)'")
+            ->waitUntil("getComputedStyle(Array.from(document.querySelectorAll('a')).find(link => /\\/bank-statements\\/\\d+$/.test(link.pathname))).backgroundColor === window.expectedBankCardBackground")
             ->screenshot('redesign-financial-entities-dark');
         $browser->click('button[aria-label$="Switch to light mode"]')->waitUntil('!document.documentElement.classList.contains("dark")');
         $browser->screenshot('redesign-financial-entities-mobile');

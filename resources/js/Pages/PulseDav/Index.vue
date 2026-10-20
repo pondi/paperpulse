@@ -22,7 +22,7 @@
                             <div class="flex flex-wrap gap-2">
                                 <button
                                     @click="toggleView"
-                                    class="inline-flex items-center px-4 py-2 bg-zinc-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-zinc-700 focus:bg-zinc-700 active:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                    class="inline-flex items-center px-4 py-2 bg-zinc-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-zinc-700 focus:bg-zinc-700 active:bg-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                 >
                                     <svg v-if="viewMode === 'list'" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
@@ -35,7 +35,7 @@
                                 <button
                                     @click="syncFiles"
                                     :disabled="syncing || !scannerImportsEnabled"
-                                    class="inline-flex items-center px-4 py-2 bg-zinc-900 dark:bg-amber-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-zinc-800 focus:bg-zinc-800 active:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50"
+                                    class="inline-flex items-center px-4 py-2 bg-zinc-900 dark:bg-amber-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-zinc-800 focus:bg-zinc-800 active:bg-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50"
                                 >
                                     <svg v-if="syncing" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -64,7 +64,7 @@
                             <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div>
                                     <label for="scanner-file-type" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Import as</label>
-                                    <select id="scanner-file-type" v-model="selectedFileType" class="w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50">
+                                    <select id="scanner-file-type" v-model="selectedFileType" class="w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 shadow-xs focus:border-amber-300 focus:ring-3 focus:ring-amber-200/50">
                                         <option value="receipt">Receipt</option>
                                         <option value="document">Document</option>
                                     </select>
@@ -75,7 +75,7 @@
                                 </div>
                                 <div class="md:col-span-2">
                                     <label for="scanner-import-notes" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Notes (optional)</label>
-                                    <textarea id="scanner-import-notes" v-model="importOptions.notes" rows="2" class="w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50" placeholder="Add any notes about this import..." />
+                                    <textarea id="scanner-import-notes" v-model="importOptions.notes" rows="2" class="w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 shadow-xs focus:border-amber-300 focus:ring-3 focus:ring-amber-200/50" placeholder="Add any notes about this import..." />
                                 </div>
                             </div>
                         </details>
@@ -147,7 +147,7 @@
                                         type="checkbox"
                                         :checked="areAllFolderFilesSelected"
                                         @change="toggleSelectAllFolderFiles"
-                                        class="rounded border-zinc-300 text-amber-600 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50"
+                                        class="rounded-sm border-zinc-300 text-amber-600 shadow-xs focus:border-amber-300 focus:ring-3 focus:ring-amber-200/50"
                                     />
                                     <span>
                                         Select all {{ currentFolderFiles.length }} file{{ currentFolderFiles.length === 1 ? '' : 's' }} in this folder
@@ -185,7 +185,7 @@
                                 </div>
                                 <div v-if="selectedListFileCount > 0" class="flex items-center gap-2">
                                     <label for="scanner-process-file-type" class="sr-only">Process as</label>
-                                    <select id="scanner-process-file-type" v-model="selectedFileType" aria-label="Process selected files as" class="rounded-md border-zinc-300 text-sm shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200">
+                                    <select id="scanner-process-file-type" v-model="selectedFileType" aria-label="Process selected files as" class="rounded-md border-zinc-300 text-sm shadow-xs focus:border-amber-300 focus:ring-3 focus:ring-amber-200 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200">
                                         <option value="receipt">Receipt</option>
                                         <option value="document">Document</option>
                                     </select>
@@ -194,7 +194,7 @@
                                     v-if="selectedListFileCount > 0"
                                     @click="processSelectedFiles"
                                     :disabled="processing"
-                                    class="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50"
+                                    class="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-green-700 focus:outline-hidden focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50"
                                 >
                                     {{ processing ? 'Processing…' : `Process ${selectedListFileCount} file${selectedListFileCount === 1 ? '' : 's'}` }}
                                 </button>
@@ -228,7 +228,7 @@
                                                 @change="toggleAll"
                                                 :checked="selectedListFileCount === selectableFiles.length && selectableFiles.length > 0"
                                                 aria-label="Select all scanner files on this page"
-                                                class="rounded border-zinc-300 text-amber-600 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50"
+                                                class="rounded-sm border-zinc-300 text-amber-600 shadow-xs focus:border-amber-300 focus:ring-3 focus:ring-amber-200/50"
                                             />
                                         </th>
                                         <th class="px-6 py-3 bg-amber-50 dark:bg-zinc-800 text-left text-xs font-bold text-zinc-600 dark:text-zinc-300 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
@@ -264,7 +264,7 @@
                                                 :value="file.id"
                                                 :aria-label="`Select ${file.filename}`"
                                                 v-model="selectedFiles"
-                                                class="rounded border-zinc-300 text-amber-600 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50"
+                                                class="rounded-sm border-zinc-300 text-amber-600 shadow-xs focus:border-amber-300 focus:ring-3 focus:ring-amber-200/50"
                                             />
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900 dark:text-zinc-100">

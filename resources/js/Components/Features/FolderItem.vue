@@ -8,7 +8,7 @@
             :checked="selected"
             :aria-label="`Select ${item.name || item.filename}`"
             @change="$emit('toggle-selection', item)"
-            class="mr-3 rounded border-zinc-300 text-amber-600 shadow-sm focus:border-amber-300 focus:ring focus:ring-amber-200 focus:ring-opacity-50"
+            class="mr-3 rounded-sm border-zinc-300 text-amber-600 shadow-xs focus:border-amber-300 focus:ring-3 focus:ring-amber-200/50"
         />
         
         <div class="flex-1 flex items-center">
@@ -25,7 +25,7 @@
             <!-- Name and tags -->
             <div class="flex-1">
                 <div class="flex items-center">
-                    <button v-if="item.is_folder" type="button" :aria-label="`Open folder ${item.name || item.filename}`" @click="$emit('navigate', folderPath)" class="text-left text-sm font-medium text-amber-700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-amber-300">
+                    <button v-if="item.is_folder" type="button" :aria-label="`Open folder ${item.name || item.filename}`" @click="$emit('navigate', folderPath)" class="text-left text-sm font-medium text-amber-700 underline-offset-2 hover:underline focus:outline-hidden focus:ring-2 focus:ring-amber-500 dark:text-amber-300">
                         Open folder {{ item.name || item.filename }}
                     </button>
                     <span v-else class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ item.name || item.filename }}</span>
@@ -33,7 +33,7 @@
                         <span
                             v-for="tag in item.folder_tags"
                             :key="tag.id"
-                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                            class="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium"
                             :style="{ backgroundColor: tag.color + '20', color: tag.color }"
                         >
                             {{ tag.name }}
@@ -49,7 +49,7 @@
             <div class="ml-auto flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
                 <span v-if="!item.is_folder">{{ formatFileSize(item.size) }}</span>
                 <span v-if="item.uploaded_at">{{ formatDate(item.uploaded_at) }}</span>
-                <span v-if="item.status && !item.is_folder" :class="getStatusClass(item.status)" class="px-2 py-0.5 rounded text-xs font-medium">
+                <span v-if="item.status && !item.is_folder" :class="getStatusClass(item.status)" class="px-2 py-0.5 rounded-sm text-xs font-medium">
                     {{ item.status }}
                 </span>
             </div>

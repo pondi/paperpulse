@@ -101,7 +101,7 @@
                                         <Link
                                             v-if="tag.files_count > 0"
                                             :href="route('library.index', { tag_id: tag.id })"
-                                            class="mt-2 inline-flex rounded text-sm font-semibold text-amber-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:text-amber-400"
+                                            class="mt-2 inline-flex rounded-sm text-sm font-semibold text-amber-700 hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:text-amber-400"
                                         >
                                             Browse {{ tag.files_count }} {{ tag.files_count === 1 ? 'file' : 'files' }}
                                         </Link>
@@ -111,7 +111,7 @@
                                     <!-- Actions Dropdown -->
                                     <Dropdown align="right" width="48">
                                         <template #trigger>
-                                            <button :aria-label="`Actions for tag: ${tag.name}`" class="rounded p-2 text-zinc-600 opacity-100 transition-opacity hover:bg-amber-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600 group-hover:opacity-100 dark:text-zinc-300 dark:hover:bg-amber-600 sm:opacity-0">
+                                            <button :aria-label="`Actions for tag: ${tag.name}`" class="rounded-sm p-2 text-zinc-600 opacity-100 transition-opacity hover:bg-amber-200 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-amber-600 group-hover:opacity-100 dark:text-zinc-300 dark:hover:bg-amber-600 sm:opacity-0">
                                                 <svg class="w-5 h-5 text-zinc-600 dark:text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                                                 </svg>

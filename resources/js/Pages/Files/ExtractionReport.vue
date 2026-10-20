@@ -10,20 +10,20 @@
     </template>
 
     <div class="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
-      <section class="rounded-lg bg-white p-6 shadow dark:bg-zinc-800">
+      <section class="rounded-lg bg-white p-6 shadow-sm dark:bg-zinc-800">
         <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ report.file.name }}</h3>
         <dl class="mt-4 grid gap-4 text-sm sm:grid-cols-2">
           <div><dt class="text-zinc-500 dark:text-zinc-400">Status</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ fileStatusLabel({ ...report.file, review: report.review }) }}</dd></div>
           <div><dt class="text-zinc-500 dark:text-zinc-400">Document type</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ report.classification.type || report.file.file_type }}</dd></div>
         </dl>
         <details class="mt-4 rounded-md border border-zinc-200 p-3 dark:border-zinc-700">
-          <summary class="cursor-pointer text-sm font-semibold text-zinc-700 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-200">Processing diagnostics</summary>
+          <summary class="cursor-pointer text-sm font-semibold text-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-amber-500 dark:text-zinc-200">Processing diagnostics</summary>
           <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-2">
             <div><dt class="text-zinc-500 dark:text-zinc-400">Classification confidence</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ confidence(report.classification.confidence) }}</dd></div>
             <div><dt class="text-zinc-500 dark:text-zinc-400">Extraction confidence</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ confidence(report.extraction.confidence_score) }}</dd></div>
             <div v-if="report.coverage.total_pages != null"><dt class="text-zinc-500 dark:text-zinc-400">Pages processed</dt><dd class="text-zinc-900 dark:text-zinc-100">{{ report.coverage.processed_pages }} / {{ report.coverage.total_pages }}</dd></div>
           </dl>
-          <p v-if="report.classification.reasoning" class="mt-3 break-words text-sm text-zinc-700 dark:text-zinc-300">{{ report.classification.reasoning }}</p>
+          <p v-if="report.classification.reasoning" class="mt-3 wrap-break-word text-sm text-zinc-700 dark:text-zinc-300">{{ report.classification.reasoning }}</p>
         </details>
       </section>
 
@@ -40,7 +40,7 @@
           </dl>
           <p>Compare these values with the original in the file workspace. Correct saved values using the receipt details below, then return here to confirm. Missing source discounts or line items require correcting extraction and retrying; confirmation does not rerun extraction.</p>
           <form @submit.prevent="resolveReview" class="flex flex-col items-start gap-3">
-            <label class="flex items-start gap-2"><input v-model="confirmed" type="checkbox" class="mt-1 rounded border-amber-400" />I checked the extracted values against the source.</label>
+            <label class="flex items-start gap-2"><input v-model="confirmed" type="checkbox" class="mt-1 rounded-sm border-amber-400" />I checked the extracted values against the source.</label>
             <p v-if="reviewError" role="alert">{{ reviewError }}</p>
             <button type="submit" :disabled="!confirmed || resolving" class="rounded-md bg-amber-700 px-4 py-2 font-semibold text-white disabled:opacity-50">Confirm reconciled totals</button>
           </form>
@@ -49,20 +49,20 @@
         <p v-if="report.review.reasoning">{{ report.review.reasoning }}</p>
         <ProcessingFailure v-if="report.file.status === 'failed'" :failure="report.failure" :processing="report.processing" :file-id="report.file.id" />
         <details v-if="report.extraction.validation_warnings.length" class="rounded-md border border-amber-300 p-3 dark:border-amber-700">
-          <summary class="cursor-pointer font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500">Extraction diagnostics · {{ report.extraction.validation_warnings.length }} warning{{ report.extraction.validation_warnings.length === 1 ? '' : 's' }}</summary>
-          <ul class="mt-3 flex list-disc flex-col gap-2 break-words pl-5">
+          <summary class="cursor-pointer font-semibold focus:outline-hidden focus:ring-2 focus:ring-amber-500">Extraction diagnostics · {{ report.extraction.validation_warnings.length }} warning{{ report.extraction.validation_warnings.length === 1 ? '' : 's' }}</summary>
+          <ul class="mt-3 flex list-disc flex-col gap-2 wrap-break-word pl-5">
             <li v-for="(warning, index) in report.extraction.validation_warnings" :key="index">{{ warning }}</li>
           </ul>
         </details>
         <Link :href="route('files.index', { file_id: report.file.id })" class="font-medium underline">Open file processing</Link>
       </section>
 
-      <section class="rounded-lg bg-white p-6 shadow dark:bg-zinc-800">
+      <section class="rounded-lg bg-white p-6 shadow-sm dark:bg-zinc-800">
         <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Extracted entities</h3>
         <ul v-if="report.entities.length" class="mt-4 flex flex-col gap-3 text-sm text-zinc-700 dark:text-zinc-300">
           <li v-for="entity in report.entities" :key="`${entity.type}-${entity.id}`" class="flex flex-wrap items-center gap-3">
             <Link :href="entityUrl(entity)" class="capitalize text-blue-600 hover:underline dark:text-blue-400">{{ label(entity.type) }} #{{ entity.id }}</Link>
-            <span v-if="entity.is_primary" class="rounded bg-blue-100 px-2 py-1 text-xs text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">Primary</span>
+            <span v-if="entity.is_primary" class="rounded-sm bg-blue-100 px-2 py-1 text-xs text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">Primary</span>
             <span>{{ confidence(entity.confidence_score) }}</span>
             <span v-if="entity.provider">{{ entity.provider }}</span>
           </li>

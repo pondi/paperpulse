@@ -123,7 +123,7 @@ function truncateUserAgent(ua) {
                         :key="page"
                         @click="fetchLogs(page)"
                         :class="[
-                            'rounded px-2.5 py-1 text-xs font-medium transition',
+                            'rounded-sm px-2.5 py-1 text-xs font-medium transition',
                             page === currentPage
                                 ? 'bg-amber-600 text-white'
                                 : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700',

@@ -2,7 +2,7 @@
     <article
         :data-job-card="job.id"
         :class="[
-            'rounded-xl border p-4 shadow-sm sm:p-5',
+            'rounded-xl border p-4 shadow-xs sm:p-5',
             job.status === 'failed'
                 ? 'border-red-200 bg-red-50/70 dark:border-red-900 dark:bg-red-950/20'
                 : 'border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800',
@@ -20,12 +20,12 @@
                     {{ job.type === 'receipt' ? 'R' : job.type === 'document' ? 'D' : '?' }}
                 </div>
                 <div class="min-w-0">
-                    <h3 class="break-words text-base font-semibold text-zinc-950 dark:text-zinc-100 sm:text-lg">
+                    <h3 class="wrap-break-word text-base font-semibold text-zinc-950 dark:text-zinc-100 sm:text-lg">
                         {{ job.file_info?.job_name || 'Processing Job' }}
                     </h3>
                     <p class="mt-1 break-all text-sm text-zinc-700 dark:text-zinc-300">
                         {{ job.file_info?.name || 'Unknown file' }}
-                        <span v-if="job.file_info?.extension" class="ml-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
+                        <span v-if="job.file_info?.extension" class="ml-1 rounded-sm bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
                             {{ job.file_info.extension.toUpperCase() }}
                         </span>
                     </p>
@@ -50,7 +50,7 @@
                     :disabled="selectionDisabled && !selected"
                     :aria-label="`Select failed job ${job.file_info?.name || job.id}`"
                     data-job-selection
-                    class="rounded border-red-400 text-red-700 focus:ring-red-600 disabled:opacity-50 dark:border-red-700"
+                    class="rounded-sm border-red-400 text-red-700 focus:ring-red-600 disabled:opacity-50 dark:border-red-700"
                     @change="$emit('toggle-selection', job.id)"
                 >
                 Select for batch restart
@@ -59,7 +59,7 @@
                 type="button"
                 :disabled="restarting"
                 data-job-restart
-                class="inline-flex min-h-11 items-center justify-center rounded-lg bg-red-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 dark:bg-red-600 dark:hover:bg-red-500"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg bg-red-700 px-4 text-sm font-semibold text-white shadow-xs transition hover:bg-red-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 dark:bg-red-600 dark:hover:bg-red-500"
                 @click="$emit('restart', job.id)"
             >
                 {{ restarting ? 'Restarting…' : 'Restart failed chain' }}
@@ -84,7 +84,7 @@
             </div>
             <div>
                 <dt class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Queue and type</dt>
-                <dd class="mt-1 break-words text-zinc-800 dark:text-zinc-200">{{ job.queue }} · {{ job.type?.toUpperCase() || 'UNKNOWN' }}</dd>
+                <dd class="mt-1 wrap-break-word text-zinc-800 dark:text-zinc-200">{{ job.queue }} · {{ job.type?.toUpperCase() || 'UNKNOWN' }}</dd>
             </div>
             <div>
                 <dt class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Duration</dt>
@@ -104,17 +104,17 @@
                         {{ index + 1 }}
                     </span>
                     <div class="min-w-0">
-                        <p class="break-words text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ step.name }}</p>
+                        <p class="wrap-break-word text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ step.name }}</p>
                         <p class="mt-1 text-xs capitalize text-zinc-600 dark:text-zinc-400">{{ step.status }}<span v-if="step.duration !== null && step.duration !== undefined"> · {{ formatDuration(step.duration) }}</span></p>
                     </div>
                 </li>
             </ol>
 
             <details v-for="step in failedSteps" :key="`error-${step.id}`" class="mt-3 rounded-lg border border-red-200 bg-white dark:border-red-900 dark:bg-zinc-900">
-                <summary class="min-h-11 cursor-pointer px-4 py-3 text-sm font-semibold text-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 dark:text-red-300">
+                <summary class="min-h-11 cursor-pointer px-4 py-3 text-sm font-semibold text-red-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-red-600 dark:text-red-300">
                     {{ step.name }} failed · show diagnostics
                 </summary>
-                <pre class="max-h-72 overflow-auto whitespace-pre-wrap break-words border-t border-red-100 p-4 text-xs text-red-800 dark:border-red-900 dark:text-red-200">{{ step.exception }}</pre>
+                <pre class="max-h-72 overflow-auto whitespace-pre-wrap wrap-break-word border-t border-red-100 p-4 text-xs text-red-800 dark:border-red-900 dark:text-red-200">{{ step.exception }}</pre>
             </details>
         </section>
     </article>

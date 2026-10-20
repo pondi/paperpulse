@@ -10,7 +10,7 @@ This guide covers the installed package baseline, development practices and nati
 | Vue | 3.5 |
 | Vite / Vue plugin | 8 / 6 |
 | Node.js | 20.19+ or 22.12+ |
-| Tailwind CSS | 3 |
+| Tailwind CSS | 4 |
 | Pest / PHPUnit | 4 / 12 |
 | Larastan | 3 |
 | PostgreSQL | 17 |

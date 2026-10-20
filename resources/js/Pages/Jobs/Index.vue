@@ -8,13 +8,13 @@
           <h2 class="text-2xl font-semibold leading-tight text-zinc-950 dark:text-zinc-100">Job operations</h2>
           <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Monitor queues, inspect failures and restart interrupted chains.</p>
         </div>
-        <Link :href="route('files.index', { status: 'needs_review' })" class="inline-flex min-h-11 items-center rounded-lg border border-amber-300 bg-amber-50 px-4 text-sm font-semibold text-amber-900 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-950/60">
+        <Link :href="route('files.index', { status: 'needs_review' })" class="inline-flex min-h-11 items-center rounded-lg border border-amber-300 bg-amber-50 px-4 text-sm font-semibold text-amber-900 hover:bg-amber-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-600 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-950/60">
           Review uncertain files
         </Link>
       </div>
     </template>
 
-    <div class="mx-auto flex max-w-screen-2xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+    <div class="mx-auto flex max-w-(--breakpoint-2xl) flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
       <JobStats :stats="stats" :selected-status="form.status" @filter-status="handleFilterStatus" />
 
       <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_19rem]">
@@ -30,7 +30,7 @@
               <button
                 v-if="jobs.some(job => job.status === 'failed')"
                 type="button"
-                class="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-red-800 underline-offset-4 hover:bg-red-50 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 dark:text-red-300 dark:hover:bg-red-950/30"
+                class="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-red-800 underline-offset-4 hover:bg-red-50 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-red-600 dark:text-red-300 dark:hover:bg-red-950/30"
                 @click="selectVisibleFailures"
               >
                 {{ allVisibleFailuresSelected ? 'Clear failed selections' : 'Select visible failures' }}
@@ -47,8 +47,8 @@
             <div v-if="selectedJobIds.length" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/20">
               <p class="text-sm font-medium text-red-950 dark:text-red-100">{{ selectedJobIds.length }} failed chain{{ selectedJobIds.length === 1 ? '' : 's' }} selected (maximum 10)</p>
               <div class="flex flex-wrap gap-2">
-                <button type="button" class="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-red-900 hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 dark:text-red-200 dark:hover:bg-red-950/60" @click="selectedJobIds = []">Clear selection</button>
-                <button type="button" :disabled="isRestartingBatch" class="inline-flex min-h-11 items-center rounded-lg bg-red-700 px-4 text-sm font-semibold text-white shadow-sm hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:opacity-60 dark:bg-red-600 dark:hover:bg-red-500" @click="restartSelectedJobs">
+                <button type="button" class="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-red-900 hover:bg-red-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-red-600 dark:text-red-200 dark:hover:bg-red-950/60" @click="selectedJobIds = []">Clear selection</button>
+                <button type="button" :disabled="isRestartingBatch" class="inline-flex min-h-11 items-center rounded-lg bg-red-700 px-4 text-sm font-semibold text-white shadow-xs hover:bg-red-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:opacity-60 dark:bg-red-600 dark:hover:bg-red-500" @click="restartSelectedJobs">
                   {{ isRestartingBatch ? 'Restarting…' : `Restart ${selectedJobIds.length} selected` }}
                 </button>
               </div>

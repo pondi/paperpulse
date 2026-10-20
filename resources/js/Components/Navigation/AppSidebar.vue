@@ -30,7 +30,7 @@ const utility = computed(() => [
 const pinned = computed(() => page.props.navigation?.saved_views || []);
 const linkClass = active => [
     active ? 'bg-orange-100/60 text-orange-900 dark:bg-orange-500/10 dark:text-orange-300' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white',
-    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500',
+    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-orange-500',
 ];
 </script>
 

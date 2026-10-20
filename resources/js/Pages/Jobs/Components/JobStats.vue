@@ -6,7 +6,7 @@
             type="button"
             :aria-pressed="selectedStatus === item.status"
             @click="$emit('filter-status', item.status)"
-            class="flex min-h-24 flex-col justify-between rounded-xl border bg-white p-4 text-left shadow-sm transition hover:border-amber-400 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 dark:bg-zinc-800"
+            class="flex min-h-24 flex-col justify-between rounded-xl border bg-white p-4 text-left shadow-xs transition hover:border-amber-400 hover:shadow-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-600 dark:bg-zinc-800"
             :class="selectedStatus === item.status ? 'border-amber-600 ring-1 ring-amber-600 dark:border-amber-500' : 'border-zinc-200 dark:border-zinc-700'"
         >
             <span class="text-sm font-medium text-zinc-600 dark:text-zinc-300">{{ item.label }}</span>

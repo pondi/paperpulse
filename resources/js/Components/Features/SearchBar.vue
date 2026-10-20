@@ -7,7 +7,7 @@
                 @input="handleSearch"
                 placeholder="Search your library…"
                 aria-label="Search your library"
-                class="col-start-1 row-start-1 block size-full bg-transparent pl-8 text-base text-zinc-900 dark:text-white outline-none border-0 focus:outline-none focus:ring-0 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 sm:text-sm/6"
+                class="col-start-1 row-start-1 block size-full bg-transparent pl-8 text-base text-zinc-900 dark:text-white outline-hidden border-0 focus:outline-hidden focus:ring-0 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 sm:text-sm/6"
             />
             <MagnifyingGlassIcon
                 class="pointer-events-none col-start-1 row-start-1 size-5 self-center text-zinc-500 ml-1"
@@ -18,15 +18,15 @@
             </div>
 
             <!-- Search Results Dropdown -->
-            <div v-if="showResults && results.length > 0" class="fixed left-4 right-4 top-16 mt-2 sm:absolute sm:left-0 sm:right-auto sm:top-full sm:w-[600px] sm:max-w-[80vw] bg-white/95 dark:bg-zinc-800/95 backdrop-blur-sm rounded-lg shadow-xl max-h-96 overflow-y-auto ring-1 ring-zinc-200 dark:ring-white/20 z-50">
+            <div v-if="showResults && results.length > 0" class="fixed left-4 right-4 top-16 mt-2 sm:absolute sm:left-0 sm:right-auto sm:top-full sm:w-[600px] sm:max-w-[80vw] bg-white/95 dark:bg-zinc-800/95 backdrop-blur-xs rounded-lg shadow-xl max-h-96 overflow-y-auto ring-1 ring-zinc-200 dark:ring-white/20 z-50">
                 <ul class="py-2" role="listbox" aria-label="Search results">
                     <li v-for="result in results.slice(0, 5)" :key="`${result.type}-${result.id}`" role="option" class="group">
                         <button type="button" class="block w-full px-4 py-3 text-left hover:bg-amber-100 dark:hover:bg-zinc-700/90 transition-colors cursor-pointer" @click="handleResultClick(result)">
                             <div class="flex items-start gap-x-3">
                                 <!-- Type indicator -->
-                                <div class="flex-shrink-0 mt-1">
+                                <div class="shrink-0 mt-1">
                                     <span
-                                        class="inline-flex items-center justify-center w-8 h-8 rounded"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-sm"
                                         :class="result.type === 'receipt'
                                             ? 'bg-amber-100 dark:bg-zinc-900/30 text-amber-600 dark:text-amber-400'
                                             : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'"
@@ -59,10 +59,10 @@
                                         {{ result.description }}
                                     </div>
                                     <div class="flex items-center gap-x-2 mt-2 text-xs">
-                                        <span v-if="result.category" class="inline-flex items-center bg-amber-200 dark:bg-zinc-600/70 px-2 py-0.5 rounded text-zinc-700 dark:text-zinc-300">
+                                        <span v-if="result.category" class="inline-flex items-center bg-amber-200 dark:bg-zinc-600/70 px-2 py-0.5 rounded-sm text-zinc-700 dark:text-zinc-300">
                                             {{ result.category }}
                                         </span>
-                                        <span v-if="result.document_type" class="inline-flex items-center bg-purple-100 dark:bg-purple-900/30 px-2 py-0.5 rounded text-purple-700 dark:text-purple-300">
+                                        <span v-if="result.document_type" class="inline-flex items-center bg-purple-100 dark:bg-purple-900/30 px-2 py-0.5 rounded-sm text-purple-700 dark:text-purple-300">
                                             {{ result.document_type }}
                                         </span>
                                         <span v-if="result.tags && result.tags.length > 0" class="text-zinc-500 dark:text-zinc-400">
@@ -89,7 +89,7 @@
             </div>
 
             <!-- No Results Message -->
-            <div v-if="showResults && results.length === 0 && searchQuery" class="fixed left-4 right-4 top-16 mt-2 sm:absolute sm:left-0 sm:right-auto sm:top-full sm:w-[600px] sm:max-w-[80vw] bg-white/95 dark:bg-zinc-800/95 backdrop-blur-sm rounded-lg shadow-xl p-4 ring-1 ring-zinc-200 dark:ring-white/20 z-50">
+            <div v-if="showResults && results.length === 0 && searchQuery" class="fixed left-4 right-4 top-16 mt-2 sm:absolute sm:left-0 sm:right-auto sm:top-full sm:w-[600px] sm:max-w-[80vw] bg-white/95 dark:bg-zinc-800/95 backdrop-blur-xs rounded-lg shadow-xl p-4 ring-1 ring-zinc-200 dark:ring-white/20 z-50">
                 <div class="text-center">
                     <MagnifyingGlassIcon class="mx-auto h-8 w-8 text-zinc-400 mb-2" />
                     <p class="text-sm text-zinc-600 dark:text-zinc-300">No results found</p>

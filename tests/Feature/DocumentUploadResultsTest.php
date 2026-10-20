@@ -162,7 +162,7 @@ for (const color of ['green', 'amber', 'red']) {
     assert.ok(mixedHtml.includes(`dark:bg-${color}-900/20`));
 }
 assert.ok(mixedHtml.includes('role="alert"'));
-assert.ok(mixedHtml.includes('break-words'));
+assert.ok(mixedHtml.includes('wrap-break-word'));
 page.dismissUploadOutcome('failed');
 assert.ok(!(await renderPage()).includes('data-upload-outcome="failed"'));
 assert.deepEqual(page.selectedFiles.value.map(entry => entry.file.index), [2]);

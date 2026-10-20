@@ -62,14 +62,15 @@ watch([source, retry], () => { loading.value = Boolean(source.value); }, { immed
                 <p class="max-w-xs text-xs leading-5 text-zinc-500 dark:text-zinc-400">{{ file.preview_pending ? 'The preview will appear when it is ready.' : 'Use Open original to view the file, or try loading the preview again.' }}</p>
                 <button v-if="sources.length" type="button" class="workspace-button" @click="reset">Retry preview</button>
             </div>
-            <p v-if="loading" role="status" class="pointer-events-none absolute bottom-3 left-3 rounded bg-white/95 px-3 py-2 text-xs text-zinc-600 shadow-sm dark:bg-zinc-900/95 dark:text-zinc-300">Loading preview…</p>
-            <span v-else-if="imagePage" class="pointer-events-none absolute bottom-3 left-3 rounded bg-white/95 px-2 py-1 text-xs text-zinc-500 dark:bg-zinc-900/95 dark:text-zinc-400">Page 1 preview</span>
-            <button v-if="source && canSwitchPdf" type="button" class="workspace-button absolute right-2 top-2 !min-h-0 !px-2 !py-1.5 !text-xs shadow-sm" @click="fullPdf = source.kind !== 'pdf'; attempt = 0">{{ source.kind === 'pdf' ? 'Image preview' : 'View full PDF' }}</button>
+            <p v-if="loading" role="status" class="pointer-events-none absolute bottom-3 left-3 rounded-sm bg-white/95 px-3 py-2 text-xs text-zinc-600 shadow-xs dark:bg-zinc-900/95 dark:text-zinc-300">Loading preview…</p>
+            <span v-else-if="imagePage" class="pointer-events-none absolute bottom-3 left-3 rounded-sm bg-white/95 px-2 py-1 text-xs text-zinc-500 dark:bg-zinc-900/95 dark:text-zinc-400">Page 1 preview</span>
+            <button v-if="source && canSwitchPdf" type="button" class="workspace-button absolute right-2 top-2 min-h-0! px-2! py-1.5! text-xs! shadow-xs" @click="fullPdf = source.kind !== 'pdf'; attempt = 0">{{ source.kind === 'pdf' ? 'Image preview' : 'View full PDF' }}</button>
         </div>
     </section>
 </template>
 
 <style scoped>
+@reference '../../../css/app.css';
 .preview-framed { @apply min-h-0; }
 .preview-framed img { @apply h-full max-h-full w-full object-contain; }
 .preview-framed iframe { @apply min-h-0; }

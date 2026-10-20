@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-sm p-6 border-l-4 border-teal-500 dark:border-teal-400">
+  <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-xs p-6 border-l-4 border-teal-500 dark:border-teal-400">
     <div class="flex justify-between items-start mb-4">
       <div class="flex-1">
         <h3 class="font-semibold text-lg text-zinc-900 dark:text-zinc-100">Return Policy</h3>
@@ -7,7 +7,7 @@
       </div>
       <span
         v-if="returnPolicy.is_final_sale"
-        class="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs rounded font-medium"
+        class="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs rounded-sm font-medium"
       >
         Final Sale
       </span>
@@ -25,7 +25,7 @@
         </div>
       </div>
 
-      <div v-if="returnPolicy.refund_method" class="bg-teal-50 dark:bg-teal-900/20 p-3 rounded border border-teal-200 dark:border-teal-800">
+      <div v-if="returnPolicy.refund_method" class="bg-teal-50 dark:bg-teal-900/20 p-3 rounded-sm border border-teal-200 dark:border-teal-800">
         <p class="text-sm text-zinc-700 dark:text-zinc-300">
           <span class="font-medium">Refund Method:</span> {{ refundMethodLabel }}
         </p>
@@ -43,10 +43,10 @@
       </div>
 
       <div class="flex flex-wrap gap-2 text-xs">
-        <span v-if="returnPolicy.requires_receipt" class="px-2 py-1 bg-zinc-100 dark:bg-zinc-700 rounded text-zinc-700 dark:text-zinc-300">
+        <span v-if="returnPolicy.requires_receipt" class="px-2 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-sm text-zinc-700 dark:text-zinc-300">
           Receipt Required
         </span>
-        <span v-if="returnPolicy.requires_original_packaging" class="px-2 py-1 bg-zinc-100 dark:bg-zinc-700 rounded text-zinc-700 dark:text-zinc-300">
+        <span v-if="returnPolicy.requires_original_packaging" class="px-2 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-sm text-zinc-700 dark:text-zinc-300">
           Original Packaging Required
         </span>
       </div>

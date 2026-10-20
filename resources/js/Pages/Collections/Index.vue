@@ -4,7 +4,7 @@
         <template #header>
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div class="min-w-0 flex-1 basis-48">
-                    <h1 class="text-xl font-semibold tracking-tight [overflow-wrap:anywhere]">{{ parentName ? `Subfolders in ${parentName}` : 'Collections' }}</h1>
+                    <h1 class="text-xl font-semibold tracking-tight wrap-anywhere">{{ parentName ? `Subfolders in ${parentName}` : 'Collections' }}</h1>
                     <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Organize your files into folders and subfolders.</p>
                 </div>
                 <button type="button" class="workspace-primary" @click="openCreateModal">
@@ -17,7 +17,7 @@
         <div class="workspace-stack">
             <Breadcrumbs v-if="parentName" :crumbs="folderCrumbs" />
             <div v-if="parentName" class="flex flex-wrap items-center justify-between gap-3 text-sm">
-                <Link v-if="parentName" :href="breadcrumbs[breadcrumbs.length - 1].href" class="min-w-0 text-zinc-700 underline underline-offset-4 [overflow-wrap:anywhere] dark:text-zinc-300">Back to {{ parentName }}</Link>
+                <Link v-if="parentName" :href="breadcrumbs[breadcrumbs.length - 1].href" class="min-w-0 text-zinc-700 underline underline-offset-4 wrap-anywhere dark:text-zinc-300">Back to {{ parentName }}</Link>
             </div>
             <p v-if="actionError" role="alert" class="text-sm text-red-700 dark:text-red-400">{{ actionError }}</p>
             <p v-if="actionMessage" role="status" class="text-sm text-zinc-700 dark:text-zinc-300">{{ actionMessage }}</p>
@@ -58,7 +58,7 @@
                 </ul>
                 <div v-else-if="!loading" class="workspace-fill workspace-surface flex flex-col items-center justify-center gap-3 overflow-auto px-4 py-6 text-center">
                     <FolderIcon class="h-10 w-10 text-zinc-400" aria-hidden="true" />
-                    <h2 class="max-w-full text-lg font-medium [overflow-wrap:anywhere]">{{ searchQuery ? 'No folders match your search' : parentName ? `No subfolders in ${parentName}` : 'No collections' }}</h2>
+                    <h2 class="max-w-full text-lg font-medium wrap-anywhere">{{ searchQuery ? 'No folders match your search' : parentName ? `No subfolders in ${parentName}` : 'No collections' }}</h2>
                     <p class="max-w-md text-sm text-zinc-600 dark:text-zinc-400">{{ searchQuery ? 'Try another name or description, or reset the filters.' : 'Create a folder to keep related files together. You can add files after creating it.' }}</p>
                     <button v-if="searchQuery" class="workspace-button" @click="resetFilters">Clear search</button>
                     <button v-else class="workspace-primary" @click="openCreateModal">{{ parentName ? 'Create Subfolder' : 'Create Collection' }}</button>
@@ -75,7 +75,7 @@
 
         <Modal :show="showModal" :closeable="!form.processing" @close="closeModal" v-slot="{ titleId }">
             <div class="p-6">
-                <h2 :id="titleId" class="break-words text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                <h2 :id="titleId" class="wrap-break-word text-lg font-medium text-zinc-900 dark:text-zinc-100">
                     {{ editingCollection ? 'Edit Collection' : parentName ? `Create subfolder in ${parentName}` : 'Create New Collection' }}
                 </h2>
 
@@ -142,7 +142,7 @@
                         <button
                             type="submit"
                             :disabled="form.processing"
-                            class="inline-flex justify-center rounded-md bg-zinc-900 dark:bg-orange-600 px-3 py-2 text-sm font-bold text-white  hover:bg-zinc-800 dark:hover:bg-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:opacity-50"
+                            class="inline-flex justify-center rounded-md bg-zinc-900 dark:bg-orange-600 px-3 py-2 text-sm font-bold text-white  hover:bg-zinc-800 dark:hover:bg-orange-700 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:opacity-50"
                         >
                             {{ form.processing ? 'Saving…' : editingCollection ? 'Update' : 'Create' }}
                         </button>

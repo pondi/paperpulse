@@ -34,7 +34,7 @@
         role="button"
         tabindex="0"
         :aria-label="`Adjust ${cornerNames[index]} crop corner`"
-        class="absolute w-8 h-8 -ml-4 -mt-4 rounded-full border-2 border-amber-500 bg-amber-500/20 active:bg-amber-500/50 backdrop-blur-sm cursor-move touch-action-none flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        class="absolute w-8 h-8 -ml-4 -mt-4 rounded-full border-2 border-amber-500 bg-amber-500/20 active:bg-amber-500/50 backdrop-blur-xs cursor-move touch-action-none flex items-center justify-center focus:outline-hidden focus-visible:ring-2 focus-visible:ring-white"
         :style="{ left: point.x + 'px', top: point.y + 'px' }"
         @mousedown.stop.prevent="startDrag(index, $event)"
         @touchstart.stop.prevent="startDrag(index, $event)"

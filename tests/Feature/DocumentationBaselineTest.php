@@ -54,7 +54,7 @@ it('matches the documented PHP and frontend package majors to the lockfiles', fu
         expect((int) ltrim($packages[$name]['version'], 'v'))->toBe($major);
     }
     $npm = json_decode(File::get(base_path('package-lock.json')), true)['packages'];
-    foreach (['vite' => 8, 'vue' => 3, '@inertiajs/vue3' => 3, 'tailwindcss' => 3] as $name => $major) {
+    foreach (['vite' => 8, 'vue' => 3, '@inertiajs/vue3' => 3, 'tailwindcss' => 4] as $name => $major) {
         expect((int) $npm['node_modules/'.$name]['version'])->toBe($major);
     }
     expect(config('filesystems.disks.paperpulse.driver'))->toBe('s3');

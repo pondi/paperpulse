@@ -15,7 +15,7 @@
                         <button
                             v-if="!readonly"
                             @click="removeTag(tag)"
-                            class="ml-1 hover:opacity-70 focus:outline-none"
+                            class="ml-1 hover:opacity-70 focus:outline-hidden"
                             type="button"
                         >
                             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -44,14 +44,14 @@
             <Transition name="dropdown">
                 <div
                     v-if="showSuggestions && filteredTags.length > 0 && !readonly"
-                    class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-700 shadow-lg rounded-md py-1 text-sm ring-1 ring-black ring-opacity-5 max-h-60 overflow-auto"
+                    class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-700 shadow-lg rounded-md py-1 text-sm ring-1 ring-black/5 max-h-60 overflow-auto"
                 >
                     <button
                         v-for="(tag, index) in filteredTags"
                         :key="tag.id || 'new'"
                         @mousedown.prevent="selectTag(tag)"
                         type="button"
-                        class="w-full text-left px-4 py-2 hover:bg-amber-100 dark:hover:bg-amber-600 focus:bg-amber-100 dark:focus:bg-zinc-600 focus:outline-none"
+                        class="w-full text-left px-4 py-2 hover:bg-amber-100 dark:hover:bg-amber-600 focus:bg-amber-100 dark:focus:bg-zinc-600 focus:outline-hidden"
                         :class="{ 'bg-amber-100 dark:bg-zinc-600': index === selectedIndex }"
                     >
                         <span class="flex items-center justify-between">
@@ -99,7 +99,7 @@
                             id="tag-color"
                             v-model="tagForm.color"
                             type="color"
-                            class="h-10 w-20 rounded cursor-pointer"
+                            class="h-10 w-20 rounded-sm cursor-pointer"
                         />
                         <span class="text-sm text-zinc-600 dark:text-zinc-400">{{ tagForm.color }}</span>
                     </div>

@@ -1,5 +1,5 @@
 <template>
-  <article class="flex h-full flex-col rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-5">
+  <article class="flex h-full flex-col rounded-xl border border-zinc-200 bg-white p-4 shadow-xs dark:border-zinc-700 dark:bg-zinc-800 sm:p-5">
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
         <p class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{{ voucherTypeLabel }}</p>
@@ -28,8 +28,8 @@
     </div>
 
     <div class="mt-auto flex flex-wrap gap-2 pt-5">
-      <Link :href="route('vouchers.show', voucher.id)" class="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-700">View details</Link>
-      <button v-if="canRedeem && showActions" type="button" @click="$emit('redeem', voucher.id)" class="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg bg-violet-700 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:bg-violet-500 dark:hover:bg-violet-400 dark:focus-visible:ring-offset-zinc-800">Mark redeemed</button>
+      <Link :href="route('vouchers.show', voucher.id)" class="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-700">View details</Link>
+      <button v-if="canRedeem && showActions" type="button" @click="$emit('redeem', voucher.id)" class="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg bg-violet-700 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-800 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:bg-violet-500 dark:hover:bg-violet-400 dark:focus-visible:ring-offset-zinc-800">Mark redeemed</button>
     </div>
   </article>
 </template>

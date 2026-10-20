@@ -12,7 +12,7 @@
                 @click="toggleCalendar"
                 @keydown.escape="closeCalendar"
                 @keydown.enter.prevent="toggleCalendar"
-                class="block w-full rounded-md border-0 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600 sm:text-sm cursor-pointer transition-colors duration-200"
+                class="block w-full rounded-md border-0 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600 focus:ring-2 focus:ring-inset focus:ring-amber-600 sm:text-sm cursor-pointer transition-colors duration-200"
                 :class="[
                     error ? 'ring-red-500 dark:ring-red-500' : 'ring-zinc-300 dark:ring-zinc-600',
                     disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
@@ -50,7 +50,7 @@
                 <div
                     v-if="showCalendar"
                     ref="calendar"
-                    class="fixed z-[9999] w-80 bg-white dark:bg-zinc-800 rounded-lg shadow-xl border-2 border-amber-200 dark:border-zinc-700"
+                    class="fixed z-9999 w-80 bg-white dark:bg-zinc-800 rounded-lg shadow-xl border-2 border-amber-200 dark:border-zinc-700"
                     :style="calendarPosition"
                 >
                 <!-- Calendar Header -->

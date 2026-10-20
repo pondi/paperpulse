@@ -22,20 +22,20 @@
                             </p>
                             <p v-else-if="outcome.status === 'failed'" class="text-sm">Failed files remain selected below so you can correct the issue and try again.</p>
                             <ul v-if="outcome.status !== 'accepted'" class="flex flex-col gap-2 text-sm">
-                                <li v-for="result in outcome.results" :key="result.index" class="break-words">
+                                <li v-for="result in outcome.results" :key="result.index" class="wrap-break-word">
                                     <span class="font-medium">{{ result.filename }}</span>: {{ result.message }}
                                 </li>
                             </ul>
                             <ul v-if="outcome.status === 'accepted'" class="flex flex-col gap-2 text-sm">
-                                <li v-for="result in outcome.results" :key="result.index" class="flex flex-wrap items-center justify-between gap-2 break-words">
+                                <li v-for="result in outcome.results" :key="result.index" class="flex flex-wrap items-center justify-between gap-2 wrap-break-word">
                                     <span class="font-medium">{{ result.filename }}</span>
-                                    <Link :href="route('files.index', { file_id: result.file_id })" class="font-semibold underline focus:outline-none focus-visible:ring-2 focus-visible:ring-current">Open processing record</Link>
+                                    <Link :href="route('files.index', { file_id: result.file_id })" class="font-semibold underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-current">Open processing record</Link>
                                 </li>
                             </ul>
                         </div>
                         <button type="button" @click="dismissUploadOutcome(outcome.status)"
                             :aria-label="'Dismiss ' + outcome.title"
-                            class="shrink-0 rounded-md p-1 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-current">
+                            class="shrink-0 rounded-md p-1 opacity-70 transition-opacity hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-current">
                             <XMarkIcon class="h-5 w-5" aria-hidden="true" />
                         </button>
                     </section>
@@ -49,7 +49,7 @@
                             <p class="text-sm font-medium text-red-800">{{ uploadError }}</p>
                         </div>
                         <button type="button"
-                            class="ml-auto -mx-1.5 -my-1.5 rounded-md bg-red-50 p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
+                            class="ml-auto -mx-1.5 -my-1.5 rounded-md bg-red-50 p-1.5 text-red-500 hover:bg-red-100 focus:outline-hidden focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                             @click="uploadError = null">
                             <span class="sr-only">Dismiss</span>
                             <XMarkIcon class="h-5 w-5" aria-hidden="true" />
@@ -57,7 +57,7 @@
                     </div>
                 </div>
 
-                <div class="rounded-lg bg-white p-5 shadow-sm dark:bg-zinc-800 sm:p-8">
+                <div class="rounded-lg bg-white p-5 shadow-xs dark:bg-zinc-800 sm:p-8">
                     <div class="mx-auto max-w-3xl">
                         <p class="text-sm text-zinc-600 dark:text-zinc-400">Choose receipts, invoices, contracts, statements or other documents. We detect the file type automatically and extract its details.</p>
 
@@ -107,7 +107,7 @@
                                         <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                             <li v-for="(file, index) in selectedFiles" :key="file.name + index"
                                                 class="relative flex min-w-0 items-center rounded-lg bg-amber-50 p-3 dark:bg-zinc-700 sm:p-4">
-                                                <div class="relative h-16 w-16 flex-shrink-0">
+                                                <div class="relative h-16 w-16 shrink-0">
                                                     <img v-if="file.preview" :src="file.preview" class="h-16 w-16 rounded-lg object-cover" alt="File preview" />
                                                     <DocumentIcon v-else class="h-16 w-16 text-zinc-400" aria-hidden="true" />
                                                 </div>
@@ -115,7 +115,7 @@
                                                     <p class="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ file.name }}</p>
                                                     <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ file.size }}</p>
                                                 </div>
-                                                <button @click.prevent="removeFile(index)" :aria-label="`Remove ${file.name}`" class="ml-3 flex-shrink-0 rounded-full p-2 text-zinc-600 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 dark:text-zinc-300 dark:hover:text-white" type="button">
+                                                <button @click.prevent="removeFile(index)" :aria-label="`Remove ${file.name}`" class="ml-3 shrink-0 rounded-full p-2 text-zinc-600 hover:text-zinc-900 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-600 dark:text-zinc-300 dark:hover:text-white" type="button">
                                                     <XMarkIcon class="h-5 w-5" aria-hidden="true" />
                                                 </button>
                                             </li>
@@ -136,19 +136,19 @@
                                         <span>Uploading your files</span>
                                         <span>{{ uploadProgress }}%</span>
                                     </div>
-                                    <div role="progressbar" aria-label="Upload progress" :aria-valuenow="uploadProgress" aria-valuemin="0" aria-valuemax="100" class="h-2 overflow-hidden rounded bg-amber-100 dark:bg-zinc-700">
+                                    <div role="progressbar" aria-label="Upload progress" :aria-valuenow="uploadProgress" aria-valuemin="0" aria-valuemax="100" class="h-2 overflow-hidden rounded-sm bg-amber-100 dark:bg-zinc-700">
                                         <div :style="{ width: uploadProgress + '%' }" class="h-full bg-amber-600 transition-all duration-300 dark:bg-amber-500"></div>
                                     </div>
                                 </div>
                             </section>
 
                             <details class="rounded-lg border border-zinc-200 dark:border-zinc-700">
-                                <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-600 dark:text-zinc-100">2. Add notes and organization <span class="font-normal text-zinc-500 dark:text-zinc-400">(optional)</span></summary>
+                                <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-zinc-800 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-600 dark:text-zinc-100">2. Add notes and organization <span class="font-normal text-zinc-500 dark:text-zinc-400">(optional)</span></summary>
                                 <div class="flex flex-col gap-4 border-t border-zinc-200 p-4 dark:border-zinc-700">
                                     <p class="text-sm text-zinc-600 dark:text-zinc-400">These details apply to all selected files. You can organize files later too.</p>
                                     <div class="text-left">
                                         <label for="document-note" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Note <span class="font-normal text-zinc-500">(optional)</span></label>
-                                        <textarea id="document-note" v-model="note" rows="2" class="mt-1 block w-full rounded-md border border-zinc-300 bg-white text-zinc-900 shadow-sm focus:border-amber-500 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 sm:text-sm" placeholder="Add a note about these files" />
+                                        <textarea id="document-note" v-model="note" rows="2" class="mt-1 block w-full rounded-md border border-zinc-300 bg-white text-zinc-900 shadow-xs focus:border-amber-500 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 sm:text-sm" placeholder="Add a note about these files" />
                                     </div>
                                     <div class="text-left">
                                         <label class="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Collections <span class="font-normal text-zinc-500">(optional)</span></label>
@@ -167,7 +167,7 @@
                                 <button type="submit"
                                     :disabled="selectedFiles.length === 0 || isUploading"
                                     :class="[
-                                        'min-h-11 rounded-md px-5 py-3 text-sm font-semibold text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 transition-colors duration-200 sm:min-w-48',
+                                        'min-h-11 rounded-md px-5 py-3 text-sm font-semibold text-white shadow-xs focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 transition-colors duration-200 sm:min-w-48',
                                         (selectedFiles.length === 0 || isUploading)
                                             ? 'bg-zinc-400 cursor-not-allowed' 
                                             : 'bg-zinc-900 dark:bg-amber-600 hover:bg-zinc-800 dark:hover:bg-amber-700'

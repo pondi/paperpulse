@@ -49,6 +49,19 @@ it('excludes krone indices while importing currency observations', function (str
     $this->assertDatabaseMissing('exchange_rate_observations', ['currency' => $index]);
 })->with(['import-weighted index' => 'I44', 'trade-weighted index' => 'TWI']);
 
+it('imports English formatted rates with thousands separators', function (string $value, float $rate): void {
+    Http::fake(['*' => Http::response(norgesBankCsv("B;CHF;NOK;SP;2;2020-03-09;{$value}"))]);
+
+    expect(app(NorgesBankExchangeRateService::class)->sync('2020-01-01', '2020-12-31'))->toBe(1);
+
+    $this->assertDatabaseHas('exchange_rate_observations', ['currency' => 'CHF', 'rate' => $rate, 'units' => 100]);
+    expect((new HistoricalCurrencyService)->convert(100, 'CHF', '2020-03-09', 'NOK'))->toBe($rate);
+})->with([
+    'fractional rate' => ['1,027.94', 1027.94],
+    'whole rate' => ['1,025', 1025.0],
+    'multiple groups' => ['1,234,567.89', 1234567.89],
+]);
+
 it('rejects malformed provider data without storing a partial response', function (string $row): void {
     Http::fake(['*' => Http::response(norgesBankCsv("B;EUR;NOK;SP;0;2026-09-25;12\n".$row))]);
     expect(fn () => app(NorgesBankExchangeRateService::class)->sync('2026-09-25', '2026-09-27'))->toThrow(RuntimeException::class);
@@ -60,6 +73,11 @@ it('rejects malformed provider data without storing a partial response', functio
     'future observation' => ['B;JPY;NOK;SP;2;2026-09-28;6'],
     'negative rate' => ['B;JPY;NOK;SP;2;2026-09-25;-6'],
     'non numeric rate' => ['B;JPY;NOK;SP;2;2026-09-25;unavailable'],
+    'decimal comma' => ['B;CHF;NOK;SP;2;2026-09-25;1027,94'],
+    'incomplete thousands group' => ['B;CHF;NOK;SP;2;2026-09-25;1,02.94'],
+    'oversized thousands group' => ['B;CHF;NOK;SP;2;2026-09-25;1,0027.94'],
+    'trailing separator' => ['B;CHF;NOK;SP;2;2026-09-25;1027,'],
+    'negative grouped rate' => ['B;CHF;NOK;SP;2;2026-09-25;-1,027.94'],
     'invalid date' => ['B;JPY;NOK;SP;2;2026-09-31;6'],
     'malformed row' => ['B;JPY;NOK'],
 ]);
@@ -138,6 +156,22 @@ it('backfills past 1989 when the provider includes krone indices', function (): 
     expect(Cache::store('database')->get('norges-bank:exchange-rates:synced-through'))->toBe('1990-01-02');
     $this->assertDatabaseCount('exchange_rate_observations', 3);
     expect(ExchangeRateObservation::query()->distinct()->pluck('currency')->all())->toBe(['USD']);
+    Http::assertSentCount(3);
+});
+
+it('backfills past 2020 when CHF rates include thousands separators', function (): void {
+    $this->travelTo(now()->setDate(2021, 1, 4)->startOfDay());
+    Cache::store('database')->forever('norges-bank:exchange-rates:synced-through', '2019-12-31');
+    Http::fakeSequence()
+        ->push(norgesBankCsv('B;CHF;NOK;SP;2;2019-12-30;880.8'))
+        ->push(norgesBankCsv("B;CHF;NOK;SP;2;2020-03-09;1,027.94\nB;CHF;NOK;SP;2;2020-03-11;1,025\n"))
+        ->push(norgesBankCsv('B;CHF;NOK;SP;2;2021-01-04;963.46'));
+
+    (new SyncExchangeRates)->handle(app(NorgesBankExchangeRateService::class));
+
+    expect(Cache::store('database')->get('norges-bank:exchange-rates:synced-through'))->toBe('2021-01-04');
+    $this->assertDatabaseCount('exchange_rate_observations', 4);
+    $this->assertDatabaseHas('exchange_rate_observations', ['currency' => 'CHF', 'observation_date' => '2020-03-09', 'rate' => 1027.94, 'units' => 100]);
     Http::assertSentCount(3);
 });
 

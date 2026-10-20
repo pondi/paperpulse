@@ -54,18 +54,22 @@ class NorgesBankExchangeRateService
             if (in_array($row['BASE_CUR'], self::KRONE_INDEX_SERIES, true) || $row['OBS_VALUE'] === '') {
                 continue;
             }
+            $rate = $row['OBS_VALUE'];
+            if (preg_match('/^[0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?$/D', $rate)) {
+                $rate = str_replace(',', '', $rate);
+            }
             $date = DateTimeImmutable::createFromFormat('!Y-m-d', $row['TIME_PERIOD']);
             if (! preg_match('/^[A-Z]{3}$/', $row['BASE_CUR']) || $row['QUOTE_CUR'] !== 'NOK'
                 || ($row['FREQ'] ?? 'B') !== 'B' || ($row['TENOR'] ?? 'SP') !== 'SP'
                 || $date === false || $date->format('Y-m-d') !== $row['TIME_PERIOD']
                 || $row['TIME_PERIOD'] < $from || $row['TIME_PERIOD'] > $to
-                || ! is_numeric($row['OBS_VALUE']) || ! is_finite((float) $row['OBS_VALUE']) || (float) $row['OBS_VALUE'] <= 0
+                || ! is_numeric($rate) || ! is_finite((float) $rate) || (float) $rate <= 0
                 || ! in_array($row['UNIT_MULT'], ['0', '1', '2', '3', '4', '5', '6'], true)) {
                 throw new RuntimeException('Norges Bank returned an invalid exchange rate observation.');
             }
             $observations[] = [
                 'provider' => 'norges-bank', 'currency' => $row['BASE_CUR'],
-                'observation_date' => $row['TIME_PERIOD'], 'rate' => $row['OBS_VALUE'],
+                'observation_date' => $row['TIME_PERIOD'], 'rate' => $rate,
                 'units' => 10 ** (int) $row['UNIT_MULT'],
             ];
         }

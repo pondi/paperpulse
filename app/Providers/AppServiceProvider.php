@@ -19,6 +19,7 @@ use App\Models\Invoice;
 use App\Models\Receipt;
 use App\Models\ReturnPolicy;
 use App\Models\Tag;
+use App\Models\User;
 use App\Models\Voucher;
 use App\Models\Warranty;
 use App\Policies\BankStatementPolicy;
@@ -235,6 +236,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('admin', function ($user) {
             return $user && method_exists($user, 'isAdmin') ? $user->isAdmin() : false;
         });
+
+        Gate::define('viewLogViewer', fn (?User $user): bool => $user !== null
+            && $user->hasVerifiedEmail() && $user->isAdmin());
 
         foreach (['contract' => Contract::class, 'invoice' => Invoice::class,
             'voucher' => Voucher::class, 'warranty' => Warranty::class,

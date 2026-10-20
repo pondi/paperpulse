@@ -27,7 +27,7 @@ Route::prefix('v1')
     ->group(base_path('routes/api/v1.php'));
 
 // Legacy user endpoint for backward compatibility
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+Route::middleware(['auth:sanctum', 'verified', 'api.rate_limit:200,1'])->get('/user', function (Request $request) {
     return $request->user();
 });
 
@@ -36,13 +36,13 @@ Route::post('/webdav/auth', [WebDavAuthController::class, 'authenticate'])
     ->middleware('throttle:pulsedav-auth');
 
 // File Sharing API
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'verified', 'api.rate_limit:200,1'])->group(function () {
     Route::get('/documents/{document}/shares', [DocumentController::class, 'getShares']);
     Route::get('/receipts/{receipt}/shares', [ReceiptController::class, 'getShares']);
 });
 
 // Batch Processing API
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'verified', 'api.rate_limit:200,1'])->group(function () {
     Route::prefix('batch')->group(function () {
         Route::post('/', [BatchProcessingController::class, 'create']);
         Route::get('/', [BatchProcessingController::class, 'list']);

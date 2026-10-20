@@ -152,7 +152,7 @@ return [
 
     'history' => [
 
-        'encrypt' => (bool) env('INERTIA_ENCRYPT_HISTORY', false),
+        'encrypt' => (bool) env('INERTIA_ENCRYPT_HISTORY', true),
 
     ],
 

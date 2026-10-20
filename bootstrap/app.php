@@ -20,6 +20,7 @@ use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\Http\Middleware\AuthenticateSession;
 use Spatie\Csp\AddCspHeaders;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -43,6 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $middleware->web(append: [
+            AuthenticateSession::class,
             SetLocale::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,

@@ -159,7 +159,7 @@ class CollectionController extends Controller
             ->orderBy($byDate ? 'created_at' : 'name', $direction)->orderBy('id')
             ->paginate(50, ['*'], 'children_page')->withQueryString();
         $stats = $this->collectionService->getCollectionStats($collection);
-        $shares = $this->sharingService->getShares($collection);
+        $shares = $collection->user_id === auth()->id() ? $this->sharingService->getShares($collection) : collect();
 
         $publicLinks = $collection->user_id === auth()->id()
             ? $this->publicSharingService->getAllLinksForCollection($collection)

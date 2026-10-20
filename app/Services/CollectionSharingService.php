@@ -93,7 +93,7 @@ class CollectionSharingService
     public function getShares(Collection $collection): SupportCollection
     {
         return CollectionShare::where('collection_id', $collection->id)
-            ->with('sharedWithUser')
+            ->with('sharedWithUser:id,name,email')
             ->get();
     }
 

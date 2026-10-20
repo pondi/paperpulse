@@ -80,3 +80,22 @@ test('authorized receipt metadata retains merchant names for recipients', functi
         ->where('file.can_edit', false)
         ->where('extractedEntities.0.entity.merchant.name', 'Visible merchant'));
 });
+
+test('shared collection viewers cannot read other recipients account details', function (): void {
+    $owner = User::factory()->create();
+    $viewer = User::factory()->create();
+    $otherRecipient = User::factory()->create();
+    $collection = Collection::factory()->create(['user_id' => $owner->id]);
+    foreach ([$viewer, $otherRecipient] as $recipient) {
+        CollectionShare::create(['collection_id' => $collection->id, 'shared_by_user_id' => $owner->id,
+            'shared_with_user_id' => $recipient->id, 'permission' => 'view', 'shared_at' => now()]);
+    }
+
+    $this->actingAs($viewer)->get('/collections/'.$collection->id)->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('shares', 0));
+    $this->actingAs($owner)->get('/collections/'.$collection->id)->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('shares', 2)
+            ->where('shares.0.shared_with_user.email', $viewer->email)
+            ->missing('shares.0.shared_with_user.is_admin')
+            ->missing('shares.0.shared_with_user.email_verified_at'));
+});

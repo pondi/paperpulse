@@ -82,6 +82,8 @@ class FileManagementController extends Controller
 
     public function reprocess(Request $request, File $file, FileReprocessingService $reprocessingService)
     {
+        abort_unless($file->user_id === $request->user()->id, 403);
+
         $totalsReview = $file->status === 'needs_review' && ($file->meta['review']['reason'] ?? null) === 'receipt_totals';
         if ($file->status !== 'failed' && ! $totalsReview) {
             return back()->with('error', 'Only failed files or receipt totals reviews can be restarted.');

@@ -1,9 +1,11 @@
 <?php
 
 use App\Models\File;
+use App\Models\FileShare;
 use App\Models\JobHistory;
 use App\Models\User;
 use App\Services\Files\FileJobChainDispatcher;
+use App\Services\Files\FileReprocessingService;
 use App\Services\Files\StoragePathBuilder;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -13,6 +15,20 @@ beforeEach(function () {
     Storage::fake('paperpulse');
     Storage::fake('pulsedav');
 });
+
+it('prevents share recipients from restarting the owners processing jobs', function (string $permission): void {
+    $owner = User::factory()->create();
+    $recipient = User::factory()->create();
+    $file = File::factory()->create(['user_id' => $owner->id, 'status' => 'failed']);
+    FileShare::create([
+        'file_id' => $file->id, 'file_type' => 'receipt', 'shared_by_user_id' => $owner->id,
+        'shared_with_user_id' => $recipient->id, 'permission' => $permission, 'shared_at' => now(),
+    ]);
+    $this->mock(FileReprocessingService::class)->shouldNotReceive('reprocessFile');
+
+    $this->actingAs($recipient)->post(route('files.reprocess', $file))->assertForbidden();
+    expect($file->fresh()->status)->toBe('failed');
+})->with(['view', 'edit']);
 
 afterEach(function () {
     Mockery::close();

@@ -3,6 +3,7 @@
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 
 test('reset password link screen can be rendered', function () {
     $response = $this->get('/forgot-password');
@@ -57,4 +58,15 @@ test('password can be reset with valid token', function () {
 
         return true;
     });
+});
+
+test('password recovery responses do not disclose whether an account exists', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    foreach ([$user->email, 'unknown@example.com'] as $email) {
+        $this->from('/forgot-password')->post('/forgot-password', ['email' => $email])
+            ->assertRedirect('/forgot-password')->assertSessionHasNoErrors()
+            ->assertSessionHas('status', __(Password::RESET_LINK_SENT));
+    }
+    Notification::assertSentTo($user, ResetPassword::class);
 });

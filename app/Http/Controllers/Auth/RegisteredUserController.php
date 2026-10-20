@@ -71,6 +71,12 @@ class RegisteredUserController extends Controller
                 ]);
             }
 
+            if (User::query()->where('email', $data['email'])->exists()) {
+                throw ValidationException::withMessages([
+                    'email' => 'Unable to register with this email address.',
+                ]);
+            }
+
             $user = User::create([
                 'name' => $data['name'],
                 'email' => $data['email'],

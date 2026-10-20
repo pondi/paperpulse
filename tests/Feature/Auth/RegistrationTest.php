@@ -98,7 +98,7 @@ test('an invitation cannot create a second account or be used for another email'
     $payload['email'] = $invitation->email;
     $this->post('/register', $payload)->assertRedirect(route('dashboard', absolute: false));
     Auth::logout();
-    $this->post('/register', $payload)->assertSessionHasErrors('email');
+    $this->post('/register', $payload)->assertSessionHasErrors('invitation_token');
     expect(User::where('email', $invitation->email)->count())->toBe(1);
 });
 
@@ -112,4 +112,26 @@ test('invitation registration sends verification only after account creation com
     expect($user->hasVerifiedEmail())->toBeFalse();
     Notification::assertSentTo($user, VerifyEmail::class);
     $this->get('/dashboard')->assertRedirect(route('verification.notice'));
+});
+
+test('registration cannot enumerate accounts without a valid invitation', function (bool $withToken): void {
+    $existing = User::factory()->create();
+    foreach ([$existing->email, 'unknown@example.com'] as $email) {
+        $payload = ['name' => 'Probe', 'email' => $email, 'password' => 'password', 'password_confirmation' => 'password'];
+        if ($withToken) {
+            $payload['invitation_token'] = 'invalid';
+        }
+        $this->postJson('/register', $payload)->assertUnprocessable()
+            ->assertJsonValidationErrors('invitation_token')->assertJsonMissingValidationErrors('email');
+    }
+})->with([true, false]);
+
+test('an invitation for an existing account cannot register another account', function (): void {
+    $user = User::factory()->create();
+    $invitation = Invitation::create(['email' => $user->email, 'status' => 'sent']);
+    $this->post('/register', ['name' => 'Duplicate', 'email' => $user->email,
+        'password' => 'password', 'password_confirmation' => 'password', 'invitation_token' => $invitation->token])
+        ->assertSessionHasErrors('email');
+    expect($invitation->fresh()->used_at)->toBeNull();
+    expect(User::where('email', $user->email)->count())->toBe(1);
 });

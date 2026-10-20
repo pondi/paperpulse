@@ -31,8 +31,9 @@ class LibraryController extends Controller
                         'receipt' => 'receipt_date', 'invoice' => 'invoice_date', 'document' => 'document_date',
                         'contract' => 'effective_date', 'bank_statement' => 'statement_date',
                         'voucher' => 'expiry_date', 'warranty' => 'warranty_end_date', 'return_policy' => 'return_deadline',
+                        default => null,
                     };
-                    $identity = [
+                    $identity = $dateField === null ? null : [
                         'title' => match ($primary->entity_type) {
                             'receipt' => $entity->merchant?->name, 'invoice' => $entity->from_name,
                             'document' => $entity->title, 'contract' => $entity->contract_title,

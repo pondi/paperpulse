@@ -81,12 +81,6 @@ parameters:
 			path: app/Http/Controllers/AnalyticsController.php
 
 		-
-			message: '#^Using nullsafe property access "\?\-\>filename" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/AnalyticsController.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -129,12 +123,6 @@ parameters:
 			path: app/Http/Controllers/BankStatementController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/BankStatementController.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:addTagByName\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -174,12 +162,6 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Http/Controllers/ContractController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 1
 			path: app/Http/Controllers/ContractController.php
 
 		-
@@ -465,12 +447,6 @@ parameters:
 			path: app/Http/Controllers/InvoiceController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/InvoiceController.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:addTagByName\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -582,12 +558,6 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Http/Controllers/VoucherController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 1
 			path: app/Http/Controllers/VoucherController.php
 
 		-
@@ -1847,7 +1817,7 @@ parameters:
 		-
 			message: '#^Using nullsafe property access "\?\-\>canonical_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
-			count: 2
+			count: 1
 			path: app/Services/OrganizationPlanner.php
 
 		-
@@ -2005,12 +1975,6 @@ parameters:
 			identifier: function.alreadyNarrowedType
 			count: 1
 			path: app/Services/Receipts/DecimalAmount.php
-
-		-
-			message: '#^Match expression does not handle remaining value\: class\-string\<Illuminate\\Database\\Eloquent\\Model\>&literal\-string$#'
-			identifier: match.unhandled
-			count: 1
-			path: app/Services/Search/SearchFilterBuilder.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\:\:getCollection\(\)\.$#'

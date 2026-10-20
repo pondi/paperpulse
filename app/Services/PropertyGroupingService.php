@@ -34,7 +34,7 @@ class PropertyGroupingService
             $existing = Collection::withoutGlobalScope('user')->where('user_id', $userId)->where('folder_type', 'property')
                 ->where('organization_source', 'system')->get()->first(fn (Collection $folder): bool => OrganizationAlias::key($folder->name) === OrganizationAlias::key($normalized));
 
-            return $alias?->canonical_name ?? $existing?->name ?? $normalized;
+            return $alias->canonical_name ?? $existing->name ?? $normalized;
         }
         $addresses = Collection::withoutGlobalScope('user')->where('user_id', $userId)->where('folder_type', 'property')
             ->where('organization_source', 'system')->pluck('name');

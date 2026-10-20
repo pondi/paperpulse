@@ -149,6 +149,7 @@ class Receipt extends Model implements Taggable
 
     public function sourceData(): array
     {
+        /** @var array|string|null $data */
         $data = $this->receipt_data;
 
         return is_string($data) ? json_decode($data, true, 512, JSON_THROW_ON_ERROR) : ($data ?? []);

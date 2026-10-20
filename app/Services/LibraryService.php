@@ -17,6 +17,7 @@ use App\Support\AuthorizedEntityRelations;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 class LibraryService
 {
@@ -68,6 +69,7 @@ class LibraryService
                         'high' => $entities->where('confidence_score', '>=', 0.9),
                         'medium' => $entities->where('confidence_score', '>=', 0.7)->where('confidence_score', '<', 0.9),
                         'low' => $entities->where('confidence_score', '<', 0.7),
+                        default => throw ValidationException::withMessages(['confidence' => 'Choose a supported confidence level.']),
                     };
                 });
             }

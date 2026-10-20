@@ -85,6 +85,7 @@ class WorkspaceActionController extends Controller
         return back()->with('success', match ($data['action']) {
             'save' => 'Changes saved.', 'approve' => 'Selected files approved.',
             'flag' => 'Selected files flagged.', 'tag' => 'Tag applied.', 'delete' => 'Selected files deleted.',
+            default => throw new \LogicException('Unsupported workspace action.'),
         });
     }
 }

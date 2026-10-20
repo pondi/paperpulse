@@ -12,12 +12,16 @@ use App\Models\Voucher;
 use App\Models\Warranty;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Http\Request;
+use InvalidArgumentException;
 use Laravel\Scout\Builder;
 use Laravel\Scout\Engines\CollectionEngine;
 use Meilisearch\Endpoints\Indexes;
 
 class SearchFilterBuilder
 {
+    /**
+     * @param  Builder<Receipt>|Builder<Document>|Builder<Invoice>|Builder<Contract>|Builder<Voucher>|Builder<Warranty>|Builder<ReturnPolicy>|Builder<BankStatement>  $search
+     */
     public static function apply(Builder $search, array $filters): Builder
     {
         $dateField = match ($search->model::class) {
@@ -29,6 +33,7 @@ class SearchFilterBuilder
             Warranty::class => 'warranty_end_date',
             ReturnPolicy::class => 'return_deadline',
             BankStatement::class => 'statement_date',
+            default => throw new InvalidArgumentException('Unsupported searchable model.'),
         };
         $amountField = match ($search->model::class) {
             Contract::class => 'contract_value',

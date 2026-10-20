@@ -7,6 +7,13 @@ use App\Models\FileShare;
 use App\Models\Receipt;
 use App\Models\User;
 
+it('rejects unknown workspace actions without mutating files', function (): void {
+    $file = File::factory()->create(['status' => 'completed']);
+    $this->actingAs($file->user)->postJson(route('workspace.actions'), ['action' => 'unsupported', 'file_ids' => [$file->id]])
+        ->assertUnprocessable()->assertJsonValidationErrors('action');
+    expect($file->fresh()->meta)->not->toHaveKey('workspace_review');
+});
+
 it('saves notes descriptions and staged folders through owned metadata', function (string $model, string $type): void {
     $file = File::factory()->create(['status' => 'completed', 'note' => 'Original note']);
     $entity = $model::factory()->create(['user_id' => $file->user_id, 'file_id' => $file->id]);

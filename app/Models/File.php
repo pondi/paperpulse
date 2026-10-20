@@ -124,12 +124,12 @@ class File extends Model
         $active = in_array($this->status, ['pending', 'processing'], true);
         $waiting = $this->status === 'pending' && isset($this->meta['processing_wait']);
 
-        return ['state' => $waiting ? 'waiting' : ($active ? ($task?->status ?? $job->status) : $this->status),
+        return ['state' => $waiting ? 'waiting' : ($active ? ($task->status ?? $job->status) : $this->status),
             'resume_at' => $waiting ? ($this->meta['processing_wait']['resume_at'] ?? null) : null,
             'stage' => $task?->name, 'queued_at' => $job->created_at?->toIso8601String(),
             'started_at' => $startedAt?->toIso8601String(), 'finished_at' => $finishedAt?->toIso8601String(),
             'elapsed_seconds' => $startedAt && ($active || $finishedAt) ? (int) $startedAt->diffInSeconds($finishedAt ?? now()) : null,
-            'attempt' => $task?->attempt, 'progress' => $task?->progress ?? $job->progress];
+            'attempt' => $task?->attempt, 'progress' => $task->progress ?? $job->progress];
     }
 
     public function scopeRetainable(Builder $query, Carbon $cutoff): Builder

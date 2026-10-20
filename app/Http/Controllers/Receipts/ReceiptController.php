@@ -360,7 +360,7 @@ class ReceiptController extends BaseResourceController
         }
 
         if (isset($validated['collection_ids'])) {
-            $receipt->file?->collections()->sync($validated['collection_ids']);
+            $receipt->file->collections()->sync($validated['collection_ids']);
         }
 
         return redirect()->back()->with('success', 'Receipt updated successfully');

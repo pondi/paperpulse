@@ -153,7 +153,7 @@ class FolderOrganizationService
         $alias = OrganizationAlias::withoutGlobalScope('user')->where('user_id', $userId)->where('kind', $node['kind'])
             ->where('alias_key', OrganizationAlias::key($node['name']))->first();
 
-        return $alias?->canonical_name ?? $this->canonicalName($userId, $node['kind'],
+        return $alias->canonical_name ?? $this->canonicalName($userId, $node['kind'],
             ($parentId ?? 0).':'.hash('sha256', $node['identifier'] ?? Collection::normalizeIdentity($node['name'])), $node['name']);
     }
 

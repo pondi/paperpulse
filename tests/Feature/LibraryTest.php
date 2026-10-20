@@ -12,11 +12,35 @@ use App\Models\Receipt;
 use App\Models\Tag;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Services\LibraryService;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
     $this->withoutVite();
     $this->owner = User::factory()->create();
+});
+
+it('renders files with an unfamiliar extracted entity type without assuming its metadata fields', function (): void {
+    $morphMap = Relation::morphMap();
+    Relation::morphMap(['future_document' => Document::class]);
+    try {
+        $file = File::factory()->create(['user_id' => $this->owner->id, 'fileName' => 'future.pdf']);
+        $document = Document::factory()->create(['user_id' => $this->owner->id, 'file_id' => $file->id]);
+        ExtractableEntity::create(['user_id' => $this->owner->id, 'file_id' => $file->id,
+            'entity_type' => 'future_document', 'entity_id' => $document->id, 'is_primary' => true, 'extracted_at' => now()]);
+
+        $this->actingAs($this->owner)->get(route('library.index'))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->has('files.data', 1)->where('files.data.0.identity', null));
+    } finally {
+        Relation::morphMap($morphMap, false);
+    }
+});
+
+it('rejects unknown confidence filters when the library service is called directly', function (): void {
+    expect(fn () => app(LibraryService::class)->query($this->owner, ['confidence' => 'unsupported']))
+        ->toThrow(ValidationException::class);
 });
 
 it('shows a paginated library of owned files including unfinished uploads', function (): void {
